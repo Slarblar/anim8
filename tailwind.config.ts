@@ -9,44 +9,33 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          DEFAULT: '#7cc142', // Brand green
-          light: '#9fd46a',
-          dark: '#5a8d2f',
+        brand: {
+          lime: '#7cc142',
+          black: '#0f0f0f',
+          pink: '#dd0b83',
+          cyan: '#38c2d6',
+          navy: '#2a2b3e',
         },
-        secondary: {
-          DEFAULT: '#0f0f0f', // Brand black
-          light: '#1a1a1a',
-          dark: '#000000',
-        },
+        // Legacy aliases for compatibility
+        primary: '#7cc142',
+        secondary: '#0f0f0f',
         background: {
-          DEFAULT: '#2a2b3e', // Brand background
+          DEFAULT: '#2a2b3e',
           light: '#3d3e52',
-          dark: '#1a1b2e',
+          dark: '#0f0f0f',
         },
         text: {
           DEFAULT: '#F1F5F9',
           light: '#F8FAFC',
           muted: '#94A3B8',
         },
-        accent: {
-          DEFAULT: '#dd0b83', // Brand magenta
-          light: '#ff3da1',
-          dark: '#b00866',
-        },
-        'accent-2': {
-          DEFAULT: '#38c2d6', // Brand cyan
-          light: '#5dd4e6',
-          dark: '#2a9aaa',
-        },
       },
       fontFamily: {
         sans: ['futura-pt', 'system-ui', 'sans-serif'],
-        heading: ['noxa', 'futura-pt', 'sans-serif'],
+        heading: ['futura-pt', 'sans-serif'],
         'futura-book': ['futura-pt-book', 'futura-pt', 'sans-serif'],
         'futura-bold': ['futura-pt-bold', 'futura-pt', 'sans-serif'],
         'futura-heavy': ['futura-pt-heavy', 'futura-pt', 'sans-serif'],
-        'noxa': ['noxa', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-in-out',

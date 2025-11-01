@@ -17,19 +17,32 @@ A modern, high-performance website for a 3D animation studio built with Next.js 
 ## 🎨 Design System
 
 ### Colors (Anim8 Brand)
-- **Primary**: #7cc142 (Brand Green)
-- **Secondary**: #0f0f0f (Brand Black)
-- **Background**: #2a2b3e (Brand Navy)
-- **Text**: #F1F5F9 (Light slate)
-- **Accent**: #dd0b83 (Brand Magenta)
-- **Accent 2**: #38c2d6 (Brand Cyan)
+- **Brand Lime**: #7cc142 (Primary - CTAs, highlights)
+- **Brand Black**: #0f0f0f (True black - footer, contrast)
+- **Brand Pink**: #dd0b83 (Accent 1 - badges, special elements)
+- **Brand Cyan**: #38c2d6 (Accent 2 - secondary actions)
+- **Brand Navy**: #2a2b3e (Background - main sections)
 
-### Typography (Adobe Typekit)
-- **Fonts**: NOXA, Futura PT (Adobe Typekit)
-- **Logotype**: NOXA BLACK
-- **Headings**: Futura PT Heavy
-- **Body**: Futura PT Book
-- **Stylesheet**: `https://use.typekit.net/yde3ltr.css`
+### Typography
+- **Font**: Montserrat (Google Fonts)
+- **Headings**: Montserrat Black (900) / ExtraBold (800)
+- **Subheadings**: Montserrat Bold (700)
+- **Body**: Montserrat Regular (400)
+- **Emphasis**: Montserrat SemiBold (600)
+
+### Glassmorphism Effects
+The design uses modern glassmorphism with:
+- Backdrop blur for depth
+- Semi-transparent backgrounds
+- Subtle borders
+- Hover animations with lift and glow effects
+
+### Components
+- Glass cards with hover animations
+- Gradient buttons with brand colors
+- Timeline with connecting lines
+- Badge system for featured items
+- Smooth scroll animations with Framer Motion
 
 For full brand guidelines, see: [BRAND_GUIDE.md](./BRAND_GUIDE.md)
 

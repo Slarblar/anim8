@@ -15,7 +15,7 @@ export function CTASection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-center mb-4 text-white">LET'S BUILD THIS</h2>
+          <h2 className="text-center mb-4 text-white">LET&apos;S BUILD THIS</h2>
           
           {/* Lime accent line */}
           <div className="flex justify-center mb-16">

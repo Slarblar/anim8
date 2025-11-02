@@ -274,7 +274,7 @@ function ExpansionCard({ type, index, position }: ExpansionCardProps) {
 
       <div className="mb-6">
         <h4 className="text-brand-cyan font-bold text-xs uppercase mb-3 tracking-wider">
-          What's included:
+          What&apos;s included:
         </h4>
         <ul className="space-y-2 text-text text-sm">
           {config.includes.map((item, i) => (

@@ -148,7 +148,7 @@ export function PackagesSection() {
                   <div className="section-divider mb-6" />
 
                   <div className="flex-grow mb-6">
-                    <h4 className="text-white font-bold mb-4 text-sm">What's Included:</h4>
+                    <h4 className="text-white font-bold mb-4 text-sm">What&apos;s Included:</h4>
                     <motion.ul 
                       className="space-y-3 text-text-muted"
                       variants={{

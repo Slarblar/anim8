@@ -26,7 +26,7 @@ export function ProcessSection() {
         'Friday review sessions (video call or async)',
         'Feedback implemented within 48 hours',
         'Continuous QC by lead team',
-        'You\'re always 1 week ahead in review pipeline',
+        'You&apos;re always 1 week ahead in review pipeline',
       ],
       milestone: '25 characters approved → Progress payment',
     },

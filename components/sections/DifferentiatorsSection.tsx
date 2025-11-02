@@ -23,7 +23,7 @@ export function DifferentiatorsSection() {
     },
     {
       title: 'IP-FOCUSED',
-      description: 'We understand you\'re building a content empire, not just models. Our goal is to be partners, not vendors.',
+      description: 'We understand you&apos;re building a content empire, not just models. Our goal is to be partners, not vendors.',
       icon: '🤝',
     },
   ]

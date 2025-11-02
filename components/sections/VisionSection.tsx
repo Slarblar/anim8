@@ -131,7 +131,7 @@ export function VisionSection() {
               viewport={{ once: true }}
               transition={{ delay: 0.6, duration: 0.5 }}
             >
-              We've built our team specifically for something like this.
+              We&apos;ve built our team specifically for something like this.
             </motion.p>
           </div>
         </motion.div>

@@ -39,7 +39,7 @@ export function ApproachSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-center mb-4 text-white">WHY WE'RE DIFFERENT</h2>
+          <h2 className="text-center mb-4 text-white">WHY WE&apos;RE DIFFERENT</h2>
           
           {/* Lime accent line */}
           <div className="flex justify-center mb-16">

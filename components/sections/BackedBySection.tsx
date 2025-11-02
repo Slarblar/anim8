@@ -13,7 +13,7 @@ export function BackedBySection() {
       body: [
         'Co-founded RTFKT, pioneering NFT character systems at scale',
         'Led production of CloneX (20,000+ unique 3D avatars)',
-        'Built Nike\'s Web3 infrastructure post-acquisition',
+        'Built Nike&apos;s Web3 infrastructure post-acquisition',
         'Scaled digital collectible production from concept to billions in value',
       ],
       keyExperience: [

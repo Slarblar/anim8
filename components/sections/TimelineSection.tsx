@@ -174,7 +174,7 @@ export function TimelineSection() {
               Timeline: <span className="text-brand-lime">12 weeks</span> from kickoff to delivery
             </h3>
             <div className="section-divider mb-6" />
-            <h4 className="text-white font-bold mb-4">What You'll Receive:</h4>
+            <h4 className="text-white font-bold mb-4">What You&apos;ll Receive:</h4>
             <motion.ul 
               className="space-y-3 text-text mb-6"
               variants={{

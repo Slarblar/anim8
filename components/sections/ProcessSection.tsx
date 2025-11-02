@@ -54,6 +54,8 @@ export function ProcessSection() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-center mb-4 text-white">HOW WE WORK TOGETHER</h2>
+          
+          {/* Lime accent line */}
           <div className="flex justify-center mb-16">
             <div className="lime-accent-line" />
           </div>

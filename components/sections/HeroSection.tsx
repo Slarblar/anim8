@@ -1,24 +1,74 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useEffect, useRef } from 'react'
 import { Button } from '../ui/Button'
 
 export function HeroSection() {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  useEffect(() => {
+    // Ensure iframe loads and autoplays properly on mount
+    if (iframeRef.current) {
+      const iframe = iframeRef.current
+      
+      // Ensure iframe is loaded - Gumlet handles autoplay via URL parameters
+      const handleLoad = () => {
+        // Iframe loaded successfully
+        // Autoplay should work via URL parameters: autoplay=true&muted=true&loop=true
+      }
+
+      // Add load listener
+      iframe.addEventListener('load', handleLoad)
+
+      // Cleanup
+      return () => {
+        iframe.removeEventListener('load', handleLoad)
+      }
+    }
+  }, [])
+
+  // Generate stable video URL with all required parameters
+  const videoUrl = "https://play.gumlet.io/embed/69068fe7a5b40b283e2e13b7?background=true&autoplay=true&loop=true&muted=true&disableControls=true&playsinline=true"
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Video Background */}
-      <div className="absolute inset-0 z-0">
-        <video 
-          autoPlay 
-          loop 
-          muted 
-          playsInline
-          className="w-full h-full object-cover"
-        >
-          <source src="/videos/astronaut-turntable.mp4" type="video/mp4" />
-        </video>
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-brand-navy/60 backdrop-blur-[2px]" />
+      {/* Gumlet Video Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        {/* Video wrapper - responsive with aspect ratio preservation */}
+        <div className="absolute inset-0 opacity-50">
+          <div 
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '177.77vh', // 16:9 aspect ratio (100vh * 16/9)
+              minWidth: '100vw',
+              height: '56.25vw', // 16:9 aspect ratio (100vw * 9/16)  
+              minHeight: '100vh',
+            }}
+          >
+            <iframe 
+              ref={iframeRef}
+              key="gumlet-video-hero"
+              title="Gumlet video player"
+              src={videoUrl}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              style={{ 
+                border: 'none',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+        </div>
+        {/* Dark overlay for better text contrast */}
+        <div className="absolute inset-0 bg-brand-navy/50 backdrop-blur-[2px]" />
       </div>
 
       {/* Content */}
@@ -28,7 +78,7 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
         >
-          <h1 className="text-white mb-6 font-black">
+          <h1 className="text-white mb-4 font-black text-center">
             CONTENT INFRASTRUCTURE<br />
             FOR THE AI ERA
           </h1>

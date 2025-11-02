@@ -168,14 +168,21 @@
 
   /* Lime accent line with animation */
   .lime-accent-line {
-    @apply h-1 bg-gradient-to-r from-brand-lime to-brand-cyan rounded-full;
+    @apply h-1 rounded-full;
     width: 0;
-    animation: expandLine 1s ease-out forwards;
-    animation-delay: 0.3s;
+    background: linear-gradient(90deg, #7cc142, #38c2d6, #7cc142, #38c2d6);
+    background-size: 300% 100%;
+    animation: expandLine 1s ease-out forwards, gradientFlow 8s ease-in-out infinite;
+    animation-delay: 0.3s, 1.3s;
   }
 
   @keyframes expandLine {
     to { width: 6rem; }
+  }
+
+  @keyframes gradientFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
   }
 
   /* Badge */
@@ -307,6 +314,31 @@
   .pulse-glow {
     animation: pulseGlow 2s ease-in-out infinite;
   }
+
+  /* Pulse arrow animation */
+  @keyframes pulseArrow {
+    0%, 100% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* Pipeline stage card hover effect */
+  .pipeline-stage-card:hover {
+    box-shadow: 0 12px 40px rgba(124, 193, 66, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* Modeling stage card hover effect - handled by Framer Motion */
+  /* .modeling-stage-card:hover {
+    box-shadow: 0 12px 40px rgba(124, 193, 66, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  } */
+
+  /* Expansion card hover effect - handled by Framer Motion */
+  /* .expansion-card:hover {
+    box-shadow: 0 12px 40px rgba(56, 194, 214, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  } */
 
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {

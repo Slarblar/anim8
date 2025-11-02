@@ -40,9 +40,14 @@ export function VisionSection() {
           transition={{ duration: 0.6 }}
           className="max-w-4xl mx-auto"
         >
-          <h2 className="text-center mb-12 text-white gradient-text-simple animated-underline">
+          <h2 className="text-center mb-4 text-white gradient-text-simple">
             THE VISION
           </h2>
+          
+          {/* Lime accent line */}
+          <div className="flex justify-center mb-12">
+            <div className="lime-accent-line" />
+          </div>
           
           <div className="space-y-6 text-lg md:text-xl text-text relative z-10">
             <motion.p 
@@ -52,7 +57,7 @@ export function VisionSection() {
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
             >
-              VeeFriends needs more than 3D models. They need motion. Personality. Scale.
+              VeeFriends needs more than 3D models. They need story, motion, personality and scale.
             </motion.p>
             
             <motion.p

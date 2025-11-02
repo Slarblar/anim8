@@ -38,7 +38,7 @@ export function PackagesSection() {
         'Basic facial controls',
         'Turntable renders (15 sec each)',
       ],
-      bestFor: 'Complete production dataset with motion',
+      bestFor: 'Complete SORA training dataset with motion',
       recommended: true,
       buttonVariant: 'primary' as const,
       buttonText: 'Select Package B',
@@ -58,7 +58,7 @@ export function PackagesSection() {
         'Lighting variations',
         'Comprehensive training dataset',
       ],
-      bestFor: 'Comprehensive training dataset with maximum variation',
+      bestFor: 'Comprehensive SORA training with maximum variation',
       buttonVariant: 'secondary' as const,
       buttonText: 'Select Package C',
       variant: 'pink' as const,
@@ -79,7 +79,9 @@ export function PackagesSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-center mb-4 text-white animated-underline">CHOOSE YOUR PACKAGE</h2>
+          <h2 className="text-center mb-4 text-white">CHOOSE YOUR PACKAGE</h2>
+          
+          {/* Lime accent line */}
           <div className="flex justify-center mb-16">
             <div className="lime-accent-line" />
           </div>

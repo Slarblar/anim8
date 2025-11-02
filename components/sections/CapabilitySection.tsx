@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Section } from '../ui/Section'
+import { ModelViewer } from '../ui/ModelViewer'
 
 export function CapabilitySection() {
   return (
@@ -14,13 +15,15 @@ export function CapabilitySection() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-center mb-4 text-white">THIS IS WHAT YOU GET</h2>
+          
+          {/* Lime accent line */}
           <div className="flex justify-center mb-12">
             <div className="lime-accent-line" />
           </div>
 
           <p className="text-xl md:text-2xl text-center text-text max-w-4xl mx-auto mb-16">
             From concept to production-ready asset in <span className="text-brand-lime font-bold">48 hours</span>. 
-            Clean topology. Optimized for animation and rendering. Production-grade.
+            Clean topology. Optimized for AI training. Production-grade.
           </p>
 
           {/* Split-screen image placeholder */}
@@ -39,14 +42,14 @@ export function CapabilitySection() {
             This was a spec piece to prove our capability. Your VeeFriends characters will receive this level of craft—at scale.
           </p>
 
-          {/* Video turntable placeholder */}
+          {/* 3D Model Viewer */}
           <div className="glass-card p-4">
-            <div className="aspect-video bg-gradient-to-br from-brand-cyan/20 to-brand-lime/20 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-6xl mb-4">▶️</div>
-                <p className="text-text-muted">10-Second Turntable Video<br/>Auto-plays on scroll</p>
-              </div>
-            </div>
+            <ModelViewer 
+              src="/models/Anim-8_EdenOffline_CeramicSupra_Decimate_Final.glb"
+              alt="Anim-8 Character 3D Model"
+              autoRotate={true}
+              cameraControls={true}
+            />
           </div>
         </motion.div>
       </div>

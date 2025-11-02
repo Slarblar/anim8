@@ -15,6 +15,8 @@ export function ScalingSection() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-center mb-4 text-white">BEYOND THE PILOT: YOUR FULL LIBRARY</h2>
+          
+          {/* Lime accent line */}
           <div className="flex justify-center mb-8">
             <div className="lime-accent-line" />
           </div>

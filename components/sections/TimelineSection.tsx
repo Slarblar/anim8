@@ -21,7 +21,7 @@ export function TimelineSection() {
       timeframe: 'WEEK 3-8',
       title: 'Production',
       items: [
-        '8-10 characters per week',
+        '8-10 characters per week (Speed can be increased with higher deposit)',
         'Weekly reviews',
         'Rapid iteration',
       ],
@@ -47,7 +47,9 @@ export function TimelineSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-center mb-4 text-white animated-underline">PILOT: 50 CHARACTERS</h2>
+          <h2 className="text-center mb-4 text-white">PILOT: 50 CHARACTERS</h2>
+          
+          {/* Lime accent line */}
           <div className="flex justify-center mb-8">
             <div className="lime-accent-line" />
           </div>
@@ -59,7 +61,7 @@ export function TimelineSection() {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
           >
-            We recommend starting with 50 to validate the pipeline, then scaling to your full library.
+            We can start with 50 to validate the pipeline, then scale to your full library.
           </motion.p>
 
           {/* Timeline */}

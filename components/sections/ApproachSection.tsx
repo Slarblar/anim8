@@ -16,7 +16,7 @@ export function ApproachSection() {
     },
     {
       title: 'RAPID SCALE',
-      description: '8 core team members + 10-20 modelers on-demand',
+      description: '8 core team members + 5-10 experienced modelers on-demand',
       detail: 'We scale with your budget and timeline.',
       icon: MdRocket,
       color: 'text-brand-cyan',
@@ -39,7 +39,9 @@ export function ApproachSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-center mb-4 text-white animated-underline">WHY WE'RE DIFFERENT</h2>
+          <h2 className="text-center mb-4 text-white">WHY WE'RE DIFFERENT</h2>
+          
+          {/* Lime accent line */}
           <div className="flex justify-center mb-16">
             <div className="lime-accent-line" />
           </div>

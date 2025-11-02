@@ -31,7 +31,7 @@ export function Footer() {
               </li>
               <li>
                 <a href="#packages" className="text-text-muted hover:text-brand-lime transition-colors">
-                  SORA Training Datasets
+                  AI Training Datasets
                 </a>
               </li>
               <li>

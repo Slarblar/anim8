@@ -24,11 +24,11 @@ export default function Home() {
       <ApproachSection />
       <CapabilitySection />
       <TimelineSection />
+      <ProcessSection />
       <PackagesSection />
       <ScalingSection />
       <TeamSection />
       <ProductionPipelineSection />
-      <ProcessSection />
       <DifferentiatorsSection />
       <CTASection />
       <Footer />

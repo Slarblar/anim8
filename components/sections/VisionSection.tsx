@@ -9,19 +9,19 @@ export function VisionSection() {
   const features = [
     {
       title: 'Speed',
-      description: 'Veefriends moves fast, so do we',
+      description: 'Veefriends moves fast, and so do we',
       icon: MdSpeed,
       color: 'text-brand-lime',
     },
     {
       title: 'Quality',
-      description: 'Your brand demands it',
+      description: 'Your brand demands excellence',
       icon: MdStars,
       color: 'text-brand-cyan',
     },
     {
       title: 'Scale',
-      description: '50 characters now, 250+ to scale',
+      description: '50 characters now, 250+ at scale',
       icon: MdTrendingUp,
       color: 'text-brand-pink',
     },
@@ -57,7 +57,7 @@ export function VisionSection() {
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
             >
-              VeeFriends needs more than 3D models. They need story, motion, personality and scale.
+              VeeFriends needs more than 3D models. They need story, motion, personality, and scale.
             </motion.p>
             
             <motion.p
@@ -66,7 +66,7 @@ export function VisionSection() {
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
             >
-              This is more than a character library. This is building <span className="text-brand-cyan font-semibold">content infrastructure</span> that generates endless variations of VeeFriends IP for UGC and community building, similar to Pudgy Penguins but stronger.
+              This is more than a character library. This is building <span className="text-brand-cyan font-semibold">content infrastructure</span> that generates endless variations of VeeFriends IP for UGC and community building, similar to Pudgy Penguins but with stronger production systems.
             </motion.p>
 
             <motion.p
@@ -131,7 +131,7 @@ export function VisionSection() {
               viewport={{ once: true }}
               transition={{ delay: 0.6, duration: 0.5 }}
             >
-              We&apos;ve built our team specifically for something like this.
+              We{`'`}ve built our team specifically for something like this.
             </motion.p>
           </div>
         </motion.div>

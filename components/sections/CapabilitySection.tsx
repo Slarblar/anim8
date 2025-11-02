@@ -23,7 +23,7 @@ export function CapabilitySection() {
 
           <p className="text-xl md:text-2xl text-center text-text max-w-4xl mx-auto mb-16">
             From concept to production-ready asset in <span className="text-brand-lime font-bold">48 hours</span>. 
-            Clean topology. Optimized for AI training. Production-grade.
+            Clean topology, optimized for AI training, production-grade quality.
           </p>
 
           {/* Split-screen image placeholder */}

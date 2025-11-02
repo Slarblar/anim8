@@ -26,7 +26,7 @@ export function ProcessSection() {
         'Friday review sessions (video call or async)',
         'Feedback implemented within 48 hours',
         'Continuous QC by lead team',
-        'You&apos;re always 1 week ahead in review pipeline',
+        "You're always 1 week ahead in review pipeline",
       ],
       milestone: '25 characters approved → Progress payment',
     },
@@ -45,7 +45,7 @@ export function ProcessSection() {
   ]
 
   return (
-    <Section id="process" className="bg-brand-navy">
+    <Section id="process" className="bg-background-dark">
       <div className="container-custom">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -98,28 +98,95 @@ export function ProcessSection() {
             ))}
           </div>
 
-          {/* Communication */}
-          <div className="glass-card p-8 max-w-4xl mx-auto">
-            <h3 className="text-white font-bold mb-6 text-center">Communication Rhythm:</h3>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-brand-lime font-bold mb-2">Daily:</p>
-                <p className="text-text-muted">Email updates from team</p>
-              </div>
-              <div>
-                <p className="text-brand-lime font-bold mb-2">Weekly:</p>
-                <p className="text-text-muted">Video progress review</p>
-              </div>
-              <div>
-                <p className="text-brand-cyan font-bold mb-2">Bi-weekly:</p>
-                <p className="text-text-muted">1-on-1 with project lead (15-30 min)</p>
-              </div>
-              <div>
-                <p className="text-brand-pink font-bold mb-2">Anytime:</p>
-                <p className="text-text-muted">Rapid response to questions/blockers</p>
-              </div>
+          {/* Communication Rhythm - Redesigned */}
+          <motion.div 
+            className="max-w-6xl mx-auto"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            <h3 className="text-white font-bold text-3xl mb-4 text-center">Communication Rhythm</h3>
+            <p className="text-text text-center mb-12 max-w-2xl mx-auto">
+              Stay in sync with transparent, consistent updates throughout production
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                {
+                  frequency: 'Daily',
+                  description: 'Email updates from team',
+                  color: 'lime',
+                  icon: '📧',
+                  gradient: 'from-brand-lime/20 to-brand-lime/5'
+                },
+                {
+                  frequency: 'Weekly',
+                  description: 'Video progress review',
+                  color: 'cyan',
+                  icon: '🎥',
+                  gradient: 'from-brand-cyan/20 to-brand-cyan/5'
+                },
+                {
+                  frequency: 'Bi-weekly',
+                  description: '1-on-1 with project lead (15-30 min)',
+                  color: 'cyan',
+                  icon: '💬',
+                  gradient: 'from-brand-cyan/20 to-brand-cyan/5'
+                },
+                {
+                  frequency: 'Anytime',
+                  description: 'Rapid response to questions/blockers',
+                  color: 'pink',
+                  icon: '⚡',
+                  gradient: 'from-brand-pink/20 to-brand-pink/5'
+                }
+              ].map((comm, index) => (
+                <motion.div
+                  key={comm.frequency}
+                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.8 + (index * 0.1), duration: 0.5 }}
+                  whileHover={{ y: -8, scale: 1.05 }}
+                  className="relative"
+                >
+                  <div className={`glass-card p-6 text-center h-full flex flex-col items-center border-2 ${
+                    comm.color === 'lime' ? 'border-brand-lime/30 hover:border-brand-lime/50' :
+                    comm.color === 'cyan' ? 'border-brand-cyan/30 hover:border-brand-cyan/50' :
+                    'border-brand-pink/30 hover:border-brand-pink/50'
+                  } transition-all duration-300`}>
+                    {/* Circular Badge */}
+                    <motion.div 
+                      className={`w-20 h-20 rounded-full bg-gradient-to-br ${comm.gradient} border-2 ${
+                        comm.color === 'lime' ? 'border-brand-lime' :
+                        comm.color === 'cyan' ? 'border-brand-cyan' :
+                        'border-brand-pink'
+                      } flex items-center justify-center mb-4 shadow-lg`}
+                      whileHover={{ rotate: 360, scale: 1.1 }}
+                      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                    >
+                      <span className="text-3xl">{comm.icon}</span>
+                    </motion.div>
+
+                    {/* Frequency Label */}
+                    <h4 className={`font-black text-xl mb-3 ${
+                      comm.color === 'lime' ? 'text-brand-lime' :
+                      comm.color === 'cyan' ? 'text-brand-cyan' :
+                      'text-brand-pink'
+                    }`}>
+                      {comm.frequency}
+                    </h4>
+
+                    {/* Description */}
+                    <p className="text-text-muted text-sm leading-relaxed">
+                      {comm.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          </div>
+          </motion.div>
         </motion.div>
       </div>
     </Section>

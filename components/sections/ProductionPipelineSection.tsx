@@ -27,12 +27,14 @@ interface ModelingStageProps {
   quality?: string
   index: number
   position: 'prev' | 'active' | 'next' | 'hidden'
+  onAdvance?: () => void
 }
 
 interface ExpansionCardProps {
   type: 'rigging' | 'animation' | 'rendering'
   index: number
   position: 'prev' | 'active' | 'next' | 'hidden'
+  onAdvance?: () => void
 }
 
 const cardVariants = {
@@ -74,7 +76,8 @@ function ModelingStage({
   tools, 
   quality,
   index,
-  position
+  position,
+  onAdvance
 }: ModelingStageProps) {
   const isActive = position === 'active'
   const isHidden = position === 'hidden'
@@ -86,6 +89,7 @@ function ModelingStage({
       initial="hidden"
       animate="visible"
       variants={cardVariants}
+      onClick={isActive && onAdvance ? onAdvance : undefined}
       className="modeling-stage-card glass-card p-6 w-full max-w-[400px] mx-auto flex flex-col border border-brand-lime/15 flex-shrink-0"
       style={{
         boxShadow: isActive 
@@ -100,7 +104,8 @@ function ModelingStage({
         scale: isActive ? 1 : 0.85,
         filter: isActive ? 'blur(0px)' : 'blur(6px)',
         pointerEvents: isActive ? 'auto' : 'none',
-        zIndex: isActive ? 10 : position === 'next' ? 6 : 5
+        zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
+        cursor: isActive && onAdvance ? 'pointer' : 'default'
       }}
       whileHover={isActive ? {
         y: -8,
@@ -172,7 +177,7 @@ function ModelingStage({
   )
 }
 
-function ExpansionCard({ type, index, position }: ExpansionCardProps) {
+function ExpansionCard({ type, index, position, onAdvance }: ExpansionCardProps) {
   const isActive = position === 'active'
   const isHidden = position === 'hidden'
   
@@ -230,6 +235,7 @@ function ExpansionCard({ type, index, position }: ExpansionCardProps) {
       initial="hidden"
       animate="visible"
       variants={cardVariants}
+      onClick={isActive && onAdvance ? onAdvance : undefined}
       className="expansion-card glass-card p-8 w-full max-w-[350px] mx-auto flex flex-col border border-brand-cyan/20"
       style={{
         boxShadow: isActive
@@ -244,7 +250,8 @@ function ExpansionCard({ type, index, position }: ExpansionCardProps) {
         scale: isActive ? 1 : 0.85,
         filter: isActive ? 'blur(0px)' : 'blur(6px)',
         pointerEvents: isActive ? 'auto' : 'none',
-        zIndex: isActive ? 10 : position === 'next' ? 6 : 5
+        zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
+        cursor: isActive && onAdvance ? 'pointer' : 'default'
       }}
       whileHover={isActive ? {
         y: -10,
@@ -274,7 +281,7 @@ function ExpansionCard({ type, index, position }: ExpansionCardProps) {
 
       <div className="mb-6">
         <h4 className="text-brand-cyan font-bold text-xs uppercase mb-3 tracking-wider">
-          What&apos;s included:
+          What{`'`}s included:
         </h4>
         <ul className="space-y-2 text-text text-sm">
           {config.includes.map((item, i) => (
@@ -356,10 +363,10 @@ function FinalOutputBox() {
 
       <div className="mt-6 pt-6 border-t border-brand-lime/30">
         <h4 className="text-brand-cyan font-bold text-sm uppercase mb-3 tracking-wider">
-          SORA-Ready:
+          AI Training-Ready:
         </h4>
         <p className="text-text">
-          Metadata tagged • Properly scaled • Render-ready
+          IP-safe & consistent • Dataset-ready • Production-grade
         </p>
       </div>
     </motion.div>
@@ -401,7 +408,7 @@ export function ProductionPipelineSection() {
         "Lock silhouette",
         "Client approval checkpoint"
       ],
-      tools: ["Blender 4.0"]
+      tools: ["Blender 4.0", "Maya", "ZBrush"]
     },
     {
       number: "03",
@@ -425,7 +432,7 @@ export function ProductionPipelineSection() {
         "Rig-ready structure",
         "Target poly count: 15k-35k"
       ],
-      tools: ["Blender", "Quad Remesher"],
+      tools: ["Blender", "Quad Remesher", "Topogun", "ZBrush"],
       quality: "All quads, no n-gons"
     },
     {
@@ -438,7 +445,7 @@ export function ProductionPipelineSection() {
         "10% island margin",
         "Texture density optimization"
       ],
-      tools: ["Blender", "RizomUV"],
+      tools: ["Blender", "Maya"],
       quality: "Single UV set, organized"
     },
     {
@@ -644,6 +651,7 @@ export function ProductionPipelineSection() {
                   {...modelingStages[currentStage]}
                   index={currentStage}
                   position="active"
+                  onAdvance={nextStage}
                 />
               </div>
 
@@ -688,6 +696,7 @@ export function ProductionPipelineSection() {
                           {...stage}
                           index={index}
                           position={position}
+                          onAdvance={nextStage}
                         />
                       </div>
                     )
@@ -783,6 +792,7 @@ export function ProductionPipelineSection() {
                   type={expansions[currentExpansion]}
                   index={currentExpansion}
                   position="active"
+                  onAdvance={nextExpansion}
                 />
               </div>
 
@@ -827,6 +837,7 @@ export function ProductionPipelineSection() {
                           type={type}
                           index={index}
                           position={position}
+                          onAdvance={nextExpansion}
                         />
                       </div>
                     )

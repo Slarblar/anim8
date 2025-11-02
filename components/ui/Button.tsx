@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onAnimationStart' | 'onDragStart' | 'onDragEnd' | 'onDrag'> {
   children: ReactNode
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'outline'
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'outline' | 'cyan'
   size?: 'sm' | 'md' | 'lg'
   href?: string
   icon?: boolean
@@ -25,6 +25,7 @@ export function Button({
   
   const variants = {
     primary: 'glass-button-primary',
+    cyan: 'glass-button-cyan',
     secondary: 'glass-button-secondary',
     tertiary: 'glass-button-tertiary',
     outline: 'border-2 border-white/20 text-white hover:bg-white/10 hover:border-white/40 backdrop-blur-[10px]',
@@ -47,7 +48,7 @@ export function Button({
   const content = (
     <>
       {children}
-      {icon && variant === 'primary' && (
+      {icon && (variant === 'primary' || variant === 'cyan') && (
         <motion.span
           animate={{ x: [0, 4, 0] }}
           transition={{ 

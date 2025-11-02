@@ -10,13 +10,13 @@ export function ApproachSection() {
     {
       title: 'FULL PIPELINE',
       description: 'Modeling → Rigging → Animation → Render',
-      detail: 'Everything in-house. No vendor juggling. One point of contact.',
+      detail: 'Everything in-house with no vendor juggling and one point of contact.',
       icon: MdAccountTree,
       color: 'text-brand-lime',
     },
     {
       title: 'RAPID SCALE',
-      description: '8 core team members + 5-10 experienced modelers on-demand',
+      description: '10 core team members (8 3D specialists) + 10-15+ modelers on-demand',
       detail: 'We scale with your budget and timeline.',
       icon: MdRocket,
       color: 'text-brand-cyan',
@@ -24,7 +24,7 @@ export function ApproachSection() {
     {
       title: 'PROVEN SPEED',
       description: 'Production-ready character in 48hrs',
-      detail: 'Weekly deliveries. Real-time feedback. Less waiting.',
+      detail: 'Weekly deliveries with real-time feedback and less waiting.',
       icon: MdBolt,
       color: 'text-brand-pink',
     },
@@ -39,7 +39,7 @@ export function ApproachSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-center mb-4 text-white">WHY WE&apos;RE DIFFERENT</h2>
+          <h2 className="text-center mb-4 text-white">WHY WE{`'`}RE DIFFERENT</h2>
           
           {/* Lime accent line */}
           <div className="flex justify-center mb-16">

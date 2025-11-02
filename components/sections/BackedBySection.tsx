@@ -10,14 +10,15 @@ export function BackedBySection() {
       name: 'CHRIS LE',
       title: 'Co-founder',
       role: 'RTFKT',
+      image: '/images/founders/chrisle.webp',
       body: [
-        'Co-founded RTFKT, pioneering NFT character systems at scale',
-        'Led production of CloneX (20,000+ unique 3D avatars)',
-        'Built Nike&apos;s Web3 infrastructure post-acquisition',
-        'Scaled digital collectible production from concept to billions in value',
+        "Co-founded RTFKT, pioneering NFT character systems at scale",
+        "Led production of CloneX (20,000+ unique 3D avatars)",
+        "Built Nike's Web3 infrastructure post-acquisition",
+        "Scaled digital collectible production from concept to billions in value",
       ],
       keyExperience: [
-        'NFT IP systems at VeeFriends scale (and beyond)',
+        'Developed NFT IP Systems from concept to digital and physical product',
         'Community-driven character production',
         'Web3-native pipelines and workflows',
       ],
@@ -26,8 +27,9 @@ export function BackedBySection() {
       name: 'JORDAN NGUYEN',
       title: 'Co-founder',
       role: 'Spacestation Animation, Quarter Machine',
+      image: '/images/founders/jordannguyen.webp',
       body: [
-        'Co-founded Spacestation Animation',
+        'Co-founded Spacestation Animation, pioneering creator economy content multi media pipelines',
         'Character production leadership across animation and gaming',
         'Specialized in rapid character production pipelines',
         'Project management and team scaling expertise',
@@ -66,12 +68,15 @@ export function BackedBySection() {
                 transition={{ duration: 0.6, delay: index * 0.2 }}
                 className="glass-card p-8 group hover:translate-y-[-8px] transition-all duration-300"
               >
-                {/* Headshot placeholder with lime border */}
-                <div className="w-32 h-32 mx-auto mb-6 rounded-full border-[3px] border-brand-lime overflow-hidden bg-background-dark/50 group-hover:shadow-[0_0_30px_rgba(124,193,66,0.5)] transition-shadow duration-300">
-                  {/* Placeholder for headshot - will be replaced with actual image */}
-                  <div className="w-full h-full flex items-center justify-center text-brand-lime text-4xl font-black">
-                    {founder.name.charAt(0)}
-                  </div>
+                {/* Headshot with lime border */}
+                <div className="relative w-32 h-32 mx-auto mb-6 rounded-full border-[3px] border-brand-lime overflow-hidden bg-background-dark/50 group-hover:shadow-[0_0_30px_rgba(124,193,66,0.5)] transition-shadow duration-300">
+                  <Image
+                    src={founder.image}
+                    alt={founder.name}
+                    fill
+                    className="object-cover"
+                    sizes="128px"
+                  />
                 </div>
 
                 <h3 className="text-white text-center mb-2 font-black">

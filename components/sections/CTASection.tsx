@@ -1,11 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Section } from '../ui/Section'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
+import { CalendlyModal } from '../ui/CalendlyModal'
 
 export function CTASection() {
+  const [isCalendlyOpen, setIsCalendlyOpen] = useState(false)
+
   return (
     <Section id="cta" className="bg-brand-navy">
       <div className="container-custom">
@@ -15,7 +19,7 @@ export function CTASection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-center mb-4 text-white">LET&apos;S BUILD THIS</h2>
+          <h2 className="text-center mb-4 text-white">LET{`'`}S BUILD THIS</h2>
           
           {/* Lime accent line */}
           <div className="flex justify-center mb-16">
@@ -77,7 +81,11 @@ export function CTASection() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="primary" size="lg">
+              <Button 
+                variant="cyan" 
+                size="lg"
+                onClick={() => setIsCalendlyOpen(true)}
+              >
                 Schedule Kickoff Call
               </Button>
               <Button variant="secondary" size="lg">
@@ -103,6 +111,13 @@ export function CTASection() {
           </div>
         </motion.div>
       </div>
+
+      {/* Calendly Modal */}
+      <CalendlyModal
+        isOpen={isCalendlyOpen}
+        onClose={() => setIsCalendlyOpen(false)}
+        calendlyUrl="https://calendly.com/j-sao/45min?primary_color=7cc142&text_color=ffffff&background_color=0a0f1e"
+      />
     </Section>
   )
 }

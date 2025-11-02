@@ -38,11 +38,11 @@ export function PackagesSection() {
         'Basic facial controls',
         'Turntable renders (15 sec each)',
       ],
-      bestFor: 'Complete SORA training dataset with motion',
+      bestFor: 'Complete AI training dataset with motion',
       recommended: true,
       buttonVariant: 'primary' as const,
       buttonText: 'Select Package B',
-      variant: 'lime' as const,
+      variant: 'cyan' as const,
     },
     {
       id: 'c',
@@ -58,7 +58,7 @@ export function PackagesSection() {
         'Lighting variations',
         'Comprehensive training dataset',
       ],
-      bestFor: 'Comprehensive SORA training with maximum variation',
+      bestFor: 'Comprehensive AI training with maximum variation',
       buttonVariant: 'secondary' as const,
       buttonText: 'Select Package C',
       variant: 'pink' as const,
@@ -66,7 +66,7 @@ export function PackagesSection() {
   ]
 
   return (
-    <Section id="packages" className="bg-background-dark relative overflow-hidden">
+    <Section id="packages" className="bg-brand-navy relative overflow-hidden">
       {/* Subtle gradient background */}
       <div className="absolute inset-0 pointer-events-none opacity-30">
         <div className="gradient-orb gradient-orb-2" style={{ top: '20%', right: '-10%' }} />
@@ -80,6 +80,11 @@ export function PackagesSection() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-center mb-4 text-white">CHOOSE YOUR PACKAGE</h2>
+          
+          {/* Subtitle */}
+          <p className="text-center text-text text-lg mb-6">
+            Speed can be Increased with Higher Deposit
+          </p>
           
           {/* Lime accent line */}
           <div className="flex justify-center mb-16">
@@ -193,6 +198,7 @@ export function PackagesSection() {
                   <Button 
                     variant={pkg.buttonVariant}
                     className="w-full"
+                    href="#cta"
                   >
                     {pkg.buttonText}
                   </Button>

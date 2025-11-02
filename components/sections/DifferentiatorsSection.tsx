@@ -8,12 +8,12 @@ export function DifferentiatorsSection() {
   const differentiators = [
     {
       title: 'NO VENDOR CHAOS',
-      description: 'One team handles modeling, rigging, animation, render. One point of contact.',
+      description: 'One team handles modeling, rigging, animation, and render with one point of contact.',
       icon: '🎯',
     },
     {
       title: 'BUILT TO SCALE',
-      description: 'Start with 8 people, scale to 25+ in weeks. You control the dial of speed.',
+      description: 'Start with 8 people, scale to 25+ in weeks. You control the speed dial.',
       icon: '📈',
     },
     {
@@ -23,7 +23,7 @@ export function DifferentiatorsSection() {
     },
     {
       title: 'IP-FOCUSED',
-      description: 'We understand you&apos;re building a content empire, not just models. Our goal is to be partners, not vendors.',
+      description: "We understand you're building a content empire, not just models. Our goal is to be long-term partners, not transactional vendors.",
       icon: '🤝',
     },
   ]

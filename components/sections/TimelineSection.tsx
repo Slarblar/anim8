@@ -21,7 +21,7 @@ export function TimelineSection() {
       timeframe: 'WEEK 3-8',
       title: 'Production',
       items: [
-        '8-10 characters per week (Speed can be increased with higher deposit)',
+        '8-10 characters per week',
         'Weekly reviews',
         'Rapid iteration',
       ],
@@ -39,8 +39,20 @@ export function TimelineSection() {
   ]
 
   return (
-    <Section id="timeline" className="bg-brand-navy">
-      <div className="container-custom">
+    <Section id="timeline" className="bg-brand-navy relative overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'url(/images/veefriends-char-bg.webp)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.08,
+        }}
+      />
+
+      <div className="container-custom relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

@@ -6,7 +6,7 @@ import { Card } from '../ui/Card'
 
 export function TeamSection() {
   return (
-    <Section id="team" className="bg-background-dark">
+    <Section id="team" className="bg-brand-navy">
       <div className="container-custom">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -14,7 +14,7 @@ export function TeamSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-center mb-4 text-white">WHO&apos;S BUILDING THIS</h2>
+          <h2 className="text-center mb-4 text-white">WHO{`'`}S BUILDING THIS</h2>
           
           {/* Lime accent line */}
           <div className="flex justify-center mb-16">
@@ -45,7 +45,7 @@ export function TeamSection() {
                   ]
                 },
                 { 
-                  name: 'Luka Tran', 
+                  name: 'Luka Trinh', 
                   role: 'Senior Animator',
                   details: [
                     'Character animation and motion systems',
@@ -87,20 +87,24 @@ export function TeamSection() {
             </h3>
             <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               <Card>
-                <h4 className="text-brand-lime font-bold mb-4">Core Team: 8 specialists</h4>
+                <h4 className="text-brand-lime font-bold mb-4">Core Team: 10 members (8 specialists)</h4>
                 <ul className="space-y-2 text-text-muted text-sm">
                   <li className="flex items-start">
                     <span className="text-brand-lime mr-2">•</span>
-                    <span>Full-time dedicated to active projects</span>
+                    <span>24/7 workflow enables rapid iteration</span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-brand-lime mr-2">•</span>
-                    <span>US-based project management</span>
+                    <span>Senior artist review on every deliverable</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-brand-lime mr-2">•</span>
+                    <span>Direct access to project leadership</span>
                   </li>
                 </ul>
               </Card>
               <Card>
-                <h4 className="text-brand-cyan font-bold mb-4">On-Demand Capacity: 10-20 modelers</h4>
+                <h4 className="text-brand-cyan font-bold mb-4">On-Demand Capacity: 10-15+ experienced modelers</h4>
                 <ul className="space-y-2 text-text-muted text-sm">
                   <li className="flex items-start">
                     <span className="text-brand-cyan mr-2">•</span>
@@ -112,7 +116,7 @@ export function TeamSection() {
                   </li>
                   <li className="flex items-start">
                     <span className="text-brand-cyan mr-2">•</span>
-                    <span>Proven at RTFKT-scale production</span>
+                    <span>Built using proven scale-production systems</span>
                   </li>
                 </ul>
               </Card>

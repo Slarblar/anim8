@@ -6,7 +6,7 @@ import { Card } from '../ui/Card'
 
 export function ScalingSection() {
   return (
-    <Section id="scaling" className="bg-brand-navy">
+    <Section id="scaling" className="bg-background-dark">
       <div className="container-custom">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -22,7 +22,7 @@ export function ScalingSection() {
           </div>
 
           <p className="text-xl text-center text-text max-w-3xl mx-auto mb-16">
-            Once we validate the pipeline with 50 characters, we scale efficiently.
+            Once we validate the pipeline with 50 characters, we can scale efficiently to your full character library.
           </p>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12">

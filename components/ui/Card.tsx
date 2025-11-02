@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 interface CardProps {
   children: ReactNode
   className?: string
-  variant?: 'default' | 'pink' | 'lime'
+  variant?: 'default' | 'pink' | 'lime' | 'cyan'
   hover?: boolean
   badge?: string
   tilt?: boolean
@@ -62,12 +62,14 @@ export function Card({
     default: 'glass-card',
     pink: 'glass-card glass-card-pink',
     lime: 'glass-card glass-card-lime',
+    cyan: 'glass-card glass-card-cyan',
   }
 
   const glowColors = {
     default: 'rgba(124, 193, 66, 0.3)',
     pink: 'rgba(221, 11, 131, 0.3)',
     lime: 'rgba(124, 193, 66, 0.4)',
+    cyan: 'rgba(56, 194, 214, 0.5)',
   }
 
   return (

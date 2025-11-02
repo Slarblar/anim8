@@ -7,14 +7,16 @@ import Image from 'next/image'
 export function Header() {
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
+  const [isLaunching, setIsLaunching] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
 
-      // If at top of page (within 100px), always show
+      // If at top of page (within 100px), always show and reset launch state
       if (currentScrollY < 100) {
         setIsVisible(true)
+        setIsLaunching(false)
         setLastScrollY(currentScrollY)
         return
       }
@@ -39,6 +41,7 @@ export function Header() {
   }, [lastScrollY])
 
   const scrollToTop = () => {
+    setIsLaunching(true)
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
@@ -102,14 +105,33 @@ export function Header() {
                 
                 {/* Logo */}
                 <div className="relative z-10 flex items-center justify-center h-full">
-                  <Image
-                    src="/images/logos/anim-8-logomark-white-uncompressed.svg"
-                    alt="Anim8 Studio"
-                    width={60}
-                    height={60}
-                    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 drop-shadow-lg"
-                    priority
-                  />
+                  <motion.div
+                    animate={isLaunching ? { 
+                      filter: [
+                        'drop-shadow(0 0 8px rgba(124, 193, 66, 0.6))',
+                        'drop-shadow(0 0 20px rgba(124, 193, 66, 0.9))',
+                        'drop-shadow(0 0 8px rgba(124, 193, 66, 0.6))'
+                      ]
+                    } : { 
+                      filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                    }}
+                    transition={isLaunching ? {
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    } : {
+                      duration: 0.3
+                    }}
+                  >
+                    <Image
+                      src="/images/logos/anim-8-logomark-white-uncompressed.svg"
+                      alt="Anim8 Studio"
+                      width={60}
+                      height={60}
+                      className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16"
+                      priority
+                    />
+                  </motion.div>
                 </div>
               </motion.div>
             </motion.button>

@@ -10,7 +10,6 @@ import { ScalingSection } from '@/components/sections/ScalingSection'
 import { TeamSection } from '@/components/sections/TeamSection'
 import { ProductionPipelineSection } from '@/components/sections/ProductionPipelineSection'
 import { ProcessSection } from '@/components/sections/ProcessSection'
-import { DifferentiatorsSection } from '@/components/sections/DifferentiatorsSection'
 import { CTASection } from '@/components/sections/CTASection'
 import { Footer } from '@/components/ui/Footer'
 
@@ -24,12 +23,11 @@ export default function Home() {
       <ApproachSection />
       <CapabilitySection />
       <TimelineSection />
+      <ProductionPipelineSection />
       <ProcessSection />
       <PackagesSection />
-      <ScalingSection />
       <TeamSection />
-      <ProductionPipelineSection />
-      <DifferentiatorsSection />
+      <ScalingSection />
       <CTASection />
       <Footer />
     </>

@@ -45,7 +45,7 @@ export function ProcessSection() {
   ]
 
   return (
-    <Section id="process" className="bg-background-dark">
+    <Section id="process" className="bg-brand-navy">
       <div className="container-custom">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

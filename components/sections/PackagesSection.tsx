@@ -66,7 +66,7 @@ export function PackagesSection() {
   ]
 
   return (
-    <Section id="packages" className="bg-brand-navy relative overflow-hidden">
+    <Section id="packages" className="bg-background-dark relative overflow-hidden">
       {/* Subtle gradient background */}
       <div className="absolute inset-0 pointer-events-none opacity-30">
         <div className="gradient-orb gradient-orb-2" style={{ top: '20%', right: '-10%' }} />

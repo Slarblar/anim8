@@ -11,8 +11,20 @@ export function CTASection() {
   const [isCalendlyOpen, setIsCalendlyOpen] = useState(false)
 
   return (
-    <Section id="cta" className="bg-brand-navy">
-      <div className="container-custom">
+    <Section id="cta" className="bg-brand-navy relative overflow-hidden">
+      {/* Grid pattern overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px'
+        }}
+      />
+
+      <div className="container-custom relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

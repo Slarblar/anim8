@@ -312,7 +312,7 @@ function FinalOutputBox() {
       whileInView={{ opacity: 1, scale: 1 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.5, ease: "backOut" }}
-      className="glass-card p-8 max-w-[900px] mx-auto mt-10 text-center border-2 border-brand-lime"
+      className="glass-card p-8 max-w-[1100px] mx-auto mt-10 border-2 border-brand-lime"
       style={{
         background: 'rgba(124, 193, 66, 0.08)',
         backdropFilter: 'blur(12px)',
@@ -323,51 +323,71 @@ function FinalOutputBox() {
         boxShadow: '0 16px 48px rgba(124, 193, 66, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
       }}
     >
-      <motion.div 
-        className="flex items-center justify-center gap-3 mb-6"
-        whileHover={{ scale: 1.1 }}
-      >
-        <FaCheckCircle className="text-brand-lime text-2xl" />
-        <h3 className="text-white font-extrabold text-2xl">
-          PRODUCTION-READY 3D MODEL
-        </h3>
-      </motion.div>
-      
-      <div className="mb-6">
-        <h4 className="text-brand-lime font-bold text-sm uppercase mb-4 tracking-wider">
-          Deliverables:
-        </h4>
-        <ul className="space-y-2 text-text text-sm text-left max-w-2xl mx-auto">
-          <li className="flex items-start">
-            <span className="text-brand-lime mr-2">•</span>
-            <span>Clean quad topology (optimized)</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-brand-lime mr-2">•</span>
-            <span>Professional PBR textures (2K-4K)</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-brand-lime mr-2">•</span>
-            <span>Multiple file formats (FBX, OBJ, USD)</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-brand-lime mr-2">•</span>
-            <span>Organized naming & structure</span>
-          </li>
-          <li className="flex items-start">
-            <span className="text-brand-lime mr-2">•</span>
-            <span>Technical documentation</span>
-          </li>
-        </ul>
-      </div>
+      <div className="grid md:grid-cols-2 gap-8 items-center">
+        {/* Left side - Content */}
+        <div className="text-center md:text-left">
+          <motion.div 
+            className="flex items-center justify-center md:justify-start gap-3 mb-6"
+            whileHover={{ scale: 1.1 }}
+          >
+            <FaCheckCircle className="text-brand-lime text-2xl" />
+            <h3 className="text-white font-extrabold text-2xl">
+              PRODUCTION-READY 3D MODEL
+            </h3>
+          </motion.div>
+          
+          <div className="mb-6">
+            <h4 className="text-brand-lime font-bold text-sm uppercase mb-4 tracking-wider">
+              Deliverables:
+            </h4>
+            <ul className="space-y-2 text-text text-sm text-left">
+              <li className="flex items-start">
+                <span className="text-brand-lime mr-2">•</span>
+                <span>Clean quad topology (optimized)</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-brand-lime mr-2">•</span>
+                <span>Professional PBR textures (2K-4K)</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-brand-lime mr-2">•</span>
+                <span>Multiple file formats (FBX, OBJ, USD)</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-brand-lime mr-2">•</span>
+                <span>Organized naming & structure</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-brand-lime mr-2">•</span>
+                <span>Technical documentation</span>
+              </li>
+            </ul>
+          </div>
 
-      <div className="mt-6 pt-6 border-t border-brand-lime/30">
-        <h4 className="text-brand-cyan font-bold text-sm uppercase mb-3 tracking-wider">
-          AI Training-Ready:
-        </h4>
-        <p className="text-text">
-          IP-safe & consistent • Dataset-ready • Production-grade
-        </p>
+          <div className="mt-6 pt-6 border-t border-brand-lime/30">
+            <h4 className="text-brand-cyan font-bold text-sm uppercase mb-3 tracking-wider">
+              AI Training-Ready:
+            </h4>
+            <p className="text-text">
+              IP-safe & consistent • Dataset-ready • Production-grade
+            </p>
+          </div>
+        </div>
+
+        {/* Right side - Image */}
+        <motion.div 
+          className="relative flex items-center justify-center"
+          initial={{ opacity: 0, x: 20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <img 
+            src="/images/wireframe-astronaut.webp" 
+            alt="Wireframe 3D Model Example"
+            className="w-full max-w-[238px] h-auto object-contain drop-shadow-[0_0_30px_rgba(124,193,66,0.3)]"
+          />
+        </motion.div>
       </div>
     </motion.div>
   )

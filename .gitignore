@@ -43,3 +43,18 @@ next-env.d.ts
 *.swo
 *~
 
+# Asset build folders (often contain large source files)
+02-asset-buildout/
+02-assetbuildout/
+
+# Large source asset files (not needed in repo)
+*.psd
+*.ai
+*.sketch
+
+# Video source files (use external hosting instead)
+# Note: Keep small videos if needed, but exclude large source files
+*.mov
+*.avi
+*.mkv
+

@@ -26,7 +26,7 @@ export function TimelineSection() {
       timeframe: 'WEEK 3-8',
       title: 'Production',
       items: [
-        '8-10 characters per week',
+        '5-7 characters per week',
         'Weekly reviews',
         'Rapid iteration',
       ],

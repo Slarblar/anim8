@@ -16,7 +16,7 @@ export function ApproachSection() {
     },
     {
       title: 'RAPID SCALE',
-      description: '10 core team members (8 3D specialists) + 10-15+ modelers on-demand',
+      description: '10 core team members (8 3D specialists) with 10-15+ modelers on-demand',
       detail: 'We scale with your budget and timeline.',
       icon: MdRocket,
       color: 'text-brand-cyan',

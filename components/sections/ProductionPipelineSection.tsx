@@ -25,9 +25,11 @@ interface ModelingStageProps {
   process: string[]
   tools: string[]
   quality?: string
+  previewImage?: string
   index: number
   position: 'prev' | 'active' | 'next' | 'hidden'
   onAdvance?: () => void
+  onSelect?: () => void
   useMobileBlur?: boolean
 }
 
@@ -36,6 +38,7 @@ interface ExpansionCardProps {
   index: number
   position: 'prev' | 'active' | 'next' | 'hidden'
   onAdvance?: () => void
+  onSelect?: () => void
   useMobileBlur?: boolean
 }
 
@@ -112,9 +115,11 @@ function ModelingStage({
   process, 
   tools, 
   quality,
+  previewImage,
   index,
   position,
   onAdvance,
+  onSelect,
   useMobileBlur = false
 }: ModelingStageProps) {
   const isActive = position === 'active'
@@ -122,14 +127,22 @@ function ModelingStage({
   
   if (isHidden) return null
   
+  const handleClick = () => {
+    if (isActive && onAdvance) {
+      onAdvance()
+    } else if (onSelect) {
+      onSelect()
+    }
+  }
+  
   return (
     <motion.div
       initial="hidden"
       animate="visible"
       exit="exit"
       variants={useMobileBlur ? mobileCardVariants : cardVariants}
-      onClick={isActive && onAdvance ? onAdvance : undefined}
-      className="modeling-stage-card glass-card p-6 w-full max-w-[400px] mx-auto flex flex-col border border-brand-lime/15 flex-shrink-0"
+      onClick={handleClick}
+      className="modeling-stage-card glass-card w-full mx-auto flex border border-brand-lime/15 flex-shrink-0 overflow-hidden relative group"
       style={{
         boxShadow: isActive 
           ? '0 12px 40px rgba(124, 193, 66, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
@@ -138,13 +151,14 @@ function ModelingStage({
         backdropFilter: isActive ? 'blur(10px)' : 'blur(20px)',
         borderRadius: '16px',
         minHeight: '380px',
+        maxWidth: '520px',
         transition: 'all 0.4s ease',
         opacity: isActive ? 1 : 0.4,
         scale: isActive ? 1 : 0.85,
         filter: isActive ? 'blur(0px)' : 'blur(6px)',
-        pointerEvents: isActive ? 'auto' : 'none',
+        pointerEvents: 'auto',
         zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
-        cursor: isActive && onAdvance ? 'pointer' : 'default'
+        cursor: 'pointer'
       }}
       whileHover={isActive ? {
         y: -8,
@@ -157,75 +171,110 @@ function ModelingStage({
         transition: { duration: 0.1 }
       } : {}}
     >
-      {/* Badge */}
-      <motion.div
-        variants={badgeVariants}
-        className="w-8 h-8 rounded-full bg-brand-lime flex items-center justify-center text-white font-bold text-base mb-3 shadow-lg"
-        style={{
-          boxShadow: '0 4px 12px rgba(124, 193, 66, 0.4)'
-        }}
-        whileHover={{ scale: 1.1, rotate: 360 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-      >
-        {number}
-      </motion.div>
+      {/* Left Content Section */}
+      <div className="flex flex-col p-6 flex-1 z-10">
+        {/* Badge and Icon - Side by Side */}
+        <div className="flex items-center gap-3 mb-4">
+          {/* Badge */}
+          <motion.div
+            variants={badgeVariants}
+            className="w-8 h-8 rounded-full bg-brand-lime flex items-center justify-center text-white font-bold text-base shadow-lg flex-shrink-0"
+            style={{
+              boxShadow: '0 4px 12px rgba(124, 193, 66, 0.4)'
+            }}
+            whileHover={{ scale: 1.1, rotate: 360 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+          >
+            {number}
+          </motion.div>
 
-      {/* Icon */}
-      <motion.div 
-        className="text-brand-lime text-3xl mb-3 self-end"
-        whileHover={{ scale: 1.2, rotate: 10 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-      >
-        {icon}
-      </motion.div>
+          {/* Icon */}
+          <motion.div 
+            className="text-brand-lime text-3xl"
+            whileHover={{ scale: 1.2, rotate: 10 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+          >
+            {icon}
+          </motion.div>
+        </div>
 
-      {/* Title */}
-      <h3 className="text-white font-bold text-xl mb-4">
-        {title}
-      </h3>
+        {/* Title */}
+        <h3 className="text-white font-bold text-xl mb-4">
+          {title}
+        </h3>
 
-      {/* Process Section */}
-      <div className="mb-4">
-        <h4 className="text-brand-lime font-bold text-xs uppercase mb-2 tracking-widest">
-          Process:
-        </h4>
-        <ul className="space-y-1.5 text-text text-sm leading-relaxed">
-          {process.map((item, i) => (
-            <li key={i} className="flex items-start">
-              <span className="text-brand-lime mr-2 mt-0.5">•</span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+        {/* Process Section */}
+        <div className="mb-4">
+          <h4 className="text-brand-lime font-bold text-xs uppercase mb-2 tracking-widest">
+            Process:
+          </h4>
+          <ul className="space-y-1.5 text-text text-sm leading-relaxed">
+            {process.map((item, i) => (
+              <li key={i} className="flex items-start">
+                <span className="text-brand-lime mr-2 mt-0.5">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-      {/* Tools */}
-      <div className="mb-4">
-        <h4 className="text-brand-lime font-bold text-xs uppercase mb-2 tracking-widest">
-          Tools:
-        </h4>
-        <p className="text-text text-sm">
-          {tools.join(', ')}
-        </p>
-      </div>
-
-      {/* Quality indicator */}
-      {quality && (
-        <div className="mt-auto pt-3 border-t border-brand-lime/10">
+        {/* Tools */}
+        <div className="mb-4">
+          <h4 className="text-brand-lime font-bold text-xs uppercase mb-2 tracking-widest">
+            Tools:
+          </h4>
           <p className="text-text text-sm">
-            {quality}
+            {tools.join(', ')}
           </p>
+        </div>
+
+        {/* Quality indicator */}
+        {quality && (
+          <div className="mt-auto pt-3 border-t border-brand-lime/10">
+            <p className="text-text text-sm">
+              {quality}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Right Preview Image */}
+      {previewImage && (
+        <div className="relative w-32 flex-shrink-0 overflow-hidden">
+          <div 
+            className="absolute inset-0 opacity-50 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105"
+            style={{
+              backgroundImage: `url(${previewImage})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'brightness(1)'
+            }}
+          />
+          <div 
+            className="absolute inset-0 transition-opacity duration-300 group-hover:opacity-0"
+            style={{
+              background: 'linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%)'
+            }}
+          />
         </div>
       )}
     </motion.div>
   )
 }
 
-function ExpansionCard({ type, index, position, onAdvance, useMobileBlur = false }: ExpansionCardProps) {
+function ExpansionCard({ type, index, position, onAdvance, onSelect, useMobileBlur = false }: ExpansionCardProps) {
   const isActive = position === 'active'
   const isHidden = position === 'hidden'
   
   if (isHidden) return null
+  
+  const handleClick = () => {
+    if (isActive && onAdvance) {
+      onAdvance()
+    } else if (onSelect) {
+      onSelect()
+    }
+  }
   
   const configs = {
     rigging: {
@@ -239,7 +288,8 @@ function ExpansionCard({ type, index, position, onAdvance, useMobileBlur = false
         'Weight painting',
         'Control curves'
       ],
-      timeline: '+2-3 days per character'
+      timeline: '+2-3 days per character',
+      previewImage: '/images/preview-dog.png'
     },
     animation: {
       icon: <FaPlay />,
@@ -252,7 +302,8 @@ function ExpansionCard({ type, index, position, onAdvance, useMobileBlur = false
         'Turntable renders',
         'Multiple camera angles'
       ],
-      timeline: '+3-5 days per character'
+      timeline: '+3-5 days per character',
+      previewImage: '/images/preview-phoenix.png'
     },
     rendering: {
       icon: <FaStar />,
@@ -265,7 +316,8 @@ function ExpansionCard({ type, index, position, onAdvance, useMobileBlur = false
         'Video turntables',
         'Promotional assets'
       ],
-      timeline: '+1-2 days per character'
+      timeline: '+1-2 days per character',
+      previewImage: '/images/preview-bobcat.png'
     }
   }
 
@@ -277,8 +329,8 @@ function ExpansionCard({ type, index, position, onAdvance, useMobileBlur = false
       animate="visible"
       exit="exit"
       variants={useMobileBlur ? mobileCardVariants : cardVariants}
-      onClick={isActive && onAdvance ? onAdvance : undefined}
-      className="expansion-card glass-card p-8 w-full max-w-[350px] mx-auto flex flex-col border border-brand-cyan/20"
+      onClick={handleClick}
+      className="expansion-card glass-card w-full mx-auto flex border border-brand-cyan/20 overflow-hidden relative group"
       style={{
         boxShadow: isActive
           ? '0 12px 40px rgba(56, 194, 214, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
@@ -287,13 +339,14 @@ function ExpansionCard({ type, index, position, onAdvance, useMobileBlur = false
         backdropFilter: isActive ? 'blur(12px)' : 'blur(20px)',
         borderRadius: '20px',
         minHeight: '420px',
+        maxWidth: '470px',
         transition: 'all 0.4s ease',
         opacity: isActive ? 1 : 0.4,
         scale: isActive ? 1 : 0.85,
         filter: isActive ? 'blur(0px)' : 'blur(6px)',
-        pointerEvents: isActive ? 'auto' : 'none',
+        pointerEvents: 'auto',
         zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
-        cursor: isActive && onAdvance ? 'pointer' : 'default'
+        cursor: 'pointer'
       }}
       whileHover={isActive ? {
         y: -10,
@@ -306,45 +359,69 @@ function ExpansionCard({ type, index, position, onAdvance, useMobileBlur = false
         transition: { duration: 0.1 }
       } : {}}
     >
-      <div className="flex items-center gap-2 mb-4">
-        <motion.div
-          whileHover={{ scale: 1.2, rotate: 90 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-        >
-          <FaPlus className="text-brand-cyan text-xl" />
-        </motion.div>
-        <motion.div 
-          className="text-brand-cyan text-3xl"
-          whileHover={{ scale: 1.3, rotate: 360 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-        >
-          {config.icon}
-        </motion.div>
+      {/* Left Content Section */}
+      <div className="flex flex-col p-8 flex-1 z-10">
+        <div className="flex items-center gap-2 mb-4">
+          <motion.div
+            whileHover={{ scale: 1.2, rotate: 90 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+          >
+            <FaPlus className="text-brand-cyan text-xl" />
+          </motion.div>
+          <motion.div 
+            className="text-brand-cyan text-3xl"
+            whileHover={{ scale: 1.3, rotate: 360 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+          >
+            {config.icon}
+          </motion.div>
+        </div>
+
+        <h3 className="text-white font-bold text-xl mb-2">
+          {config.title}
+        </h3>
+
+        <div className="mb-6">
+          <h4 className="text-brand-cyan font-bold text-xs uppercase mb-3 tracking-wider">
+            What{`'`}s included:
+          </h4>
+          <ul className="space-y-2 text-text text-sm">
+            {config.includes.map((item, i) => (
+              <li key={i} className="flex items-start">
+                <span className="text-brand-cyan mr-2">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-auto pt-4 border-t border-brand-cyan/20">
+          <p className="text-text text-sm">
+            Timeline: <span className="text-white">{config.timeline}</span>
+          </p>
+        </div>
       </div>
 
-      <h3 className="text-white font-bold text-xl mb-2">
-        {config.title}
-      </h3>
-
-      <div className="mb-6">
-        <h4 className="text-brand-cyan font-bold text-xs uppercase mb-3 tracking-wider">
-          What{`'`}s included:
-        </h4>
-        <ul className="space-y-2 text-text text-sm">
-          {config.includes.map((item, i) => (
-            <li key={i} className="flex items-start">
-              <span className="text-brand-cyan mr-2">•</span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="mt-auto pt-4 border-t border-brand-cyan/20">
-        <p className="text-text text-sm">
-          Timeline: <span className="text-white">{config.timeline}</span>
-        </p>
-      </div>
+      {/* Right Preview Image */}
+      {config.previewImage && (
+        <div className="relative w-32 flex-shrink-0 overflow-hidden">
+          <div 
+            className="absolute inset-0 opacity-50 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105"
+            style={{
+              backgroundImage: `url(${config.previewImage})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'brightness(1)'
+            }}
+          />
+          <div 
+            className="absolute inset-0 transition-opacity duration-300 group-hover:opacity-0"
+            style={{
+              background: 'linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%)'
+            }}
+          />
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -460,7 +537,8 @@ export function ProductionPipelineSection() {
         "Plan topology approach",
         "Confirm style direction"
       ],
-      tools: ["PureRef", "Photoshop"]
+      tools: ["PureRef", "Photoshop"],
+      previewImage: "/images/modeling-pipeline/concept-review.webp"
     },
     {
       number: "02",
@@ -472,7 +550,8 @@ export function ProductionPipelineSection() {
         "Lock silhouette",
         "Client approval checkpoint"
       ],
-      tools: ["Blender 4.0", "Maya", "ZBrush"]
+      tools: ["Blender 4.0", "Maya", "ZBrush"],
+      previewImage: "/images/modeling-pipeline/blockout.webp"
     },
     {
       number: "03",
@@ -484,7 +563,8 @@ export function ProductionPipelineSection() {
         "Refine forms & volumes",
         "Create accessories"
       ],
-      tools: ["ZBrush", "Blender Sculpt Mode"]
+      tools: ["ZBrush", "Blender Sculpt Mode"],
+      previewImage: "/images/modeling-pipeline/high-polysculpt.webp"
     },
     {
       number: "04",
@@ -497,7 +577,8 @@ export function ProductionPipelineSection() {
         "Target poly count: 15k-35k"
       ],
       tools: ["Blender", "Quad Remesher", "Topogun", "ZBrush"],
-      quality: "All quads, no n-gons"
+      quality: "All quads, no n-gons",
+      previewImage: "/images/preview-dog.png"
     },
     {
       number: "05",
@@ -510,7 +591,8 @@ export function ProductionPipelineSection() {
         "Texture density optimization"
       ],
       tools: ["Blender", "Maya"],
-      quality: "Single UV set, organized"
+      quality: "Single UV set, organized",
+      previewImage: "/images/modeling-pipeline/uv-unwrapping.webp"
     },
     {
       number: "06",
@@ -523,7 +605,8 @@ export function ProductionPipelineSection() {
         "Final quality check"
       ],
       tools: ["Substance 3D Painter", "Blender"],
-      quality: "Production-ready model"
+      quality: "Production-ready model",
+      previewImage: "/images/modeling-pipeline/texturing-qc.webp"
     }
   ]
 
@@ -729,7 +812,7 @@ export function ProductionPipelineSection() {
                   className="flex items-center gap-16"
                   initial={false}
                   animate={{
-                    x: carouselWidth ? (carouselWidth / 2) - 200 - (currentStage * 464) : 0
+                    x: carouselWidth ? (carouselWidth / 2) - 260 - (currentStage * 584) : 0
                   }}
                   transition={{
                     type: "spring",
@@ -755,7 +838,7 @@ export function ProductionPipelineSection() {
                         key={index}
                         className="flex-shrink-0"
                         style={{
-                          width: '400px',
+                          width: '520px',
                           opacity: position === 'hidden' ? 0 : 1,
                           pointerEvents: position === 'hidden' ? 'none' : 'auto'
                         }}
@@ -765,6 +848,7 @@ export function ProductionPipelineSection() {
                           index={index}
                           position={position}
                           onAdvance={nextStage}
+                          onSelect={() => setCurrentStage(index)}
                         />
                       </div>
                     )
@@ -874,7 +958,7 @@ export function ProductionPipelineSection() {
                   className="flex items-center gap-8"
                   initial={false}
                   animate={{
-                    x: expansionCarouselWidth ? (expansionCarouselWidth / 2) - 175 - (currentExpansion * 382) : 0
+                    x: expansionCarouselWidth ? (expansionCarouselWidth / 2) - 235 - (currentExpansion * 502) : 0
                   }}
                   transition={{
                     type: "spring",
@@ -900,7 +984,7 @@ export function ProductionPipelineSection() {
                         key={index}
                         className="flex-shrink-0"
                         style={{
-                          width: '350px',
+                          width: '470px',
                           opacity: position === 'hidden' ? 0 : 1,
                           pointerEvents: position === 'hidden' ? 'none' : 'auto'
                         }}
@@ -910,6 +994,7 @@ export function ProductionPipelineSection() {
                           index={index}
                           position={position}
                           onAdvance={nextExpansion}
+                          onSelect={() => setCurrentExpansion(index)}
                         />
                       </div>
                     )

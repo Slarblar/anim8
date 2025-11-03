@@ -22,7 +22,7 @@ export function ProcessSection() {
       phase: 'PHASE 2',
       title: 'PRODUCTION (Week 3-8)',
       items: [
-        'Weekly batches: 8-10 characters delivered',
+        'Weekly batches: 5-7 characters delivered',
         'Friday review sessions (video call or async)',
         'Feedback implemented within 48 hours',
         'Continuous QC by lead team',

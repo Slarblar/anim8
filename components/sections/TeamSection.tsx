@@ -1,10 +1,184 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Section } from '../ui/Section'
 import { Card } from '../ui/Card'
+import { useState, useRef, useEffect } from 'react'
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+
+interface TeamMember {
+  name: string
+  role: string
+  credentials: string
+  details: string[]
+  image: string
+}
+
+const cardVariants = {
+  hidden: { 
+    opacity: 0, 
+    scale: 0.9, 
+    y: 40
+  },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.25, 0.46, 0.45, 0.94]
+    }
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.9,
+    transition: {
+      duration: 0.4,
+      ease: "easeIn"
+    }
+  }
+}
 
 export function TeamSection() {
+  const [currentMember, setCurrentMember] = useState(1) // Start at index 1 to show 3 cards by default
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const [carouselWidth, setCarouselWidth] = useState(0)
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState(0)
+
+  const teamMembers: TeamMember[] = [
+    { 
+      name: 'Darren Flowers', 
+      role: 'Technical Director',
+      credentials: 'Eden Offline (Sakira Mods TikTok)',
+      details: [
+        'Pipeline architecture and optimization',
+        'Quality control and technical standards',
+      ],
+      image: '/images/team/darren.webp'
+    },
+    { 
+      name: 'Khai Pham', 
+      role: 'Lead Modeler',
+      credentials: 'Sparx, Activision, Ubisoft, Riot, Disney, Marvel',
+      details: [
+        'Character modeling and art direction',
+        'Team mentorship and style consistency',
+      ],
+      image: '/images/team/khai.webp'
+    },
+    { 
+      name: 'Luka Trinh', 
+      role: 'Senior Animator',
+      credentials: 'Industrial Light & Magic, Sony, Blizzard',
+      details: [
+        'Character animation and motion systems',
+        'Cinematic animation and motion direction',
+      ],
+      image: '/images/team/luka.webp'
+    },
+    { 
+      name: 'Keira Kieu', 
+      role: 'COO',
+      credentials: 'Operations & Coordination',
+      details: [
+        'Operations and coordination',
+        'Leadership team and staff management',
+      ],
+      image: '/images/team/keira.webp'
+    },
+  ]
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (carouselRef.current) {
+        const computedStyle = window.getComputedStyle(carouselRef.current)
+        const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0
+        const paddingRight = parseFloat(computedStyle.paddingRight) || 0
+        setCarouselWidth(carouselRef.current.offsetWidth - paddingLeft - paddingRight)
+      }
+    }
+    
+    requestAnimationFrame(updateWidth)
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
+
+  const nextMember = () => {
+    setCurrentMember((prev) => (prev + 1) % teamMembers.length)
+  }
+
+  const prevMember = () => {
+    setCurrentMember((prev) => (prev - 1 + teamMembers.length) % teamMembers.length)
+  }
+
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+
+    if (isLeftSwipe) {
+      nextMember()
+    }
+    if (isRightSwipe) {
+      prevMember()
+    }
+    
+    setTouchStart(0)
+    setTouchEnd(0)
+  }
+
+  // Mouse drag handlers for desktop
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true)
+    setDragStart(e.clientX)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    e.preventDefault()
+  }
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    
+    const distance = dragStart - e.clientX
+    const isLeftDrag = distance > 50
+    const isRightDrag = distance < -50
+
+    if (isLeftDrag) nextMember()
+    if (isRightDrag) prevMember()
+
+    setIsDragging(false)
+    setDragStart(0)
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
+    setDragStart(0)
+  }
+
+  // Keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      prevMember()
+    } else if (e.key === 'ArrowRight') {
+      nextMember()
+    }
+  }
+
   return (
     <Section id="team" className="bg-brand-navy">
       <div className="container-custom">
@@ -21,66 +195,151 @@ export function TeamSection() {
             <div className="lime-accent-line" />
           </div>
 
-          {/* Production Leadership */}
+          {/* Production Leadership Carousel */}
           <div className="mb-16">
             <h3 className="text-brand-lime text-2xl mb-8 text-center">
               Production Leadership:
             </h3>
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              {[
-                { 
-                  name: 'Darren Flowers', 
-                  role: 'Technical Director',
-                  credentials: 'Eden Offline (Sakira Mods TikTok)',
-                  details: [
-                    'Pipeline architecture and optimization',
-                    'Quality control and technical standards',
-                  ]
-                },
-                { 
-                  name: 'Khai Pham', 
-                  role: 'Lead Modeler',
-                  credentials: 'Sparx, Activision, Ubisoft, Riot, Disney, Marvel',
-                  details: [
-                    'Character modeling and art direction',
-                    'Team mentorship and style consistency',
-                  ]
-                },
-                { 
-                  name: 'Luka Trinh', 
-                  role: 'Senior Animator',
-                  credentials: 'Industrial Light & Magic, Sony, Blizzard',
-                  details: [
-                    'Character animation and motion systems',
-                    'Rigging and deformation specialist',
-                  ]
-                },
-              ].map((member, i) => (
+            
+            {/* Carousel Container */}
+            <div className="relative mb-12">
+              {/* Three card view with sliding carousel */}
+              <div 
+                ref={carouselRef} 
+                className="flex items-center justify-start gap-4 md:gap-8 relative min-h-[400px] overflow-visible cursor-grab active:cursor-grabbing"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseLeave}
+                onKeyDown={handleKeyDown}
+                tabIndex={0}
+                role="region"
+                aria-label="Team members carousel"
+                style={{ userSelect: 'none' }}
+              >
                 <motion.div
-                  key={member.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
+                  className="flex items-center gap-4 md:gap-8"
+                  initial={false}
+                  animate={{
+                    x: carouselWidth ? (carouselWidth / 2) - 175 - (currentMember * 358) : 0
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 280,
+                    damping: 30,
+                    mass: 0.9
+                  }}
+                  style={{
+                    willChange: 'transform'
+                  }}
                 >
-                  <Card className="text-center h-full">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-lime/30 to-brand-cyan/30 border-2 border-brand-lime mx-auto mb-4 flex items-center justify-center text-3xl">
-                      👤
-                    </div>
-                    <h4 className="text-white font-bold mb-1">{member.name}</h4>
-                    <p className="text-brand-cyan text-sm mb-2">{member.role}</p>
-                    <p className="text-text-muted text-xs mb-4 italic">{member.credentials}</p>
-                    <ul className="text-left space-y-2">
-                      {member.details.map((detail, j) => (
-                        <li key={j} className="text-text-muted text-xs flex items-start">
-                          <span className="text-brand-lime mr-2">•</span>
-                          <span>{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
+                  {teamMembers.map((member, index) => {
+                    const relativeIndex = index - currentMember
+                    let position: 'prev' | 'active' | 'next' | 'hidden'
+                    
+                    if (relativeIndex === -1) position = 'prev'
+                    else if (relativeIndex === 0) position = 'active'
+                    else if (relativeIndex === 1) position = 'next'
+                    else position = 'hidden'
+                    
+                    const isActive = position === 'active'
+                    
+                    return (
+                      <motion.div
+                        key={index}
+                        className="flex-shrink-0"
+                        style={{
+                          width: '350px',
+                          pointerEvents: position === 'hidden' ? 'none' : 'auto'
+                        }}
+                        onClick={() => setCurrentMember(index)}
+                        animate={{
+                          opacity: position === 'hidden' ? 0 : isActive ? 1 : 0.7,
+                          scale: position === 'hidden' ? 0.8 : isActive ? 1 : 0.9,
+                          filter: position === 'hidden' ? 'blur(10px)' : 'blur(0px)',
+                        }}
+                        transition={{
+                          opacity: { duration: 0.5, ease: "easeInOut" },
+                          scale: { duration: 0.5, ease: "easeOut" },
+                          filter: { duration: 0.5, ease: "easeInOut" }
+                        }}
+                      >
+                        <Card 
+                          className="text-center h-full cursor-pointer"
+                          style={{
+                            borderColor: isActive ? 'rgba(56, 194, 214, 0.3)' : undefined,
+                          }}
+                        >
+                          <div className={`w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden border-4 ${
+                            isActive ? 'border-brand-cyan/50' : 'border-brand-lime/30'
+                          }`}>
+                            <img 
+                              src={member.image}
+                              alt={member.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <h4 className="text-white font-bold mb-1">{member.name}</h4>
+                          <p className="text-brand-cyan text-sm mb-2">{member.role}</p>
+                          <p className="text-text-muted text-xs mb-4 italic">{member.credentials}</p>
+                          
+                          {/* Subtle divider line */}
+                          <div className="w-16 h-px bg-gradient-to-r from-transparent via-brand-cyan/30 to-transparent mx-auto mb-4" />
+                          
+                          <ul className="space-y-2">
+                            {member.details.map((detail, j) => (
+                              <li key={j} className="text-text-muted text-xs flex items-center justify-center">
+                                <span className="text-brand-lime mr-2">•</span>
+                                <span className="text-center">{detail}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
                 </motion.div>
-              ))}
+              </div>
+            </div>
+
+            {/* Navigation Controls with Pagination */}
+            <div className="flex items-center justify-center gap-4 mt-8">
+              {/* Previous Button */}
+              <button
+                onClick={prevMember}
+                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
+                aria-label="Previous team member"
+              >
+                <FaChevronLeft className="text-lg md:text-xl" />
+              </button>
+
+              {/* Dot Indicators */}
+              <div className="flex justify-center gap-2">
+                {teamMembers.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentMember(index)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      index === currentMember
+                        ? 'bg-brand-cyan w-8'
+                        : 'bg-brand-cyan/30 hover:bg-brand-cyan/50'
+                    }`}
+                    aria-label={`Go to team member ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              {/* Next Button */}
+              <button
+                onClick={nextMember}
+                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
+                aria-label="Next team member"
+              >
+                <FaChevronRight className="text-lg md:text-xl" />
+              </button>
             </div>
           </div>
 

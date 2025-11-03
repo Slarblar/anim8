@@ -1,7 +1,8 @@
                                                     'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { FiRefreshCw } from 'react-icons/fi'
 
 interface ModelViewerProps {
   src?: string // GLB file path - optional for now
@@ -21,6 +22,7 @@ export function ModelViewer({
   className
 }: ModelViewerProps) {
   const modelViewerRef = useRef<HTMLElement>(null)
+  const [isHovered, setIsHovered] = useState(false)
 
   useEffect(() => {
     // Dynamically load the Google Model Viewer script
@@ -36,6 +38,17 @@ export function ModelViewer({
       // Cleanup if needed
     }
   }, [])
+
+  const handleReset = () => {
+    if (modelViewerRef.current) {
+      const viewer = modelViewerRef.current as any
+      // Reset camera orbit to default
+      viewer.resetTurntableRotation?.()
+      viewer.cameraOrbit = viewer.getAttribute('camera-orbit') || 'auto auto auto'
+      viewer.fieldOfView = 'auto'
+      viewer.jumpCameraToGoal()
+    }
+  }
 
   return (
     <div className={cn('relative aspect-video rounded-xl overflow-hidden', className)}>
@@ -77,6 +90,48 @@ export function ModelViewer({
           </div>
         )}
       </model-viewer>
+
+      {/* Reset View Button */}
+      {src && (
+        <button
+          onClick={handleReset}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300"
+          style={{
+            background: isHovered 
+              ? 'rgba(124, 193, 66, 0.2)' 
+              : 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(124, 193, 66, 0.3)',
+            boxShadow: isHovered 
+              ? '0 4px 12px rgba(124, 193, 66, 0.3)' 
+              : '0 2px 8px rgba(0, 0, 0, 0.2)',
+            cursor: 'pointer',
+          }}
+          aria-label="Reset camera view"
+          title="Reset View"
+        >
+          <FiRefreshCw 
+            className="transition-transform duration-300" 
+            style={{ 
+              color: '#7cc142',
+              fontSize: '16px',
+              transform: isHovered ? 'rotate(-180deg)' : 'rotate(0deg)'
+            }} 
+          />
+          <span 
+            style={{ 
+              fontSize: '13px', 
+              fontWeight: 500,
+              color: isHovered ? '#7cc142' : 'rgba(255, 255, 255, 0.8)',
+              transition: 'color 0.3s'
+            }}
+          >
+            Reset
+          </span>
+        </button>
+      )}
     </div>
   )
 }

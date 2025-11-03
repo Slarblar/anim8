@@ -173,35 +173,139 @@ export function CTASection() {
               </ol>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                variant="cyan" 
-                size="lg"
+            {/* CTA Buttons */}
+            <div className="flex flex-col md:flex-row gap-5 justify-center items-center mt-10 mb-8">
+              {/* Primary Button */}
+              <motion.button
                 onClick={() => setIsCalendlyOpen(true)}
+                className="btn-primary"
+                style={{
+                  background: '#7cc142',
+                  color: 'white',
+                  padding: '16px 40px',
+                  borderRadius: '8px',
+                  fontSize: '17px',
+                  fontWeight: 600,
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(124, 193, 66, 0.3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  width: '100%',
+                  maxWidth: '300px',
+                  whiteSpace: 'nowrap'
+                }}
+                whileHover={{
+                  background: '#8bd253',
+                  y: -2,
+                  boxShadow: '0 6px 20px rgba(124, 193, 66, 0.4)',
+                  transition: { duration: 0.3 }
+                }}
+                whileTap={{
+                  y: 0,
+                  boxShadow: '0 2px 8px rgba(124, 193, 66, 0.3)'
+                }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+                aria-label="Schedule a kickoff call to discuss VeeFriends production"
               >
-                Schedule Kickoff Call
-              </Button>
-              <Button variant="secondary" size="lg">
-                Download Full Proposal (PDF)
-              </Button>
-            </div>
-          </Card>
+                Schedule Kickoff Call →
+              </motion.button>
 
-          {/* Contact Info */}
-          <div className="glass-card p-8 max-w-2xl mx-auto text-center">
-            <h3 className="text-white mb-4">Questions?</h3>
-            <p className="text-text mb-4">Email us directly:</p>
-            <a href="mailto:jordan@anim-8.xyz" className="text-brand-lime font-bold text-xl hover:text-brand-cyan transition-colors">
-              jordan@anim-8.xyz
-            </a>
-            <p className="text-text-muted mt-4 mb-2">Or text/call:</p>
-            <a href="tel:+19073069306" className="text-brand-cyan font-bold text-xl hover:text-brand-lime transition-colors">
-              907-306-9306
-            </a>
-            <p className="text-text-muted text-sm mt-6">
-              We typically respond within 2 hours during business hours.
-            </p>
-          </div>
+              {/* Secondary Button */}
+              <motion.a
+                href="mailto:jordan@anim-8.xyz?subject=VeeFriends%20Character%20Production%20Question&body=Hi%20Jordan,%0D%0A%0D%0AI%20reviewed%20the%20VeeFriends%20character%20production%20proposal%20and%20have%20a%20question:%0D%0A%0D%0A[Your%20question%20here]%0D%0A%0D%0AThanks!"
+                className="btn-secondary"
+                style={{
+                  background: 'transparent',
+                  color: '#38c2d6',
+                  border: '2px solid #38c2d6',
+                  padding: '14px 36px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  textDecoration: 'none',
+                  display: 'inline-block',
+                  textAlign: 'center',
+                  width: '100%',
+                  maxWidth: '280px',
+                  whiteSpace: 'nowrap'
+                }}
+                whileHover={{
+                  background: 'rgba(56, 194, 214, 0.1)',
+                  borderColor: '#4dd4e8',
+                  y: -2,
+                  boxShadow: '0 4px 12px rgba(56, 194, 214, 0.2)',
+                  transition: { duration: 0.3 }
+                }}
+                whileTap={{
+                  background: 'rgba(56, 194, 214, 0.15)',
+                  y: 0
+                }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
+                aria-label="Send us an email with your questions"
+              >
+                Ask a Question →
+              </motion.a>
+            </div>
+
+            {/* Contact Info Below Buttons */}
+            <motion.div
+              className="text-center"
+              style={{
+                fontSize: '15px',
+                color: 'rgba(255, 255, 255, 0.7)',
+                lineHeight: '1.8',
+                marginTop: '32px',
+                fontWeight: 500
+              }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <p>
+                Questions? Email us directly:{' '}
+                <a 
+                  href="mailto:jordan@anim-8.xyz"
+                  style={{
+                    color: '#38c2d6',
+                    textDecoration: 'none',
+                    transition: 'all 0.2s',
+                    fontWeight: 600
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                  onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                >
+                  jordan@anim-8.xyz
+                </a>
+                <br />
+                Or text/call:{' '}
+                <a 
+                  href="tel:+19073069306"
+                  style={{
+                    color: '#38c2d6',
+                    textDecoration: 'none',
+                    transition: 'all 0.2s',
+                    fontWeight: 600
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                  onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                >
+                  907-306-9306
+                </a>
+                <br />
+                <br />
+                We typically respond within 2 hours during business hours.
+              </p>
+            </motion.div>
+          </Card>
         </motion.div>
       </div>
 

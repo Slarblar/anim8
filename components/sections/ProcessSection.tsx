@@ -111,7 +111,7 @@ export function ProcessSection() {
               Stay in sync with transparent, consistent updates throughout production
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-full">
               {[
                 {
                   frequency: 'Daily',
@@ -151,7 +151,7 @@ export function ProcessSection() {
                   whileHover={{ y: -8, scale: 1.05 }}
                   className="relative"
                 >
-                  <div className={`glass-card p-6 text-center h-full flex flex-col items-center border-2 ${
+                  <div className={`glass-card p-6 text-center h-full flex flex-col items-center border-2 max-w-full ${
                     comm.color === 'lime' ? 'border-brand-lime/30 hover:border-brand-lime/50' :
                     comm.color === 'cyan' ? 'border-brand-cyan/30 hover:border-brand-cyan/50' :
                     'border-brand-pink/30 hover:border-brand-pink/50'
@@ -179,7 +179,7 @@ export function ProcessSection() {
                     </h4>
 
                     {/* Description */}
-                    <p className="text-text-muted text-sm leading-relaxed">
+                    <p className="text-text-muted text-sm leading-relaxed break-words">
                       {comm.description}
                     </p>
                   </div>

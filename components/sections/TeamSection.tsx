@@ -210,7 +210,7 @@ export function TeamSection() {
               {/* Three card view with sliding carousel */}
               <div 
                 ref={carouselRef} 
-                className="flex items-center justify-start gap-4 md:gap-8 relative min-h-[400px] overflow-visible cursor-grab active:cursor-grabbing"
+                className="flex items-center justify-start gap-4 md:gap-8 relative min-h-[400px] overflow-hidden cursor-grab active:cursor-grabbing"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -265,6 +265,7 @@ export function TeamSection() {
                         className="flex-shrink-0"
                         style={{
                           width: '350px',
+                          maxWidth: '90vw',
                           pointerEvents: position === 'hidden' ? 'none' : 'auto'
                         }}
                         onClick={() => setCurrentMember(index)}

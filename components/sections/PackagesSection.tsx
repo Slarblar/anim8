@@ -172,15 +172,15 @@ export function PackagesSection() {
                   {/* Recommended Badge */}
                   {pkg.recommended && (
                     <motion.div
-                      className="absolute top-4 right-4 px-4 py-2 rounded-full text-white font-bold text-xs flex items-center gap-2 z-10"
+                      className="absolute top-4 right-4 px-3 py-2 rounded-full text-white font-bold text-xs flex items-center gap-1.5 z-10 max-w-[90%]"
                       style={{
                         background: 'linear-gradient(135deg, #dd0b83, #ff1493)',
                         boxShadow: '0 4px 12px rgba(221, 11, 131, 0.4)'
                       }}
                       animate={badgePulse}
                     >
-                      <FaCheck className="text-xs" />
-                      <span style={{ letterSpacing: '0.5px' }}>RECOMMENDED FOR AI TRAINING</span>
+                      <FaCheck className="text-xs flex-shrink-0" />
+                      <span className="text-[10px] sm:text-xs whitespace-nowrap" style={{ letterSpacing: '0.3px' }}>RECOMMENDED FOR AI</span>
                     </motion.div>
                   )}
 
@@ -201,13 +201,11 @@ export function PackagesSection() {
                     
                     {/* Price */}
                     <p 
-                      className="font-bold mb-2"
+                      className="font-bold mb-2 text-3xl sm:text-4xl md:text-[42px]"
                       style={{
-                        fontSize: '42px',
                         fontWeight: 700,
                         letterSpacing: '-1px',
                         paddingBottom: '4px',
-                        whiteSpace: 'nowrap',
                         color: pkg.recommended ? undefined : 'white',
                         ...(pkg.recommended && {
                           background: 'linear-gradient(135deg, #7cc142, #8bd253)',

@@ -781,7 +781,7 @@ export function ProductionPipelineSection() {
           <div className="relative mb-12">
             {/* Carousel Content - full width */}
             <div
-              className="relative w-full overflow-visible cursor-grab active:cursor-grabbing"
+              className="relative w-full overflow-hidden cursor-grab active:cursor-grabbing"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -810,7 +810,7 @@ export function ProductionPipelineSection() {
               </div>
 
               {/* Desktop: Three card view with sliding */}
-              <div ref={carouselRef} className="hidden md:flex items-center justify-start gap-16 relative min-h-[420px] overflow-visible">
+              <div ref={carouselRef} className="hidden md:flex items-center justify-start gap-16 relative min-h-[420px] overflow-hidden">
                 <motion.div
                   className="flex items-center gap-16"
                   initial={false}
@@ -842,6 +842,7 @@ export function ProductionPipelineSection() {
                         className="flex-shrink-0"
                         style={{
                           width: '520px',
+                          maxWidth: '90vw',
                           opacity: position === 'hidden' ? 0 : 1,
                           pointerEvents: position === 'hidden' ? 'none' : 'auto'
                         }}
@@ -916,7 +917,7 @@ export function ProductionPipelineSection() {
           <div className="relative mb-12">
             {/* Expansion Carousel Content - full width */}
             <div 
-              className="relative w-full overflow-visible cursor-grab active:cursor-grabbing"
+              className="relative w-full overflow-hidden cursor-grab active:cursor-grabbing"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={(e) => {
@@ -956,7 +957,7 @@ export function ProductionPipelineSection() {
               </div>
 
               {/* Desktop: Three card view with sliding */}
-              <div ref={expansionCarouselRef} className="hidden md:flex items-center justify-start gap-8 relative min-h-[460px] overflow-visible">
+              <div ref={expansionCarouselRef} className="hidden md:flex items-center justify-start gap-8 relative min-h-[460px] overflow-hidden">
                 <motion.div
                   className="flex items-center gap-8"
                   initial={false}
@@ -988,6 +989,7 @@ export function ProductionPipelineSection() {
                         className="flex-shrink-0"
                         style={{
                           width: '470px',
+                          maxWidth: '90vw',
                           opacity: position === 'hidden' ? 0 : 1,
                           pointerEvents: position === 'hidden' ? 'none' : 'auto'
                         }}

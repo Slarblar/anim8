@@ -11,7 +11,7 @@ export function HeroSection() {
   const [isVideoReady, setIsVideoReady] = useState(false)
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden w-full max-w-full">
       {/* Loading Spinner */}
       {!isVideoReady && (
         <div className="absolute inset-0 z-0 bg-brand-navy flex items-center justify-center">
@@ -80,7 +80,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
           >
             {/* Main Heading */}
-            <h1 className="text-white mb-4 font-black text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
+            <h1 className="text-white mb-4 font-black text-center text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl px-4 max-w-full break-words">
               CONTENT INFRASTRUCTURE<br />
               FOR THE AI ERA
             </h1>

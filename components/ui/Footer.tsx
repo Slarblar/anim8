@@ -4,7 +4,7 @@ import { ConfidentialityFooter } from './ConfidentialityFooter'
 
 export function Footer({ showConfidentialityNotice = false }: { showConfidentialityNotice?: boolean }) {
   return (
-    <footer className="bg-brand-black py-12">
+    <footer className="bg-brand-black py-12 w-full max-w-full overflow-hidden">
       <div className="container-custom">
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           {/* Logo & Tagline */}

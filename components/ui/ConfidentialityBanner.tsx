@@ -2,9 +2,9 @@
 
 export function ConfidentialityBanner() {
   return (
-    <div className="relative bg-gradient-to-r from-brand-navy via-[#1a1f3a] to-brand-navy border-b-2 border-lime-400/30">
+    <div className="relative bg-gradient-to-r from-brand-navy via-[#1a1f3a] to-brand-navy border-b-2 border-lime-400/30 w-full max-w-full overflow-hidden">
       <div className="container-custom py-4 sm:py-5">
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-full">
           {/* Lock Icon */}
           <div className="flex-shrink-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-lime-400/20 to-emerald-400/20 border border-lime-400/30 flex items-center justify-center backdrop-blur-sm">
@@ -25,8 +25,8 @@ export function ConfidentialityBanner() {
           </div>
           
           {/* Text Content */}
-          <div className="text-center sm:text-left">
-            <p className="text-xs sm:text-sm md:text-base text-white/90 font-semibold uppercase tracking-wide leading-tight">
+          <div className="text-center sm:text-left max-w-full overflow-hidden px-2">
+            <p className="text-xs sm:text-sm md:text-base text-white/90 font-semibold uppercase tracking-wide leading-tight break-words">
               <span className="text-lime-400">Confidential Proposal</span>
               <span className="hidden sm:inline text-white/40 mx-2">•</span>
               <span className="block sm:inline mt-1 sm:mt-0">VeeFriends Character Production</span>

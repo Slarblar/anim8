@@ -8,10 +8,14 @@ export function Header() {
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [isLaunching, setIsLaunching] = useState(false)
+  const [isAtTop, setIsAtTop] = useState(true)
 
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
+
+      // Check if we're at the top (for positioning)
+      setIsAtTop(currentScrollY < 100)
 
       // If at top of page (within 100px), always show and reset launch state
       if (currentScrollY < 100) {
@@ -49,7 +53,11 @@ export function Header() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-6 py-6 pointer-events-none">
+    <header 
+      className={`fixed left-0 right-0 z-50 px-6 py-6 pointer-events-none transition-all duration-300 ease-out ${
+        isAtTop ? 'top-20 md:top-24' : 'top-0'
+      }`}
+    >
       <div className="container-custom flex items-center justify-center">
         <AnimatePresence>
           {isVisible && (

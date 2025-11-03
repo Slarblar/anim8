@@ -2,23 +2,22 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Anim8 Studio | 3D Animation & Visual Effects',
-  description: 'Professional 3D animation studio specializing in cutting-edge visual effects, motion graphics, and immersive storytelling.',
-  keywords: ['3D animation', 'visual effects', 'motion graphics', 'animation studio', 'VFX'],
-  authors: [{ name: 'Anim8 Studio' }],
-  creator: 'Anim8 Studio',
+  title: 'Anim-8 | Character Production for AI & Web3',
+  description: 'Production-ready 3D characters in 3-4 days. Led by RTFKT co-founder Chris Le. Specialized in developing social and community-based IP.',
+  keywords: ['3D characters', 'character production', 'AI training', 'Web3', 'NFT', 'VeeFriends', 'RTFKT'],
+  authors: [{ name: 'Anim-8' }],
+  creator: 'Anim-8',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://anim8studio.com',
-    title: 'Anim8 Studio | 3D Animation & Visual Effects',
-    description: 'Professional 3D animation studio specializing in cutting-edge visual effects.',
-    siteName: 'Anim8 Studio',
+    title: 'Anim-8 | Character Production',
+    description: 'Production-ready 3D characters for AI & Web3',
+    siteName: 'Anim-8',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Anim8 Studio | 3D Animation & Visual Effects',
-    description: 'Professional 3D animation studio specializing in cutting-edge visual effects.',
+    title: 'Anim-8 | Character Production',
+    description: 'Production-ready 3D characters for AI & Web3',
   },
   robots: {
     index: true,

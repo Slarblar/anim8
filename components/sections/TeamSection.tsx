@@ -43,6 +43,7 @@ export function TeamSection() {
   const [currentMember, setCurrentMember] = useState(1) // Start at index 1 to show 3 cards by default
   const carouselRef = useRef<HTMLDivElement>(null)
   const [carouselWidth, setCarouselWidth] = useState(0)
+  const [cardGap, setCardGap] = useState(16)
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -98,6 +99,8 @@ export function TeamSection() {
         const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0
         const paddingRight = parseFloat(computedStyle.paddingRight) || 0
         setCarouselWidth(carouselRef.current.offsetWidth - paddingLeft - paddingRight)
+        // Update gap based on screen size
+        setCardGap(window.innerWidth >= 768 ? 32 : 16)
       }
     }
     
@@ -224,7 +227,15 @@ export function TeamSection() {
                   className="flex items-center gap-4 md:gap-8"
                   initial={false}
                   animate={{
-                    x: carouselWidth ? (carouselWidth / 2) - 175 - (currentMember * 358) : 0
+                    x: (() => {
+                      if (!carouselWidth) return 0
+                      const cardWidth = 350
+                      const cardWithGap = cardWidth + cardGap
+                      // Center the active card: move to center of container, then offset by current position
+                      const centerOffset = (carouselWidth / 2) - (cardWidth / 2)
+                      const slideOffset = -(currentMember * cardWithGap)
+                      return centerOffset + slideOffset
+                    })()
                   }}
                   transition={{
                     type: "spring",

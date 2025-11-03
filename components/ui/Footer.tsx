@@ -1,6 +1,8 @@
 'use client'
 
-export function Footer() {
+import { ConfidentialityFooter } from './ConfidentialityFooter'
+
+export function Footer({ showConfidentialityNotice = false }: { showConfidentialityNotice?: boolean }) {
   return (
     <footer className="bg-brand-black py-12">
       <div className="container-custom">
@@ -35,7 +37,7 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#team" className="text-text-muted hover:text-brand-lime transition-colors">
+                <a href="#production-pipeline" className="text-text-muted hover:text-brand-lime transition-colors">
                   Pipeline Development
                 </a>
               </li>
@@ -68,12 +70,12 @@ export function Footer() {
         {/* Divider */}
         <div className="h-px w-full bg-gradient-to-r from-transparent via-brand-lime/20 to-transparent mb-8" />
 
+        {/* Confidentiality Notice (VeeFriends only) */}
+        {showConfidentialityNotice && <ConfidentialityFooter />}
+
         {/* Copyright */}
-        <div className="text-center text-text-muted text-sm space-y-2">
+        <div className="text-center text-text-muted text-sm">
           <p>&copy; 2025 Anim-8. All rights reserved.</p>
-          <p className="text-xs italic">
-            This proposal is confidential and intended solely for VeeFriends and partners.
-          </p>
         </div>
       </div>
     </footer>

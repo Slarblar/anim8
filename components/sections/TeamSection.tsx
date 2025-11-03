@@ -31,6 +31,7 @@ export function TeamSection() {
                 { 
                   name: 'Darren Flowers', 
                   role: 'Technical Director',
+                  credentials: 'Eden Offline (Sakira Mods TikTok)',
                   details: [
                     'Pipeline architecture and optimization',
                     'Quality control and technical standards',
@@ -39,6 +40,7 @@ export function TeamSection() {
                 { 
                   name: 'Khai Pham', 
                   role: 'Lead Modeler',
+                  credentials: 'Sparx, Activision, Ubisoft, Riot, Disney, Marvel',
                   details: [
                     'Character modeling and art direction',
                     'Team mentorship and style consistency',
@@ -47,6 +49,7 @@ export function TeamSection() {
                 { 
                   name: 'Luka Trinh', 
                   role: 'Senior Animator',
+                  credentials: 'Industrial Light & Magic, Sony, Blizzard',
                   details: [
                     'Character animation and motion systems',
                     'Rigging and deformation specialist',
@@ -65,7 +68,8 @@ export function TeamSection() {
                       👤
                     </div>
                     <h4 className="text-white font-bold mb-1">{member.name}</h4>
-                    <p className="text-brand-cyan text-sm mb-4">{member.role}</p>
+                    <p className="text-brand-cyan text-sm mb-2">{member.role}</p>
+                    <p className="text-text-muted text-xs mb-4 italic">{member.credentials}</p>
                     <ul className="text-left space-y-2">
                       {member.details.map((detail, j) => (
                         <li key={j} className="text-text-muted text-xs flex items-start">

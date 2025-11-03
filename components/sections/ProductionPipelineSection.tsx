@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Section } from '../ui/Section'
 import { useState, useRef, useEffect } from 'react'
 import { 
@@ -28,6 +28,7 @@ interface ModelingStageProps {
   index: number
   position: 'prev' | 'active' | 'next' | 'hidden'
   onAdvance?: () => void
+  useMobileBlur?: boolean
 }
 
 interface ExpansionCardProps {
@@ -35,24 +36,60 @@ interface ExpansionCardProps {
   index: number
   position: 'prev' | 'active' | 'next' | 'hidden'
   onAdvance?: () => void
+  useMobileBlur?: boolean
 }
 
 const cardVariants = {
-  hidden: { opacity: 0, scale: 0.9, y: 40 },
+  hidden: { 
+    opacity: 0, 
+    scale: 0.9, 
+    y: 40
+  },
   visible: { 
     opacity: 1, 
     scale: 1,
     y: 0,
     transition: {
-      duration: 0.5,
-      ease: "easeOut"
+      duration: 0.6,
+      ease: [0.25, 0.46, 0.45, 0.94]
     }
   },
   exit: {
     opacity: 0,
     scale: 0.9,
     transition: {
-      duration: 0.3
+      duration: 0.4,
+      ease: "easeIn"
+    }
+  }
+}
+
+// Mobile-specific variants with blur animations
+const mobileCardVariants = {
+  hidden: { 
+    opacity: 0, 
+    scale: 0.9, 
+    y: 40,
+    filter: 'blur(20px)'
+  },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.6,
+      ease: [0.25, 0.46, 0.45, 0.94],
+      filter: { duration: 0.4 }
+    }
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.9,
+    filter: 'blur(15px)',
+    transition: {
+      duration: 0.4,
+      ease: "easeIn"
     }
   }
 }
@@ -77,7 +114,8 @@ function ModelingStage({
   quality,
   index,
   position,
-  onAdvance
+  onAdvance,
+  useMobileBlur = false
 }: ModelingStageProps) {
   const isActive = position === 'active'
   const isHidden = position === 'hidden'
@@ -88,7 +126,8 @@ function ModelingStage({
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={cardVariants}
+      exit="exit"
+      variants={useMobileBlur ? mobileCardVariants : cardVariants}
       onClick={isActive && onAdvance ? onAdvance : undefined}
       className="modeling-stage-card glass-card p-6 w-full max-w-[400px] mx-auto flex flex-col border border-brand-lime/15 flex-shrink-0"
       style={{
@@ -111,6 +150,11 @@ function ModelingStage({
         y: -8,
         borderColor: 'rgba(124, 193, 66, 0.3)',
         boxShadow: '0 16px 48px rgba(124, 193, 66, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+      } : {}}
+      whileTap={isActive && onAdvance ? {
+        scale: 0.97,
+        filter: 'blur(2px)',
+        transition: { duration: 0.1 }
       } : {}}
     >
       {/* Badge */}
@@ -177,7 +221,7 @@ function ModelingStage({
   )
 }
 
-function ExpansionCard({ type, index, position, onAdvance }: ExpansionCardProps) {
+function ExpansionCard({ type, index, position, onAdvance, useMobileBlur = false }: ExpansionCardProps) {
   const isActive = position === 'active'
   const isHidden = position === 'hidden'
   
@@ -195,8 +239,7 @@ function ExpansionCard({ type, index, position, onAdvance }: ExpansionCardProps)
         'Weight painting',
         'Control curves'
       ],
-      timeline: '+2-3 days per character',
-      investment: '+$500-$1,000'
+      timeline: '+2-3 days per character'
     },
     animation: {
       icon: <FaPlay />,
@@ -209,8 +252,7 @@ function ExpansionCard({ type, index, position, onAdvance }: ExpansionCardProps)
         'Turntable renders',
         'Multiple camera angles'
       ],
-      timeline: '+3-5 days per character',
-      investment: '+$800-$1,500'
+      timeline: '+3-5 days per character'
     },
     rendering: {
       icon: <FaStar />,
@@ -223,8 +265,7 @@ function ExpansionCard({ type, index, position, onAdvance }: ExpansionCardProps)
         'Video turntables',
         'Promotional assets'
       ],
-      timeline: '+1-2 days per character',
-      investment: '+$200-$400'
+      timeline: '+1-2 days per character'
     }
   }
 
@@ -234,7 +275,8 @@ function ExpansionCard({ type, index, position, onAdvance }: ExpansionCardProps)
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={cardVariants}
+      exit="exit"
+      variants={useMobileBlur ? mobileCardVariants : cardVariants}
       onClick={isActive && onAdvance ? onAdvance : undefined}
       className="expansion-card glass-card p-8 w-full max-w-[350px] mx-auto flex flex-col border border-brand-cyan/20"
       style={{
@@ -257,6 +299,11 @@ function ExpansionCard({ type, index, position, onAdvance }: ExpansionCardProps)
         y: -10,
         borderColor: 'rgba(56, 194, 214, 0.4)',
         boxShadow: '0 16px 48px rgba(56, 194, 214, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+      } : {}}
+      whileTap={isActive && onAdvance ? {
+        scale: 0.97,
+        filter: 'blur(2px)',
+        transition: { duration: 0.1 }
       } : {}}
     >
       <div className="flex items-center gap-2 mb-4">
@@ -293,12 +340,9 @@ function ExpansionCard({ type, index, position, onAdvance }: ExpansionCardProps)
         </ul>
       </div>
 
-      <div className="mt-auto pt-4 border-t border-brand-cyan/20 space-y-2">
+      <div className="mt-auto pt-4 border-t border-brand-cyan/20">
         <p className="text-text text-sm">
           Timeline: <span className="text-white">{config.timeline}</span>
-        </p>
-        <p className="text-text text-sm">
-          Investment: <span className="text-brand-cyan font-semibold">{config.investment}</span>
         </p>
       </div>
     </motion.div>
@@ -667,12 +711,16 @@ export function ProductionPipelineSection() {
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[420px]">
-                <ModelingStage
-                  {...modelingStages[currentStage]}
-                  index={currentStage}
-                  position="active"
-                  onAdvance={nextStage}
-                />
+                <AnimatePresence mode="wait">
+                  <ModelingStage
+                    key={currentStage}
+                    {...modelingStages[currentStage]}
+                    index={currentStage}
+                    position="active"
+                    onAdvance={nextStage}
+                    useMobileBlur={true}
+                  />
+                </AnimatePresence>
               </div>
 
               {/* Desktop: Three card view with sliding */}
@@ -808,12 +856,16 @@ export function ProductionPipelineSection() {
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[460px]">
-                <ExpansionCard
-                  type={expansions[currentExpansion]}
-                  index={currentExpansion}
-                  position="active"
-                  onAdvance={nextExpansion}
-                />
+                <AnimatePresence mode="wait">
+                  <ExpansionCard
+                    key={currentExpansion}
+                    type={expansions[currentExpansion]}
+                    index={currentExpansion}
+                    position="active"
+                    onAdvance={nextExpansion}
+                    useMobileBlur={true}
+                  />
+                </AnimatePresence>
               </div>
 
               {/* Desktop: Three card view with sliding */}

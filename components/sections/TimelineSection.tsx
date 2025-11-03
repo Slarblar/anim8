@@ -3,8 +3,13 @@
 import { motion } from 'framer-motion'
 import { Section } from '../ui/Section'
 import { Card } from '../ui/Card'
+import dynamic from 'next/dynamic'
+import { useState } from 'react'
+
+const ReactPlayer = dynamic(() => import('react-player'), { ssr: false })
 
 export function TimelineSection() {
+  const [isVideoReady, setIsVideoReady] = useState(false)
   const phases = [
     {
       phase: 'PHASE 1',
@@ -176,52 +181,102 @@ export function TimelineSection() {
 
           {/* Summary */}
           <motion.div 
-            className="glass-card p-8 max-w-4xl mx-auto"
+            className="glass-card p-8 max-w-6xl mx-auto"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.8 }}
           >
+            {/* Title - spans full width */}
             <h3 className="text-white text-center mb-6">
               Timeline: <span className="text-brand-lime">12 weeks</span> from kickoff to delivery
             </h3>
             <div className="section-divider mb-6" />
-            <h4 className="text-white font-bold mb-4">What You&apos;ll Receive:</h4>
-            <motion.ul 
-              className="space-y-3 text-text mb-6"
-              variants={{
-                hidden: {},
-                visible: {
-                  transition: {
-                    staggerChildren: 0.1
-                  }
-                }
-              }}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-            >
-              {[
-                '50 production-ready 3D characters',
-                'Clean topology (optimized for rigging/animation)',
-                'Professional materials and textures',
-                'Multiple export formats (FBX, OBJ, USD)',
-                'Organized file structure and documentation',
-                'Weekly progress reviews with video updates',
-              ].map((item, i) => (
-                <motion.li 
-                  key={i}
-                  className="flex items-start"
+            
+            {/* Two-column layout: content left, video right */}
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+              {/* Left column - text content */}
+              <div className="flex-1">
+                <h4 className="text-white font-bold mb-4">What You&apos;ll Receive:</h4>
+                <motion.ul 
+                  className="space-y-3 text-text"
                   variants={{
-                    hidden: { opacity: 0, x: -20 },
-                    visible: { opacity: 1, x: 0 }
+                    hidden: {},
+                    visible: {
+                      transition: {
+                        staggerChildren: 0.1
+                      }
+                    }
                   }}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
                 >
-                  <span className="text-brand-lime mr-3">✓</span>
-                  <span>{item}</span>
-                </motion.li>
-              ))}
-            </motion.ul>
+                  {[
+                    '50 production-ready 3D characters',
+                    'Clean topology (optimized for rigging/animation)',
+                    'Professional materials and textures',
+                    'Multiple export formats (FBX, OBJ, USD)',
+                    'Organized file structure and documentation',
+                    'Weekly progress reviews with video updates',
+                  ].map((item, i) => (
+                    <motion.li 
+                      key={i}
+                      className="flex items-start"
+                      variants={{
+                        hidden: { opacity: 0, x: -20 },
+                        visible: { opacity: 1, x: 0 }
+                      }}
+                    >
+                      <span className="text-brand-lime mr-3">✓</span>
+                      <span>{item}</span>
+                    </motion.li>
+                  ))}
+                </motion.ul>
+              </div>
+
+              {/* Right column - 1:1 video player */}
+              <motion.div 
+                className="w-full lg:w-[300px] flex-shrink-0"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
+                <div 
+                  className="rounded-lg overflow-hidden relative w-full bg-white/5"
+                  style={{ paddingBottom: '100%' }}
+                >
+                  <div className="absolute inset-0">
+                    <ReactPlayer
+                      url="https://video.gumlet.io/69053299aa9e79860d5f48f8/6907f39fa73e1769029ac1eb/main.m3u8"
+                      playing={true}
+                      loop={true}
+                      muted={true}
+                      controls={false}
+                      width="100%"
+                      height="100%"
+                      playsinline={true}
+                      onReady={() => setIsVideoReady(true)}
+                      config={{
+                        file: {
+                          attributes: {
+                            style: {
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }
+                          }
+                        }
+                      }}
+                      style={{
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           </motion.div>
         </motion.div>
       </div>

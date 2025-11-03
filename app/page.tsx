@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 export default function LandingPage() {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -18,11 +19,14 @@ export default function LandingPage() {
             isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
           }`}
         >
-          <div className="w-[240px] md:w-[320px] mx-auto mb-8">
-            <img 
+          <div className="w-[240px] md:w-[320px] mx-auto mb-8 relative">
+            <Image 
               src="/images/logos/anim-8-logomark-original-01-01.svg" 
               alt="Anim-8 Logo" 
+              width={320}
+              height={320}
               className="w-full h-auto"
+              priority
             />
           </div>
         </div>
@@ -38,7 +42,7 @@ export default function LandingPage() {
           }}
         >
           <p>
-            Led by RTFKT co-founder Chris Le and Spacestation Animation's Jordan Nguyen, 
+            Led by RTFKT co-founder Chris Le and Spacestation Animation&apos;s Jordan Nguyen, 
             Anim-8 specializes in rapid character production for IP development.
           </p>
         </div>

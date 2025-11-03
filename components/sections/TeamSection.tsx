@@ -5,6 +5,7 @@ import { Section } from '../ui/Section'
 import { Card } from '../ui/Card'
 import { useState, useRef, useEffect } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import Image from 'next/image'
 
 interface TeamMember {
   name: string
@@ -287,9 +288,11 @@ export function TeamSection() {
                           <div className={`w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden border-4 ${
                             isActive ? 'border-brand-cyan/50' : 'border-brand-lime/30'
                           }`}>
-                            <img 
+                            <Image 
                               src={member.image}
                               alt={member.name}
+                              width={96}
+                              height={96}
                               className="w-full h-full object-cover"
                             />
                           </div>

@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Section } from '../ui/Section'
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import { 
   FaFileAlt,
   FaCube, 
@@ -503,9 +504,11 @@ function FinalOutputBox() {
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <img 
+          <Image 
             src="/images/wireframe-astronaut.webp" 
             alt="Wireframe 3D Model Example"
+            width={238}
+            height={238}
             className="w-full max-w-[238px] h-auto object-contain drop-shadow-[0_0_30px_rgba(124,193,66,0.3)]"
           />
         </motion.div>

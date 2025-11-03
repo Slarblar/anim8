@@ -11,6 +11,7 @@ interface CardProps {
   hover?: boolean
   badge?: string
   tilt?: boolean
+  style?: React.CSSProperties
 }
 
 export function Card({ 
@@ -19,7 +20,8 @@ export function Card({
   variant = 'default', 
   hover = true, 
   badge,
-  tilt = true 
+  tilt = true,
+  style 
 }: CardProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [isHovered, setIsHovered] = useState(false)
@@ -82,6 +84,7 @@ export function Card({
         rotateX: tilt ? rotateX : 0,
         rotateY: tilt ? rotateY : 0,
         transformStyle: 'preserve-3d',
+        ...style,
       }}
       whileHover={hover ? { 
         y: -12,

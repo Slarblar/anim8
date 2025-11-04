@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { ConfidentialityFooter } from './ConfidentialityFooter'
 
 export function Footer({ showConfidentialityNotice = false }: { showConfidentialityNotice?: boolean }) {
@@ -10,7 +11,14 @@ export function Footer({ showConfidentialityNotice = false }: { showConfidential
           {/* Logo & Tagline */}
           <div className="md:col-span-2">
             <div className="mb-4">
-              <h3 className="text-2xl font-black text-white mb-2">Anim-8.xyz</h3>
+              <Image 
+                src="/images/logos/anim-8-completewordmark-white-01.svg"
+                alt="Anim-8"
+                width={200}
+                height={60}
+                className="mb-4"
+                priority
+              />
               <p className="text-text-muted">
                 Building IP infrastructure for the AI era.
               </p>

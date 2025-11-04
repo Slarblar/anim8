@@ -118,17 +118,19 @@ export function ImageCarousel({
     >
       {/* Main image display */}
       <div className="relative w-full h-full">
-        <AnimatePresence mode="sync" initial={false}>
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={currentIndex}
-            initial={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 1.05 }}
             animate={{ 
               opacity: 1,
+              scale: 1,
               x: !hasNudged && images.length > 1 ? [0, -10, 0] : 0
             }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, scale: 0.98 }}
             transition={{ 
-              opacity: { duration: 0.3, ease: 'easeInOut' },
+              opacity: { duration: 0.4, ease: 'easeInOut' },
+              scale: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] },
               x: {
                 duration: 1.5,
                 repeat: hasNudged ? 0 : Infinity,
@@ -140,9 +142,8 @@ export function ImageCarousel({
             style={{
               WebkitBackfaceVisibility: 'hidden',
               backfaceVisibility: 'hidden',
-              transform: 'translateZ(0)',
               WebkitTransform: 'translateZ(0)',
-              willChange: 'opacity'
+              willChange: 'opacity, transform'
             }}
           >
             <Image

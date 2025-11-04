@@ -369,7 +369,7 @@ export function PackagesSection() {
             transition={{ delay: 0.6 }}
           >
             <p style={{ fontSize: '15px', color: 'rgba(255, 255, 255, 0.7)' }}>
-              All packages include: <span className="text-white font-semibold">Weekly reviews</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Priority support</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Unlimited revisions</span> (2 rounds per character) <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Delivery within 12 weeks</span>
+              All packages include: <span className="text-white font-semibold">Weekly reviews</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Priority support</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Unlimited revisions</span> (2 rounds per character) <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Delivery within 14-17 weeks</span>
             </p>
           </motion.div>
 

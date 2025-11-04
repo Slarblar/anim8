@@ -31,7 +31,7 @@ export function ScalingSection() {
               <div className="space-y-4 text-text">
                 <div className="flex justify-between">
                   <span className="text-text-muted">Timeline:</span>
-                  <span className="font-semibold">12 weeks</span>
+                  <span className="font-semibold">14-17 weeks</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-text-muted">Team:</span>

@@ -249,7 +249,7 @@ A fully redesigned Next.js 14 website for ANIM-8 Studio featuring:
 - **Font Weights**: 5 (400, 600, 700, 800, 900)
 - **Animation Types**: 6 different effects
 - **Packages**: 3 pricing tiers
-- **Timeline Phases**: 3 phases over 12 weeks
+- **Timeline Phases**: 3 phases over 14-17 weeks
 - **Team Members**: 4 US + Vietnam team
 - **Differentiators**: 4 key advantages
 

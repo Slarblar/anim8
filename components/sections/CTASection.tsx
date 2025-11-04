@@ -26,7 +26,7 @@ const packageData = {
     subtitle: 'Complete AI Training Dataset',
     price: '$55k - $65k',
     characters: 50,
-    timeline: '12 weeks',
+    timeline: '14-17 weeks',
     recommended: true,
     accentColor: '#7cc142',
     variant: 'lime' as const,

@@ -12,7 +12,7 @@ export function ProcessSection() {
       items: [
         'Kickoff call: Align on vision & priorities',
         'Style guide development',
-        '3 hero models for approval',
+        '5 hero models for approval',
         'Pipeline & quality standards locked',
         'Production schedule finalized',
       ],
@@ -20,7 +20,7 @@ export function ProcessSection() {
     },
     {
       phase: 'PHASE 2',
-      title: 'PRODUCTION (Week 3-8)',
+      title: 'PRODUCTION (Week 3-12)',
       items: [
         'Weekly batches: 5-7 characters delivered',
         'Friday review sessions (video call or async)',
@@ -32,7 +32,7 @@ export function ProcessSection() {
     },
     {
       phase: 'PHASE 3',
-      title: 'POLISH & DELIVERY (Week 9-12)',
+      title: 'POLISH & DELIVERY (Week 13-17)',
       items: [
         'Final character batches',
         'Revision rounds completed',
@@ -54,6 +54,11 @@ export function ProcessSection() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-center mb-4 text-white">HOW WE WORK TOGETHER</h2>
+          
+          {/* Subtitle */}
+          <p className="text-center text-text-light text-lg max-w-2xl mx-auto mb-6">
+            A phase-by-phase breakdown of our production process
+          </p>
           
           {/* Lime accent line */}
           <div className="flex justify-center mb-16">

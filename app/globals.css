@@ -826,23 +826,26 @@
       will-change: auto;
     }
     
-    /* Reduce backdrop-filter on mobile for better performance */
+    /* Optimize glass effect on mobile */
     .glass-card {
-      backdrop-filter: blur(8px) !important;
-      -webkit-backdrop-filter: blur(8px) !important;
+      backdrop-filter: blur(10px) saturate(130%) !important;
+      -webkit-backdrop-filter: blur(10px) saturate(130%) !important;
     }
     
-    /* Disable complex animations on touch devices */
+    /* Optimize carousel cards on mobile */
+    .modeling-stage-card,
+    .expansion-card {
+      contain: layout style;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+    }
+    
+    /* Smoother animations on touch devices */
     @media (hover: none) and (pointer: coarse) {
-      * {
-        animation-duration: 0.2s !important;
-        transition-duration: 0.2s !important;
-      }
-      
-      /* Simpler carousel transitions on mobile */
+      /* Optimize carousel transitions */
       .carousel-container * {
         transition-property: opacity, transform !important;
-        transition-timing-function: ease-out !important;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
       }
     }
   }

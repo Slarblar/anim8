@@ -68,28 +68,29 @@ const cardVariants = {
   }
 }
 
-// Mobile-specific variants - optimized for performance (no blur)
+// Mobile-specific variants - optimized with subtle animations
 const mobileCardVariants = {
   hidden: { 
     opacity: 0, 
-    scale: 0.95, 
-    y: 20
+    scale: 0.92, 
+    y: 30
   },
   visible: { 
     opacity: 1, 
     scale: 1,
     y: 0,
     transition: {
-      duration: 0.3,
+      duration: 0.5,
       ease: [0.25, 0.46, 0.45, 0.94]
     }
   },
   exit: {
     opacity: 0,
-    scale: 0.95,
+    scale: 0.92,
+    y: -20,
     transition: {
-      duration: 0.2,
-      ease: "easeOut"
+      duration: 0.35,
+      ease: [0.4, 0, 0.2, 1]
     }
   }
 }
@@ -145,21 +146,23 @@ function ModelingStage({
           ? '0 12px 40px rgba(124, 193, 66, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
           : '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
         background: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backdropFilter: isActive ? 'blur(12px) saturate(150%)' : 'blur(16px) saturate(120%)',
+        WebkitBackdropFilter: isActive ? 'blur(12px) saturate(150%)' : 'blur(16px) saturate(120%)',
         borderRadius: '16px',
         minHeight: '380px',
         maxWidth: '520px',
-        transition: 'opacity 0.3s ease, transform 0.3s ease',
-        opacity: isActive ? 1 : 0.4,
-        transform: `scale(${isActive ? 1 : 0.85}) translateZ(0)`,
-        WebkitTransform: `scale(${isActive ? 1 : 0.85}) translateZ(0)`,
+        transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: isActive ? 1 : 0.5,
+        transform: `scale(${isActive ? 1 : 0.88}) translateZ(0)`,
+        WebkitTransform: `scale(${isActive ? 1 : 0.88}) translateZ(0)`,
         pointerEvents: 'auto',
         zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
         cursor: 'pointer',
         touchAction: 'none',
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
+        perspective: '1000px',
+        WebkitPerspective: '1000px',
         willChange: isActive ? 'opacity, transform' : 'auto'
       }}
       drag={false}
@@ -333,21 +336,23 @@ function ExpansionCard({ type, index, position, onAdvance, onSelect, useMobileBl
           ? '0 12px 40px rgba(56, 194, 214, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
           : '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
         background: 'rgba(255, 255, 255, 0.03)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backdropFilter: isActive ? 'blur(12px) saturate(150%)' : 'blur(16px) saturate(120%)',
+        WebkitBackdropFilter: isActive ? 'blur(12px) saturate(150%)' : 'blur(16px) saturate(120%)',
         borderRadius: '20px',
         minHeight: '420px',
         maxWidth: '470px',
-        transition: 'opacity 0.3s ease, transform 0.3s ease',
-        opacity: isActive ? 1 : 0.4,
-        transform: `scale(${isActive ? 1 : 0.85}) translateZ(0)`,
-        WebkitTransform: `scale(${isActive ? 1 : 0.85}) translateZ(0)`,
+        transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: isActive ? 1 : 0.5,
+        transform: `scale(${isActive ? 1 : 0.88}) translateZ(0)`,
+        WebkitTransform: `scale(${isActive ? 1 : 0.88}) translateZ(0)`,
         pointerEvents: 'auto',
         zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
         cursor: 'pointer',
         touchAction: 'none',
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
+        perspective: '1000px',
+        WebkitPerspective: '1000px',
         willChange: isActive ? 'opacity, transform' : 'auto'
       }}
       drag={false}
@@ -857,7 +862,7 @@ export function ProductionPipelineSection() {
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[420px]">
-                <AnimatePresence mode="sync" initial={false}>
+                <AnimatePresence mode="wait" initial={false}>
                   <ModelingStage
                     key={currentStage}
                     {...modelingStages[currentStage]}
@@ -1019,7 +1024,7 @@ export function ProductionPipelineSection() {
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[460px]">
-                <AnimatePresence mode="sync" initial={false}>
+                <AnimatePresence mode="wait" initial={false}>
                   <ExpansionCard
                     key={currentExpansion}
                     type={expansions[currentExpansion]}

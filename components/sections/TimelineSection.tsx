@@ -17,13 +17,13 @@ export function TimelineSection() {
       title: 'Pre-Production',
       items: [
         'Style guide',
-        '3 hero models',
+        '5 hero models',
         'Client approval',
       ],
     },
     {
       phase: 'PHASE 2',
-      timeframe: 'WEEK 3-8',
+      timeframe: 'WEEK 3-12',
       title: 'Production',
       items: [
         '5-7 characters per week',
@@ -33,7 +33,7 @@ export function TimelineSection() {
     },
     {
       phase: 'PHASE 3',
-      timeframe: 'WEEK 9-12',
+      timeframe: 'WEEK 13-17',
       title: 'Delivery',
       items: [
         'QC & polish',
@@ -193,7 +193,7 @@ export function TimelineSection() {
           >
             {/* Title - spans full width */}
             <h3 className="text-white text-center mb-6">
-              Timeline: <span className="text-brand-lime">12 weeks</span> from kickoff to delivery
+              Timeline: <span className="text-brand-lime">14-17 weeks</span> from kickoff to delivery
             </h3>
             <div className="section-divider mb-6" />
             

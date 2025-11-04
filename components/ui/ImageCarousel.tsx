@@ -109,22 +109,26 @@ export function ImageCarousel({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      style={{
+        WebkitBackfaceVisibility: 'hidden',
+        backfaceVisibility: 'hidden',
+        transform: 'translateZ(0)',
+        WebkitTransform: 'translateZ(0)'
+      }}
     >
       {/* Main image display */}
       <div className="relative w-full h-full">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync" initial={false}>
           <motion.div
             key={currentIndex}
-            initial={{ opacity: 0, scale: 1.05 }}
+            initial={{ opacity: 0 }}
             animate={{ 
-              opacity: 1, 
-              scale: 1,
+              opacity: 1,
               x: !hasNudged && images.length > 1 ? [0, -10, 0] : 0
             }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            exit={{ opacity: 0 }}
             transition={{ 
-              duration: 0.5, 
-              ease: 'easeInOut',
+              opacity: { duration: 0.3, ease: 'easeInOut' },
               x: {
                 duration: 1.5,
                 repeat: hasNudged ? 0 : Infinity,
@@ -133,6 +137,13 @@ export function ImageCarousel({
               }
             }}
             className="absolute inset-0"
+            style={{
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden',
+              transform: 'translateZ(0)',
+              WebkitTransform: 'translateZ(0)',
+              willChange: 'opacity'
+            }}
           >
             <Image
               src={images[currentIndex]}
@@ -141,6 +152,7 @@ export function ImageCarousel({
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw"
               priority={currentIndex === 0}
+              loading={currentIndex === 0 ? 'eager' : 'lazy'}
             />
             
             {/* Gradient overlay for better text visibility */}
@@ -178,9 +190,9 @@ export function ImageCarousel({
         </>
       )}
 
-      {/* Dot indicators */}
+      {/* Dot indicators - hidden on mobile/tablet */}
       {images.length > 1 && (
-        <div className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+        <div className="hidden lg:flex absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 gap-2 z-10">
           {images.map((_, index) => (
             <button
               key={index}

@@ -599,6 +599,22 @@
     -webkit-backface-visibility: hidden;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
+    contain: layout style paint;
+  }
+  
+  /* Image carousel optimization */
+  .relative.aspect-square {
+    contain: layout style paint;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+  
+  /* Force GPU acceleration for smooth animations */
+  [class*="motion-"] {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
   
   /* Disable hover effects on touch devices globally */
@@ -801,6 +817,33 @@
     motion.div {
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Mobile-specific image carousel optimization */
+    .aspect-square img {
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      will-change: auto;
+    }
+    
+    /* Reduce backdrop-filter on mobile for better performance */
+    .glass-card {
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+    }
+    
+    /* Disable complex animations on touch devices */
+    @media (hover: none) and (pointer: coarse) {
+      * {
+        animation-duration: 0.2s !important;
+        transition-duration: 0.2s !important;
+      }
+      
+      /* Simpler carousel transitions on mobile */
+      .carousel-container * {
+        transition-property: opacity, transform !important;
+        transition-timing-function: ease-out !important;
+      }
     }
   }
   

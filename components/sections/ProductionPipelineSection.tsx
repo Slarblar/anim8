@@ -68,32 +68,28 @@ const cardVariants = {
   }
 }
 
-// Mobile-specific variants with blur animations
+// Mobile-specific variants - optimized for performance (no blur)
 const mobileCardVariants = {
   hidden: { 
     opacity: 0, 
-    scale: 0.9, 
-    y: 40,
-    filter: 'blur(20px)'
+    scale: 0.95, 
+    y: 20
   },
   visible: { 
     opacity: 1, 
     scale: 1,
     y: 0,
-    filter: 'blur(0px)',
     transition: {
-      duration: 0.6,
-      ease: [0.25, 0.46, 0.45, 0.94],
-      filter: { duration: 0.4 }
+      duration: 0.3,
+      ease: [0.25, 0.46, 0.45, 0.94]
     }
   },
   exit: {
     opacity: 0,
-    scale: 0.9,
-    filter: 'blur(15px)',
+    scale: 0.95,
     transition: {
-      duration: 0.4,
-      ease: "easeIn"
+      duration: 0.2,
+      ease: "easeOut"
     }
   }
 }
@@ -149,18 +145,22 @@ function ModelingStage({
           ? '0 12px 40px rgba(124, 193, 66, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
           : '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
         background: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: isActive ? 'blur(10px)' : 'blur(20px)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         borderRadius: '16px',
         minHeight: '380px',
         maxWidth: '520px',
-        transition: 'all 0.3s ease',
+        transition: 'opacity 0.3s ease, transform 0.3s ease',
         opacity: isActive ? 1 : 0.4,
-        scale: isActive ? 1 : 0.85,
-        filter: isActive ? 'blur(0px)' : 'blur(6px)',
+        transform: `scale(${isActive ? 1 : 0.85}) translateZ(0)`,
+        WebkitTransform: `scale(${isActive ? 1 : 0.85}) translateZ(0)`,
         pointerEvents: 'auto',
         zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
         cursor: 'pointer',
-        touchAction: 'none'
+        touchAction: 'none',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        willChange: isActive ? 'opacity, transform' : 'auto'
       }}
       drag={false}
       whileTap={isActive && onAdvance ? {
@@ -333,18 +333,22 @@ function ExpansionCard({ type, index, position, onAdvance, onSelect, useMobileBl
           ? '0 12px 40px rgba(56, 194, 214, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
           : '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
         background: 'rgba(255, 255, 255, 0.03)',
-        backdropFilter: isActive ? 'blur(12px)' : 'blur(20px)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         borderRadius: '20px',
         minHeight: '420px',
         maxWidth: '470px',
-        transition: 'all 0.3s ease',
+        transition: 'opacity 0.3s ease, transform 0.3s ease',
         opacity: isActive ? 1 : 0.4,
-        scale: isActive ? 1 : 0.85,
-        filter: isActive ? 'blur(0px)' : 'blur(6px)',
+        transform: `scale(${isActive ? 1 : 0.85}) translateZ(0)`,
+        WebkitTransform: `scale(${isActive ? 1 : 0.85}) translateZ(0)`,
         pointerEvents: 'auto',
         zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
         cursor: 'pointer',
-        touchAction: 'none'
+        touchAction: 'none',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        willChange: isActive ? 'opacity, transform' : 'auto'
       }}
       drag={false}
       whileTap={isActive && onAdvance ? {
@@ -853,7 +857,7 @@ export function ProductionPipelineSection() {
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[420px]">
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="sync" initial={false}>
                   <ModelingStage
                     key={currentStage}
                     {...modelingStages[currentStage]}
@@ -944,8 +948,8 @@ export function ProductionPipelineSection() {
                 <FaChevronLeft className="text-lg md:text-xl" />
               </button>
 
-              {/* Dot Indicators */}
-              <div className="flex justify-center gap-2">
+              {/* Dot Indicators - hidden on mobile/tablet */}
+              <div className="hidden lg:flex justify-center gap-2">
                 {modelingStages.map((_, index) => (
                   <button
                     key={index}
@@ -1015,7 +1019,7 @@ export function ProductionPipelineSection() {
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[460px]">
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="sync" initial={false}>
                   <ExpansionCard
                     key={currentExpansion}
                     type={expansions[currentExpansion]}
@@ -1106,8 +1110,8 @@ export function ProductionPipelineSection() {
                 <FaChevronLeft className="text-lg md:text-xl" />
               </button>
 
-              {/* Dot Indicators */}
-              <div className="flex justify-center gap-2">
+              {/* Dot Indicators - hidden on mobile/tablet */}
+              <div className="hidden lg:flex justify-center gap-2">
                 {expansions.map((_, index) => (
                   <button
                     key={index}

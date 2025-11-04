@@ -398,7 +398,7 @@ export function TeamSection() {
             </h3>
             <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               <Card>
-                <h4 className="text-brand-lime font-bold mb-4">Core Team: 10 members (8 specialists)</h4>
+                <h4 className="text-brand-lime font-bold mb-4">Core Team: 10 members (8 3D artists, 2 operations)</h4>
                 <ul className="space-y-2 text-text-muted text-sm">
                   <li className="flex items-start">
                     <span className="text-brand-lime mr-2">•</span>

@@ -44,8 +44,11 @@ export function ScalingSection() {
                 <div className="section-divider my-4" />
                 <div className="flex justify-between text-lg">
                   <span className="text-text-muted">Investment:</span>
-                  <span className="font-bold text-brand-lime">$45k-100k</span>
+                  <span className="font-bold text-brand-lime">$25k-125k</span>
                 </div>
+                <p className="text-text-muted text-sm mt-3 italic">
+                  Most clients start with Foundation (Package A) to validate the pipeline, then upgrade for remaining characters.
+                </p>
               </div>
             </Card>
 

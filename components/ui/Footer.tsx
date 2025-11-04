@@ -20,7 +20,7 @@ export function Footer({ showConfidentialityNotice = false }: { showConfidential
                 priority
               />
               <p className="text-text-muted">
-                Building IP infrastructure for the AI era.
+                Production-ready characters for the AI era.
               </p>
             </div>
           </div>

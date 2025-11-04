@@ -44,8 +44,8 @@ export function CapabilitySection() {
           </div>
 
           <p className="text-xl md:text-2xl text-center text-text max-w-4xl mx-auto mb-12">
-            From concept to production-ready asset in <span className="text-brand-lime font-bold whitespace-nowrap">3-4 days</span>. 
-            Clean topology, optimized for AI training, production-grade quality.
+            From concept to production-ready asset in <span className="text-brand-lime font-bold whitespace-nowrap">3-4 days per character</span>. 
+            Timeline varies based on complexity—simple designs at the lower end, highly detailed characters may require additional time. Clean topology, optimized for AI training, production-grade quality.
           </p>
 
           {/* Adventurous Astronaut Model Preview */}
@@ -123,6 +123,27 @@ export function CapabilitySection() {
               <p className="text-xs md:text-lg text-text-muted">
                 <span className="text-brand-cyan font-medium">Note:</span> Web-optimized version for interactive preview. 
                 Production assets delivered at full resolution with enhanced detail.
+              </p>
+            </div>
+
+            {/* Platform-Agnostic Training Data Callout */}
+            <div 
+              className="mt-6"
+              style={{
+                fontSize: '14px',
+                fontStyle: 'italic',
+                color: 'rgba(255, 255, 255, 0.7)',
+                background: 'rgba(124, 193, 66, 0.05)',
+                padding: '16px 24px',
+                borderLeft: '3px solid #7cc142',
+                borderRadius: '4px'
+              }}
+            >
+              <p className="font-semibold mb-2" style={{ color: 'rgba(255, 255, 255, 0.9)', fontStyle: 'normal' }}>
+                Platform-Agnostic Training Data
+              </p>
+              <p>
+                These production-ready assets work with any AI video generation platform—SORA, Runway, Pika, or future systems. We optimize for clean topology, consistent formatting, and proper metadata to ensure compatibility across training pipelines.
               </p>
             </div>
           </div>

@@ -57,7 +57,7 @@ export function VisionSection() {
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
             >
-              VeeFriends needs more than 3D models. They need story, motion, personality, and scale.
+              VeeFriends needs more than 3D models. They need scalable IP infrastructure—characters ready for video generation training, community content, and endless creative variations.
             </motion.p>
             
             <motion.p

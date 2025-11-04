@@ -299,6 +299,7 @@ function ExpansionCard({ type, index, position, onAdvance, onSelect, useMobileBl
         '5-10 animation clips',
         'Idle, walk, run cycles',
         'Character actions',
+        'Expression variations',
         'Turntable renders',
         'Multiple camera angles'
       ],

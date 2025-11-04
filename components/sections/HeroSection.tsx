@@ -111,7 +111,7 @@ export function HeroSection() {
                 size="lg"
                 href="#approach"
               >
-                See Our Approach
+                See How We Work
               </Button>
             </motion.div>
           </motion.div>

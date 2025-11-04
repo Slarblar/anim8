@@ -44,7 +44,7 @@ export function PackagesSection() {
         'Professional materials',
         'Multiple file formats',
       ],
-      bestFor: 'Teams with in-house rigging & animation',
+      bestFor: 'Building your character library foundation',
       buttonText: 'Choose Foundation',
       accentColor: '#38c2d6',
       borderColor: 'rgba(56, 194, 214, 0.3)',
@@ -62,8 +62,7 @@ export function PackagesSection() {
         'Basic facial controls',
         'Turntable renders (15 sec each)',
       ],
-      bestFor: 'AI training datasets with motion',
-      recommended: true,
+      bestFor: 'When you\'re ready to add motion for video generation training',
       buttonText: 'Choose Production-Ready',
       accentColor: '#7cc142',
       borderColor: 'rgba(124, 193, 66, 0.4)',
@@ -81,7 +80,7 @@ export function PackagesSection() {
         'Lighting variations',
         'Comprehensive training dataset',
       ],
-      bestFor: 'Maximum dataset variation for comprehensive AI training',
+      bestFor: 'Complete training datasets with maximum variation',
       buttonText: 'Choose Comprehensive',
       accentColor: '#8B5CF6',
       borderColor: 'rgba(139, 92, 246, 0.3)',
@@ -139,6 +138,34 @@ export function PackagesSection() {
             <div className="lime-accent-line" />
           </div>
 
+          {/* Start With Foundation Section */}
+          <div 
+            className="mx-auto mb-8 md:mb-12 text-center px-5 py-6 md:px-10 md:py-8"
+            style={{
+              maxWidth: '700px',
+              background: 'rgba(124, 193, 66, 0.05)',
+              border: '1px solid rgba(124, 193, 66, 0.15)',
+              borderRadius: '12px',
+              lineHeight: '1.7'
+            }}
+          >
+            <h3 
+              className="text-white mb-4 text-xl md:text-2xl"
+              style={{
+                fontFamily: 'Montserrat, sans-serif',
+                fontWeight: 600
+              }}
+            >
+              Start With Foundation, Scale As Needed
+            </h3>
+            <p 
+              className="text-[15px] md:text-base"
+              style={{ color: 'rgba(255, 255, 255, 0.75)' }}
+            >
+              Most clients begin with Package A to establish their character library foundation, then upgrade to rigging and animation as production needs evolve. This approach allows you to validate quality and pipeline before scaling to full production.
+            </p>
+          </div>
+
           <div className="grid md:grid-cols-3 gap-8 mb-12">
             {packages.map((pkg, index) => (
               <motion.div
@@ -163,28 +190,12 @@ export function PackagesSection() {
                   }}
                   drag={false}
                   whileHover={{
-                    scale: pkg.recommended ? 1.02 : 1.01,
-                    boxShadow: pkg.recommended 
-                      ? '0 8px 40px rgba(124, 193, 66, 0.3)' 
-                      : '0 8px 40px rgba(0, 0, 0, 0.3)',
+                    scale: 1.01,
+                    boxShadow: '0 8px 40px rgba(0, 0, 0, 0.3)',
                     borderColor: pkg.accentColor,
                     transition: { duration: 0.3 }
                   }}
                 >
-                  {/* Recommended Badge */}
-                  {pkg.recommended && (
-                    <motion.div
-                      className="absolute top-4 right-4 px-3 py-2 rounded-full text-white font-bold text-xs flex items-center gap-1.5 z-10 max-w-[90%]"
-                      style={{
-                        background: 'linear-gradient(135deg, #dd0b83, #ff1493)',
-                        boxShadow: '0 4px 12px rgba(221, 11, 131, 0.4)'
-                      }}
-                      animate={badgePulse}
-                    >
-                      <FaCheck className="text-xs flex-shrink-0" />
-                      <span className="text-[10px] sm:text-xs whitespace-nowrap" style={{ letterSpacing: '0.3px' }}>RECOMMENDED FOR AI</span>
-                    </motion.div>
-                  )}
 
                   {/* Header */}
                   <div className="text-center mb-8 mt-8">
@@ -208,13 +219,7 @@ export function PackagesSection() {
                         fontWeight: 700,
                         letterSpacing: '-1px',
                         paddingBottom: '4px',
-                        color: pkg.recommended ? undefined : 'white',
-                        ...(pkg.recommended && {
-                          background: 'linear-gradient(135deg, #7cc142, #8bd253)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text'
-                        })
+                        color: 'white'
                       }}
                     >
                       {pkg.price}
@@ -369,8 +374,68 @@ export function PackagesSection() {
             transition={{ delay: 0.6 }}
           >
             <p style={{ fontSize: '15px', color: 'rgba(255, 255, 255, 0.7)' }}>
-              All packages include: <span className="text-white font-semibold">Weekly reviews</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Priority support</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Unlimited revisions</span> (2 rounds per character) <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Delivery within 14-17 weeks</span>
+              All packages include: <span className="text-white font-semibold">Weekly reviews</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Priority support</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">2 revision rounds per character</span> <span style={{ color: '#7cc142' }}>•</span> <span className="text-white font-semibold">Delivery within 14-17 weeks</span>
             </p>
+          </motion.div>
+
+          {/* Flexible Upgrade Path Callout */}
+          <motion.div
+            className="mx-auto px-6 py-5 md:px-9 md:py-7 text-left mt-10"
+            style={{
+              background: 'rgba(56, 194, 214, 0.05)',
+              border: '1px solid rgba(56, 194, 214, 0.2)',
+              borderRadius: '12px',
+              maxWidth: '800px'
+            }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.7 }}
+          >
+            <h3 
+              className="text-base md:text-lg mb-3"
+              style={{
+                fontFamily: 'Montserrat, sans-serif',
+                fontWeight: 700,
+                color: '#38c2d6'
+              }}
+            >
+              ⚡ Flexible Upgrade Path
+            </h3>
+            <p 
+              className="text-sm md:text-[15px] mb-3"
+              style={{
+                fontFamily: 'Montserrat, sans-serif',
+                color: 'rgba(255, 255, 255, 0.8)',
+                lineHeight: '1.7'
+              }}
+            >
+              Start with Foundation and upgrade to Production-Ready or Comprehensive at any time. We'll credit your initial investment toward the upgraded package.
+            </p>
+            <p 
+              className="text-sm md:text-[15px] mb-2"
+              style={{
+                fontFamily: 'Montserrat, sans-serif',
+                color: 'rgba(255, 255, 255, 0.8)',
+                lineHeight: '1.7'
+              }}
+            >
+              This allows you to:
+            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              <li className="text-sm mb-2 pl-5 relative" style={{ color: '#38c2d6' }}>
+                <span style={{ position: 'absolute', left: 0 }}>•</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Test quality and speed with lower commitment</span>
+              </li>
+              <li className="text-sm mb-2 pl-5 relative" style={{ color: '#38c2d6' }}>
+                <span style={{ position: 'absolute', left: 0 }}>•</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Validate pipeline before scaling to full production</span>
+              </li>
+              <li className="text-sm pl-5 relative" style={{ color: '#38c2d6' }}>
+                <span style={{ position: 'absolute', left: 0 }}>•</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Add motion capabilities when video generation becomes priority</span>
+              </li>
+            </ul>
           </motion.div>
 
           {/* Consultation CTA */}

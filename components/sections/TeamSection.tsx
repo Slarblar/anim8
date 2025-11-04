@@ -41,10 +41,12 @@ const cardVariants = {
 }
 
 export function TeamSection() {
-  const [currentMember, setCurrentMember] = useState(1) // Start at index 1 to show 3 cards by default
+  const [currentMember, setCurrentMember] = useState(0) // Start at first card
   const carouselRef = useRef<HTMLDivElement>(null)
   const [carouselWidth, setCarouselWidth] = useState(0)
   const [cardGap, setCardGap] = useState(16)
+  const [cardWidth, setCardWidth] = useState(350)
+  const [visibleCards, setVisibleCards] = useState(1)
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
   const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -100,9 +102,33 @@ export function TeamSection() {
         const computedStyle = window.getComputedStyle(carouselRef.current)
         const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0
         const paddingRight = parseFloat(computedStyle.paddingRight) || 0
-        setCarouselWidth(carouselRef.current.offsetWidth - paddingLeft - paddingRight)
-        // Update gap based on screen size
-        setCardGap(window.innerWidth >= 768 ? 32 : 16)
+        const containerWidth = carouselRef.current.offsetWidth - paddingLeft - paddingRight
+        setCarouselWidth(containerWidth)
+        
+        const screenWidth = window.innerWidth
+        
+        // Responsive settings based on screen size
+        if (screenWidth < 768) {
+          // Mobile: 1 card, smaller width, smaller gap
+          setVisibleCards(1)
+          setCardWidth(Math.min(320, containerWidth - 40))
+          setCardGap(16)
+        } else if (screenWidth < 1024) {
+          // Tablet: 2 cards
+          setVisibleCards(2)
+          setCardWidth(Math.min(300, (containerWidth - 32) / 2))
+          setCardGap(24)
+        } else if (screenWidth < 1280) {
+          // Large tablet: 3 cards, slightly smaller
+          setVisibleCards(3)
+          setCardWidth(Math.min(280, (containerWidth - 64) / 3))
+          setCardGap(32)
+        } else {
+          // Desktop: 3 cards, full size
+          setVisibleCards(3)
+          setCardWidth(350)
+          setCardGap(32)
+        }
       }
     }
     
@@ -156,8 +182,10 @@ export function TeamSection() {
     }
     
     const distance = touchStart.x - touchEnd.x
-    const isLeftSwipe = distance > 50
-    const isRightSwipe = distance < -50
+    // Lower threshold for better mobile responsiveness
+    const swipeThreshold = 30
+    const isLeftSwipe = distance > swipeThreshold
+    const isRightSwipe = distance < -swipeThreshold
 
     if (isLeftSwipe) {
       nextMember()
@@ -186,8 +214,9 @@ export function TeamSection() {
     if (!isDragging) return
     
     const distance = dragStart - e.clientX
-    const isLeftDrag = distance > 50
-    const isRightDrag = distance < -50
+    const dragThreshold = 50
+    const isLeftDrag = distance > dragThreshold
+    const isRightDrag = distance < -dragThreshold
 
     if (isLeftDrag) nextMember()
     if (isRightDrag) prevMember()
@@ -237,7 +266,7 @@ export function TeamSection() {
               {/* Three card view with sliding carousel */}
               <div 
                 ref={carouselRef} 
-                className={`carousel-container flex items-center justify-start gap-4 md:gap-8 relative min-h-[400px] cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
+                className={`carousel-container flex items-center justify-start relative min-h-[450px] sm:min-h-[420px] md:min-h-[400px] cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -259,21 +288,41 @@ export function TeamSection() {
                   maxWidth: '100%',
                   position: 'relative',
                   scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
+                  msOverflowStyle: 'none',
+                  WebkitOverflowScrolling: 'touch'
                 }}
               >
                 <motion.div
-                  className="flex items-center gap-4 md:gap-8"
+                  className="flex items-center"
+                  style={{ gap: `${cardGap}px` }}
                   initial={false}
                   animate={{
                     x: (() => {
-                      if (!carouselWidth) return 0
-                      const cardWidth = 350
+                      if (!carouselWidth || !cardWidth) return 0
                       const cardWithGap = cardWidth + cardGap
-                      // Center the active card: move to center of container, then offset by current position
-                      const centerOffset = (carouselWidth / 2) - (cardWidth / 2)
+                      
+                      // For mobile (1 card): center the current card
+                      if (visibleCards === 1) {
+                        const centerOffset = (carouselWidth / 2) - (cardWidth / 2)
+                        const slideOffset = -(currentMember * cardWithGap)
+                        return centerOffset + slideOffset
+                      }
+                      
+                      // For tablet (2 cards): center the pair of cards
+                      if (visibleCards === 2) {
+                        const totalWidth = (cardWidth * 2) + cardGap
+                        const centerOffset = (carouselWidth / 2) - (totalWidth / 2)
+                        // Adjust so current card is on the left of the pair
+                        const slideOffset = -(currentMember * cardWithGap)
+                        return centerOffset + slideOffset
+                      }
+                      
+                      // For large screens (3 cards): center the trio of cards
+                      const totalWidth = (cardWidth * 3) + (cardGap * 2)
+                      const centerOffset = (carouselWidth / 2) - (totalWidth / 2)
+                      // Adjust so current card is in the middle of the trio
                       const slideOffset = -(currentMember * cardWithGap)
-                      return centerOffset + slideOffset
+                      return centerOffset + slideOffset + cardWidth + cardGap
                     })()
                   }}
                   transition={{
@@ -292,11 +341,46 @@ export function TeamSection() {
                   {teamMembers.map((member, index) => {
                     const relativeIndex = index - currentMember
                     let position: 'prev' | 'active' | 'next' | 'hidden'
+                    let isVisible = false
                     
-                    if (relativeIndex === -1) position = 'prev'
-                    else if (relativeIndex === 0) position = 'active'
-                    else if (relativeIndex === 1) position = 'next'
-                    else position = 'hidden'
+                    // Determine visibility based on screen size
+                    if (visibleCards === 1) {
+                      // Mobile: only show current
+                      if (relativeIndex === 0) {
+                        position = 'active'
+                        isVisible = true
+                      } else {
+                        position = 'hidden'
+                        isVisible = false
+                      }
+                    } else if (visibleCards === 2) {
+                      // Tablet: show current and next
+                      if (relativeIndex === 0) {
+                        position = 'active'
+                        isVisible = true
+                      } else if (relativeIndex === 1) {
+                        position = 'next'
+                        isVisible = true
+                      } else {
+                        position = 'hidden'
+                        isVisible = false
+                      }
+                    } else {
+                      // Large screens: show prev, current, and next
+                      if (relativeIndex === -1) {
+                        position = 'prev'
+                        isVisible = true
+                      } else if (relativeIndex === 0) {
+                        position = 'active'
+                        isVisible = true
+                      } else if (relativeIndex === 1) {
+                        position = 'next'
+                        isVisible = true
+                      } else {
+                        position = 'hidden'
+                        isVisible = false
+                      }
+                    }
                     
                     const isActive = position === 'active'
                     
@@ -305,16 +389,15 @@ export function TeamSection() {
                         key={index}
                         className="flex-shrink-0"
                         style={{
-                          width: '350px',
-                          maxWidth: '90vw',
-                          pointerEvents: position === 'hidden' ? 'none' : 'auto',
+                          width: `${cardWidth}px`,
+                          pointerEvents: isVisible ? 'auto' : 'none',
                           touchAction: 'none',
                         }}
                         onClick={() => setCurrentMember(index)}
                         initial={false}
                         animate={{
-                          opacity: position === 'hidden' ? 0 : isActive ? 1 : 0.7,
-                          scale: position === 'hidden' ? 0.8 : isActive ? 1 : 0.9,
+                          opacity: !isVisible ? 0 : isActive ? 1 : 0.7,
+                          scale: !isVisible ? 0.8 : isActive ? 1 : 0.9,
                         }}
                         transition={{
                           duration: 0.3,

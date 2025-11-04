@@ -526,6 +526,24 @@
       max-width: 600px;
       margin: 0 auto;
     }
+    
+    /* Team carousel on tablet - optimize for 2 cards */
+    #team .carousel-container {
+      padding: 0 1rem;
+    }
+    
+    #team .glass-card {
+      max-width: 300px;
+      min-width: 260px;
+    }
+  }
+  
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    /* Team carousel on large tablet - optimize for 3 smaller cards */
+    #team .glass-card {
+      max-width: 280px;
+      min-width: 260px;
+    }
   }
 
   /* Carousel touch handling */
@@ -689,6 +707,13 @@
       max-width: 90vw !important;
       min-width: 280px;
       will-change: auto;
+    }
+    
+    /* Team carousel cards on mobile */
+    #team .glass-card {
+      max-width: 320px;
+      min-width: 280px;
+      margin: 0 auto;
     }
     
     /* Smooth transitions for carousel items */

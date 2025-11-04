@@ -158,10 +158,10 @@ export function PackagesSection() {
                     border: `1.5px solid ${pkg.borderColor}`,
                     borderRadius: '16px',
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+                    touchAction: 'manipulation',
                   }}
                   whileHover={{
-                    y: -8,
-                    scale: pkg.recommended ? 1.02 : 1,
+                    scale: pkg.recommended ? 1.02 : 1.01,
                     boxShadow: pkg.recommended 
                       ? '0 8px 40px rgba(124, 193, 66, 0.3)' 
                       : '0 8px 40px rgba(0, 0, 0, 0.3)',
@@ -333,10 +333,10 @@ export function PackagesSection() {
                       fontWeight: 600,
                       letterSpacing: '0.5px',
                       display: 'block',
-                      border: 'none'
+                      border: 'none',
+                      touchAction: 'manipulation'
                     }}
                     whileHover={{
-                      y: -2,
                       scale: 1.02,
                       boxShadow: `0 8px 24px ${pkg.accentColor}50`,
                       transition: { duration: 0.2 }
@@ -415,10 +415,10 @@ export function PackagesSection() {
                 fontWeight: 600,
                 textDecoration: 'none',
                 border: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                touchAction: 'manipulation'
               }}
               whileHover={{
-                y: -2,
                 background: '#8bd253',
                 boxShadow: '0 8px 24px rgba(124, 193, 66, 0.4)',
                 transition: { duration: 0.3 }

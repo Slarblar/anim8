@@ -45,10 +45,11 @@ export function TeamSection() {
   const carouselRef = useRef<HTMLDivElement>(null)
   const [carouselWidth, setCarouselWidth] = useState(0)
   const [cardGap, setCardGap] = useState(16)
-  const [touchStart, setTouchStart] = useState(0)
-  const [touchEnd, setTouchEnd] = useState(0)
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
+  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState(0)
+  const [isSwipingHorizontally, setIsSwipingHorizontally] = useState(false)
 
   const teamMembers: TeamMember[] = [
     { 
@@ -118,18 +119,43 @@ export function TeamSection() {
     setCurrentMember((prev) => (prev - 1 + teamMembers.length) % teamMembers.length)
   }
 
-  // Touch handlers for mobile swipe
+  // Touch handlers for mobile swipe with horizontal/vertical detection
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX)
+    setTouchStart({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY
+    })
+    setIsSwipingHorizontally(false)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
+    if (!touchStart) return
+    
+    const currentX = e.targetTouches[0].clientX
+    const currentY = e.targetTouches[0].clientY
+    
+    setTouchEnd({ x: currentX, y: currentY })
+    
+    const deltaX = Math.abs(currentX - touchStart.x)
+    const deltaY = Math.abs(currentY - touchStart.y)
+    
+    // Determine if this is a horizontal swipe
+    if (deltaX > deltaY && deltaX > 10) {
+      setIsSwipingHorizontally(true)
+      // Prevent vertical scroll only if swiping horizontally
+      e.preventDefault()
+    }
   }
 
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    const distance = touchStart - touchEnd
+    if (!touchStart || !touchEnd || !isSwipingHorizontally) {
+      setTouchStart(null)
+      setTouchEnd(null)
+      setIsSwipingHorizontally(false)
+      return
+    }
+    
+    const distance = touchStart.x - touchEnd.x
     const isLeftSwipe = distance > 50
     const isRightSwipe = distance < -50
 
@@ -140,8 +166,9 @@ export function TeamSection() {
       prevMember()
     }
     
-    setTouchStart(0)
-    setTouchEnd(0)
+    setTouchStart(null)
+    setTouchEnd(null)
+    setIsSwipingHorizontally(false)
   }
 
   // Mouse drag handlers for desktop
@@ -210,7 +237,7 @@ export function TeamSection() {
               {/* Three card view with sliding carousel */}
               <div 
                 ref={carouselRef} 
-                className="flex items-center justify-start gap-4 md:gap-8 relative min-h-[400px] overflow-hidden cursor-grab active:cursor-grabbing"
+                className={`carousel-container flex items-center justify-start gap-4 md:gap-8 relative min-h-[400px] overflow-hidden cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -222,7 +249,7 @@ export function TeamSection() {
                 tabIndex={0}
                 role="region"
                 aria-label="Team members carousel"
-                style={{ userSelect: 'none' }}
+                style={{ userSelect: 'none', touchAction: isSwipingHorizontally ? 'none' : 'pan-y' }}
               >
                 <motion.div
                   className="flex items-center gap-4 md:gap-8"
@@ -240,9 +267,10 @@ export function TeamSection() {
                   }}
                   transition={{
                     type: "spring",
-                    stiffness: 280,
-                    damping: 30,
-                    mass: 0.9
+                    stiffness: 300,
+                    damping: 35,
+                    mass: 0.8,
+                    velocity: 0
                   }}
                   style={{
                     willChange: 'transform'
@@ -275,9 +303,9 @@ export function TeamSection() {
                           filter: position === 'hidden' ? 'blur(10px)' : 'blur(0px)',
                         }}
                         transition={{
-                          opacity: { duration: 0.5, ease: "easeInOut" },
-                          scale: { duration: 0.5, ease: "easeOut" },
-                          filter: { duration: 0.5, ease: "easeInOut" }
+                          opacity: { duration: 0.4, ease: "easeInOut" },
+                          scale: { type: "spring", stiffness: 300, damping: 30 },
+                          filter: { duration: 0.4, ease: "easeInOut" }
                         }}
                       >
                         <Card 
@@ -325,7 +353,7 @@ export function TeamSection() {
               {/* Previous Button */}
               <button
                 onClick={prevMember}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
+                className="carousel-nav-button w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
                 aria-label="Previous team member"
               >
                 <FaChevronLeft className="text-lg md:text-xl" />
@@ -350,7 +378,7 @@ export function TeamSection() {
               {/* Next Button */}
               <button
                 onClick={nextMember}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
+                className="carousel-nav-button w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
                 aria-label="Next team member"
               >
                 <FaChevronRight className="text-lg md:text-xl" />

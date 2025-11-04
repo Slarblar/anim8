@@ -148,8 +148,9 @@ export function ProcessSection() {
                   whileInView={{ opacity: 1, y: 0, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.8 + (index * 0.1), duration: 0.5 }}
-                  whileHover={{ y: -8, scale: 1.05 }}
+                  whileHover={{ scale: 1.05 }}
                   className="relative"
+                  style={{ touchAction: 'manipulation' }}
                 >
                   <div className={`glass-card p-6 text-center h-full flex flex-col items-center border-2 max-w-full ${
                     comm.color === 'lime' ? 'border-brand-lime/30 hover:border-brand-lime/50' :

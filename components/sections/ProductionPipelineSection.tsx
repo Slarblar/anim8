@@ -520,10 +520,11 @@ function FinalOutputBox() {
 export function ProductionPipelineSection() {
   const [currentStage, setCurrentStage] = useState(0)
   const [currentExpansion, setCurrentExpansion] = useState(0)
-  const [touchStart, setTouchStart] = useState(0)
-  const [touchEnd, setTouchEnd] = useState(0)
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
+  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState(0)
+  const [isSwipingHorizontally, setIsSwipingHorizontally] = useState(false)
   const carouselRef = useRef<HTMLDivElement>(null)
   const expansionCarouselRef = useRef<HTMLDivElement>(null)
   const [carouselWidth, setCarouselWidth] = useState(0)
@@ -655,28 +656,63 @@ export function ProductionPipelineSection() {
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX)
+    setTouchStart({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY
+    })
+    setIsSwipingHorizontally(false)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
+    if (!touchStart) return
+    
+    const currentX = e.targetTouches[0].clientX
+    const currentY = e.targetTouches[0].clientY
+    
+    setTouchEnd({ x: currentX, y: currentY })
+    
+    const deltaX = Math.abs(currentX - touchStart.x)
+    const deltaY = Math.abs(currentY - touchStart.y)
+    
+    // Determine if this is a horizontal swipe
+    if (deltaX > deltaY && deltaX > 10) {
+      setIsSwipingHorizontally(true)
+      // Prevent vertical scroll only if swiping horizontally
+      e.preventDefault()
+    }
   }
 
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    const distance = touchStart - touchEnd
+  const handleTouchEnd = (type: 'stage' | 'expansion') => {
+    if (!touchStart || !touchEnd || !isSwipingHorizontally) {
+      setTouchStart(null)
+      setTouchEnd(null)
+      setIsSwipingHorizontally(false)
+      return
+    }
+    
+    const distance = touchStart.x - touchEnd.x
     const isLeftSwipe = distance > 50
     const isRightSwipe = distance < -50
 
-    if (isLeftSwipe) {
-      nextStage()
-    }
-    if (isRightSwipe) {
-      prevStage()
+    if (type === 'stage') {
+      if (isLeftSwipe) {
+        nextStage()
+      }
+      if (isRightSwipe) {
+        prevStage()
+      }
+    } else {
+      if (isLeftSwipe) {
+        nextExpansion()
+      }
+      if (isRightSwipe) {
+        prevExpansion()
+      }
     }
     
-    setTouchStart(0)
-    setTouchEnd(0)
+    setTouchStart(null)
+    setTouchEnd(null)
+    setIsSwipingHorizontally(false)
   }
 
   // Mouse drag handlers for desktop
@@ -781,10 +817,10 @@ export function ProductionPipelineSection() {
           <div className="relative mb-12">
             {/* Carousel Content - full width */}
             <div
-              className="relative w-full overflow-hidden cursor-grab active:cursor-grabbing"
+              className={`carousel-container relative w-full overflow-hidden cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              onTouchEnd={() => handleTouchEnd('stage')}
               onMouseDown={(e) => handleMouseDown(e, 'stage')}
               onMouseMove={handleMouseMove}
               onMouseUp={(e) => handleMouseUp(e, 'stage')}
@@ -793,7 +829,7 @@ export function ProductionPipelineSection() {
               tabIndex={0}
               role="region"
               aria-label="Modeling pipeline stages"
-              style={{ userSelect: 'none' }}
+              style={{ userSelect: 'none', touchAction: isSwipingHorizontally ? 'none' : 'pan-y' }}
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[420px]">
@@ -866,7 +902,7 @@ export function ProductionPipelineSection() {
               {/* Previous Button */}
               <button
                 onClick={prevStage}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-lime/20 backdrop-blur-md border border-brand-lime/30 flex items-center justify-center text-brand-lime hover:bg-brand-lime/30 transition-all duration-300"
+                className="carousel-nav-button w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-lime/20 backdrop-blur-md border border-brand-lime/30 flex items-center justify-center text-brand-lime hover:bg-brand-lime/30 transition-all duration-300"
                 aria-label="Previous stage"
               >
                 <FaChevronLeft className="text-lg md:text-xl" />
@@ -891,7 +927,7 @@ export function ProductionPipelineSection() {
               {/* Next Button */}
               <button
                 onClick={nextStage}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-lime/20 backdrop-blur-md border border-brand-lime/30 flex items-center justify-center text-brand-lime hover:bg-brand-lime/30 transition-all duration-300"
+                className="carousel-nav-button w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-lime/20 backdrop-blur-md border border-brand-lime/30 flex items-center justify-center text-brand-lime hover:bg-brand-lime/30 transition-all duration-300"
                 aria-label="Next stage"
               >
                 <FaChevronRight className="text-lg md:text-xl" />
@@ -917,21 +953,10 @@ export function ProductionPipelineSection() {
           <div className="relative mb-12">
             {/* Expansion Carousel Content - full width */}
             <div 
-              className="relative w-full overflow-hidden cursor-grab active:cursor-grabbing"
+              className={`carousel-container relative w-full overflow-hidden cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
-              onTouchEnd={(e) => {
-                if (!touchStart || !touchEnd) return
-                const distance = touchStart - touchEnd
-                const isLeftSwipe = distance > 50
-                const isRightSwipe = distance < -50
-
-                if (isLeftSwipe) nextExpansion()
-                if (isRightSwipe) prevExpansion()
-                
-                setTouchStart(0)
-                setTouchEnd(0)
-              }}
+              onTouchEnd={() => handleTouchEnd('expansion')}
               onMouseDown={(e) => handleMouseDown(e, 'expansion')}
               onMouseMove={handleMouseMove}
               onMouseUp={(e) => handleMouseUp(e, 'expansion')}
@@ -940,7 +965,7 @@ export function ProductionPipelineSection() {
               tabIndex={0}
               role="region"
               aria-label="Optional expansion services"
-              style={{ userSelect: 'none' }}
+              style={{ userSelect: 'none', touchAction: isSwipingHorizontally ? 'none' : 'pan-y' }}
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[460px]">
@@ -1013,7 +1038,7 @@ export function ProductionPipelineSection() {
               {/* Previous Button */}
               <button
                 onClick={prevExpansion}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
+                className="carousel-nav-button w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
                 aria-label="Previous expansion"
               >
                 <FaChevronLeft className="text-lg md:text-xl" />
@@ -1038,7 +1063,7 @@ export function ProductionPipelineSection() {
               {/* Next Button */}
               <button
                 onClick={nextExpansion}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
+                className="carousel-nav-button w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-cyan/20 backdrop-blur-md border border-brand-cyan/30 flex items-center justify-center text-brand-cyan hover:bg-brand-cyan/30 transition-all duration-300"
                 aria-label="Next expansion"
               >
                 <FaChevronRight className="text-lg md:text-xl" />

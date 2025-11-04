@@ -22,6 +22,7 @@
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
+    overscroll-behavior-x: none;
   }
 
   /* Noise texture overlay */
@@ -163,6 +164,14 @@
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
+    position: relative;
+  }
+  
+  /* Ensure smooth scrolling behavior */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   /* Gradient text */
@@ -445,6 +454,23 @@
     }
   }
 
+  /* Carousel touch handling */
+  .carousel-container {
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .carousel-container.is-dragging {
+    touch-action: none;
+  }
+
+  /* Prevent momentum scrolling on iOS during carousel interaction */
+  body.carousel-active {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -484,5 +510,42 @@
       overflow-wrap: break-word;
       hyphens: auto;
     }
+    
+    /* Smoother carousel animations on mobile */
+    .carousel-container {
+      -webkit-overflow-scrolling: touch;
+      will-change: transform;
+    }
+    
+    /* Improve tap response on mobile */
+    button, a, [role="button"] {
+      -webkit-tap-highlight-color: rgba(124, 193, 66, 0.2);
+      touch-action: manipulation;
+    }
+    
+    /* Optimize carousel cards for mobile */
+    .modeling-stage-card,
+    .expansion-card {
+      max-width: 90vw !important;
+      min-width: 280px;
+    }
+    
+    /* Larger touch targets for carousel navigation on mobile */
+    .carousel-nav-button {
+      min-width: 44px;
+      min-height: 44px;
+    }
+    
+    /* Prevent text selection during swipe */
+    .carousel-container * {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  }
+  
+  /* Smooth transitions for all animations */
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }

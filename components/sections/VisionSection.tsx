@@ -103,7 +103,8 @@ export function VisionSection() {
                     }}
                     transition={{ duration: 0.6 }}
                     className="glass-card p-6 text-center group cursor-pointer hover:scale-105 transition-transform duration-300"
-                    whileHover={{ y: -8 }}
+                    style={{ touchAction: 'manipulation' }}
+                    whileHover={{ scale: 1.05 }}
                   >
                     <motion.div 
                       className={`text-6xl mb-4 mx-auto w-fit ${feature.color}`}

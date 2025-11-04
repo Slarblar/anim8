@@ -61,10 +61,12 @@ export function ModelViewer({
         auto-rotate={autoRotate ? '' : undefined}
         auto-rotate-delay="0"
         rotation-per-second="30deg"
+        touch-action="pan-x pan-y"
         style={{
           width: '100%',
           height: '100%',
           backgroundColor: 'transparent',
+          touchAction: 'pan-x pan-y',
         }}
       >
         {/* Placeholder content when no model is loaded */}

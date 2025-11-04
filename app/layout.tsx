@@ -13,11 +13,13 @@ export const metadata: Metadata = {
     title: 'Anim-8 | Character Production',
     description: 'Production-ready 3D characters for AI & Web3',
     siteName: 'Anim-8',
+    images: ['/images/anim8card.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Anim-8 | Character Production',
     description: 'Production-ready 3D characters for AI & Web3',
+    images: ['/images/anim8card.jpg'],
   },
   robots: {
     index: true,

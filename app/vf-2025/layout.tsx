@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'VeeFriends Proposal - Anim-8',
     description: 'Confidential proposal for VeeFriends character production',
-    images: ['/images/preview-astronaut.png'],
+    images: ['/images/anim8card.jpg'],
     type: 'website',
   },
 }

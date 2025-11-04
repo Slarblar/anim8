@@ -546,7 +546,7 @@
     }
   }
 
-  /* Carousel touch handling */
+  /* Carousel touch handling - Enhanced for mobile performance */
   .carousel-container {
     touch-action: pan-y pinch-zoom;
     -webkit-overflow-scrolling: touch;
@@ -562,6 +562,8 @@
     width: 100%;
     max-width: 100%;
     position: relative;
+    isolation: isolate;
+    perspective: 1000px;
   }
   
   /* Prevent any scrollbars from appearing in carousel area */
@@ -645,6 +647,34 @@
     body {
       overflow-x: hidden !important;
     }
+    
+    /* Enhanced mobile carousel performance */
+    .carousel-container {
+      -webkit-perspective: 1000px;
+      perspective: 1000px;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
+    
+    /* Team carousel mobile optimization */
+    #team .carousel-container {
+      contain: strict;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+    }
+    
+    /* Prevent layout shift during animations */
+    .glass-card {
+      contain: layout style paint;
+      will-change: auto;
+    }
+    
+    /* Smooth touch scrolling for mobile */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-text-size-adjust: none;
+    }
   }
 
   /* Reduced motion support */
@@ -725,8 +755,31 @@
     
     /* Larger touch targets for carousel navigation on mobile */
     .carousel-nav-button {
-      min-width: 44px;
       min-height: 44px;
+      min-width: 44px;
+      touch-action: manipulation;
+    }
+    
+    /* Anti-flickering for Framer Motion components */
+    [data-framer-component-type] {
+      will-change: auto;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    
+    /* Optimize transitions on mobile */
+    .glass-card,
+    .modeling-stage-card,
+    .expansion-card {
+      transition-property: opacity, transform;
+      transition-timing-function: ease-out;
+      transition-duration: 0.3s;
+    }
+    
+    /* Prevent overscroll bounce on iOS */
+    body {
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
     }
     
     /* Prevent text selection during swipe */

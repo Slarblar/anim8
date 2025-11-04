@@ -3,9 +3,30 @@
 import { motion } from 'framer-motion'
 import { Section } from '../ui/Section'
 import { ModelViewer } from '../ui/ModelViewer'
+import { ImageCarousel } from '../ui/ImageCarousel'
 import { FiRotateCw, FiZoomIn, FiMove } from 'react-icons/fi'
 
 export function CapabilitySection() {
+  // Beauty render images
+  const beautyImages = [
+    '/images/whatyouget/beauty1.webp',
+    '/images/whatyouget/beauty2.webp',
+    '/images/whatyouget/beauty3.webp',
+    '/images/whatyouget/beauty4.webp',
+    '/images/whatyouget/beauty5.webp',
+    '/images/whatyouget/beauty6.webp',
+    '/images/whatyouget/beauty7.webp',
+  ]
+
+  // Wireframe images
+  const wireframeImages = [
+    '/images/whatyouget/wireframe1.webp',
+    '/images/whatyouget/wireframe2.webp',
+    '/images/whatyouget/wireframe3.webp',
+    '/images/whatyouget/wireframe4.webp',
+    '/images/whatyouget/wireframe5.webp',
+  ]
+
   return (
     <Section id="capability" className="bg-background-dark">
       <div className="container-custom">
@@ -22,25 +43,51 @@ export function CapabilitySection() {
             <div className="lime-accent-line" />
           </div>
 
-          <p className="text-xl md:text-2xl text-center text-text max-w-4xl mx-auto mb-16">
+          <p className="text-xl md:text-2xl text-center text-text max-w-4xl mx-auto mb-12">
             From concept to production-ready asset in <span className="text-brand-lime font-bold whitespace-nowrap">3-4 days</span>. 
             Clean topology, optimized for AI training, production-grade quality.
           </p>
 
-          {/* Split-screen image placeholder */}
+          {/* Adventurous Astronaut Model Preview */}
+          <motion.div
+            className="flex justify-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <div className="glass-card p-6 max-w-2xl">
+              <img
+                src="/images/imgi_12_adventurous-astronaut.png"
+                alt="Adventurous Astronaut - Production Ready Model"
+                className="w-full h-auto rounded-lg"
+              />
+              <p className="text-center text-text-muted text-sm mt-4 italic">
+                Adventurous Astronaut - Our spec piece showcasing production-ready quality
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Interactive Image Carousels */}
           <div className="glass-card p-4 mb-8">
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="aspect-square bg-gradient-to-br from-brand-lime/20 to-brand-cyan/20 rounded-lg flex items-center justify-center">
-                <p className="text-text-muted">Beauty Render<br/>Astronaut Character</p>
-              </div>
-              <div className="aspect-square bg-gradient-to-br from-brand-pink/20 to-brand-navy/40 rounded-lg flex items-center justify-center">
-                <p className="text-text-muted">Wireframe Overlay<br/>Clean Topology</p>
-              </div>
+              <ImageCarousel
+                images={beautyImages}
+                title="Beauty Render"
+                subtitle="Adventurous Astronaut"
+                autoPlay={false}
+              />
+              <ImageCarousel
+                images={wireframeImages}
+                title="Wireframe Overlay"
+                subtitle="Clean Topology"
+                autoPlay={false}
+              />
             </div>
           </div>
 
           <p className="text-center text-text-muted italic mb-12">
-            This was a spec piece to prove our capability. Your VeeFriends characters will receive this level of craft—at scale.
+            Introducing our Adventurous Astronaut—a spec piece demonstrating our capability. Your VeeFriends characters will receive this level of craft and detail—at scale.
           </p>
 
           {/* 3D Model Viewer Instructions */}
@@ -63,11 +110,21 @@ export function CapabilitySection() {
           {/* 3D Model Viewer */}
           <div className="glass-card p-4">
             <ModelViewer 
-              src="/models/Anim-8_EdenOffline_CeramicSupra_Decimate_Final.glb"
-              alt="Anim-8 Character 3D Model"
+              src="/models/AdventurousAstronaut_Model_v01.glb"
+              alt="Adventurous Astronaut 3D Model"
               autoRotate={true}
               cameraControls={true}
+              scale="0.8"
+              rotationPerSecond="21deg"
             />
+            
+            {/* Web optimization note */}
+            <div className="mt-4 text-center">
+              <p className="text-xs md:text-lg text-text-muted">
+                <span className="text-brand-cyan font-medium">Note:</span> Web-optimized version for interactive preview. 
+                Production assets delivered at full resolution with enhanced detail.
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>

@@ -10,6 +10,8 @@ interface ModelViewerProps {
   poster?: string // Placeholder image while loading
   autoRotate?: boolean
   cameraControls?: boolean
+  scale?: string // Scale factor (e.g., "0.8" for 80% size)
+  rotationPerSecond?: string // Rotation speed (e.g., "21deg")
   className?: string
 }
 
@@ -19,6 +21,8 @@ export function ModelViewer({
   poster,
   autoRotate = true,
   cameraControls = true,
+  scale = '1',
+  rotationPerSecond = '30deg',
   className
 }: ModelViewerProps) {
   const modelViewerRef = useRef<HTMLElement>(null)
@@ -46,12 +50,14 @@ export function ModelViewer({
       viewer.resetTurntableRotation?.()
       viewer.cameraOrbit = viewer.getAttribute('camera-orbit') || 'auto auto auto'
       viewer.fieldOfView = 'auto'
+      // Reset panning by resetting camera target to model center
+      viewer.cameraTarget = 'auto auto auto'
       viewer.jumpCameraToGoal()
     }
   }
 
   return (
-    <div className={cn('relative aspect-video rounded-xl overflow-hidden', className)}>
+    <div className={cn('relative aspect-square md:aspect-video rounded-xl overflow-hidden', className)}>
       <model-viewer
         ref={modelViewerRef as any}
         src={src || undefined}
@@ -60,13 +66,14 @@ export function ModelViewer({
         camera-controls={cameraControls ? '' : undefined}
         auto-rotate={autoRotate ? '' : undefined}
         auto-rotate-delay="0"
-        rotation-per-second="30deg"
+        rotation-per-second={rotationPerSecond}
         touch-action="pan-x pan-y"
         style={{
           width: '100%',
           height: '100%',
           backgroundColor: 'transparent',
           touchAction: 'pan-x pan-y',
+          transform: `scale(${scale})`,
         }}
       >
         {/* Placeholder content when no model is loaded */}

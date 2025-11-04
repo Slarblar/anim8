@@ -49,6 +49,7 @@ export function TeamSection() {
   const [isAnimating, setIsAnimating] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // Core leadership team members - ordered by technical relevance
   const teamMembers: TeamMember[] = [
     { 
       name: 'Darren Flowers', 
@@ -71,25 +72,25 @@ export function TeamSection() {
       image: '/images/team/khai.webp'
     },
     { 
-      name: 'Luka Trinh', 
-      role: 'Senior Animator',
-      credentials: 'Industrial Light & Magic, Sony, Blizzard',
+      name: 'Luka', 
+      role: 'Senior Modeler',
+      credentials: 'AAA Game Development Experience',
       details: [
-        'Character animation and motion systems',
-        'Cinematic animation and motion direction',
+        'High-quality character and prop modeling',
+        'Advanced sculpting and retopology',
       ],
       image: '/images/team/luka.webp'
     },
     { 
-      name: 'Keira Kieu', 
-      role: 'COO',
-      credentials: 'Operations & Coordination',
+      name: 'Keira Duong', 
+      role: 'Chief Operating Officer',
+      credentials: 'Big 4 Advisory, Finance & Strategic Growth',
       details: [
-        'Operations and coordination',
-        'Leadership team and staff management',
+        'Strategic operations and governance',
+        'Financial planning and team leadership',
       ],
       image: '/images/team/keira.webp'
-    },
+    }
   ]
 
   useEffect(() => {
@@ -249,18 +250,40 @@ export function TeamSection() {
                     let position: 'prev' | 'active' | 'next' = 'active'
                     
                     if (isTablet) {
-                      // Tablet: show 2 cards
-                      if (relativeIndex === 0 || relativeIndex === 1) {
-                        isVisible = true
-                        position = relativeIndex === 0 ? 'active' : 'next'
-                      }
-                    } else {
-                      // Desktop: show 3 cards
+                      // Tablet: show 3 cards out of 4 total with wrapping
                       if (relativeIndex >= -1 && relativeIndex <= 1) {
                         isVisible = true
                         if (relativeIndex === -1) position = 'prev'
                         else if (relativeIndex === 0) position = 'active'
                         else position = 'next'
+                      }
+                      // Handle wrapping: when at first member, show last member as prev
+                      else if (relativeIndex === teamMembers.length - 1) {
+                        isVisible = true
+                        position = 'prev'
+                      }
+                      // Handle wrapping: when at last member, show first member as next
+                      else if (relativeIndex === -(teamMembers.length - 1)) {
+                        isVisible = true
+                        position = 'next'
+                      }
+                    } else {
+                      // Desktop: show 3 cards out of 4 total with wrapping
+                      if (relativeIndex >= -1 && relativeIndex <= 1) {
+                        isVisible = true
+                        if (relativeIndex === -1) position = 'prev'
+                        else if (relativeIndex === 0) position = 'active'
+                        else position = 'next'
+                      }
+                      // Handle wrapping: when at first member, show last member as prev
+                      else if (relativeIndex === teamMembers.length - 1) {
+                        isVisible = true
+                        position = 'prev'
+                      }
+                      // Handle wrapping: when at last member, show first member as next
+                      else if (relativeIndex === -(teamMembers.length - 1)) {
+                        isVisible = true
+                        position = 'next'
                       }
                     }
                     

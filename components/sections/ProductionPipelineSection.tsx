@@ -286,7 +286,7 @@ function ExpansionCard({ type, index, position, onAdvance, onSelect, useMobileBl
         'Control curves'
       ],
       timeline: '+2-3 days per character',
-      previewImage: '/images/preview-dog.png'
+      previewImage: '/images/optional-expansions/addrigging.webp'
     },
     animation: {
       icon: <FaPlay />,
@@ -300,7 +300,7 @@ function ExpansionCard({ type, index, position, onAdvance, onSelect, useMobileBl
         'Multiple camera angles'
       ],
       timeline: '+3-5 days per character',
-      previewImage: '/images/preview-phoenix.png'
+      previewImage: '/images/optional-expansions/animation.webp'
     },
     rendering: {
       icon: <FaStar />,
@@ -314,7 +314,7 @@ function ExpansionCard({ type, index, position, onAdvance, onSelect, useMobileBl
         'Promotional assets'
       ],
       timeline: '+1-2 days per character',
-      previewImage: '/images/preview-bobcat.png'
+      previewImage: '/images/optional-expansions/rendering.webp'
     }
   }
 
@@ -575,7 +575,7 @@ export function ProductionPipelineSection() {
       ],
       tools: ["Blender", "Quad Remesher", "Topogun", "ZBrush"],
       quality: "All quads, no n-gons",
-      previewImage: "/images/preview-dog.png"
+      previewImage: "/images/modeling-pipeline/retopology.webp"
     },
     {
       number: "05",

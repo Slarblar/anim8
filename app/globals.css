@@ -458,6 +458,11 @@
   .carousel-container {
     touch-action: pan-y pinch-zoom;
     -webkit-overflow-scrolling: touch;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
   }
 
   .carousel-container.is-dragging {
@@ -469,6 +474,15 @@
     overflow: hidden;
     position: fixed;
     width: 100%;
+  }
+  
+  /* Prevent flickering on carousel cards */
+  .modeling-stage-card,
+  .expansion-card {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
   }
   
   /* Disable hover effects on touch devices globally */
@@ -558,6 +572,8 @@
     .carousel-container {
       -webkit-overflow-scrolling: touch;
       will-change: transform;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
     }
     
     /* Improve tap response on mobile */
@@ -571,6 +587,14 @@
     .expansion-card {
       max-width: 90vw !important;
       min-width: 280px;
+      will-change: opacity, transform;
+    }
+    
+    /* Smooth transitions for carousel items */
+    .glass-card {
+      will-change: auto;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
     }
     
     /* Larger touch targets for carousel navigation on mobile */

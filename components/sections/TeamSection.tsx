@@ -267,13 +267,15 @@ export function TeamSection() {
                   }}
                   transition={{
                     type: "spring",
-                    stiffness: 300,
-                    damping: 35,
-                    mass: 0.8,
-                    velocity: 0
+                    stiffness: 260,
+                    damping: 30,
+                    mass: 1,
+                    restDelta: 0.01,
+                    restSpeed: 0.01
                   }}
                   style={{
-                    willChange: 'transform'
+                    willChange: 'transform',
+                    touchAction: 'none'
                   }}
                 >
                   {teamMembers.map((member, index) => {
@@ -294,24 +296,27 @@ export function TeamSection() {
                         style={{
                           width: '350px',
                           maxWidth: '90vw',
-                          pointerEvents: position === 'hidden' ? 'none' : 'auto'
+                          pointerEvents: position === 'hidden' ? 'none' : 'auto',
+                          touchAction: 'none',
                         }}
                         onClick={() => setCurrentMember(index)}
+                        initial={false}
                         animate={{
                           opacity: position === 'hidden' ? 0 : isActive ? 1 : 0.7,
                           scale: position === 'hidden' ? 0.8 : isActive ? 1 : 0.9,
-                          filter: position === 'hidden' ? 'blur(10px)' : 'blur(0px)',
                         }}
                         transition={{
-                          opacity: { duration: 0.4, ease: "easeInOut" },
-                          scale: { type: "spring", stiffness: 300, damping: 30 },
-                          filter: { duration: 0.4, ease: "easeInOut" }
+                          duration: 0.3,
+                          ease: "easeOut",
                         }}
                       >
                         <Card 
+                          hover={false}
+                          tilt={false}
                           className="text-center h-full cursor-pointer"
                           style={{
                             borderColor: isActive ? 'rgba(56, 194, 214, 0.3)' : undefined,
+                            touchAction: 'none',
                           }}
                         >
                           <div className={`w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden border-4 ${

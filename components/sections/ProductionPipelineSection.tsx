@@ -153,22 +153,18 @@ function ModelingStage({
         borderRadius: '16px',
         minHeight: '380px',
         maxWidth: '520px',
-        transition: 'all 0.4s ease',
+        transition: 'all 0.3s ease',
         opacity: isActive ? 1 : 0.4,
         scale: isActive ? 1 : 0.85,
         filter: isActive ? 'blur(0px)' : 'blur(6px)',
         pointerEvents: 'auto',
         zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
-        cursor: 'pointer'
+        cursor: 'pointer',
+        touchAction: 'none'
       }}
-      whileHover={isActive ? {
-        y: -8,
-        borderColor: 'rgba(124, 193, 66, 0.3)',
-        boxShadow: '0 16px 48px rgba(124, 193, 66, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-      } : {}}
+      drag={false}
       whileTap={isActive && onAdvance ? {
         scale: 0.97,
-        filter: 'blur(2px)',
         transition: { duration: 0.1 }
       } : {}}
     >
@@ -341,22 +337,18 @@ function ExpansionCard({ type, index, position, onAdvance, onSelect, useMobileBl
         borderRadius: '20px',
         minHeight: '420px',
         maxWidth: '470px',
-        transition: 'all 0.4s ease',
+        transition: 'all 0.3s ease',
         opacity: isActive ? 1 : 0.4,
         scale: isActive ? 1 : 0.85,
         filter: isActive ? 'blur(0px)' : 'blur(6px)',
         pointerEvents: 'auto',
         zIndex: isActive ? 10 : position === 'next' ? 6 : 5,
-        cursor: 'pointer'
+        cursor: 'pointer',
+        touchAction: 'none'
       }}
-      whileHover={isActive ? {
-        y: -10,
-        borderColor: 'rgba(56, 194, 214, 0.4)',
-        boxShadow: '0 16px 48px rgba(56, 194, 214, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-      } : {}}
+      drag={false}
       whileTap={isActive && onAdvance ? {
         scale: 0.97,
-        filter: 'blur(2px)',
         transition: { duration: 0.1 }
       } : {}}
     >
@@ -855,12 +847,15 @@ export function ProductionPipelineSection() {
                   }}
                   transition={{
                     type: "spring",
-                    stiffness: 300,
-                    damping: 35,
-                    mass: 0.8
+                    stiffness: 260,
+                    damping: 30,
+                    mass: 1,
+                    restDelta: 0.01,
+                    restSpeed: 0.01
                   }}
                   style={{
-                    willChange: 'transform'
+                    willChange: 'transform',
+                    touchAction: 'none'
                   }}
                 >
                   {modelingStages.map((stage, index) => {
@@ -991,12 +986,15 @@ export function ProductionPipelineSection() {
                   }}
                   transition={{
                     type: "spring",
-                    stiffness: 300,
-                    damping: 35,
-                    mass: 0.8
+                    stiffness: 260,
+                    damping: 30,
+                    mass: 1,
+                    restDelta: 0.01,
+                    restSpeed: 0.01
                   }}
                   style={{
-                    willChange: 'transform'
+                    willChange: 'transform',
+                    touchAction: 'none'
                   }}
                 >
                   {expansions.map((type, index) => {

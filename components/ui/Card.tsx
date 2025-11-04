@@ -70,10 +70,10 @@ export function Card({
   }
 
   const glowColors = {
-    default: 'rgba(124, 193, 66, 0.3)',
-    pink: 'rgba(221, 11, 131, 0.3)',
-    lime: 'rgba(124, 193, 66, 0.4)',
-    cyan: 'rgba(56, 194, 214, 0.5)',
+    default: '0 20px 60px rgba(124, 193, 66, 0.25), 0 0 80px rgba(124, 193, 66, 0.15)',
+    pink: '0 20px 60px rgba(221, 11, 131, 0.3), 0 0 80px rgba(221, 11, 131, 0.2)',
+    lime: '0 20px 60px rgba(124, 193, 66, 0.35), 0 0 80px rgba(124, 193, 66, 0.25)',
+    cyan: '0 20px 60px rgba(56, 194, 214, 0.4), 0 0 80px rgba(56, 194, 214, 0.3)',
   }
 
   return (
@@ -95,7 +95,7 @@ export function Card({
         transition: { duration: 0.3, ease: 'easeOut' }
       } : {}}
       animate={(isHovered && hover && !isTouchDevice) ? {
-        boxShadow: `0 20px 60px ${glowColors[variant]}`,
+        boxShadow: glowColors[variant],
       } : {}}
       transition={{ duration: 0.3 }}
       className={cn(

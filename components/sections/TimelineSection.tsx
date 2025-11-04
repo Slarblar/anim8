@@ -82,7 +82,7 @@ export function TimelineSection() {
           </motion.p>
 
           {/* Timeline */}
-          <div className="relative mb-16">
+          <div className="relative mb-16" style={{ overflow: 'hidden', overflowX: 'hidden' }}>
             {/* Animated connecting line */}
             <motion.div 
               className="hidden md:block absolute top-12 left-0 right-0 h-0.5 bg-gradient-to-r from-brand-lime/30 via-brand-cyan/50 to-brand-lime/30" 
@@ -106,6 +106,10 @@ export function TimelineSection() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
+              style={{
+                overflow: 'hidden',
+                overflowX: 'hidden'
+              }}
             >
               {phases.map((phase, index) => (
                 <motion.div

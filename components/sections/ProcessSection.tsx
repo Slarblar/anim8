@@ -60,7 +60,7 @@ export function ProcessSection() {
             <div className="lime-accent-line" />
           </div>
 
-          <div className="space-y-8 mb-16">
+          <div className="space-y-8 mb-16" style={{ overflow: 'visible' }}>
             {phases.map((phase, i) => (
               <motion.div
                 key={phase.phase}
@@ -113,7 +113,7 @@ export function ProcessSection() {
               Stay in sync with transparent, consistent updates throughout production
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-full" style={{ overflow: 'visible' }}>
               {[
                 {
                   frequency: 'Daily',

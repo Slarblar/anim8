@@ -3,6 +3,7 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useIsTouchDevice } from '@/lib/hooks'
 
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onAnimationStart' | 'onDragStart' | 'onDragEnd' | 'onDrag'> {
   children: ReactNode
@@ -21,6 +22,7 @@ export function Button({
   icon = true,
   ...props 
 }: ButtonProps) {
+  const isTouchDevice = useIsTouchDevice()
   const baseStyles = 'inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-300 focus-lime disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden'
   
   const variants = {
@@ -37,7 +39,7 @@ export function Button({
     lg: 'px-10 py-5 text-lg',
   }
 
-  const pulseAnimation = variant === 'primary' ? {
+  const pulseAnimation = (variant === 'primary' && !isTouchDevice) ? {
     boxShadow: [
       '0 4px 20px rgba(124, 193, 66, 0.2)',
       '0 4px 30px rgba(124, 193, 66, 0.4)',
@@ -67,10 +69,10 @@ export function Button({
     return (
       <motion.a
         href={href}
-        whileHover={{ 
+        whileHover={!isTouchDevice ? { 
           y: -4,
           scale: 1.02,
-        }}
+        } : {}}
         whileTap={{ scale: 0.98 }}
         animate={pulseAnimation}
         transition={{ 
@@ -78,6 +80,7 @@ export function Button({
           scale: { duration: 0.2 },
           boxShadow: { duration: 2, repeat: Infinity }
         }}
+        style={{ touchAction: 'manipulation' }}
         className={cn(
           baseStyles,
           variants[variant],
@@ -92,10 +95,10 @@ export function Button({
 
   return (
     <motion.button
-      whileHover={{ 
+      whileHover={!isTouchDevice ? { 
         y: -4,
         scale: 1.02,
-      }}
+      } : {}}
       whileTap={{ scale: 0.98 }}
       animate={pulseAnimation}
       transition={{ 
@@ -103,6 +106,7 @@ export function Button({
         scale: { duration: 0.2 },
         boxShadow: { duration: 2, repeat: Infinity }
       }}
+      style={{ touchAction: 'manipulation' }}
       className={cn(
         baseStyles,
         variants[variant],

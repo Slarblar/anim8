@@ -12,17 +12,52 @@
 
   html {
     scroll-behavior: smooth;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
+    overflow-y: scroll;
     width: 100%;
+    max-width: 100vw;
+  }
+  
+  /* Custom scrollbar styling - always visible to prevent layout shift */
+  html::-webkit-scrollbar {
+    width: 8px;
+    height: 0 !important;
+  }
+  
+  html::-webkit-scrollbar-track {
+    background: #0a0f1e;
+  }
+  
+  html::-webkit-scrollbar-thumb {
+    background: #7cc142;
+    border-radius: 4px;
+  }
+  
+  html::-webkit-scrollbar-thumb:hover {
+    background: #8bd253;
+  }
+  
+  /* Force scrollbar gutter to prevent layout shift */
+  html {
+    scrollbar-gutter: stable;
   }
 
   body {
     @apply bg-brand-navy text-text antialiased font-sans;
     position: relative;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
+    overflow-y: auto;
     width: 100%;
     max-width: 100vw;
     overscroll-behavior-x: none;
+    min-height: 100vh;
+  }
+  
+  /* Prevent horizontal scrollbar at all costs */
+  body::-webkit-scrollbar-x {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   /* Noise texture overlay */
@@ -80,6 +115,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 
       0 8px 32px rgba(0, 0, 0, 0.3),
+      0 0 60px rgba(124, 193, 66, 0.05), /* Subtle outer glow */
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
@@ -94,7 +130,8 @@
   .glass-card-pink:hover {
     @apply bg-brand-pink/10 border-brand-pink/50;
     box-shadow: 
-      0 12px 40px rgba(221, 11, 131, 0.3),
+      0 12px 40px rgba(221, 11, 131, 0.2),
+      0 0 80px rgba(221, 11, 131, 0.3), /* Extended glow */
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
@@ -106,13 +143,15 @@
     @apply bg-brand-cyan/10 border-brand-cyan/50;
     box-shadow: 
       0 12px 40px rgba(56, 194, 214, 0.15),
+      0 0 80px rgba(56, 194, 214, 0.25), /* Extended glow */
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
   .glass-card-lime:hover {
     @apply bg-brand-lime/10 border-brand-lime/30;
     box-shadow: 
-      0 12px 40px rgba(124, 193, 66, 0.3),
+      0 12px 40px rgba(124, 193, 66, 0.2),
+      0 0 80px rgba(124, 193, 66, 0.3), /* Extended glow */
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
@@ -151,7 +190,23 @@
   .container-custom {
     @apply max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10;
     width: 100%;
-    overflow-x: hidden;
+    max-width: min(1400px, 100vw - 2rem);
+    overflow-x: clip !important;
+    overflow-y: visible;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+  
+  /* Hide scrollbars in containers */
+  .container-custom::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  
+  .container-custom {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
   /* Section padding */
@@ -161,10 +216,29 @@
   
   /* Section overflow fix */
   section {
-    overflow-x: hidden;
+    overflow-x: clip !important;
+    overflow-y: visible;
     width: 100%;
     max-width: 100vw;
     position: relative;
+    isolation: isolate;
+  }
+  
+  /* Prevent any section from showing scrollbars */
+  section,
+  section * {
+    scrollbar-width: none !important;
+  }
+  
+  section::-webkit-scrollbar,
+  section *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  
+  section {
+    -ms-overflow-style: none !important;
   }
   
   /* Ensure smooth scrolling behavior */
@@ -458,15 +532,37 @@
   .carousel-container {
     touch-action: pan-y pinch-zoom;
     -webkit-overflow-scrolling: touch;
-    will-change: transform;
+    will-change: auto;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
+    overflow: clip !important;
+    overflow-x: clip !important;
+    overflow-y: visible;
+    contain: layout style paint;
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+  }
+  
+  /* Prevent any scrollbars from appearing in carousel area */
+  .carousel-container,
+  .carousel-container * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  .carousel-container::-webkit-scrollbar,
+  .carousel-container *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   .carousel-container.is-dragging {
     touch-action: none;
+    will-change: transform;
   }
 
   /* Prevent momentum scrolling on iOS during carousel interaction */
@@ -526,6 +622,11 @@
     button, a, [role="button"] {
       -webkit-tap-highlight-color: transparent;
     }
+    
+    /* Ensure body doesn't show horizontal scroll */
+    body {
+      overflow-x: hidden !important;
+    }
   }
 
   /* Reduced motion support */
@@ -571,7 +672,7 @@
     /* Smoother carousel animations on mobile */
     .carousel-container {
       -webkit-overflow-scrolling: touch;
-      will-change: transform;
+      will-change: auto;
       transform: translate3d(0, 0, 0);
       -webkit-transform: translate3d(0, 0, 0);
     }
@@ -587,7 +688,7 @@
     .expansion-card {
       max-width: 90vw !important;
       min-width: 280px;
-      will-change: opacity, transform;
+      will-change: auto;
     }
     
     /* Smooth transitions for carousel items */
@@ -608,11 +709,42 @@
       -webkit-user-select: none;
       user-select: none;
     }
+    
+    /* Mobile viewport fixes */
+    html {
+      -webkit-text-size-adjust: 100%;
+      -moz-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    
+    /* Optimize for 60fps on mobile */
+    .modeling-stage-card,
+    .expansion-card,
+    motion.div {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
   }
   
   /* Smooth transitions for all animations */
   * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Allow glows to extend beyond bounds */
+  .allow-glow-overflow {
+    overflow: visible !important;
+  }
+  
+  /* Add padding to elements that contain glowing items */
+  .glow-container {
+    padding: 2rem;
+    overflow: visible;
+  }
+  
+  /* Ensure grid layouts allow glow overflow */
+  .grid {
+    overflow: visible;
   }
 }

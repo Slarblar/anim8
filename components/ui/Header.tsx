@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import { useIsTouchDevice } from '@/lib/hooks'
 
 export function Header() {
+  const isTouchDevice = useIsTouchDevice()
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [isLaunching, setIsLaunching] = useState(false)
@@ -65,22 +67,23 @@ export function Header() {
               initial={{ opacity: 0, filter: 'blur(10px)', scale: 0.9 }}
               animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
               exit={{ opacity: 0, filter: 'blur(10px)', scale: 0.9 }}
-              whileHover={{ 
+              whileHover={!isTouchDevice ? { 
                 scale: 1.1,
                 transition: { duration: 0.3, ease: 'easeOut' }
-              }}
+              } : {}}
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
               onClick={scrollToTop}
               className="pointer-events-auto cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-lime/50 focus:ring-offset-2 focus:ring-offset-transparent rounded-full"
+              style={{ touchAction: 'manipulation' }}
               aria-label="Scroll to top"
             >
               {/* Glassmorphic Circular Badge */}
               <motion.div 
                 className="relative w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden shadow-2xl"
-                whileHover={{
+                whileHover={!isTouchDevice ? {
                   boxShadow: '0 25px 50px -12px rgba(124, 193, 66, 0.5), 0 0 40px rgba(124, 193, 66, 0.3)'
-                }}
+                } : {}}
               >
                 {/* Combined blur and background layer */}
                 <div 
@@ -95,7 +98,7 @@ export function Header() {
                 {/* Inner glow effect - enhanced on hover */}
                 <motion.div 
                   className="absolute inset-0 bg-gradient-to-br from-brand-lime/20 via-transparent to-brand-cyan/20 rounded-full transition-opacity duration-300"
-                  whileHover={{ opacity: 1.5 }}
+                  whileHover={!isTouchDevice ? { opacity: 1.5 } : {}}
                 />
                 
                 {/* Subtle vignette to separate from background */}
@@ -104,7 +107,7 @@ export function Header() {
                 {/* Hover glow ring */}
                 <motion.div
                   className="absolute inset-0 rounded-full opacity-0"
-                  whileHover={{ opacity: 1 }}
+                  whileHover={!isTouchDevice ? { opacity: 1 } : {}}
                   transition={{ duration: 0.3 }}
                   style={{
                     boxShadow: 'inset 0 0 20px rgba(124, 193, 66, 0.4)'

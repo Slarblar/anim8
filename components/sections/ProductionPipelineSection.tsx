@@ -521,6 +521,7 @@ export function ProductionPipelineSection() {
   const expansionCarouselRef = useRef<HTMLDivElement>(null)
   const [carouselWidth, setCarouselWidth] = useState(0)
   const [expansionCarouselWidth, setExpansionCarouselWidth] = useState(0)
+  const [isClient, setIsClient] = useState(false)
 
   const modelingStages = [
     {
@@ -609,6 +610,12 @@ export function ProductionPipelineSection() {
   const expansions = ['rigging', 'animation', 'rendering'] as const
 
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return
+
     const updateWidth = () => {
       if (carouselRef.current) {
         // Get the actual visible width (accounting for padding)
@@ -627,9 +634,20 @@ export function ProductionPipelineSection() {
     
     // Use requestAnimationFrame to ensure DOM is ready
     requestAnimationFrame(updateWidth)
-    window.addEventListener('resize', updateWidth)
-    return () => window.removeEventListener('resize', updateWidth)
-  }, [])
+    
+    // Debounce resize events for better performance
+    let resizeTimeout: NodeJS.Timeout
+    const debouncedResize = () => {
+      clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(updateWidth, 150)
+    }
+    
+    window.addEventListener('resize', debouncedResize)
+    return () => {
+      window.removeEventListener('resize', debouncedResize)
+      clearTimeout(resizeTimeout)
+    }
+  }, [isClient])
 
   const nextStage = () => {
     setCurrentStage((prev) => (prev + 1) % modelingStages.length)
@@ -768,7 +786,7 @@ export function ProductionPipelineSection() {
   // }, [])
 
   return (
-    <Section id="production-pipeline" className="bg-background-dark relative overflow-hidden">
+    <Section id="production-pipeline" className="bg-background-dark relative" style={{ overflow: 'clip', overflowX: 'clip' }}>
       {/* Background gradient orbs */}
       <div className="gradient-orb gradient-orb-1" style={{ top: '10%', left: '5%' }} />
       <div className="gradient-orb gradient-orb-2" style={{ top: '60%', right: '10%' }} />
@@ -785,7 +803,7 @@ export function ProductionPipelineSection() {
         }}
       />
 
-      <div className="container-custom relative z-10">
+      <div className="container-custom relative z-10" style={{ overflow: 'clip', overflowX: 'clip' }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -806,10 +824,10 @@ export function ProductionPipelineSection() {
           </p>
 
           {/* Carousel Container */}
-          <div className="relative mb-12">
+          <div className="relative mb-12" style={{ overflow: 'clip', overflowX: 'clip', overflowY: 'visible' }}>
             {/* Carousel Content - full width */}
             <div
-              className={`carousel-container relative w-full overflow-hidden cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
+              className={`carousel-container relative w-full cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={() => handleTouchEnd('stage')}
@@ -821,7 +839,17 @@ export function ProductionPipelineSection() {
               tabIndex={0}
               role="region"
               aria-label="Modeling pipeline stages"
-              style={{ userSelect: 'none', touchAction: isSwipingHorizontally ? 'none' : 'pan-y' }}
+              style={{ 
+                userSelect: 'none', 
+                touchAction: isSwipingHorizontally ? 'none' : 'pan-y',
+                overflow: 'clip',
+                overflowX: 'clip',
+                overflowY: 'visible',
+                width: '100%',
+                maxWidth: '100%',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none'
+              }}
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[420px]">
@@ -838,7 +866,20 @@ export function ProductionPipelineSection() {
               </div>
 
               {/* Desktop: Three card view with sliding */}
-              <div ref={carouselRef} className="hidden md:flex items-center justify-start gap-16 relative min-h-[420px] overflow-hidden">
+              <div 
+                ref={carouselRef} 
+                className="hidden md:flex items-center justify-start gap-16 relative min-h-[420px]"
+                style={{
+                  overflow: 'clip',
+                  overflowX: 'clip',
+                  overflowY: 'visible',
+                  width: '100%',
+                  maxWidth: '100%',
+                  position: 'relative',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+              >
                 <motion.div
                   className="flex items-center gap-16"
                   initial={false}
@@ -854,7 +895,7 @@ export function ProductionPipelineSection() {
                     restSpeed: 0.01
                   }}
                   style={{
-                    willChange: 'transform',
+                    willChange: isDragging || isSwipingHorizontally ? 'transform' : 'auto',
                     touchAction: 'none'
                   }}
                 >
@@ -945,10 +986,10 @@ export function ProductionPipelineSection() {
           </motion.h3>
 
           {/* Expansion Carousel */}
-          <div className="relative mb-12">
+          <div className="relative mb-12" style={{ overflow: 'clip', overflowX: 'clip', overflowY: 'visible' }}>
             {/* Expansion Carousel Content - full width */}
             <div 
-              className={`carousel-container relative w-full overflow-hidden cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
+              className={`carousel-container relative w-full cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={() => handleTouchEnd('expansion')}
@@ -960,7 +1001,17 @@ export function ProductionPipelineSection() {
               tabIndex={0}
               role="region"
               aria-label="Optional expansion services"
-              style={{ userSelect: 'none', touchAction: isSwipingHorizontally ? 'none' : 'pan-y' }}
+              style={{ 
+                userSelect: 'none', 
+                touchAction: isSwipingHorizontally ? 'none' : 'pan-y',
+                overflow: 'clip',
+                overflowX: 'clip',
+                overflowY: 'visible',
+                width: '100%',
+                maxWidth: '100%',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none'
+              }}
             >
               {/* Mobile: Single card view */}
               <div className="flex md:hidden items-center justify-center min-h-[460px]">
@@ -977,7 +1028,20 @@ export function ProductionPipelineSection() {
               </div>
 
               {/* Desktop: Three card view with sliding */}
-              <div ref={expansionCarouselRef} className="hidden md:flex items-center justify-start gap-8 relative min-h-[460px] overflow-hidden">
+              <div 
+                ref={expansionCarouselRef} 
+                className="hidden md:flex items-center justify-start gap-8 relative min-h-[460px]"
+                style={{
+                  overflow: 'clip',
+                  overflowX: 'clip',
+                  overflowY: 'visible',
+                  width: '100%',
+                  maxWidth: '100%',
+                  position: 'relative',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+              >
                 <motion.div
                   className="flex items-center gap-8"
                   initial={false}
@@ -993,7 +1057,7 @@ export function ProductionPipelineSection() {
                     restSpeed: 0.01
                   }}
                   style={{
-                    willChange: 'transform',
+                    willChange: isDragging || isSwipingHorizontally ? 'transform' : 'auto',
                     touchAction: 'none'
                   }}
                 >

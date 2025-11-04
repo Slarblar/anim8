@@ -233,11 +233,11 @@ export function TeamSection() {
             </h3>
             
             {/* Carousel Container */}
-            <div className="relative mb-12">
+            <div className="relative mb-12" style={{ overflow: 'clip', overflowX: 'clip', overflowY: 'visible' }}>
               {/* Three card view with sliding carousel */}
               <div 
                 ref={carouselRef} 
-                className={`carousel-container flex items-center justify-start gap-4 md:gap-8 relative min-h-[400px] overflow-hidden cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
+                className={`carousel-container flex items-center justify-start gap-4 md:gap-8 relative min-h-[400px] cursor-grab active:cursor-grabbing ${isSwipingHorizontally ? 'is-dragging' : ''}`}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -249,7 +249,18 @@ export function TeamSection() {
                 tabIndex={0}
                 role="region"
                 aria-label="Team members carousel"
-                style={{ userSelect: 'none', touchAction: isSwipingHorizontally ? 'none' : 'pan-y' }}
+                style={{ 
+                  userSelect: 'none', 
+                  touchAction: isSwipingHorizontally ? 'none' : 'pan-y',
+                  overflow: 'clip',
+                  overflowX: 'clip',
+                  overflowY: 'visible',
+                  width: '100%',
+                  maxWidth: '100%',
+                  position: 'relative',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
               >
                 <motion.div
                   className="flex items-center gap-4 md:gap-8"
@@ -274,7 +285,7 @@ export function TeamSection() {
                     restSpeed: 0.01
                   }}
                   style={{
-                    willChange: 'transform',
+                    willChange: isDragging || isSwipingHorizontally ? 'transform' : 'auto',
                     touchAction: 'none'
                   }}
                 >

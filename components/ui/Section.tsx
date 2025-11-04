@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ReactNode } from 'react'
+import { ReactNode, CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 
 interface SectionProps {
@@ -9,13 +9,15 @@ interface SectionProps {
   children: ReactNode
   className?: string
   variant?: 'default' | 'gradient'
+  style?: CSSProperties
 }
 
 export function Section({ 
   id, 
   children, 
   className, 
-  variant = 'default' 
+  variant = 'default',
+  style
 }: SectionProps) {
   return (
     <motion.section
@@ -29,6 +31,7 @@ export function Section({
         variant === 'gradient' && 'gradient-bg',
         className
       )}
+      style={style}
     >
       {children}
     </motion.section>

@@ -113,18 +113,21 @@ export function BackedBySection() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: index * 0.2 }}
+                  drag={false}
+                  style={{ touchAction: 'pan-y' }}
                 >
                   {founder.link ? (
                     <Link 
                       href={founder.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block glass-card p-8 group hover:translate-y-[-8px] transition-all duration-300 cursor-pointer"
+                      className="block glass-card p-8 group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+                      style={{ touchAction: 'manipulation' }}
                     >
                       {CardContent}
                     </Link>
                   ) : (
-                    <div className="glass-card p-8 group hover:translate-y-[-8px] transition-all duration-300">
+                    <div className="glass-card p-8 group hover:scale-[1.02] transition-all duration-300" style={{ touchAction: 'pan-y' }}>
                       {CardContent}
                     </div>
                   )}

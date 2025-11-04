@@ -84,10 +84,12 @@ export function Card({
         rotateX: tilt ? rotateX : 0,
         rotateY: tilt ? rotateY : 0,
         transformStyle: 'preserve-3d',
+        touchAction: 'pan-y',
         ...style,
       }}
+      drag={false}
       whileHover={hover ? { 
-        y: -12,
+        scale: 1.02,
         transition: { duration: 0.3, ease: 'easeOut' }
       } : {}}
       animate={isHovered && hover ? {

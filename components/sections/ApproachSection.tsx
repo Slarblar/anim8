@@ -70,6 +70,8 @@ export function ApproachSection() {
                     visible: { opacity: 1, y: 0, scale: 1 }
                   }}
                   transition={{ duration: 0.6 }}
+                  drag={false}
+                  style={{ touchAction: 'pan-y' }}
                 >
                   <Card hover className="h-full">
                     <motion.div 

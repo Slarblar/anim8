@@ -192,16 +192,18 @@ export function CTASection() {
                   transition: 'all 0.3s ease',
                   width: '100%',
                   maxWidth: '300px',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  touchAction: 'manipulation'
                 }}
+                drag={false}
                 whileHover={{
                   background: '#8bd253',
-                  y: -2,
+                  scale: 1.02,
                   boxShadow: '0 6px 20px rgba(124, 193, 66, 0.4)',
                   transition: { duration: 0.3 }
                 }}
                 whileTap={{
-                  y: 0,
+                  scale: 0.98,
                   boxShadow: '0 2px 8px rgba(124, 193, 66, 0.3)'
                 }}
                 initial={{ opacity: 0, y: 20 }}
@@ -232,18 +234,20 @@ export function CTASection() {
                   textAlign: 'center',
                   width: '100%',
                   maxWidth: '280px',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  touchAction: 'manipulation'
                 }}
+                drag={false}
                 whileHover={{
                   background: 'rgba(56, 194, 214, 0.1)',
                   borderColor: '#4dd4e8',
-                  y: -2,
+                  scale: 1.02,
                   boxShadow: '0 4px 12px rgba(56, 194, 214, 0.2)',
                   transition: { duration: 0.3 }
                 }}
                 whileTap={{
                   background: 'rgba(56, 194, 214, 0.15)',
-                  y: 0
+                  scale: 0.98
                 }}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}

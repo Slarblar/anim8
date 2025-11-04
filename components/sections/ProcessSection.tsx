@@ -68,6 +68,8 @@ export function ProcessSection() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.2 }}
+                drag={false}
+                style={{ touchAction: 'pan-y' }}
               >
                 <Card>
                   <div className="flex items-start gap-6">
@@ -150,7 +152,8 @@ export function ProcessSection() {
                   transition={{ delay: 0.8 + (index * 0.1), duration: 0.5 }}
                   whileHover={{ scale: 1.05 }}
                   className="relative"
-                  style={{ touchAction: 'manipulation' }}
+                  drag={false}
+                  style={{ touchAction: 'pan-y' }}
                 >
                   <div className={`glass-card p-6 text-center h-full flex flex-col items-center border-2 max-w-full ${
                     comm.color === 'lime' ? 'border-brand-lime/30 hover:border-brand-lime/50' :

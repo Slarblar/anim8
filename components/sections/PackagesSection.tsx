@@ -149,6 +149,7 @@ export function PackagesSection() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 className="relative"
+                drag={false}
               >
                 <motion.div
                   className="glass-card h-full flex flex-col p-8 md:p-10 relative overflow-hidden"
@@ -158,8 +159,9 @@ export function PackagesSection() {
                     border: `1.5px solid ${pkg.borderColor}`,
                     borderRadius: '16px',
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
-                    touchAction: 'manipulation',
+                    touchAction: 'pan-y',
                   }}
+                  drag={false}
                   whileHover={{
                     scale: pkg.recommended ? 1.02 : 1.01,
                     boxShadow: pkg.recommended 

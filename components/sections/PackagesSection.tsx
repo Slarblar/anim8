@@ -410,7 +410,7 @@ export function PackagesSection() {
                 lineHeight: '1.7'
               }}
             >
-              Start with Foundation and upgrade to Production-Ready or Comprehensive at any time. We'll credit your initial investment toward the upgraded package.
+              Start with Foundation and upgrade to Production-Ready or Comprehensive at any time. We&apos;ll credit your initial investment toward the upgraded package.
             </p>
             <p 
               className="text-sm md:text-[15px] mb-2"

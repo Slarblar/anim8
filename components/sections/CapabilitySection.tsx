@@ -5,6 +5,7 @@ import { Section } from '../ui/Section'
 import { ModelViewer } from '../ui/ModelViewer'
 import { ImageCarousel } from '../ui/ImageCarousel'
 import { FiRotateCw, FiZoomIn, FiMove } from 'react-icons/fi'
+import Image from 'next/image'
 
 export function CapabilitySection() {
   // Beauty render images
@@ -57,9 +58,11 @@ export function CapabilitySection() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <div className="glass-card p-6 max-w-2xl">
-              <img
+              <Image
                 src="/images/imgi_12_adventurous-astronaut.png"
                 alt="Adventurous Astronaut - Production Ready Model"
+                width={800}
+                height={800}
                 className="w-full h-auto rounded-lg"
               />
               <p className="text-center text-text-muted text-sm mt-4 italic">

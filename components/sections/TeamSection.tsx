@@ -294,7 +294,6 @@ export function TeamSection() {
               >
                 <motion.div
                   className="flex items-center"
-                  style={{ gap: `${cardGap}px` }}
                   initial={false}
                   animate={{
                     x: (() => {
@@ -334,6 +333,7 @@ export function TeamSection() {
                     restSpeed: 0.01
                   }}
                   style={{
+                    gap: `${cardGap}px`,
                     willChange: isDragging || isSwipingHorizontally ? 'transform' : 'auto',
                     touchAction: 'none'
                   }}

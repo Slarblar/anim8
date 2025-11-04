@@ -3,6 +3,7 @@
 import { ReactNode, useRef, useState } from 'react'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useIsTouchDevice } from '@/lib/hooks'
 
 interface CardProps {
   children: ReactNode
@@ -25,6 +26,7 @@ export function Card({
 }: CardProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [isHovered, setIsHovered] = useState(false)
+  const isTouchDevice = useIsTouchDevice()
 
   // Mouse position for 3D tilt effect
   const x = useMotionValue(0)
@@ -77,29 +79,29 @@ export function Card({
   return (
     <motion.div
       ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
+      onMouseMove={!isTouchDevice ? handleMouseMove : undefined}
+      onMouseEnter={!isTouchDevice ? () => setIsHovered(true) : undefined}
+      onMouseLeave={!isTouchDevice ? handleMouseLeave : undefined}
       style={{
-        rotateX: tilt ? rotateX : 0,
-        rotateY: tilt ? rotateY : 0,
+        rotateX: (tilt && !isTouchDevice) ? rotateX : 0,
+        rotateY: (tilt && !isTouchDevice) ? rotateY : 0,
         transformStyle: 'preserve-3d',
         touchAction: 'pan-y',
         ...style,
       }}
       drag={false}
-      whileHover={hover ? { 
+      whileHover={(hover && !isTouchDevice) ? { 
         scale: 1.02,
         transition: { duration: 0.3, ease: 'easeOut' }
       } : {}}
-      animate={isHovered && hover ? {
+      animate={(isHovered && hover && !isTouchDevice) ? {
         boxShadow: `0 20px 60px ${glowColors[variant]}`,
       } : {}}
       transition={{ duration: 0.3 }}
       className={cn(
         'relative p-8',
         variantStyles[variant],
-        hover && 'glass-card-hover cursor-pointer',
+        hover && !isTouchDevice && 'glass-card-hover cursor-pointer',
         className
       )}
     >

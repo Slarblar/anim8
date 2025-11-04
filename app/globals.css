@@ -470,6 +470,49 @@
     position: fixed;
     width: 100%;
   }
+  
+  /* Disable hover effects on touch devices globally */
+  @media (hover: none) and (pointer: coarse) {
+    /* Disable all hover states on touch devices */
+    * {
+      pointer-events: auto !important;
+    }
+    
+    .glass-card-hover,
+    .hover\:scale-105,
+    .hover\:scale-\[1\.02\],
+    .hover\:translate-y-\[-8px\],
+    [class*="hover:"],
+    .group:hover *,
+    *:hover {
+      transform: none !important;
+      transition: none !important;
+    }
+    
+    /* Completely disable Framer Motion hover animations */
+    [data-framer-component-type] {
+      pointer-events: auto !important;
+    }
+    
+    /* Force no transforms on motion elements */
+    div[style*="transform"] {
+      transform: none !important;
+    }
+  }
+  
+  /* Additional mobile-specific fixes */
+  @media (max-width: 767px) {
+    /* Disable all hover interactions */
+    .glass-card:hover,
+    .glass-card-hover:hover {
+      transform: none !important;
+    }
+    
+    /* Prevent iOS from triggering hover on tap */
+    button, a, [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
 
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {

@@ -6,15 +6,5 @@ export const metadata: Metadata = {
 }
 
 export default function CareersLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@700;800;900&display=swap"
-        rel="stylesheet"
-      />
-      {children}
-    </>
-  )
+  return <>{children}</>
 }

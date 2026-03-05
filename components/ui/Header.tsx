@@ -57,7 +57,7 @@ export function Header() {
   return (
     <header 
       className={`fixed left-0 right-0 z-50 px-6 py-6 pointer-events-none transition-all duration-300 ease-out ${
-        isAtTop ? 'top-20 md:top-24' : 'top-0'
+        isAtTop ? 'top-6 md:top-24' : 'top-0'
       }`}
     >
       <div className="container-custom flex items-center justify-center">

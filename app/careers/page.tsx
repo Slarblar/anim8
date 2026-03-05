@@ -53,6 +53,40 @@ function SoftwareTag({ children, level }: { children: React.ReactNode; level: 'e
   )
 }
 
+const cellBase = "p-5 md:p-8 bg-white/[0.03] backdrop-blur-sm"
+
+function RoleCardGrid({
+  overview,
+  left,
+  right,
+}: {
+  overview: React.ReactNode
+  left: React.ReactNode
+  right: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-white/8">
+      <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
+        {overview}
+      </div>
+      <RoleCardRow left={left} right={right} />
+    </div>
+  )
+}
+
+function RoleCardRow({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
+  return (
+    <div className="md:flex">
+      <div className={`${cellBase} border-b md:border-b-0 md:border-r border-white/8 md:flex-1`}>
+        {left}
+      </div>
+      <div className={`${cellBase} md:flex-1`}>
+        {right}
+      </div>
+    </div>
+  )
+}
+
 function LanguageToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   return (
     <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1">
@@ -90,7 +124,7 @@ export default function CareersPage() {
       <main className="bg-brand-navy min-h-screen">
 
         {/* ── HERO ── */}
-        <section className="relative pt-64 md:pt-72 pb-20 px-4 overflow-hidden border-b border-white/5">
+        <section className="relative pt-36 sm:pt-44 md:pt-56 lg:pt-72 pb-16 md:pb-20 px-4 overflow-hidden border-b border-white/5">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-brand-lime/5 blur-[120px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-brand-cyan/5 blur-[100px] pointer-events-none" />
 
@@ -129,21 +163,21 @@ export default function CareersPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="flex flex-wrap justify-center gap-x-10 gap-y-4 text-sm"
+              className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-x-8 gap-y-5 sm:gap-x-10 sm:gap-y-4 text-sm max-w-sm sm:max-w-none mx-auto"
             >
               {c.metaItems.map(({ label, value }) => (
-                <div key={label} className="flex flex-col items-center gap-1">
-                  <span className="text-xs uppercase tracking-widest text-text-muted font-mono">{label}</span>
-                  <span className="text-white font-bold text-base">{value}</span>
+                <div key={label} className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-widest text-text-muted font-mono">{label}</span>
+                  <span className="text-white font-bold text-sm sm:text-base leading-snug">{value}</span>
                 </div>
               ))}
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xs uppercase tracking-widest text-text-muted font-mono">{c.metaInstagram}</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-widest text-text-muted font-mono">{c.metaInstagram}</span>
                 <a
                   href="https://www.instagram.com/anim8.studios/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-brand-cyan hover:text-brand-lime transition-colors font-bold text-base"
+                  className="text-brand-cyan hover:text-brand-lime transition-colors font-bold text-sm sm:text-base"
                 >
                   @anim8.studios ↗
                 </a>
@@ -185,31 +219,22 @@ export default function CareersPage() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-10">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.designer.tag}</RoleTag>
-                    <h2 className="text-white mb-2" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.designer.title}</h2>
-                    <p className="text-brand-cyan font-mono text-base">{c.designer.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.designer.title}</h2>
+                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.designer.comp}</p>
                   </div>
-                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-4 py-2 rounded-sm font-mono whitespace-pre-line text-right">
+                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.designer.badge}
                   </span>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-                  <div className="col-span-2 glass-card rounded-none p-8 bg-gradient-to-r from-brand-lime/5 to-transparent">
-                    <CardLabel>{c.designer.overview.label}</CardLabel>
-                    <p className="text-text-muted leading-relaxed">{c.designer.overview.body}</p>
-                  </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.designer.do.label}</CardLabel>
-                    <BulletList items={c.designer.do.items} />
-                  </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.designer.looking.label}</CardLabel>
-                    <BulletList items={c.designer.looking.items} />
-                  </div>
-                </div>
+                <RoleCardGrid
+                  overview={<><CardLabel>{c.designer.overview.label}</CardLabel><p className="text-text-muted leading-relaxed">{c.designer.overview.body}</p></>}
+                  left={<><CardLabel>{c.designer.do.label}</CardLabel><BulletList items={c.designer.do.items} /></>}
+                  right={<><CardLabel>{c.designer.looking.label}</CardLabel><BulletList items={c.designer.looking.items} /></>}
+                />
               </motion.div>
             </AnimatePresence>
           </div>
@@ -226,31 +251,22 @@ export default function CareersPage() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-10">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.intern.tag}</RoleTag>
-                    <h2 className="text-white mb-2" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.intern.title}</h2>
-                    <p className="text-brand-cyan font-mono text-base">{c.intern.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.intern.title}</h2>
+                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.intern.comp}</p>
                   </div>
-                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-4 py-2 rounded-sm font-mono whitespace-pre-line text-right">
+                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.intern.badge}
                   </span>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-                  <div className="col-span-2 glass-card rounded-none p-8 bg-gradient-to-r from-brand-lime/5 to-transparent">
-                    <CardLabel>{c.intern.about.label}</CardLabel>
-                    <p className="text-text-muted leading-relaxed">{c.intern.about.body}</p>
-                  </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.intern.do.label}</CardLabel>
-                    <BulletList items={c.intern.do.items} />
-                  </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.intern.looking.label}</CardLabel>
-                    <BulletList items={c.intern.looking.items} />
-                  </div>
-                </div>
+                <RoleCardGrid
+                  overview={<><CardLabel>{c.intern.about.label}</CardLabel><p className="text-text-muted leading-relaxed">{c.intern.about.body}</p></>}
+                  left={<><CardLabel>{c.intern.do.label}</CardLabel><BulletList items={c.intern.do.items} /></>}
+                  right={<><CardLabel>{c.intern.looking.label}</CardLabel><BulletList items={c.intern.looking.items} /></>}
+                />
               </motion.div>
             </AnimatePresence>
           </div>
@@ -267,39 +283,35 @@ export default function CareersPage() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-10">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.modeler.tag}</RoleTag>
-                    <h2 className="text-white mb-2" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.modeler.title}</h2>
-                    <p className="text-brand-cyan font-mono text-base">{c.modeler.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.modeler.title}</h2>
+                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.modeler.comp}</p>
                   </div>
-                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-4 py-2 rounded-sm font-mono whitespace-pre-line text-right">
+                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.modeler.badge}
                   </span>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-                  <div className="col-span-2 glass-card rounded-none p-8 bg-gradient-to-r from-brand-lime/5 to-transparent">
+                <div className="rounded-2xl overflow-hidden border border-white/5">
+                  {/* Overview - full width */}
+                  <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
                     <CardLabel>{c.modeler.overview.label}</CardLabel>
                     <p className="text-text-muted leading-relaxed">{c.modeler.overview.body}</p>
                   </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.modeler.modeling.label}</CardLabel>
-                    <BulletList items={c.modeler.modeling.items} />
-                  </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.modeler.materials.label}</CardLabel>
-                    <BulletList items={c.modeler.materials.items} />
-                  </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.modeler.pipeline.label}</CardLabel>
-                    <BulletList items={c.modeler.pipeline.items} />
-                  </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.modeler.qualifications.label}</CardLabel>
-                    <BulletList items={c.modeler.qualifications.items} />
-                  </div>
-                  <div className="glass-card rounded-none p-8">
+                  {/* Pairs row 1 */}
+                  <RoleCardRow
+                    left={<><CardLabel>{c.modeler.modeling.label}</CardLabel><BulletList items={c.modeler.modeling.items} /></>}
+                    right={<><CardLabel>{c.modeler.materials.label}</CardLabel><BulletList items={c.modeler.materials.items} /></>}
+                  />
+                  {/* Pairs row 2 */}
+                  <RoleCardRow
+                    left={<><CardLabel>{c.modeler.pipeline.label}</CardLabel><BulletList items={c.modeler.pipeline.items} /></>}
+                    right={<><CardLabel>{c.modeler.qualifications.label}</CardLabel><BulletList items={c.modeler.qualifications.items} /></>}
+                  />
+                  {/* Software row - starts the software card content inline */}
+                  <div className={`${cellBase} border-t border-white/8`}>
                     <CardLabel>{c.modeler.software.label}</CardLabel>
                     <div className="space-y-4">
                       <div>
@@ -328,7 +340,7 @@ export default function CareersPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="col-span-2 glass-card rounded-none p-8">
+                  <div className={`${cellBase} border-t border-white/8`}>
                     <CardLabel>{c.modeler.portfolio.label}</CardLabel>
                     <BulletList items={c.modeler.portfolio.items} />
                   </div>
@@ -349,35 +361,29 @@ export default function CareersPage() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-10">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.storyboard.tag}</RoleTag>
-                    <h2 className="text-white mb-2" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.storyboard.title}</h2>
-                    <p className="text-brand-cyan font-mono text-base">{c.storyboard.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.storyboard.title}</h2>
+                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.storyboard.comp}</p>
                   </div>
-                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-4 py-2 rounded-sm font-mono whitespace-pre-line text-right">
+                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.storyboard.badge}
                   </span>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-px bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-                  <div className="col-span-2 glass-card rounded-none p-8 bg-gradient-to-r from-brand-lime/5 to-transparent">
-                    <CardLabel>{c.storyboard.overview.label}</CardLabel>
-                    <p className="text-text-muted leading-relaxed">{c.storyboard.overview.body}</p>
-                  </div>
-                  <div className="glass-card rounded-none p-8">
-                    <CardLabel>{c.storyboard.do.label}</CardLabel>
-                    <BulletList items={c.storyboard.do.items} />
-                  </div>
-                  <div className="glass-card rounded-none p-8">
+                <RoleCardGrid
+                  overview={<><CardLabel>{c.storyboard.overview.label}</CardLabel><p className="text-text-muted leading-relaxed">{c.storyboard.overview.body}</p></>}
+                  left={<><CardLabel>{c.storyboard.do.label}</CardLabel><BulletList items={c.storyboard.do.items} /></>}
+                  right={<>
                     <CardLabel>{c.storyboard.looking.label}</CardLabel>
                     <BulletList items={c.storyboard.looking.items} />
                     <div className="mt-6 pl-4 border-l-2 border-brand-cyan/40 bg-brand-cyan/5 p-4 rounded-r-lg">
                       <p className="text-[10px] uppercase tracking-widest text-brand-cyan font-bold mb-3">{c.storyboard.bonus.label}</p>
                       <BulletList items={c.storyboard.bonus.items} />
                     </div>
-                  </div>
-                </div>
+                  </>}
+                />
               </motion.div>
             </AnimatePresence>
           </div>
@@ -399,9 +405,9 @@ export default function CareersPage() {
                   <div className="lime-accent-line" />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-8 mb-8">
+                <div className="grid md:grid-cols-2 gap-6 md:gap-8 mb-8">
                   {/* Studio Info */}
-                  <div className="glass-card p-8">
+                  <div className="glass-card p-5 md:p-8">
                     <CardLabel>{c.about.studioInfo.label}</CardLabel>
                     <ul className="space-y-4 mb-6">
                       {[
@@ -430,7 +436,7 @@ export default function CareersPage() {
                   </div>
 
                   {/* Creative Leadership */}
-                  <div className="glass-card p-8">
+                  <div className="glass-card p-5 md:p-8">
                     <CardLabel>{c.about.leadership.label}</CardLabel>
                     <div className="space-y-6">
                       {[
@@ -481,7 +487,7 @@ export default function CareersPage() {
                 </div>
 
                 {/* Production Team */}
-                <div className="glass-card p-8 mb-8">
+                <div className="glass-card p-5 md:p-8 mb-8">
                   <CardLabel>{c.about.team.label}</CardLabel>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
@@ -500,7 +506,7 @@ export default function CareersPage() {
                 </div>
 
                 {/* Benefits */}
-                <div className="glass-card p-8">
+                <div className="glass-card p-5 md:p-8">
                   <CardLabel>{c.about.benefits.label}</CardLabel>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {c.about.benefits.items.map((benefit) => (

@@ -20,7 +20,7 @@ export function Footer({ showConfidentialityNotice = false }: { showConfidential
                 priority
               />
               <p className="text-text-muted">
-                Production-ready characters for the AI era.
+                Full-pipeline 3D character production studio.
               </p>
             </div>
           </div>
@@ -30,23 +30,23 @@ export function Footer({ showConfidentialityNotice = false }: { showConfidential
             <h4 className="text-white font-bold mb-4">SERVICES</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#capability" className="text-text-muted hover:text-brand-lime transition-colors">
+                <a href="#services" className="text-text-muted hover:text-brand-lime transition-colors">
                   3D Character Production
                 </a>
               </li>
               <li>
-                <a href="#packages" className="text-text-muted hover:text-brand-lime transition-colors">
+                <a href="#services" className="text-text-muted hover:text-brand-lime transition-colors">
                   Rigging & Animation
                 </a>
               </li>
               <li>
-                <a href="#packages" className="text-text-muted hover:text-brand-lime transition-colors">
-                  AI Training Datasets
+                <a href="#services" className="text-text-muted hover:text-brand-lime transition-colors">
+                  Renders & Visual Development
                 </a>
               </li>
               <li>
-                <a href="#production-pipeline" className="text-text-muted hover:text-brand-lime transition-colors">
-                  Pipeline Development
+                <a href="#services" className="text-text-muted hover:text-brand-lime transition-colors">
+                  Pipeline & IP Development
                 </a>
               </li>
             </ul>

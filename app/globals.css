@@ -619,29 +619,11 @@
   
   /* Disable hover effects on touch devices globally */
   @media (hover: none) and (pointer: coarse) {
-    /* Disable all hover states on touch devices */
-    * {
-      pointer-events: auto !important;
-    }
-    
-    .glass-card-hover,
-    .hover\:scale-105,
-    .hover\:scale-\[1\.02\],
-    .hover\:translate-y-\[-8px\],
-    [class*="hover:"],
-    .group:hover *,
-    *:hover {
-      transform: none !important;
-      transition: none !important;
-    }
-    
-    /* Completely disable Framer Motion hover animations */
-    [data-framer-component-type] {
-      pointer-events: auto !important;
-    }
-    
-    /* Force no transforms on motion elements */
-    div[style*="transform"] {
+    /* Disable scale/translate hover effects only on specific interactive elements */
+    .glass-card-hover:hover,
+    .hover\:scale-105:hover,
+    .hover\:scale-\[1\.02\]:hover,
+    .hover\:translate-y-\[-8px\]:hover {
       transform: none !important;
     }
   }
@@ -816,7 +798,7 @@
     
     /* Prevent overscroll bounce on iOS */
     body {
-      overscroll-behavior: none;
+      overscroll-behavior-x: none;
       -webkit-overflow-scrolling: touch;
     }
     

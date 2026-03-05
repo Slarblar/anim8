@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anim-8 — Careers</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080810;
+    --surface: #0f0f1a;
+    --surface2: #161625;
+    --border: rgba(255,255,255,0.07);
+    --accent: #FF5C2A;
+    --accent2: #FFB347;
+    --text: #F0EDE8;
+    --muted: #6B6B82;
+    --tag-bg: rgba(255,92,42,0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── GRAIN OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.35;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,8,16,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 clamp(1.5rem, 5vw, 4rem);
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+  }
+
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.15em;
+    color: var(--text);
+    text-decoration: none;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-logo span {
+    display: inline-block;
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    position: relative;
+  }
+  .nav-logo span::after {
+    content: '8';
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; font-weight: 900; color: #fff;
+    font-family: 'Bebas Neue';
+  }
+
+  .nav-links {
+    display: flex; gap: 2rem; list-style: none;
+  }
+  .nav-links a {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: clamp(5rem, 12vw, 9rem) clamp(1.5rem, 5vw, 4rem) clamp(3rem, 6vw, 5rem);
+    border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -120px; right: -120px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(255,92,42,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .hero-label::before {
+    content: '';
+    display: inline-block; width: 28px; height: 1px;
+    background: var(--accent);
+  }
+
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(4rem, 10vw, 8rem);
+    line-height: 0.92;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .hero-meta {
+    display: flex; gap: 2.5rem; flex-wrap: wrap;
+    margin-top: 2.5rem;
+  }
+  .meta-item {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .meta-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .meta-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .meta-value a {
+    color: var(--accent2);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .meta-value a:hover { color: var(--accent); }
+
+  /* ── ROLES NAV ── */
+  .roles-nav {
+    padding: 0 clamp(1.5rem, 5vw, 4rem);
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 0; overflow-x: auto;
+  }
+  .roles-nav::-webkit-scrollbar { height: 0; }
+  .role-tab {
+    padding: 1.1rem 1.8rem;
+    font-size: 0.73rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .role-tab:hover { color: var(--text); border-bottom-color: var(--border); }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 5vw, 4rem);
+  }
+
+  /* ── ROLE SECTIONS ── */
+  .role-section {
+    padding: clamp(3rem, 6vw, 5rem) 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .role-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: start;
+    margin-bottom: 3rem;
+  }
+
+  .role-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--tag-bg);
+    padding: 5px 12px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255,92,42,0.2);
+  }
+
+  .role-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    letter-spacing: 0.05em;
+    line-height: 1;
+    color: var(--text);
+    margin-bottom: 0.6rem;
+  }
+
+  .role-comp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+    margin-top: 0.5rem;
+  }
+
+  .role-type-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    white-space: nowrap;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── CONTENT GRID ── */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .content-grid.single { grid-template-columns: 1fr; }
+  .content-grid.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+  .content-card {
+    background: var(--surface);
+    padding: 2rem;
+  }
+  .content-card.wide {
+    grid-column: 1 / -1;
+  }
+  .content-card.accent-bg {
+    background: linear-gradient(135deg, rgba(255,92,42,0.08) 0%, var(--surface) 60%);
+  }
+
+  .card-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.2rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(to right, rgba(255,92,42,0.3), transparent);
+  }
+
+  .bullet-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .bullet-list li {
+    display: flex; gap: 0.75rem;
+    font-size: 0.875rem;
+    color: #C5C2BE;
+    line-height: 1.55;
+  }
+  .bullet-list li::before {
+    content: '→';
+    color: var(--accent);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+    font-family: 'JetBrains Mono';
+  }
+
+  /* Software tags */
+  .software-grid {
+    display: flex; flex-direction: column; gap: 1.2rem;
+  }
+  .sw-group {}
+  .sw-group-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .sw-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .sw-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .sw-tag.expert {
+    background: rgba(255,92,42,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(255,92,42,0.3);
+  }
+  .sw-tag.mid {
+    background: rgba(255,255,255,0.05);
+    color: #9E9EB5;
+    border: 1px solid var(--border);
+  }
+  .sw-tag.nice {
+    background: transparent;
+    color: var(--muted);
+    border: 1px dashed rgba(255,255,255,0.1);
+  }
+
+  /* Overview text */
+  .overview-text {
+    font-size: 0.95rem;
+    color: #C5C2BE;
+    line-height: 1.75;
+  }
+
+  /* Bonus section */
+  .bonus-block {
+    margin-top: 1.2rem;
+    padding: 1rem 1.2rem;
+    border-left: 2px solid var(--accent2);
+    background: rgba(255,179,71,0.05);
+    border-radius: 0 6px 6px 0;
+  }
+  .bonus-block .card-label { color: var(--accent2); margin-bottom: 0.8rem; }
+  .bonus-block .card-label::after { background: linear-gradient(to right, rgba(255,179,71,0.3), transparent); }
+
+  /* ── ABOUT SECTION ── */
+  .about-section {
+    padding: clamp(3rem, 6vw, 5rem) 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .about-card {
+    background: var(--surface);
+    padding: 2.2rem;
+  }
+
+  .leader-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .leader-item:last-child { border-bottom: none; }
+  .leader-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue';
+    font-size: 1rem;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .leader-info { display: flex; flex-direction: column; gap: 3px; }
+  .leader-name {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .leader-role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+  .leader-studio {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .leader-links {
+    display: flex; gap: 8px;
+  }
+  .leader-links a {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent2);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+    padding: 2px 8px;
+    border: 1px solid rgba(255,179,71,0.2);
+    border-radius: 3px;
+    background: rgba(255,179,71,0.05);
+  }
+  .leader-links a:hover { color: var(--accent); border-color: rgba(255,92,42,0.3); }
+
+  .info-list { list-style: none; display: flex; flex-direction: column; gap: 0.8rem; }
+  .info-list li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 0.875rem; color: #C5C2BE;
+  }
+  .info-icon {
+    font-family: 'JetBrains Mono';
+    font-size: 0.7rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .info-list a {
+    color: var(--accent2);
+    text-decoration: none;
+  }
+  .info-list a:hover { color: var(--accent); }
+
+  /* ── BENEFITS SECTION ── */
+  .benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .benefit-card {
+    background: var(--surface);
+    padding: 1.6rem 1.8rem;
+    display: flex; flex-direction: column; gap: 0.4rem;
+    border-left: 2px solid transparent;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .benefit-card:hover {
+    background: var(--surface2);
+    border-left-color: var(--accent);
+  }
+  .benefit-card.highlight {
+    background: linear-gradient(135deg, rgba(255,92,42,0.1), var(--surface));
+    border-left-color: var(--accent);
+  }
+  .benefit-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.03em;
+  }
+  .benefit-desc {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  /* ── CTA ── */
+  .cta-section {
+    padding: clamp(4rem, 8vw, 7rem) clamp(1.5rem, 5vw, 4rem);
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .cta-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+  }
+  .cta-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    letter-spacing: 0.06em;
+    line-height: 1;
+    margin-bottom: 1.5rem;
+  }
+  .cta-sub {
+    font-size: 0.9rem;
+    color: var(--muted);
+    max-width: 500px;
+    margin: 0 auto 2.5rem;
+  }
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #fff;
+    padding: 14px 32px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.25s;
+    font-family: 'Syne', sans-serif;
+  }
+  .cta-btn:hover {
+    background: #e04a1f;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(255,92,42,0.35);
+  }
+  .cta-btn::after { content: '↗'; font-size: 1rem; }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 2.5rem clamp(1.5rem, 5vw, 4rem);
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-wrap: wrap; gap: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+  footer .footer-left {
+    display: flex; flex-direction: column; gap: 0.4rem;
+  }
+  footer .footer-tagline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    font-style: italic;
+  }
+  footer .footer-copy {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: rgba(107,107,130,0.6);
+    letter-spacing: 0.08em;
+  }
+  footer .footer-right {
+    display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
+  }
+  footer .footer-right a {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    transition: color 0.2s;
+  }
+  footer .footer-right a:hover { color: var(--accent); }
+
+  /* ── DIVIDER ── */
+  .section-divider {
+    display: flex; align-items: center; gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .section-divider h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    letter-spacing: 0.08em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .section-divider::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hero h1 { animation: fadeUp 0.8s ease both; }
+  .hero-label { animation: fadeUp 0.6s ease both; }
+  .hero-meta { animation: fadeUp 1s ease 0.2s both; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .content-grid, .content-grid.triple, .about-grid, .benefits-grid {
+      grid-template-columns: 1fr;
+    }
+    .role-header { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="https://anim-8.xyz" class="nav-logo"><span></span>ANIM-8</a>
+  <ul class="nav-links">
+    <li><a href="#designer">Designer</a></li>
+    <li><a href="#design-intern">Intern</a></li>
+    <li><a href="#3d-modeler">3D Modeler</a></li>
+    <li><a href="#storyboard">Storyboard</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <p class="hero-label">Careers · 2026</p>
+  <h1>WE'RE<br>HIRING<br><em>CREATIVES.</em></h1>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <span class="meta-label">Studio</span>
+      <span class="meta-value">Anim-8</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Location</span>
+      <span class="meta-value">District 3, Ho Chi Minh City</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Clients</span>
+      <span class="meta-value">U.S.-based Global Projects</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Open Positions</span>
+      <span class="meta-value">4 Roles</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Instagram</span>
+      <span class="meta-value"><a href="https://www.instagram.com/anim8.studios/" target="_blank">@anim8.studios ↗</a></span>
+    </div>
+  </div>
+</header>
+
+<!-- ROLES NAV -->
+<div class="roles-nav">
+  <a href="#designer" class="role-tab">Designer · Full-Time</a>
+  <a href="#design-intern" class="role-tab">Design Intern</a>
+  <a href="#3d-modeler" class="role-tab">3D Modeler / Generalist</a>
+  <a href="#storyboard" class="role-tab">Storyboard & Concept Artist</a>
+</div>
+
+<div class="main">
+
+  <!-- ════════════════════════════════════ -->
+  <!-- ROLE 1: DESIGNER -->
+  <!-- ════════════════════════════════════ -->
+  <section class="role-section" id="designer">
+    <div class="role-header">
+      <div>
+        <span class="role-tag">Full-Time</span>
+        <h2 class="role-title">DESIGNER</h2>
+        <p class="role-comp">VND 10–25M / month · + Performance Bonuses</p>
+      </div>
+      <span class="role-type-badge">Brand Identity<br>& Visual Systems</span>
+    </div>
+
+    <div class="content-grid">
+      <div class="content-card wide accent-bg">
+        <p class="card-label">Role Overview</p>
+        <p class="overview-text">We're hiring a Designer focused on <strong>brand identity</strong> and visual design systems for U.S. clients. You'll build end-to-end brand identities—from visual direction through to polished, handoff-ready systems—working closely with a fast-moving creative team.</p>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">What You'll Do</p>
+        <ul class="bullet-list">
+          <li>Build and develop brand identities: visual direction, key visuals, and brand guideline systems.</li>
+          <li>Create and refine logos (concept → iterations → final) and all logo applications.</li>
+          <li>Work deeply with typography: hierarchy, grid systems, spacing, kerning, editorial layout.</li>
+          <li>Develop and maintain color systems: palettes, contrast, consistency, and brand tone.</li>
+          <li>Produce brand-consistent assets: social visuals, pitch decks, landing visuals, packaging (project-dependent).</li>
+          <li>Collaborate to translate brand systems into digital UI foundations (style guides, components).</li>
+          <li>Present design rationale clearly and iterate quickly based on feedback.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">What We're Looking For</p>
+        <ul class="bullet-list">
+          <li>Strong foundation in brand identity, typography, logo design, and color theory.</li>
+          <li>Taste for modern, clean, system-driven design with high attention to detail.</li>
+          <li>Proficient in Figma and/or Adobe tools (Illustrator / Photoshop / InDesign) or equivalent.</li>
+          <li>Comfortable receiving feedback, iterating fast, and learning proactively.</li>
+          <li>UI/UX is a plus (layout for web/app, design systems, basic UX thinking).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════ -->
+  <!-- ROLE 2: DESIGN INTERN -->
+  <!-- ════════════════════════════════════ -->
+  <section class="role-section" id="design-intern">
+    <div class="role-header">
+      <div>
+        <span class="role-tag">Part-Time / Full-Time Internship</span>
+        <h2 class="role-title">DESIGN INTERN</h2>
+        <p class="role-comp">Stipend + Project-Based Bonus · Flexible Schedule</p>
+      </div>
+      <span class="role-type-badge">Branding<br>& Craft</span>
+    </div>
+
+    <div class="content-grid">
+      <div class="content-card wide accent-bg">
+        <p class="card-label">About This Role</p>
+        <p class="overview-text">A hands-on internship where you'll support live brand projects—not busy work. Schedule is flexible to fit your school commitments. Compensation includes a stipend plus project-based bonuses discussed at interview.</p>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">What You'll Learn & Do</p>
+        <ul class="bullet-list">
+          <li>Support real brand identity projects: moodboards, visual exploration, key visuals.</li>
+          <li>Practice typography and layout craft: hierarchy, grid systems, spacing and alignment.</li>
+          <li>Assist in building brand systems: templates, guidelines, and handoff-ready files.</li>
+          <li>Help execute logo applications and brand-consistent assets (social templates, decks, etc.).</li>
+          <li>Plus: If you have UI experience, you may help with basic web/app layout work.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">What We're Looking For</p>
+        <ul class="bullet-list">
+          <li>A CV + portfolio (school or personal projects welcome) showing taste and fundamentals.</li>
+          <li>Strong interest in branding and a desire to grow in typography, logo, and color.</li>
+          <li>Coachable, detail-oriented, creative, a lifelong learner, and proactive in work.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════ -->
+  <!-- ROLE 3: 3D MODELER -->
+  <!-- ════════════════════════════════════ -->
+  <section class="role-section" id="3d-modeler">
+    <div class="role-header">
+      <div>
+        <span class="role-tag">Full-Time</span>
+        <h2 class="role-title">3D MODELER /<br>GENERALIST</h2>
+        <p class="role-comp">$700–$1,200 USD / month · + Bonus</p>
+      </div>
+      <span class="role-type-badge">Materials<br>Specialist</span>
+    </div>
+
+    <div class="content-grid">
+      <div class="content-card wide accent-bg">
+        <p class="card-label">Position Overview</p>
+        <p class="overview-text">We're seeking a versatile 3D Modeler / Generalist with <strong>strong materials and texturing expertise</strong> to support our social media and cinematic content pipeline. This role requires someone who can seamlessly transition between modeling, texturing, and technical implementation while maintaining strict adherence to concept art. The ideal candidate excels at bringing 2D concepts to life through detailed 3D assets optimized for real-time rendering.</p>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">3D Modeling & Asset Creation</p>
+        <ul class="bullet-list">
+          <li>Create high-quality 3D models from concept art, maintaining artistic vision and style consistency.</li>
+          <li>Model characters, props, environments, and vehicles across styles (realistic to stylized).</li>
+          <li>Develop efficient topology for animation-ready assets and real-time rendering.</li>
+          <li>Iterate quickly on modeling to match evolving artistic direction.</li>
+          <li>Create both hero assets for close-up shots and optimized background elements.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">Materials & Texturing (Primary Focus)</p>
+        <ul class="bullet-list">
+          <li>Lead responsibility: develop compelling materials and textures using Substance Painter (+ Designer).</li>
+          <li>Create PBR materials that work seamlessly across different lighting conditions.</li>
+          <li>Master both hand-painted and photorealistic texturing approaches.</li>
+          <li>Develop material libraries and texture standards for consistent look across projects.</li>
+          <li>Optimize texture resolution and compression for various delivery formats.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">Technical Pipeline Integration</p>
+        <ul class="bullet-list">
+          <li>Prepare assets for export via FBX pipeline from Blender/Maya to Unreal Engine.</li>
+          <li>Set up materials and shaders in Unreal Engine for real-time performance.</li>
+          <li>Collaborate with lighting artists to ensure materials respond correctly to various setups.</li>
+          <li>Troubleshoot material and rendering issues across the pipeline.</li>
+          <li>Maintain organized asset libraries and naming conventions.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">Concept Interpretation & Style Development</p>
+        <ul class="bullet-list">
+          <li>Work closely with art directors to accurately translate 2D concepts into 3D assets.</li>
+          <li>Adapt and iterate on artistic styles while maintaining quality and consistency.</li>
+          <li>Provide creative input on technical feasibility and artistic improvements.</li>
+          <li>Create style guides and reference materials for asset consistency across projects.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">Generalist Support</p>
+        <ul class="bullet-list">
+          <li>Support various production needs including basic lighting, rendering, and scene assembly.</li>
+          <li>Assist with UV mapping, retopology, and asset optimization tasks.</li>
+          <li>Provide technical art support for pipeline improvements and workflow optimization.</li>
+          <li>Collaborate across departments to solve creative and technical challenges.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">Required Qualifications</p>
+        <ul class="bullet-list">
+          <li>3+ years of professional 3D modeling and texturing experience.</li>
+          <li>Essential: Advanced proficiency in Substance Painter; strong skills in Blender, ZBrush, and Maya.</li>
+          <li>Essential: Experience with Unreal Engine material editor and real-time rendering.</li>
+          <li>Solid understanding of PBR (Physically Based Rendering) workflows.</li>
+          <li>Proven ability to iterate quickly based on feedback and changing art direction.</li>
+          <li>Portfolio demonstrating versatility, materials expertise, and concept adherence.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">Software Proficiency</p>
+        <div class="software-grid">
+          <div class="sw-group">
+            <p class="sw-group-label">Expert Level Required</p>
+            <div class="sw-tags">
+              <span class="sw-tag expert">Substance Painter</span>
+              <span class="sw-tag expert">Blender / Maya</span>
+              <span class="sw-tag expert">ZBrush</span>
+              <span class="sw-tag expert">Marvelous Designer</span>
+            </div>
+          </div>
+          <div class="sw-group">
+            <p class="sw-group-label">Intermediate Level Required</p>
+            <div class="sw-tags">
+              <span class="sw-tag mid">Unreal Engine</span>
+              <span class="sw-tag mid">Photoshop / 2D Tools</span>
+            </div>
+          </div>
+          <div class="sw-group">
+            <p class="sw-group-label">Beneficial</p>
+            <div class="sw-tags">
+              <span class="sw-tag nice">Substance Designer</span>
+              <span class="sw-tag nice">Houdini</span>
+              <span class="sw-tag nice">3ds Max</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-card wide">
+        <p class="card-label">Portfolio Requirements</p>
+        <ul class="bullet-list">
+          <li>3D models created from concept art with before/after comparisons.</li>
+          <li>Materials and texturing work showcasing various styles and techniques.</li>
+          <li>Examples of assets optimized for real-time engines.</li>
+          <li>Breakdown of your modeling and texturing process.</li>
+          <li>Evidence of style versatility and concept adherence.</li>
+          <li>Technical wireframes and topology examples.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════ -->
+  <!-- ROLE 4: STORYBOARD & CONCEPT ARTIST -->
+  <!-- ════════════════════════════════════ -->
+  <section class="role-section" id="storyboard">
+    <div class="role-header">
+      <div>
+        <span class="role-tag">Full-Time</span>
+        <h2 class="role-title">STORYBOARD &<br>CONCEPT ARTIST</h2>
+        <p class="role-comp">VND 15–25M / month · Based on Experience & Portfolio</p>
+      </div>
+      <span class="role-type-badge">Visual<br>Storytelling</span>
+    </div>
+
+    <div class="content-grid">
+      <div class="content-card wide accent-bg">
+        <p class="card-label">Overview</p>
+        <p class="overview-text">Are you passionate about visual storytelling, social media content, and bringing ideas to life through concept illustration and storyboards? If you enjoy collaborating in a fast-paced creative environment and are comfortable with English, this role could be a great fit.</p>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">What You'll Do</p>
+        <ul class="bullet-list">
+          <li>Develop storyboards that translate scripts or ideas into clear visual sequences.</li>
+          <li>Create concept art and visual explorations to support storytelling and creative direction.</li>
+          <li>Design scenes, compositions, and character interactions that communicate narrative flow.</li>
+          <li>Collaborate with directors and creative teams to refine visual storytelling.</li>
+          <li>Produce sketches, rough boards, and presentation-ready frames for animation or digital content.</li>
+          <li>Support content creation for social media, digital entertainment, and online storytelling formats.</li>
+          <li>Iterate quickly based on feedback from international teams.</li>
+        </ul>
+      </div>
+
+      <div class="content-card">
+        <p class="card-label">What We're Looking For</p>
+        <ul class="bullet-list">
+          <li>Strong storytelling ability through drawing and composition.</li>
+          <li>Portfolio demonstrating storyboards, concept art, or visual narrative work.</li>
+          <li>Good understanding of cinematic framing, pacing, and scene continuity.</li>
+          <li>Ability to read and write English for communication with international teams.</li>
+          <li>Proficiency in Photoshop, Procreate, Clip Studio, or similar illustration software.</li>
+          <li>Ability to work collaboratively and adapt to creative feedback.</li>
+        </ul>
+        <div class="bonus-block">
+          <p class="card-label">Bonus If You Have</p>
+          <ul class="bullet-list">
+            <li>Experience with animation pipelines or animatics.</li>
+            <li>Understanding of content creation for YouTube or social media storytelling.</li>
+            <li>Basic knowledge of character design or environment concept art.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════ -->
+  <!-- ABOUT -->
+  <!-- ════════════════════════════════════ -->
+  <section class="about-section" id="about">
+    <div class="section-divider"><h2>ABOUT ANIM-8</h2></div>
+    <div class="about-grid">
+      <div class="about-card">
+        <p class="card-label">Studio Info</p>
+        <ul class="info-list">
+          <li>
+            <span class="info-icon">📍</span>
+            <span>02 Truong Quyen, District 3, Ho Chi Minh City, Vietnam</span>
+          </li>
+          <li>
+            <span class="info-icon">🕐</span>
+            <span>Monday to Friday · 8:00–12:00 & 13:00–17:00</span>
+          </li>
+          <li>
+            <span class="info-icon">🌐</span>
+            <span>U.S.-based creative studio with HCMC office · <a href="https://anim-8.xyz" target="_blank">anim-8.xyz ↗</a></span>
+          </li>
+          <li>
+            <span class="info-icon">📸</span>
+            <a href="https://www.instagram.com/anim8.studios/" target="_blank">@anim8.studios on Instagram ↗</a>
+          </li>
+        </ul>
+        <p style="margin-top:1.5rem; font-size:0.875rem; color:#C5C2BE; line-height:1.7;">
+          Anim-8 builds communities through innovative animation, interactive experiences, and physical products. We pioneer new approaches to multi-platform storytelling and cross-cultural collaboration—building content infrastructure for the AI era. You will work closely with directors, creative directors, and leadership teams in the United States, contributing to projects designed for global audiences.
+        </p>
+      </div>
+
+      <div class="about-card">
+        <p class="card-label">Creative Leadership</p>
+        <div>
+          <div class="leader-item">
+            <div class="leader-avatar">JN</div>
+            <div class="leader-info">
+              <span class="leader-name">Jordan Nguyen</span>
+              <span class="leader-role">Co-founder</span>
+              <span class="leader-studio">Spacestation Animation · Quarter Machine</span>
+              <div class="leader-links">
+                <a href="https://www.jordannguyen.me" target="_blank">Portfolio ↗</a>
+              </div>
+            </div>
+          </div>
+          <div class="leader-item">
+            <div class="leader-avatar">CL</div>
+            <div class="leader-info">
+              <span class="leader-name">Chris Le</span>
+              <span class="leader-role">Co-founder</span>
+              <span class="leader-studio">RTFKT · Nike Web3</span>
+              <div class="leader-links">
+                <a href="https://www.instagram.com/clegfx/" target="_blank">Instagram ↗</a>
+                <a href="https://www.imdb.com/name/nm2211997/" target="_blank">IMDb ↗</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-card" style="grid-column: 1 / -1;">
+        <p class="card-label">Production Team</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">
+          <div style="background: var(--surface2); padding: 1.2rem 1.4rem;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 3px;">Darren Flowers</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">Technical Director</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em;">Eden Offline · Sakira Mods TikTok</div>
+          </div>
+          <div style="background: var(--surface2); padding: 1.2rem 1.4rem;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 3px;">Khai Pham</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">Lead Modeler</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em;">Sparx · Activision · Riot · Disney</div>
+          </div>
+          <div style="background: var(--surface2); padding: 1.2rem 1.4rem;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 3px;">Luka</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">Senior Modeler</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em;">AAA Game Development</div>
+          </div>
+          <div style="background: var(--surface2); padding: 1.2rem 1.4rem;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 3px;">Keira Duong</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">Chief Operating Officer</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em;">Big 4 Advisory · Finance & Growth</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-card" style="grid-column: 1 / -1;">
+        <p class="card-label">Benefits</p>
+        <div class="benefits-grid">
+          <div class="benefit-card highlight">
+            <div class="benefit-title">Performance Bonuses</div>
+            <div class="benefit-desc">Project-based and performance bonuses on top of base salary.</div>
+          </div>
+          <div class="benefit-card">
+            <div class="benefit-title">Equipment & Software</div>
+            <div class="benefit-desc">Hardware and software support as needed, including high-end tools and graphics tablets.</div>
+          </div>
+          <div class="benefit-card">
+            <div class="benefit-title">U.S. Client Exposure</div>
+            <div class="benefit-desc">Work directly with U.S. directors and creative leadership on global projects.</div>
+          </div>
+          <div class="benefit-card">
+            <div class="benefit-title">Training & Growth</div>
+            <div class="benefit-desc">Training course support and professional development budget included.</div>
+          </div>
+          <div class="benefit-card">
+            <div class="benefit-title">Leave & Holidays</div>
+            <div class="benefit-desc">Public holiday / Tet leave, team trips, and team-building per Vietnamese regulations.</div>
+          </div>
+          <div class="benefit-card">
+            <div class="benefit-title">Creative Culture</div>
+            <div class="benefit-desc">A professional environment built on respect, creativity, and lifelong learning.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- CTA -->
+<div class="cta-section">
+  <p class="cta-label">Ready to Apply?</p>
+  <h2 class="cta-title">LET'S MAKE<br>SOMETHING GREAT.</h2>
+  <p class="cta-sub">Send your portfolio and CV to the Anim-8 team. We review every application personally.</p>
+  <a href="mailto:Tyler@anim-8.xyz?subject=Application%20%E2%80%94%20[Role]%20%7C%20Portfolio%20Submission&body=Hi%20Tyler%2C%0A%0AI%27d%20like%20to%20apply%20for%20the%20[Role]%20position%20at%20Anim-8.%0A%0APlease%20find%20my%20portfolio%20and%20CV%20attached.%0A%0ABest%2C%0A[Your%20Name]" class="cta-btn">Send Your CV & Portfolio</a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    <span class="footer-tagline">Building IP infrastructure for the AI era.</span>
+    <span class="footer-copy">© 2026 Anim-8 · Ho Chi Minh City, Vietnam</span>
+  </div>
+  <div class="footer-right">
+    <a href="https://anim-8.xyz" target="_blank">anim-8.xyz</a>
+    <a href="mailto:Jordan@anim-8.xyz">Jordan@anim-8.xyz</a>
+    <a href="mailto:Tyler@anim-8.xyz">Tyler@anim-8.xyz</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -8,7 +8,7 @@ export const t = {
       { label: 'Studio', value: 'Anim-8' },
       { label: 'Location', value: 'District 3, Ho Chi Minh City' },
       { label: 'Clients', value: 'U.S.-based Global Projects' },
-      { label: 'Open Roles', value: '4 Positions' },
+      { label: 'Open Roles', value: '5 Positions' },
     ],
     metaInstagram: 'Instagram',
     rolesNav: [
@@ -16,6 +16,7 @@ export const t = {
       { id: 'design-intern', label: 'Design Intern' },
       { id: '3d-modeler', label: '3D Modeler / Generalist' },
       { id: 'storyboard', label: 'Storyboard & Concept Artist' },
+      { id: 'video-editor', label: 'Video Editor / VFX Artist' },
     ],
 
     // ── ROLE 1 ─────────────────────────────────────────────
@@ -196,6 +197,72 @@ export const t = {
       },
     },
 
+    // ── ROLE 5 ─────────────────────────────────────────────
+    video: {
+      tag: 'Internship · Junior · Senior — Full-Time',
+      title: 'VIDEO EDITOR / VFX ARTIST',
+      comp: 'Based on Level & Experience',
+      badge: 'Post-Production\n& VFX',
+      overview: {
+        label: 'Role Overview',
+        body: "ANIM-8 Studios is expanding our creative team and looking for Video Editors and VFX Artists to join upcoming projects. You'll work closely with creative directors, producers, and editors to produce high-quality video content for global clients — including social media, branded content, and digital entertainment. Depending on your strengths, you may focus primarily on editing or VFX, while collaborating with artists across the pipeline.",
+      },
+      editor: {
+        label: 'Position 1 — Video Editor',
+        responsibilities: {
+          label: 'Responsibilities',
+          items: [
+            'Edit video content for social media, branded campaigns, and digital storytelling projects.',
+            'Assemble footage, sound, graphics, and visual elements into compelling narratives.',
+            'Work with creative briefs and collaborate with directors and producers to achieve the intended visual style.',
+            'Ensure smooth pacing, rhythm, and storytelling flow in the final edit.',
+            'Handle technical aspects of editing workflows and project organization.',
+          ],
+        },
+        requirements: {
+          label: 'Requirements',
+          items: [
+            'Proficiency in Adobe Premiere Pro.',
+            'Familiarity with After Effects and basic DaVinci Resolve workflows.',
+            'Understanding of editing rhythm, music timing, and visual storytelling.',
+            'Basic knowledge of Adobe Photoshop and Illustrator.',
+            'Ability to understand project briefs and communicate in English.',
+          ],
+        },
+      },
+      vfx: {
+        label: 'Position 2 — VFX Artist',
+        responsibilities: {
+          label: 'Responsibilities',
+          items: [
+            'Prepare and execute visual effects elements for video content.',
+            'Perform tracking, rotoscoping, cleanup, and keying tasks.',
+            'Create simple 2D motion graphics and compositing elements.',
+            'Collaborate with editors and creative teams to integrate VFX seamlessly into video content.',
+          ],
+        },
+        requirements: {
+          label: 'Requirements',
+          items: [
+            'Experience with After Effects.',
+            'Understanding of VFX preparation workflows (tracking, roto, clean-up, keying).',
+            'Basic 2D motion graphics skills.',
+            'Ability to work collaboratively and iterate quickly based on feedback.',
+          ],
+        },
+      },
+      general: {
+        label: 'General Requirements',
+        items: [
+          '1+ year of experience in video editing, VFX, or related fields (MV/TVC experience is a plus).',
+          'Ability to understand creative briefs and communicate in English.',
+          'Strong teamwork skills, proactive attitude, and positive work ethic.',
+          'Curiosity and willingness to research, experiment, and continuously improve.',
+          'Portfolio demonstrating relevant work.',
+        ],
+      },
+    },
+
     // ── ABOUT ──────────────────────────────────────────────
     about: {
       sectionTitle: 'ABOUT ANIM-8',
@@ -244,7 +311,7 @@ export const t = {
       { label: 'Xưởng Phim', value: 'Anim-8' },
       { label: 'Địa Chỉ', value: 'Quận 3, TP. Hồ Chí Minh' },
       { label: 'Khách Hàng', value: 'Dự Án Quốc Tế (Hoa Kỳ)' },
-      { label: 'Vị Trí Mở', value: '4 Vị Trí' },
+      { label: 'Vị Trí Mở', value: '5 Vị Trí' },
     ],
     metaInstagram: 'Instagram',
     rolesNav: [
@@ -252,6 +319,7 @@ export const t = {
       { id: 'design-intern', label: 'Thực Tập Thiết Kế' },
       { id: '3d-modeler', label: 'Họa Sĩ 3D / Tổng Hợp' },
       { id: 'storyboard', label: 'Storyboard & Concept Artist' },
+      { id: 'video-editor', label: 'Biên Tập Video / VFX' },
     ],
 
     // ── ROLE 1 ─────────────────────────────────────────────
@@ -428,6 +496,72 @@ export const t = {
           'Kinh nghiệm với pipeline animation hoặc animatic.',
           'Hiểu biết về tạo nội dung cho YouTube hoặc storytelling mạng xã hội.',
           'Kiến thức cơ bản về thiết kế nhân vật hoặc concept art môi trường.',
+        ],
+      },
+    },
+
+    // ── ROLE 5 ─────────────────────────────────────────────
+    video: {
+      tag: 'Thực Tập · Junior · Senior — Toàn Thời Gian',
+      title: 'BIÊN TẬP VIÊN / HỌA SĨ VFX',
+      comp: 'Theo Cấp Độ & Kinh Nghiệm',
+      badge: 'Hậu Kỳ\n& VFX',
+      overview: {
+        label: 'Tổng Quan Vị Trí',
+        body: 'Anim-8 Studios đang mở rộng đội ngũ sáng tạo và tìm kiếm Biên Tập Viên Video và Họa Sĩ VFX để tham gia các dự án sắp tới. Bạn sẽ làm việc chặt chẽ với đạo diễn sáng tạo, nhà sản xuất và các biên tập viên để tạo ra nội dung video chất lượng cao cho khách hàng toàn cầu — bao gồm mạng xã hội, nội dung thương hiệu và giải trí kỹ thuật số. Tùy vào thế mạnh, bạn có thể tập trung vào biên tập hoặc VFX, đồng thời cộng tác với các họa sĩ trên toàn pipeline.',
+      },
+      editor: {
+        label: 'Vị Trí 1 — Biên Tập Viên Video',
+        responsibilities: {
+          label: 'Công Việc Cụ Thể',
+          items: [
+            'Biên tập nội dung video cho mạng xã hội, chiến dịch thương hiệu và dự án kể chuyện kỹ thuật số.',
+            'Lắp ráp cảnh quay, âm thanh, đồ họa và các yếu tố hình ảnh thành câu chuyện hấp dẫn.',
+            'Làm việc với brief sáng tạo và phối hợp với đạo diễn, nhà sản xuất để đạt phong cách hình ảnh mong muốn.',
+            'Đảm bảo nhịp độ, tiết tấu và luồng kể chuyện mượt mà trong bản edit cuối.',
+            'Xử lý các khía cạnh kỹ thuật của quy trình biên tập và tổ chức dự án.',
+          ],
+        },
+        requirements: {
+          label: 'Yêu Cầu',
+          items: [
+            'Thành thạo Adobe Premiere Pro.',
+            'Quen thuộc với After Effects và quy trình DaVinci Resolve cơ bản.',
+            'Hiểu biết về nhịp điệu biên tập, thời điểm âm nhạc và kể chuyện bằng hình ảnh.',
+            'Kiến thức cơ bản về Adobe Photoshop và Illustrator.',
+            'Khả năng hiểu brief dự án và giao tiếp bằng tiếng Anh.',
+          ],
+        },
+      },
+      vfx: {
+        label: 'Vị Trí 2 — Họa Sĩ VFX',
+        responsibilities: {
+          label: 'Công Việc Cụ Thể',
+          items: [
+            'Chuẩn bị và thực hiện các yếu tố hiệu ứng hình ảnh cho nội dung video.',
+            'Thực hiện tracking, rotoscoping, dọn dẹp và keying.',
+            'Tạo đồ họa chuyển động 2D đơn giản và các yếu tố compositing.',
+            'Phối hợp với biên tập viên và đội sáng tạo để tích hợp VFX liền mạch vào nội dung video.',
+          ],
+        },
+        requirements: {
+          label: 'Yêu Cầu',
+          items: [
+            'Kinh nghiệm với After Effects.',
+            'Hiểu biết về quy trình chuẩn bị VFX (tracking, roto, dọn dẹp, keying).',
+            'Kỹ năng đồ họa chuyển động 2D cơ bản.',
+            'Khả năng làm việc cộng tác và lặp lại nhanh dựa trên phản hồi.',
+          ],
+        },
+      },
+      general: {
+        label: 'Yêu Cầu Chung',
+        items: [
+          '1+ năm kinh nghiệm biên tập video, VFX hoặc lĩnh vực liên quan (kinh nghiệm MV/TVC là điểm cộng).',
+          'Khả năng hiểu brief sáng tạo và giao tiếp bằng tiếng Anh.',
+          'Kỹ năng làm việc nhóm tốt, thái độ chủ động và đạo đức làm việc tích cực.',
+          'Tò mò và sẵn sàng nghiên cứu, thử nghiệm và liên tục cải thiện.',
+          'Portfolio thể hiện các công việc liên quan.',
         ],
       },
     },

@@ -389,6 +389,72 @@ export default function CareersPage() {
           </div>
         </Section>
 
+        {/* ── ROLE 5: VIDEO EDITOR / VFX ARTIST ── */}
+        <Section id="video-editor" className="bg-brand-navy border-b border-white/5">
+          <div className="container-custom">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`video-${lang}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
+                  <div>
+                    <RoleTag>{c.video.tag}</RoleTag>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.video.title}</h2>
+                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.video.comp}</p>
+                  </div>
+                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
+                    {c.video.badge}
+                  </span>
+                </div>
+
+                <div className="rounded-2xl overflow-hidden border border-white/8">
+                  {/* Overview */}
+                  <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
+                    <CardLabel>{c.video.overview.label}</CardLabel>
+                    <p className="text-text-muted leading-relaxed">{c.video.overview.body}</p>
+                  </div>
+
+                  {/* Position 1 | Position 2 */}
+                  <RoleCardRow
+                    left={<>
+                      <span className="inline-block text-xs uppercase tracking-[0.2em] font-bold text-brand-lime bg-brand-lime/10 border border-brand-lime/30 px-3 py-1 rounded-sm mb-4">
+                        {c.video.editor.label}
+                      </span>
+                      <CardLabel>{c.video.editor.responsibilities.label}</CardLabel>
+                      <BulletList items={c.video.editor.responsibilities.items} />
+                      <div className="mt-6">
+                        <CardLabel>{c.video.editor.requirements.label}</CardLabel>
+                        <BulletList items={c.video.editor.requirements.items} />
+                      </div>
+                    </>}
+                    right={<>
+                      <span className="inline-block text-xs uppercase tracking-[0.2em] font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/30 px-3 py-1 rounded-sm mb-4">
+                        {c.video.vfx.label}
+                      </span>
+                      <CardLabel>{c.video.vfx.responsibilities.label}</CardLabel>
+                      <BulletList items={c.video.vfx.responsibilities.items} />
+                      <div className="mt-6">
+                        <CardLabel>{c.video.vfx.requirements.label}</CardLabel>
+                        <BulletList items={c.video.vfx.requirements.items} />
+                      </div>
+                    </>}
+                  />
+
+                  {/* General Requirements */}
+                  <div className={`${cellBase} border-t border-white/8`}>
+                    <CardLabel>{c.video.general.label}</CardLabel>
+                    <BulletList items={c.video.general.items} />
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </Section>
+
         {/* ── ABOUT ── */}
         <Section id="about" className="bg-brand-navy border-b border-white/5">
           <div className="container-custom">
@@ -493,7 +559,7 @@ export default function CareersPage() {
                     {[
                       { name: 'Darren Flowers', role: lang === 'vn' ? 'Giám Đốc Kỹ Thuật' : 'Technical Director', studio: 'Eden Offline · Sakira Mods TikTok' },
                       { name: 'Khai Pham', role: lang === 'vn' ? 'Trưởng Nhóm Dựng Hình' : 'Lead Modeler', studio: 'Sparx · Activision · Riot · Disney' },
-                      { name: 'Luka', role: lang === 'vn' ? 'Họa Sĩ 3D Cao Cấp' : 'Senior Modeler', studio: 'AAA Game Development' },
+                      { name: 'Luka', role: lang === 'vn' ? 'Giám Đốc Hoạt Hình' : 'Animation Supervisor', studio: 'AAA Game Development' },
                       { name: 'Keira Duong', role: lang === 'vn' ? 'Giám Đốc Điều Hành' : 'Chief Operating Officer', studio: 'Big 4 Advisory · Finance & Growth' },
                     ].map((member) => (
                       <div key={member.name} className="bg-white/3 border border-white/5 rounded-xl p-4">

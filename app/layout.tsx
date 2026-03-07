@@ -2,23 +2,23 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Anim-8 | 3D Character Production Studio',
-  description: 'Full-pipeline 3D character studio specializing in modeling, rigging, animation, and rendering — for IP owners, gaming studios, and entertainment brands. Led by RTFKT co-founder Chris Le.',
-  keywords: ['3D characters', 'character production', 'character modeling', 'rigging', 'animation', 'IP development', 'gaming studio', 'RTFKT'],
+  title: 'Anim-8 | 3D Creative Studio for Brands & IP',
+  description: 'Anim-8 is a full-pipeline 3D creative studio helping brands and IP owners develop characters, worlds, and assets — from concept to production-ready. Led by RTFKT co-founder Chris Le.',
+  keywords: ['3D characters', 'character production', 'IP development', 'brand characters', 'character modeling', 'rigging', 'animation', 'entertainment studio', 'RTFKT'],
   authors: [{ name: 'Anim-8' }],
   creator: 'Anim-8',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    title: 'Anim-8 | 3D Character Production Studio',
-    description: 'Production-ready 3D characters for IP owners, gaming studios, and entertainment brands.',
+    title: 'Anim-8 | 3D Creative Studio for Brands & IP',
+    description: 'Full-pipeline 3D creative studio helping brands and IP owners develop characters, worlds, and assets — from concept to production-ready.',
     siteName: 'Anim-8',
     images: ['/images/anim8card.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Anim-8 | 3D Character Production Studio',
-    description: 'Production-ready 3D characters for IP owners, gaming studios, and entertainment brands.',
+    title: 'Anim-8 | 3D Creative Studio for Brands & IP',
+    description: 'Full-pipeline 3D creative studio helping brands and IP owners develop characters, worlds, and assets — from concept to production-ready.',
     images: ['/images/anim8card.jpg'],
   },
   robots: {

@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apply to Anim-8</title>
+  <link rel="stylesheet" href="https://use.typekit.net/yde3ltr.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:      #1b1c2c;
+      --black:     #090a14;
+      --black-2:   #0d0e1a;
+      --green:     #7cc142;
+      --cyan:      #38c2d6;
+      --pink:      #dd0b83;
+      --text:      #f1f5f9;
+      --muted:     #94a3b8;
+      --error:     #f87171;
+      --font-body: 'Be Vietnam Pro', 'futura-pt-book', 'futura-pt', sans-serif;
+      --font-head: 'futura-pt-heavy', 'futura-pt', 'Be Vietnam Pro', sans-serif;
+      --r:         10px;
+    }
+
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+    body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE ─────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.025;
+      z-index: 0;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ── GRADIENT ORBS ─────────────────────── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-green {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(124,193,66,0.14) 0%, transparent 70%);
+      top: -120px; right: -120px;
+      animation: floatA 25s ease-in-out infinite;
+    }
+    .orb-cyan {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(56,194,214,0.11) 0%, transparent 70%);
+      bottom: -80px; left: -80px;
+      animation: floatB 32s ease-in-out infinite;
+    }
+    .orb-pink {
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, rgba(221,11,131,0.07) 0%, transparent 70%);
+      top: 45%; right: -60px;
+      animation: floatC 22s ease-in-out infinite;
+    }
+    @keyframes floatA {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%  { transform: translate(30px,-40px) scale(1.08); }
+      66%  { transform: translate(-20px,24px) scale(0.95); }
+    }
+    @keyframes floatB {
+      0%,100% { transform: translate(0,0); }
+      50%  { transform: translate(40px,-30px) scale(1.05); }
+    }
+    @keyframes floatC {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50%  { transform: translate(-30px,40px) scale(1.06); }
+    }
+
+    /* ── LANG TOGGLE ─────────────────────────────── */
+    .lang-toggle {
+      position: fixed;
+      top: 22px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 9999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .lang-btn {
+      padding: 5px 13px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: var(--font-body);
+      line-height: 1;
+      transition: background 0.2s, color 0.2s;
+    }
+    .lang-btn.active { background: var(--green); color: #0f0f0f; }
+    .lang-btn:not(.active):hover { color: var(--text); }
+
+    /* ── PAGE LAYOUT ──────────────────────────────── */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 72px 20px 80px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 44px;
+      max-width: 580px;
+      width: 100%;
+    }
+
+    .page-overline {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--green);
+      font-family: 'futura-pt', var(--font-body);
+      margin-bottom: 16px;
+    }
+
+    .page-title {
+      font-family: var(--font-head);
+      font-size: clamp(30px, 5.5vw, 52px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 0;
+    }
+
+    /* Vietnamese heading font override */
+    html[lang="vi"] .page-title,
+    html[lang="vi"] .step-title,
+    html[lang="vi"] .confirmation h2 {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      font-weight: 800;
+    }
+
+    .lime-accent {
+      height: 3px;
+      border-radius: 9999px;
+      width: 0;
+      margin: 18px auto 22px;
+      background: linear-gradient(90deg, #7cc142, #38c2d6, #7cc142, #38c2d6);
+      background-size: 300% 100%;
+      animation: expandLine 0.8s ease-out 0.2s forwards,
+                 gradientFlow 8s ease-in-out 1s infinite;
+    }
+    @keyframes expandLine { to { width: 64px; } }
+    @keyframes gradientFlow {
+      0%,100% { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+    }
+
+    .page-subtitle {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.75;
+      font-family: 'futura-pt-book', var(--font-body);
+    }
+
+    /* ── PROGRESS ────────────────────────────────── */
+    .progress {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 32px;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .progress-circle {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.25);
+      background: var(--black);
+      position: relative; z-index: 1;
+      font-family: 'futura-pt', var(--font-body);
+      transition: all 0.3s ease;
+    }
+    .progress-circle.active {
+      border-color: var(--green);
+      border-width: 2px;
+      color: var(--green);
+      box-shadow: 0 0 0 4px rgba(124,193,66,0.1), 0 0 16px rgba(124,193,66,0.2);
+    }
+    .progress-circle.done {
+      background: var(--green);
+      border-color: var(--green);
+      color: #0f0f0f;
+      box-shadow: 0 0 12px rgba(124,193,66,0.3);
+    }
+
+    .progress-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.2);
+      font-family: 'futura-pt', var(--font-body);
+      transition: color 0.3s;
+      white-space: nowrap;
+    }
+    .progress-step.active .progress-label { color: var(--green); }
+    .progress-step.done   .progress-label { color: rgba(124,193,66,0.5); }
+
+    .progress-connector {
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      margin-bottom: 24px;
+      min-width: 28px;
+      max-width: 72px;
+      transition: background 0.4s;
+    }
+    .progress-connector.done { background: var(--green); box-shadow: 0 0 6px rgba(124,193,66,0.4); }
+
+    /* ── FORM CARD ───────────────────────────────── */
+    .form-card {
+      width: 100%;
+      max-width: 620px;
+      background: var(--black);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow:
+        0 32px 100px rgba(0,0,0,0.7),
+        0 0 120px rgba(124,193,66,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.07);
+    }
+
+    /* ── STEP ────────────────────────────────────── */
+    .step { display: none; }
+    .step.active { display: block; }
+
+    /* slide transitions */
+    .step.exit-left  { display: block; animation: exitLeft  0.2s ease forwards; }
+    .step.exit-right { display: block; animation: exitRight 0.2s ease forwards; }
+    .step.enter-right { animation: enterRight 0.28s cubic-bezier(0.22,1,0.36,1); }
+    .step.enter-left  { animation: enterLeft  0.28s cubic-bezier(0.22,1,0.36,1); }
+
+    @keyframes exitLeft  { to { opacity: 0; transform: translateX(-20px); } }
+    @keyframes exitRight { to { opacity: 0; transform: translateX(20px);  } }
+    @keyframes enterRight { from { opacity: 0; transform: translateX(20px);  } to { opacity: 1; transform: none; } }
+    @keyframes enterLeft  { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: none; } }
+
+    /* ── STEP HEADER ─────────────────────────────── */
+    .step-header {
+      padding: 32px 40px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: var(--black-2);
+    }
+
+    .step-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .step-num {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 0.08em;
+      font-family: 'futura-pt', var(--font-body);
+    }
+    .step-sep {
+      width: 24px; height: 1px;
+      background: linear-gradient(90deg, var(--cyan), transparent);
+      opacity: 0.5;
+      flex-shrink: 0;
+    }
+    .step-cat {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-family: 'futura-pt', var(--font-body);
+      opacity: 0.7;
+    }
+
+    .step-title {
+      font-family: var(--font-head);
+      font-size: clamp(18px, 3.5vw, 26px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      color: var(--text);
+    }
+
+    /* ── STEP BODY ───────────────────────────────── */
+    .step-body {
+      padding: 28px 40px 32px;
+    }
+
+    /* ── FIELDS ──────────────────────────────────── */
+    .field { margin-bottom: 20px; }
+
+    .field-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-family: 'futura-pt', var(--font-body);
+    }
+
+    .field-hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      opacity: 0.6;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    textarea,
+    select {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--r);
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--green);
+      background: rgba(124,193,66,0.04);
+      box-shadow: 0 0 0 3px rgba(124,193,66,0.1);
+    }
+    input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.15); }
+
+    textarea { resize: vertical; min-height: 96px; }
+
+    select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath d='M1 1l7 7 7-7' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 11px;
+      padding-right: 40px;
+    }
+    select option { background: #0d0e1a; color: var(--text); }
+
+    /* ── ERROR ───────────────────────────────────── */
+    .error-msg {
+      display: none;
+      font-size: 11px;
+      color: var(--error);
+      margin-top: 6px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .field.has-error > input,
+    .field.has-error > textarea,
+    .field.has-error > select {
+      border-color: var(--error);
+      box-shadow: 0 0 0 3px rgba(248,113,113,0.08);
+    }
+    .field.has-error .error-msg { display: block; }
+
+    /* ── QUESTION BLOCKS (step 3 + 4) ───────────── */
+    .q-block {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 10px;
+    }
+    .q-block .field { margin-bottom: 0; }
+    .q-block .field + .field { margin-top: 16px; }
+    .q-block .field-label {
+      color: rgba(56,194,214,0.8);
+      letter-spacing: 0.15em;
+    }
+
+    /* stagger entrance for q-blocks */
+    @keyframes qBlockIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .q-block-stagger { animation: qBlockIn 0.32s cubic-bezier(0.22,1,0.36,1) both; }
+
+    /* ── CHECKBOX GROUP ──────────────────────────── */
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 4px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.05);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .checkbox-item:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+    .checkbox-item:has(input:checked) {
+      background: rgba(124,193,66,0.08);
+      border-color: rgba(124,193,66,0.25);
+    }
+    .checkbox-item input[type="checkbox"] {
+      width: 15px; height: 15px; min-width: 15px;
+      accent-color: var(--green);
+      cursor: pointer; padding: 0; border: none;
+    }
+    .checkbox-item span { font-size: 13px; color: var(--text); }
+
+    .other-input-wrap { display: none; padding: 8px 0 0; }
+    .other-input-wrap.open { display: block; animation: qBlockIn 0.2s ease; }
+
+    /* ── PILL SELECT (position type) ────────────── */
+    .pill-select {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .pill-btn {
+      padding: 9px 22px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s;
+      letter-spacing: 0.02em;
+    }
+    .pill-btn:hover { border-color: rgba(255,255,255,0.22); color: var(--text); }
+    .pill-btn.selected {
+      background: rgba(124,193,66,0.12);
+      border-color: rgba(124,193,66,0.4);
+      color: var(--green);
+      box-shadow: 0 0 0 1px rgba(124,193,66,0.2);
+    }
+
+    /* ── YES / NO ────────────────────────────────── */
+    .yesno-group {
+      display: inline-flex;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 9999px;
+      padding: 3px;
+      gap: 2px;
+      margin-top: 2px;
+    }
+    .yesno-btn {
+      padding: 7px 22px;
+      border-radius: 9999px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: all 0.18s;
+      letter-spacing: 0.02em;
+    }
+    .yesno-btn:hover { color: var(--text); }
+    .yesno-btn.sel-yes {
+      background: rgba(124,193,66,0.15);
+      color: var(--green);
+      box-shadow: inset 0 0 0 1px rgba(124,193,66,0.3);
+    }
+    .yesno-btn.sel-no {
+      background: rgba(255,255,255,0.07);
+      color: var(--text);
+    }
+
+    /* ── CONDITIONAL ─────────────────────────────── */
+    .conditional { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .conditional.open { display: block; animation: qBlockIn 0.25s ease; }
+    .conditional .field:last-child { margin-bottom: 0; }
+
+    /* ── BUTTON ROW ──────────────────────────────── */
+    .btn-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 20px 40px 28px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .btn-back {
+      padding: 11px 22px;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--font-body);
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-back:hover { border-color: rgba(255,255,255,0.25); color: var(--text); }
+
+    .btn-primary {
+      padding: 11px 28px;
+      border-radius: 9px;
+      border: none;
+      background: linear-gradient(135deg, #8fd44e 0%, #7cc142 100%);
+      color: #0f0f0f;
+      font-size: 13px;
+      font-weight: 800;
+      font-family: var(--font-body);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: box-shadow 0.25s, transform 0.15s;
+      box-shadow: 0 4px 20px rgba(124,193,66,0.3);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 8px 36px rgba(124,193,66,0.55);
+      transform: translateY(-2px);
+    }
+    .btn-primary:active { transform: translateY(0); box-shadow: 0 2px 10px rgba(124,193,66,0.25); }
+
+    /* ── CONFIRMATION ────────────────────────────── */
+    .confirmation {
+      text-align: center;
+      padding: 56px 40px 52px;
+    }
+    .confirm-icon {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: rgba(124,193,66,0.08);
+      border: 1.5px solid rgba(124,193,66,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 28px;
+      font-size: 28px;
+      color: var(--green);
+      animation: iconPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 0 40px rgba(124,193,66,0.15);
+    }
+    @keyframes iconPop {
+      from { transform: scale(0.4) rotate(-15deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .confirmation h2 {
+      font-family: var(--font-head);
+      font-size: clamp(22px, 4vw, 32px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .confirmation p {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.75;
+      max-width: 360px;
+      margin: 0 auto;
+    }
+
+    /* ── RESPONSIVE ──────────────────────────────── */
+    @media (max-width: 640px) {
+      .step-header { padding: 24px 20px 20px; }
+      .step-body   { padding: 20px 20px 24px; }
+      .btn-row     { padding: 16px 20px 24px; }
+      .confirmation{ padding: 40px 20px; }
+      .page-wrapper{ padding: 60px 16px 60px; }
+      .lang-toggle { top: 14px; right: 14px; }
+      .progress-connector { min-width: 14px; }
+    }
+
+    /* ── SCROLLBAR ───────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #06070f; }
+    ::-webkit-scrollbar-thumb { background: var(--green); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #8fd44e; }
+  </style>
+</head>
+<body>
+
+  <!-- Orbs -->
+  <div class="orb orb-green"></div>
+  <div class="orb orb-cyan"></div>
+  <div class="orb orb-pink"></div>
+
+  <!-- Language Toggle -->
+  <div class="lang-toggle">
+    <button class="lang-btn active" data-lang="en" onclick="setLang('en')">EN</button>
+    <button class="lang-btn"        data-lang="vn" onclick="setLang('vn')">VN</button>
+  </div>
+
+  <div class="page-wrapper">
+
+    <!-- Header -->
+    <header class="page-header">
+      <p  class="page-overline" data-t="applyLabel"></p>
+      <h1 class="page-title"   data-t="pageTitle"></h1>
+      <div class="lime-accent"></div>
+      <p  class="page-subtitle" data-t="pageSubtitle"></p>
+    </header>
+
+    <!-- Progress -->
+    <nav class="progress" id="progress-bar">
+      <div class="progress-step active" id="ps-1">
+        <div class="progress-circle active" id="pc-1">1</div>
+        <span class="progress-label" data-t="step1Label"></span>
+      </div>
+      <div class="progress-connector" id="conn-1"></div>
+      <div class="progress-step" id="ps-2">
+        <div class="progress-circle" id="pc-2">2</div>
+        <span class="progress-label" data-t="step2Label"></span>
+      </div>
+      <div class="progress-connector" id="conn-2"></div>
+      <div class="progress-step" id="ps-3">
+        <div class="progress-circle" id="pc-3">3</div>
+        <span class="progress-label" data-t="step3Label"></span>
+      </div>
+      <div class="progress-connector" id="conn-3"></div>
+      <div class="progress-step" id="ps-4">
+        <div class="progress-circle" id="pc-4">4</div>
+        <span class="progress-label" data-t="step4Label"></span>
+      </div>
+    </nav>
+
+    <!-- Form Card -->
+    <div class="form-card">
+
+      <!-- ── STEP 1 ─────────────────────────────── -->
+      <div class="step active" id="step-1">
+        <div class="step-header">
+          <div class="step-eyebrow">
+            <span class="step-num">01</span>
+            <span class="step-sep"></span>
+            <span class="step-cat" data-t="step1Label"></span>
+          </div>
+          <h2 class="step-title" data-t="step1Title"></h2>
+        </div>
+        <div class="step-body">
+          <div class="field" id="field-role">
+            <label class="field-label" data-t="roleLabel" for="role-select"></label>
+            <select id="role-select"><!-- JS populated --></select>
+            <span class="error-msg" data-t="required"></span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="nextStep()" data-t="next"></button>
+        </div>
+      </div>
+
+      <!-- ── STEP 2 ─────────────────────────────── -->
+      <div class="step" id="step-2">
+        <div class="step-header">
+          <div class="step-eyebrow">
+            <span class="step-num">02</span>
+            <span class="step-sep"></span>
+            <span class="step-cat" data-t="step2Label"></span>
+          </div>
+          <h2 class="step-title" data-t="step2Title"></h2>
+        </div>
+        <div class="step-body">
+          <div class="field" id="field-position-type">
+            <label class="field-label" data-t="positionType"></label>
+            <div class="pill-select" id="position-type-group">
+              <button type="button" class="pill-btn" data-pt="fulltime"  data-t="positionTypes.fulltime"></button>
+              <button type="button" class="pill-btn" data-pt="parttime"  data-t="positionTypes.parttime"></button>
+              <button type="button" class="pill-btn" data-pt="contract"  data-t="positionTypes.contract"></button>
+            </div>
+            <span class="error-msg" data-t="required"></span>
+          </div>
+          <div class="field" id="field-name">
+            <label class="field-label" data-t="name" for="f-name"></label>
+            <input type="text"  id="f-name"        data-ph="namePlaceholder">
+            <span class="error-msg" data-t="required"></span>
+          </div>
+          <div class="field" id="field-email">
+            <label class="field-label" data-t="email" for="f-email"></label>
+            <input type="email" id="f-email"       data-ph="emailPlaceholder">
+            <span class="error-msg"></span>
+          </div>
+          <div class="field" id="field-portfolio">
+            <label class="field-label" data-t="portfolio" for="f-portfolio"></label>
+            <input type="text"  id="f-portfolio"   data-ph="portfolioPlaceholder">
+            <span class="error-msg"></span>
+          </div>
+          <div class="field" id="field-cv">
+            <label class="field-label" data-t="cv" for="f-cv"></label>
+            <input type="text"  id="f-cv"          data-ph="cvPlaceholder">
+            <p class="field-hint" data-t="cvHint"></p>
+            <span class="error-msg"></span>
+          </div>
+          <div class="field" id="field-other-links">
+            <label class="field-label" data-t="otherLinks" for="f-other-links"></label>
+            <input type="text"  id="f-other-links" data-ph="otherLinksPlaceholder">
+            <p class="field-hint" data-t="otherLinksHint"></p>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-back"    onclick="prevStep()" data-t="back"></button>
+          <button class="btn-primary" onclick="nextStep()" data-t="next"></button>
+        </div>
+      </div>
+
+      <!-- ── STEP 3 ─────────────────────────────── -->
+      <div class="step" id="step-3">
+        <div class="step-header">
+          <div class="step-eyebrow">
+            <span class="step-num">03</span>
+            <span class="step-sep"></span>
+            <span class="step-cat" data-t="step3Label"></span>
+          </div>
+          <h2 class="step-title" data-t="step3Title"></h2>
+        </div>
+        <div class="step-body">
+          <div id="step3-content"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-back"    onclick="prevStep()" data-t="back"></button>
+          <button class="btn-primary" onclick="nextStep()" data-t="next"></button>
+        </div>
+      </div>
+
+      <!-- ── STEP 4 ─────────────────────────────── -->
+      <div class="step" id="step-4">
+        <div class="step-header">
+          <div class="step-eyebrow">
+            <span class="step-num">04</span>
+            <span class="step-sep"></span>
+            <span class="step-cat" data-t="step4Label"></span>
+          </div>
+          <h2 class="step-title" data-t="step4Title"></h2>
+        </div>
+        <div class="step-body">
+          <div class="field q-block" id="field-why-anim8">
+            <label class="field-label" data-t="whyAnim8" for="f-why-anim8"></label>
+            <textarea id="f-why-anim8" rows="4" data-ph="whyAnim8Placeholder"></textarea>
+            <span class="error-msg" data-t="required"></span>
+          </div>
+          <div class="field q-block" id="field-availability">
+            <label class="field-label" data-t="availability" for="f-availability"></label>
+            <textarea id="f-availability" rows="3" data-ph="availabilityPlaceholder"></textarea>
+            <span class="error-msg" data-t="required"></span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-back"    onclick="prevStep()"    data-t="back"></button>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+            <span class="error-msg" id="submit-error" style="display:none;text-align:right"></span>
+            <div style="display:flex;gap:10px">
+              <button class="btn-primary" id="btn-submit" onclick="handleSubmit()" data-t="submit"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STEP 5 ─────────────────────────────── -->
+      <div class="step" id="step-5">
+        <div class="confirmation">
+          <div class="confirm-icon">✓</div>
+          <h2 data-t="step5Title"></h2>
+          <p  data-t="confirmation"></p>
+        </div>
+      </div>
+
+    </div><!-- /form-card -->
+  </div><!-- /page-wrapper -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   TRANSLATIONS
+═══════════════════════════════════════════════════════════════ */
+const translations = {
+  en: {
+    applyLabel: "Studio Application",
+    pageTitle: "Apply to Anim-8",
+    pageSubtitle: "We're a character-driven 3D animation and design studio. If you're serious about your craft, we want to hear from you.",
+    next: "Next",
+    back: "Back",
+    submit: "Submit Application",
+    submitting: "Submitting…",
+    submitError: "Something went wrong. Please try again.",
+    required: "This field is required",
+    invalidEmail: "Please enter a valid email address",
+    invalidUrl: "Please enter a valid URL",
+    confirmation: "We've received your application. We'll be in touch if there's a fit.",
+    step1Title: "What role are you applying for?",
+    roleLabel: "Select a role",
+    rolePlaceholder: "Choose a role…",
+    roles: {
+      designer: "Designer",
+      designIntern: "Design Intern",
+      conceptArtist: "Storyboard & Concept Artist",
+      videoEditor: "Video Editor / VFX Artist",
+      modeler: "3D Modeler / Generalist",
+      animator: "Animator"
+    },
+    step2Title: "The basics",
+    positionType: "Position type",
+    positionTypes: { fulltime: "Full-time", parttime: "Part-time", contract: "Contract" },
+    name: "Full name",
+    namePlaceholder: "Your full name",
+    email: "Email address",
+    emailPlaceholder: "you@email.com",
+    portfolio: "Portfolio URL",
+    portfolioPlaceholder: "https://",
+    cv: "CV / Resume link",
+    cvHint: "Google Drive, Dropbox, or any public link",
+    cvPlaceholder: "https://",
+    otherLinks: "Any other links",
+    otherLinksHint: "LinkedIn, Behance, Instagram, etc. — optional",
+    otherLinksPlaceholder: "https://",
+    step3Title: "A few questions",
+    step4Title: "Last two questions",
+    whyAnim8: "Why do you want to work with Anim-8?",
+    whyAnim8Placeholder: "Tell us what draws you to us specifically",
+    availability: "What's your current availability and timezone?",
+    availabilityPlaceholder: "e.g. Full-time, available from June, GMT+7",
+    otherSoftware: "Other — please specify",
+    otherSoftwarePlaceholder: "List any other tools you use",
+    yesNo: { yes: "Yes", no: "No" },
+    tellUsMore: "Tell us more",
+    tellUsMorePlaceholder: "Share any relevant detail",
+    step5Title: "You're all done",
+    step1Label: "Role",
+    step2Label: "Basics",
+    step3Label: "Questions",
+    step4Label: "Final",
+
+    questions: {
+      designer: {
+        tools: "Primary tools",
+        toolsOptions: ["Figma", "Illustrator", "Photoshop", "InDesign"],
+        process: "Walk us through your brand identity process from brief to handoff",
+        processPlaceholder: "How do you approach a new brand project?",
+        brandSystem: "Share a brand system you built end to end — what was the brief and what did you deliver?",
+        brandSystemPlaceholder: "Describe the project, the problem, and what you made",
+        uiux: "Do you have UI/UX experience?",
+        uiuxMore: "Tell us about your UI/UX work",
+        uiuxMorePlaceholder: "What kind of UI/UX work have you done?"
+      },
+      designIntern: {
+        tools: "What tools are you currently using or learning?",
+        toolsOptions: ["Figma", "Illustrator", "Photoshop", "InDesign", "Procreate"],
+        whyBrand: "What draws you to brand design specifically?",
+        whyBrandPlaceholder: "What excites you about this area of design?",
+        project: "Tell us about a project you made — school or personal, doesn't matter",
+        projectPlaceholder: "What did you make, why, and what did you learn?"
+      },
+      conceptArtist: {
+        tools: "Primary software",
+        toolsOptions: ["Photoshop", "Procreate", "Clip Studio"],
+        process: "How do you go from a script or idea to finished frames? Walk us through your process",
+        processPlaceholder: "Describe your workflow from brief to final boards",
+        english: "How comfortable are you communicating in written English with international teams?",
+        englishPlaceholder: "Be honest — we work with US clients and communicate daily in English",
+        animatics: "Do you have experience with animatics or animation pipelines?",
+        animaticsMore: "Tell us about that experience",
+        animaticsMorePlaceholder: "What tools, what projects?"
+      },
+      videoEditor: {
+        tools: "Primary software",
+        toolsOptions: ["Premiere", "After Effects", "DaVinci Resolve", "Nuke"],
+        workType: "What type of work do you do most?",
+        workTypeOptions: ["Short-form social", "Long-form", "Motion graphics", "VFX compositing"],
+        complex: "Describe the most technically complex edit or VFX shot you've done",
+        complexPlaceholder: "What made it complex and how did you solve it?"
+      },
+      modeler: {
+        tools: "Primary software",
+        toolsOptions: ["Maya", "Blender", "ZBrush", "Substance Painter", "Marvelous Designer", "Houdini", "Cinema 4D"],
+        specialty: "What's your specialty?",
+        specialtyOptions: ["Hard surface", "Organic", "Characters", "Environments", "Generalist"],
+        texture: "Do you texture and shade your own models?",
+        realtime: "Any experience with real-time engines?",
+        realtimeOptions: ["Unreal Engine", "Unity"]
+      },
+      animator: {
+        tools: "Primary software",
+        toolsOptions: ["Maya", "Blender", "Cinema 4D"],
+        style: "What's your animation style?",
+        styleOptions: ["Character animation", "Motion graphics", "VFX"],
+        rigging: "Do you rig your own characters or work from existing rigs?",
+        riggingPlaceholder: "Tell us about your rigging experience or process",
+        realtime: "Any Unreal Engine or real-time animation experience?",
+        realtimeMore: "Tell us about that experience",
+        realtimeMorePlaceholder: "What projects, what tools, what did you build?"
+      }
+    }
+  },
+
+  vn: {
+    applyLabel: "Đơn Ứng Tuyển",
+    pageTitle: "Ứng Tuyển Anim-8",
+    pageSubtitle: "Chúng tôi là studio hoạt hình 3D và thiết kế tập trung vào nhân vật. Nếu bạn nghiêm túc với nghề, chúng tôi muốn nghe từ bạn.",
+    next: "Tiếp theo",
+    back: "Quay lại",
+    submit: "Gửi đơn ứng tuyển",
+    submitting: "Đang gửi…",
+    submitError: "Đã có lỗi xảy ra. Vui lòng thử lại.",
+    required: "Vui lòng điền vào ô này",
+    invalidEmail: "Vui lòng nhập địa chỉ email hợp lệ",
+    invalidUrl: "Vui lòng nhập đường dẫn URL hợp lệ",
+    confirmation: "Chúng tôi đã nhận được đơn ứng tuyển của bạn. Chúng tôi sẽ liên hệ nếu có sự phù hợp.",
+    step1Title: "Bạn đang ứng tuyển vị trí nào?",
+    roleLabel: "Chọn vị trí",
+    rolePlaceholder: "Chọn vị trí…",
+    roles: {
+      designer: "Nhà thiết kế",
+      designIntern: "Thực tập sinh thiết kế",
+      conceptArtist: "Họa sĩ storyboard & concept",
+      videoEditor: "Biên tập video / VFX Artist",
+      modeler: "Họa sĩ 3D / Generalist",
+      animator: "Họa sĩ hoạt hình"
+    },
+    step2Title: "Thông tin cơ bản",
+    positionType: "Hình thức làm việc",
+    positionTypes: { fulltime: "Toàn thời gian", parttime: "Bán thời gian", contract: "Hợp đồng" },
+    name: "Họ và tên",
+    namePlaceholder: "Họ và tên đầy đủ của bạn",
+    email: "Địa chỉ email",
+    emailPlaceholder: "ban@email.com",
+    portfolio: "Đường dẫn portfolio",
+    portfolioPlaceholder: "https://",
+    cv: "Đường dẫn CV / Hồ sơ",
+    cvHint: "Google Drive, Dropbox, hoặc bất kỳ đường dẫn công khai nào",
+    cvPlaceholder: "https://",
+    otherLinks: "Các đường dẫn khác",
+    otherLinksHint: "LinkedIn, Behance, Instagram, v.v. — không bắt buộc",
+    otherLinksPlaceholder: "https://",
+    step3Title: "Một vài câu hỏi",
+    step4Title: "Hai câu hỏi cuối",
+    whyAnim8: "Tại sao bạn muốn làm việc với Anim-8?",
+    whyAnim8Placeholder: "Điều gì thu hút bạn đến với chúng tôi",
+    availability: "Bạn hiện có thể làm việc vào thời gian nào và thuộc múi giờ nào?",
+    availabilityPlaceholder: "Ví dụ: Toàn thời gian, có thể bắt đầu từ tháng 6, GMT+7",
+    otherSoftware: "Khác — vui lòng ghi rõ",
+    otherSoftwarePlaceholder: "Liệt kê các công cụ khác bạn sử dụng",
+    yesNo: { yes: "Có", no: "Không" },
+    tellUsMore: "Cho chúng tôi biết thêm",
+    tellUsMorePlaceholder: "Chia sẻ thêm chi tiết liên quan",
+    step5Title: "Bạn đã hoàn tất",
+    step1Label: "Vị trí",
+    step2Label: "Cơ bản",
+    step3Label: "Câu hỏi",
+    step4Label: "Cuối",
+
+    questions: {
+      designer: {
+        tools: "Công cụ chính bạn sử dụng",
+        toolsOptions: ["Figma", "Illustrator", "Photoshop", "InDesign"],
+        process: "Hãy mô tả quy trình xây dựng nhận diện thương hiệu của bạn từ brief đến bàn giao",
+        processPlaceholder: "Bạn tiếp cận một dự án thương hiệu mới như thế nào?",
+        brandSystem: "Chia sẻ một hệ thống thương hiệu bạn đã xây dựng từ đầu đến cuối — brief là gì và bạn đã tạo ra gì?",
+        brandSystemPlaceholder: "Mô tả dự án, vấn đề cần giải quyết và những gì bạn đã thực hiện",
+        uiux: "Bạn có kinh nghiệm về UI/UX không?",
+        uiuxMore: "Kể về công việc UI/UX của bạn",
+        uiuxMorePlaceholder: "Bạn đã thực hiện những loại dự án UI/UX nào?"
+      },
+      designIntern: {
+        tools: "Bạn đang sử dụng hoặc học những công cụ nào?",
+        toolsOptions: ["Figma", "Illustrator", "Photoshop", "InDesign", "Procreate"],
+        whyBrand: "Điều gì thu hút bạn đến với thiết kế thương hiệu?",
+        whyBrandPlaceholder: "Bạn thấy hứng thú điều gì trong lĩnh vực thiết kế này?",
+        project: "Kể cho chúng tôi về một dự án bạn đã thực hiện — trường học hay cá nhân đều được",
+        projectPlaceholder: "Bạn đã tạo ra gì, tại sao, và bạn đã học được gì?"
+      },
+      conceptArtist: {
+        tools: "Phần mềm chính bạn sử dụng",
+        toolsOptions: ["Photoshop", "Procreate", "Clip Studio"],
+        process: "Bạn đi từ kịch bản hoặc ý tưởng đến các frame hoàn chỉnh như thế nào? Mô tả quy trình của bạn",
+        processPlaceholder: "Mô tả quy trình làm việc của bạn từ brief đến storyboard hoàn chỉnh",
+        english: "Bạn có thể giao tiếp bằng tiếng Anh viết với các đội quốc tế ở mức độ nào?",
+        englishPlaceholder: "Hãy thành thật — chúng tôi làm việc với khách hàng Mỹ và giao tiếp bằng tiếng Anh hàng ngày",
+        animatics: "Bạn có kinh nghiệm với animatics hoặc pipeline hoạt hình không?",
+        animaticsMore: "Kể về kinh nghiệm đó",
+        animaticsMorePlaceholder: "Công cụ nào, dự án nào?"
+      },
+      videoEditor: {
+        tools: "Phần mềm chính bạn sử dụng",
+        toolsOptions: ["Premiere", "After Effects", "DaVinci Resolve", "Nuke"],
+        workType: "Bạn thường làm loại công việc nào nhất?",
+        workTypeOptions: ["Video ngắn cho mạng xã hội", "Video dài", "Motion graphics", "VFX compositing"],
+        complex: "Mô tả phần dựng phim hoặc cảnh VFX phức tạp nhất về mặt kỹ thuật mà bạn đã thực hiện",
+        complexPlaceholder: "Điều gì làm nó phức tạp và bạn đã giải quyết như thế nào?"
+      },
+      modeler: {
+        tools: "Phần mềm chính bạn sử dụng",
+        toolsOptions: ["Maya", "Blender", "ZBrush", "Substance Painter", "Marvelous Designer", "Houdini", "Cinema 4D"],
+        specialty: "Chuyên môn của bạn là gì?",
+        specialtyOptions: ["Hard surface", "Organic", "Nhân vật", "Môi trường", "Generalist"],
+        texture: "Bạn có tự texture và shade model của mình không?",
+        realtime: "Bạn có kinh nghiệm với các real-time engine không?",
+        realtimeOptions: ["Unreal Engine", "Unity"]
+      },
+      animator: {
+        tools: "Phần mềm chính bạn sử dụng",
+        toolsOptions: ["Maya", "Blender", "Cinema 4D"],
+        style: "Phong cách hoạt hình của bạn là gì?",
+        styleOptions: ["Hoạt hình nhân vật", "Motion graphics", "VFX"],
+        rigging: "Bạn tự rig nhân vật hay làm việc từ rig có sẵn?",
+        riggingPlaceholder: "Kể về kinh nghiệm hoặc quy trình rig của bạn",
+        realtime: "Bạn có kinh nghiệm với Unreal Engine hoặc hoạt hình real-time không?",
+        realtimeMore: "Kể về kinh nghiệm đó",
+        realtimeMorePlaceholder: "Dự án nào, công cụ nào, bạn đã xây dựng gì?"
+      }
+    }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   ROLE QUESTION CONFIG
+═══════════════════════════════════════════════════════════════ */
+const roleQConfig = {
+  designer: [
+    { type: 'checkboxes-other', id: 'tools',       required: true },
+    { type: 'textarea',         id: 'process' },
+    { type: 'textarea',         id: 'brandSystem' },
+    { type: 'yesno-textarea',   id: 'uiux',        followId: 'uiuxMore' },
+  ],
+  designIntern: [
+    { type: 'checkboxes-other', id: 'tools',       required: true },
+    { type: 'textarea',         id: 'whyBrand' },
+    { type: 'textarea',         id: 'project' },
+  ],
+  conceptArtist: [
+    { type: 'checkboxes-other', id: 'tools',       required: true },
+    { type: 'textarea',         id: 'process' },
+    { type: 'textarea',         id: 'english' },
+    { type: 'yesno-textarea',   id: 'animatics',   followId: 'animaticsMore' },
+  ],
+  videoEditor: [
+    { type: 'checkboxes-other', id: 'tools',       required: true },
+    { type: 'checkboxes',       id: 'workType' },
+    { type: 'textarea',         id: 'complex' },
+  ],
+  modeler: [
+    { type: 'checkboxes-other',  id: 'tools',      required: true },
+    { type: 'checkboxes',        id: 'specialty' },
+    { type: 'yesno-none',        id: 'texture' },
+    { type: 'yesno-checkboxes',  id: 'realtime',   followId: 'realtimeOptions' },
+  ],
+  animator: [
+    { type: 'checkboxes-other', id: 'tools',       required: true },
+    { type: 'checkboxes',       id: 'style' },
+    { type: 'textarea',         id: 'rigging' },
+    { type: 'yesno-textarea',   id: 'realtime',    followId: 'realtimeMore' },
+  ],
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+const state = { lang: 'en', step: 1 };
+let lastRenderedRole = '';
+let savedStep3 = {};
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+function T(key) {
+  const parts = key.split('.');
+  let v = translations[state.lang];
+  for (const p of parts) v = v?.[p];
+  return (v !== undefined && v !== null) ? v : key;
+}
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LANGUAGE
+═══════════════════════════════════════════════════════════════ */
+function setLang(lang) {
+  if (state.step === 3) saveStep3();
+  state.lang = lang;
+  document.documentElement.lang = lang === 'vn' ? 'vi' : 'en';
+  document.querySelectorAll('.lang-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.lang === lang)
+  );
+  applyTranslations();
+  if (state.step === 3) {
+    const role = document.getElementById('role-select').value;
+    if (role) { renderStep3(role); restoreStep3(); }
+  }
+}
+
+function applyTranslations() {
+  document.title = T('pageTitle');
+  document.querySelectorAll('[data-t]').forEach(el => {
+    el.textContent = T(el.dataset.t);
+  });
+  document.querySelectorAll('[data-ph]').forEach(el => {
+    el.placeholder = T(el.dataset.ph);
+  });
+  populateRoleSelect();
+}
+
+function populateRoleSelect() {
+  const sel = document.getElementById('role-select');
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${esc(T('rolePlaceholder'))}</option>`;
+  Object.entries(translations[state.lang].roles).forEach(([k, label]) => {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = label;
+    if (k === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION  (with slide transitions)
+═══════════════════════════════════════════════════════════════ */
+function goToStep(n) {
+  const prev = state.step;
+  if (n === prev) return;
+  const dir = n > prev ? 'forward' : 'back';
+  state.step = n;
+
+  const curEl  = document.getElementById(`step-${prev}`);
+  const nextEl = document.getElementById(`step-${n}`);
+
+  curEl.classList.add(dir === 'forward' ? 'exit-left' : 'exit-right');
+
+  setTimeout(() => {
+    curEl.classList.remove('active', 'exit-left', 'exit-right');
+    nextEl.classList.add('active', dir === 'forward' ? 'enter-right' : 'enter-left');
+    setTimeout(() => nextEl.classList.remove('enter-right', 'enter-left'), 300);
+
+    const pb = document.getElementById('progress-bar');
+    pb.style.display = n === 5 ? 'none' : '';
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (n === 3) {
+      const role = document.getElementById('role-select').value;
+      if (role !== lastRenderedRole) { renderStep3(role); lastRenderedRole = role; }
+    }
+  }, 210);
+}
+
+function nextStep() { if (validateStep(state.step)) goToStep(state.step + 1); }
+function prevStep() { goToStep(state.step - 1); }
+
+function updateProgress() {
+  const s = state.step;
+  for (let i = 1; i <= 4; i++) {
+    const circle = document.getElementById(`pc-${i}`);
+    const step   = document.getElementById(`ps-${i}`);
+    circle.classList.remove('active','done');
+    step.classList.remove('active','done');
+    if (i < s) {
+      circle.classList.add('done'); step.classList.add('done');
+      circle.textContent = '✓';
+    } else {
+      circle.textContent = i;
+      if (i === s) { circle.classList.add('active'); step.classList.add('active'); }
+    }
+    if (i < 4) document.getElementById(`conn-${i}`)?.classList.toggle('done', i < s);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STEP 3 — RENDER
+═══════════════════════════════════════════════════════════════ */
+function renderStep3(role) {
+  const container = document.getElementById('step3-content');
+  const cfg = roleQConfig[role];
+  const q   = translations[state.lang].questions[role];
+  const t   = translations[state.lang];
+  if (!cfg || !q) { container.innerHTML = ''; return; }
+
+  container.innerHTML = cfg.map(f => buildField(f, q, t)).join('');
+
+  // Stagger-animate q-blocks
+  container.querySelectorAll('.q-block').forEach((block, i) => {
+    block.classList.add('q-block-stagger');
+    block.style.animationDelay = `${i * 0.06}s`;
+  });
+
+  attachStep3Events();
+}
+
+function buildField(f, q, t) {
+  switch (f.type) {
+
+    case 'checkboxes-other': {
+      const opts = (q[`${f.id}Options`] || []).map(o =>
+        `<label class="checkbox-item"><input type="checkbox" data-field="${esc(f.id)}" value="${esc(o)}"><span>${esc(o)}</span></label>`
+      ).join('');
+      return `
+        <div class="field q-block" id="field-${f.id}">
+          <label class="field-label">${esc(q[f.id])}</label>
+          <div class="checkbox-group">
+            ${opts}
+            <label class="checkbox-item">
+              <input type="checkbox" data-field="${esc(f.id)}" value="__other__" id="${f.id}-other-cb">
+              <span>${esc(t.otherSoftware)}</span>
+            </label>
+            <div class="other-input-wrap" id="${f.id}-other-wrap">
+              <input type="text" id="${f.id}-other-input" placeholder="${esc(t.otherSoftwarePlaceholder)}">
+            </div>
+          </div>
+          <span class="error-msg">${esc(t.required)}</span>
+        </div>`;
+    }
+
+    case 'checkboxes': {
+      const opts = (q[`${f.id}Options`] || []).map(o =>
+        `<label class="checkbox-item"><input type="checkbox" data-field="${esc(f.id)}" value="${esc(o)}"><span>${esc(o)}</span></label>`
+      ).join('');
+      return `
+        <div class="field q-block" id="field-${f.id}">
+          <label class="field-label">${esc(q[f.id])}</label>
+          <div class="checkbox-group">${opts}</div>
+          <span class="error-msg">${esc(t.required)}</span>
+        </div>`;
+    }
+
+    case 'textarea': {
+      const ph = q[`${f.id}Placeholder`] || '';
+      return `
+        <div class="field q-block" id="field-${f.id}">
+          <label class="field-label">${esc(q[f.id])}</label>
+          <textarea id="f-${f.id}" placeholder="${esc(ph)}"></textarea>
+          <span class="error-msg">${esc(t.required)}</span>
+        </div>`;
+    }
+
+    case 'yesno-none':
+    case 'yesno-textarea':
+    case 'yesno-checkboxes': {
+      let condHtml = '';
+      if (f.followId) {
+        if (f.type === 'yesno-textarea') {
+          const lbl = q[f.followId]                    || t.tellUsMore;
+          const ph  = q[`${f.followId}Placeholder`]   || t.tellUsMorePlaceholder;
+          condHtml = `
+            <div class="field">
+              <label class="field-label">${esc(lbl)}</label>
+              <textarea id="f-${f.followId}" placeholder="${esc(ph)}"></textarea>
+              <span class="error-msg">${esc(t.required)}</span>
+            </div>`;
+        } else if (f.type === 'yesno-checkboxes') {
+          const opts = (q[f.followId] || []).map(o =>
+            `<label class="checkbox-item"><input type="checkbox" data-field="${esc(f.followId)}" value="${esc(o)}"><span>${esc(o)}</span></label>`
+          ).join('');
+          condHtml = `<div class="checkbox-group" style="margin-top:10px">${opts}</div>`;
+        }
+      }
+      const follow = f.followId ? `data-follow="${esc(f.followId)}"` : '';
+      return `
+        <div class="field q-block" id="field-${f.id}">
+          <label class="field-label">${esc(q[f.id])}</label>
+          <div class="yesno-group">
+            <button type="button" class="yesno-btn" data-yesno="${esc(f.id)}" data-val="yes" ${follow}>${esc(t.yesNo.yes)}</button>
+            <button type="button" class="yesno-btn" data-yesno="${esc(f.id)}" data-val="no"  ${follow}>${esc(t.yesNo.no)}</button>
+          </div>
+          <span class="error-msg">${esc(t.required)}</span>
+          ${f.followId ? `<div class="conditional" id="cond-${esc(f.followId)}">${condHtml}</div>` : ''}
+        </div>`;
+    }
+  }
+  return '';
+}
+
+function attachStep3Events() {
+  document.querySelectorAll('[value="__other__"]').forEach(cb => {
+    const fieldId = cb.dataset.field;
+    cb.addEventListener('change', () => {
+      document.getElementById(`${fieldId}-other-wrap`)?.classList.toggle('open', cb.checked);
+    });
+  });
+  document.querySelectorAll('.yesno-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.yesno, val = btn.dataset.val, followId = btn.dataset.follow;
+      document.querySelectorAll(`[data-yesno="${id}"]`).forEach(b => b.classList.remove('sel-yes','sel-no'));
+      btn.classList.add(val === 'yes' ? 'sel-yes' : 'sel-no');
+      if (followId) document.getElementById(`cond-${followId}`)?.classList.toggle('open', val === 'yes');
+      document.getElementById(`field-${id}`)?.classList.remove('has-error');
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STEP 3 — SAVE / RESTORE
+═══════════════════════════════════════════════════════════════ */
+function saveStep3() {
+  savedStep3 = collectRoleQuestions(document.getElementById('role-select').value);
+}
+
+function restoreStep3() {
+  const role = document.getElementById('role-select').value;
+  const cfg  = roleQConfig[role];
+  if (!cfg) return;
+  cfg.forEach(f => {
+    if (f.type === 'checkboxes-other' || f.type === 'checkboxes') {
+      (savedStep3[f.id] || []).forEach(val => {
+        const cb = document.querySelector(`[data-field="${f.id}"][value="${val}"]`);
+        if (cb) cb.checked = true;
+      });
+      if (f.type === 'checkboxes-other' && savedStep3[`${f.id}Other`]) {
+        const cb = document.querySelector(`[data-field="${f.id}"][value="__other__"]`);
+        if (cb) {
+          cb.checked = true;
+          const inp = document.getElementById(`${f.id}-other-input`);
+          const wrp = document.getElementById(`${f.id}-other-wrap`);
+          if (inp) inp.value = savedStep3[`${f.id}Other`];
+          if (wrp) wrp.classList.add('open');
+        }
+      }
+    }
+    if (f.type === 'textarea') {
+      const el = document.getElementById(`f-${f.id}`);
+      if (el && savedStep3[f.id]) el.value = savedStep3[f.id];
+    }
+    if (f.type.startsWith('yesno')) {
+      const val = savedStep3[f.id];
+      if (val === null || val === undefined) return;
+      const btn = document.querySelector(`[data-yesno="${f.id}"][data-val="${val ? 'yes' : 'no'}"]`);
+      if (btn) {
+        btn.classList.add(val ? 'sel-yes' : 'sel-no');
+        if (val && f.followId) {
+          document.getElementById(`cond-${f.followId}`)?.classList.add('open');
+          if (f.type === 'yesno-textarea') {
+            const el = document.getElementById(`f-${f.followId}`);
+            if (el && savedStep3[f.followId]) el.value = savedStep3[f.followId];
+          } else if (f.type === 'yesno-checkboxes') {
+            (savedStep3[f.followId] || []).forEach(v => {
+              const cb = document.querySelector(`[data-field="${f.followId}"][value="${v}"]`);
+              if (cb) cb.checked = true;
+            });
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA COLLECTION
+═══════════════════════════════════════════════════════════════ */
+function collectRoleQuestions(role) {
+  const cfg = roleQConfig[role], data = {};
+  if (!cfg) return data;
+  cfg.forEach(f => {
+    switch (f.type) {
+      case 'checkboxes-other': {
+        data[f.id] = [...document.querySelectorAll(`[data-field="${f.id}"]:checked`)]
+          .filter(c => c.value !== '__other__').map(c => c.value);
+        const otherCb = document.querySelector(`[data-field="${f.id}"][value="__other__"]`);
+        data[`${f.id}Other`] = otherCb?.checked
+          ? (document.getElementById(`${f.id}-other-input`)?.value.trim() || '') : '';
+        break;
+      }
+      case 'checkboxes':
+        data[f.id] = [...document.querySelectorAll(`[data-field="${f.id}"]:checked`)].map(c => c.value);
+        break;
+      case 'textarea':
+        data[f.id] = document.getElementById(`f-${f.id}`)?.value.trim() || '';
+        break;
+      case 'yesno-none': case 'yesno-textarea': case 'yesno-checkboxes': {
+        const yes = document.querySelector(`[data-yesno="${f.id}"][data-val="yes"]`);
+        const no  = document.querySelector(`[data-yesno="${f.id}"][data-val="no"]`);
+        data[f.id] = yes?.classList.contains('sel-yes') ? true
+                   : no?.classList.contains('sel-no')   ? false : null;
+        if (f.followId) {
+          if (f.type === 'yesno-textarea')
+            data[f.followId] = document.getElementById(`f-${f.followId}`)?.value.trim() || '';
+          else if (f.type === 'yesno-checkboxes')
+            data[f.followId] = [...document.querySelectorAll(`[data-field="${f.followId}"]:checked`)].map(c => c.value);
+        }
+        break;
+      }
+    }
+  });
+  return data;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VALIDATION
+═══════════════════════════════════════════════════════════════ */
+function setErr(fieldId, msgKey) {
+  const field = document.getElementById(`field-${fieldId}`);
+  if (!field) return;
+  const msg = field.querySelector('.error-msg');
+  if (msg && msgKey) msg.textContent = T(msgKey);
+  field.classList.add('has-error');
+}
+function clrErr(fieldId) {
+  document.getElementById(`field-${fieldId}`)?.classList.remove('has-error');
+}
+
+function validateStep(step) {
+  let ok = true;
+
+  if (step === 1) {
+    const role = document.getElementById('role-select').value;
+    if (!role) { setErr('role', 'required'); ok = false; } else clrErr('role');
+  }
+
+  if (step === 2) {
+    const pt = document.querySelector('#position-type-group .pill-btn.selected');
+    if (!pt) { setErr('position-type', 'required'); ok = false; } else clrErr('position-type');
+
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { setErr('name', 'required'); ok = false; } else clrErr('name');
+
+    const email = document.getElementById('f-email').value.trim();
+    if (!email) { setErr('email', 'required'); ok = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('email', 'invalidEmail'); ok = false; }
+    else clrErr('email');
+
+    const port = document.getElementById('f-portfolio').value.trim();
+    if (!port) { setErr('portfolio', 'required'); ok = false; }
+    else if (!port.startsWith('http://') && !port.startsWith('https://')) { setErr('portfolio', 'invalidUrl'); ok = false; }
+    else clrErr('portfolio');
+
+    const cv = document.getElementById('f-cv').value.trim();
+    if (!cv) { setErr('cv', 'required'); ok = false; }
+    else if (!cv.startsWith('http://') && !cv.startsWith('https://')) { setErr('cv', 'invalidUrl'); ok = false; }
+    else clrErr('cv');
+  }
+
+  if (step === 3) {
+    const cfg = roleQConfig[document.getElementById('role-select').value] || [];
+    cfg.forEach(f => {
+      if (f.type === 'checkboxes-other' && f.required) {
+        const field = document.getElementById(`field-${f.id}`);
+        if (!document.querySelectorAll(`[data-field="${f.id}"]:checked`).length) {
+          field?.classList.add('has-error'); ok = false;
+        } else field?.classList.remove('has-error');
+      }
+      if (f.type === 'textarea') {
+        const el = document.getElementById(`f-${f.id}`), field = document.getElementById(`field-${f.id}`);
+        if (el && !el.value.trim()) { field?.classList.add('has-error'); ok = false; }
+        else field?.classList.remove('has-error');
+      }
+      if (f.type === 'yesno-none' || f.type === 'yesno-textarea' || f.type === 'yesno-checkboxes') {
+        const yes = document.querySelector(`[data-yesno="${f.id}"][data-val="yes"]`);
+        const no  = document.querySelector(`[data-yesno="${f.id}"][data-val="no"]`);
+        const field = document.getElementById(`field-${f.id}`);
+        const sel = yes?.classList.contains('sel-yes') || no?.classList.contains('sel-no');
+        if (!sel) { field?.classList.add('has-error'); ok = false; }
+        else {
+          field?.classList.remove('has-error');
+          if (yes?.classList.contains('sel-yes') && f.type === 'yesno-textarea' && f.followId) {
+            const el = document.getElementById(`f-${f.followId}`);
+            const cf = el?.closest('.field');
+            if (el && !el.value.trim()) { cf?.classList.add('has-error'); ok = false; }
+            else cf?.classList.remove('has-error');
+          }
+        }
+      }
+    });
+  }
+
+  if (step === 4) {
+    const why   = document.getElementById('f-why-anim8').value.trim();
+    const avail = document.getElementById('f-availability').value.trim();
+    if (!why)   { setErr('why-anim8', 'required'); ok = false; }   else clrErr('why-anim8');
+    if (!avail) { setErr('availability', 'required'); ok = false; } else clrErr('availability');
+  }
+
+  return ok;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBMIT
+═══════════════════════════════════════════════════════════════ */
+async function handleSubmit() {
+  if (!validateStep(4)) return;
+
+  const role = document.getElementById('role-select').value;
+  const formData = {
+    role,
+    lang: state.lang,
+    basics: {
+      positionType: document.querySelector('#position-type-group .pill-btn.selected')?.dataset.pt || '',
+      name:         document.getElementById('f-name').value.trim(),
+      email:        document.getElementById('f-email').value.trim(),
+      portfolio:    document.getElementById('f-portfolio').value.trim(),
+      cv:           document.getElementById('f-cv').value.trim(),
+      otherLinks:   document.getElementById('f-other-links').value.trim(),
+    },
+    roleQuestions:      collectRoleQuestions(role),
+    universalQuestions: {
+      whyAnim8:     document.getElementById('f-why-anim8').value.trim(),
+      availability: document.getElementById('f-availability').value.trim(),
+    },
+  };
+
+  const btn       = document.getElementById('btn-submit');
+  const errEl     = document.getElementById('submit-error');
+
+  // Loading state
+  btn.disabled    = true;
+  btn.textContent = T('submitting');
+  errEl.style.display = 'none';
+
+  try {
+    const response = await fetch('/api/submit-application', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(formData),
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error || 'Submission failed');
+    goToStep(5);
+  } catch (err) {
+    btn.disabled    = false;
+    btn.textContent = T('submit');
+    errEl.textContent   = T('submitError');
+    errEl.style.display = 'block';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  applyTranslations();
+  updateProgress();
+
+  document.addEventListener('input', e => {
+    e.target.closest('.field')?.classList.remove('has-error');
+  });
+  document.getElementById('role-select').addEventListener('change', () => {
+    clrErr('role');
+    lastRenderedRole = '';
+  });
+
+  // Position type pill select
+  document.getElementById('position-type-group').addEventListener('click', e => {
+    const btn = e.target.closest('.pill-btn');
+    if (!btn) return;
+    document.querySelectorAll('#position-type-group .pill-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    clrErr('position-type');
+  });
+});
+</script>
+</body>
+</html>

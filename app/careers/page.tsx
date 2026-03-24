@@ -112,7 +112,7 @@ function LanguageToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => v
 export default function CareersPage() {
   const [lang, setLang] = useState<Lang>('en')
   const c = t[lang]
-  const headingFont = lang === 'vn' ? "'Be Vietnam Pro', sans-serif" : undefined
+  const monoClass = lang === 'en' ? 'font-mono' : ''
 
   const applyHref =
     'mailto:Tyler@anim-8.xyz?subject=Application%20%E2%80%94%20[Role]%20%7C%20Portfolio%20Submission&body=Hi%20Tyler%2C%0A%0AI%27d%20like%20to%20apply%20for%20the%20[Role]%20position%20at%20Anim-8.%0A%0APlease%20find%20my%20portfolio%20and%20CV%20attached.%0A%0ABest%2C%0A[Your%20Name]'
@@ -121,7 +121,10 @@ export default function CareersPage() {
     <>
       <Header />
 
-      <main className="bg-brand-navy min-h-screen">
+      <main
+        className={`bg-brand-navy min-h-screen${lang === 'vn' ? ' font-be-vietnam' : ''}`}
+        lang={lang === 'vn' ? 'vi' : 'en'}
+      >
 
         {/* ── HERO ── */}
         <section className="relative pt-36 sm:pt-44 md:pt-56 lg:pt-72 pb-16 md:pb-20 px-4 overflow-hidden border-b border-white/5">
@@ -147,9 +150,8 @@ export default function CareersPage() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.4 }}
                 className="text-white mb-6"
-                style={headingFont ? { fontFamily: headingFont } : undefined}
-              >
-                {c.heroHeadline[0]}<br />
+            >
+              {c.heroHeadline[0]}<br />
                 <span className="text-brand-lime">{c.heroHeadline[1]}</span>
               </motion.h1>
             </AnimatePresence>
@@ -195,7 +197,7 @@ export default function CareersPage() {
                   key={role.id}
                   href={`#${role.id}`}
                   className="flex-shrink-0 px-5 py-4 text-xs font-bold uppercase tracking-[0.12em] text-text-muted hover:text-white border-b-2 border-transparent hover:border-brand-lime/50 transition-all duration-200 whitespace-nowrap"
-                  style={headingFont ? { fontFamily: headingFont } : undefined}
+                  style={lang === 'vn' ? { fontFamily: "'Be Vietnam Pro', sans-serif" } : undefined}
                 >
                   {role.label}
                 </a>
@@ -222,8 +224,8 @@ export default function CareersPage() {
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.designer.tag}</RoleTag>
-                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.designer.title}</h2>
-                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.designer.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl">{c.designer.title}</h2>
+                    <p className={`text-brand-cyan ${monoClass} text-sm md:text-base`}>{c.designer.comp}</p>
                   </div>
                   <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.designer.badge}
@@ -254,8 +256,8 @@ export default function CareersPage() {
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.intern.tag}</RoleTag>
-                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.intern.title}</h2>
-                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.intern.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl">{c.intern.title}</h2>
+                    <p className={`text-brand-cyan ${monoClass} text-sm md:text-base`}>{c.intern.comp}</p>
                   </div>
                   <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.intern.badge}
@@ -286,8 +288,8 @@ export default function CareersPage() {
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.modeler.tag}</RoleTag>
-                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.modeler.title}</h2>
-                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.modeler.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl">{c.modeler.title}</h2>
+                    <p className={`text-brand-cyan ${monoClass} text-sm md:text-base`}>{c.modeler.comp}</p>
                   </div>
                   <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.modeler.badge}
@@ -364,8 +366,8 @@ export default function CareersPage() {
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.storyboard.tag}</RoleTag>
-                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.storyboard.title}</h2>
-                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.storyboard.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl">{c.storyboard.title}</h2>
+                    <p className={`text-brand-cyan ${monoClass} text-sm md:text-base`}>{c.storyboard.comp}</p>
                   </div>
                   <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.storyboard.badge}
@@ -403,8 +405,8 @@ export default function CareersPage() {
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
                   <div>
                     <RoleTag>{c.video.tag}</RoleTag>
-                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.video.title}</h2>
-                    <p className="text-brand-cyan font-mono text-sm md:text-base">{c.video.comp}</p>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl">{c.video.title}</h2>
+                    <p className={`text-brand-cyan ${monoClass} text-sm md:text-base`}>{c.video.comp}</p>
                   </div>
                   <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
                     {c.video.badge}
@@ -466,7 +468,7 @@ export default function CareersPage() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <h2 className="text-center mb-4 text-white" style={headingFont ? { fontFamily: headingFont } : undefined}>{c.about.sectionTitle}</h2>
+                <h2 className="text-center mb-4 text-white">{c.about.sectionTitle}</h2>
                 <div className="flex justify-center mb-16">
                   <div className="lime-accent-line" />
                 </div>
@@ -609,7 +611,7 @@ export default function CareersPage() {
                 <p className="text-[11px] uppercase tracking-[0.3em] text-brand-lime font-bold mb-6 font-mono">
                   {c.cta.label}
                 </p>
-                <h2 className="text-white mb-6" style={headingFont ? { fontFamily: headingFont } : undefined}>
+                <h2 className="text-white mb-6">
                   {c.cta.headline[0]}<br />
                   <span className="text-brand-lime">{c.cta.headline[1]}</span>
                 </h2>

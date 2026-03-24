@@ -79,6 +79,18 @@
     font-family: 'futura-pt-heavy', 'futura-pt', sans-serif;
   }
 
+  /* Vietnamese language overrides — Be Vietnam Pro has native diacritic support */
+  :lang(vi) h1, :lang(vi) h2, :lang(vi) h3,
+  :lang(vi) h4, :lang(vi) h5, :lang(vi) h6 {
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+  }
+  :lang(vi) p {
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+  }
+  :lang(vi) strong, :lang(vi) .font-bold {
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+  }
+
   h1 {
     @apply text-4xl md:text-6xl lg:text-7xl;
     font-weight: 900;

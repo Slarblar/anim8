@@ -315,17 +315,17 @@ export const t = {
     ],
     metaInstagram: 'Instagram',
     rolesNav: [
-      { id: 'designer', label: 'Thiết Kế · Toàn Thời Gian' },
-      { id: 'design-intern', label: 'Thực Tập Thiết Kế' },
-      { id: '3d-modeler', label: 'Họa Sĩ 3D / Tổng Hợp' },
+      { id: 'designer', label: 'Designer · Toàn Thời Gian' },
+      { id: 'design-intern', label: 'Design Intern' },
+      { id: '3d-modeler', label: '3D Modeler / Generalist' },
       { id: 'storyboard', label: 'Storyboard & Concept Artist' },
-      { id: 'video-editor', label: 'Biên Tập Video / VFX' },
+      { id: 'video-editor', label: 'Video Editor / VFX Artist' },
     ],
 
     // ── ROLE 1 ─────────────────────────────────────────────
     designer: {
       tag: 'Toàn Thời Gian',
-      title: 'HỌA SĨ THIẾT KẾ',
+      title: 'DESIGNER',
       comp: '10–25 triệu VNĐ / tháng · + Thưởng Hiệu Suất',
       badge: 'Nhận Diện Thương Hiệu\n& Hệ Thống Hình Ảnh',
       overview: {
@@ -360,7 +360,7 @@ export const t = {
     // ── ROLE 2 ─────────────────────────────────────────────
     intern: {
       tag: 'Thực Tập Bán / Toàn Thời Gian',
-      title: 'THỰC TẬP THIẾT KẾ',
+      title: 'DESIGN INTERN',
       comp: 'Phụ Cấp + Thưởng Theo Dự Án · Lịch Linh Hoạt',
       badge: 'Thương Hiệu\n& Kỹ Năng',
       about: {
@@ -390,7 +390,7 @@ export const t = {
     // ── ROLE 3 ─────────────────────────────────────────────
     modeler: {
       tag: 'Toàn Thời Gian',
-      title: 'HỌA SĨ 3D / TỔNG HỢP',
+      title: '3D MODELER / GENERALIST',
       comp: '$700–$1.200 USD / tháng · + Thưởng',
       badge: 'Chuyên Gia\nVật Liệu',
       overview: {
@@ -460,7 +460,7 @@ export const t = {
     // ── ROLE 4 ─────────────────────────────────────────────
     storyboard: {
       tag: 'Toàn Thời Gian',
-      title: 'HỌA SĨ STORYBOARD & CONCEPT',
+      title: 'STORYBOARD & CONCEPT ARTIST',
       comp: '15–25 triệu VNĐ / tháng · Dựa Trên Kinh Nghiệm & Portfolio',
       badge: 'Kể Chuyện\nBằng Hình Ảnh',
       overview: {
@@ -503,7 +503,7 @@ export const t = {
     // ── ROLE 5 ─────────────────────────────────────────────
     video: {
       tag: 'Thực Tập · Junior · Senior — Toàn Thời Gian',
-      title: 'BIÊN TẬP VIÊN / HỌA SĨ VFX',
+      title: 'VIDEO EDITOR / VFX ARTIST',
       comp: 'Theo Cấp Độ & Kinh Nghiệm',
       badge: 'Hậu Kỳ\n& VFX',
       overview: {

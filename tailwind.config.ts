@@ -36,6 +36,8 @@ const config: Config = {
         'futura-book': ['futura-pt-book', 'futura-pt', 'sans-serif'],
         'futura-bold': ['futura-pt-bold', 'futura-pt', 'sans-serif'],
         'futura-heavy': ['futura-pt-heavy', 'futura-pt', 'sans-serif'],
+        jost: ['Jost', 'system-ui', 'sans-serif'],
+        'be-vietnam': ['Be Vietnam Pro', 'system-ui', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-in-out',

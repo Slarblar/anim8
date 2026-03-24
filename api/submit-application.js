@@ -27,6 +27,42 @@ const positionTypeEnumGid = {
   contract: '1213548447605490', // Contract
 };
 
+// ── Interview Status field ───────────────────────────────────────────────────
+const CF_INTERVIEW_STATUS = '1213548453655330';
+const CF_INTERVIEW_STATUS_NEW = '1213749826605616'; // New
+
+// ── Software → tag name map ──────────────────────────────────────────────────
+const softwareTagMap = {
+  'Maya':              'maya',
+  'Blender':           'blender',
+  'ZBrush':            'zbrush',
+  'Substance Painter': 'substance-painter',
+  'Marvelous Designer':'marvelous-designer',
+  'Houdini':           'houdini',
+  'Cinema 4D':         'cinema-4d',
+  'Unreal Engine':     'unreal-engine',
+  'Unity':             'unity',
+  'Figma':             'figma',
+  'Illustrator':       'illustrator',
+  'Photoshop':         'photoshop',
+  'InDesign':          'indesign',
+  'Procreate':         'procreate',
+  'Clip Studio':       'clip-studio',
+  'After Effects':     'after-effects',
+  'Premiere':          'premiere',
+  'DaVinci Resolve':   'davinci-resolve',
+  'Nuke':              'nuke',
+};
+
+const roleTagMap = {
+  designer:     'designer',
+  designIntern: 'design-intern',
+  conceptArtist:'concept-artist',
+  videoEditor:  'video-editor',
+  modeler:      '3d-modeler',
+  animator:     'animator',
+};
+
 const roleLabels = {
   designer:     'Designer',
   designIntern: 'Design Intern',
@@ -77,6 +113,57 @@ function buildNotes(role, basics, roleQuestions, universalQuestions) {
   return lines.join('\n');
 }
 
+function collectTagNames(role, roleQuestions) {
+  const tags = new Set();
+  if (roleTagMap[role]) tags.add(roleTagMap[role]);
+  if (roleQuestions && typeof roleQuestions === 'object') {
+    for (const value of Object.values(roleQuestions)) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (softwareTagMap[item]) tags.add(softwareTagMap[item]);
+        }
+      }
+    }
+  }
+  return [...tags];
+}
+
+async function getOrCreateTag(name, existingMap, authHeaders) {
+  if (existingMap[name]) return existingMap[name];
+  const res = await fetch(`${ASANA_BASE}/tags`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ data: { name, workspace: { gid: ASANA_WORKSPACE_GID } } }),
+  });
+  if (!res.ok) throw new Error(`Failed to create tag "${name}"`);
+  const json = await res.json();
+  return json.data.gid;
+}
+
+async function applyTags(taskGid, tagNames, authHeaders) {
+  if (tagNames.length === 0) return;
+  const tagsRes = await fetch(
+    `${ASANA_BASE}/workspaces/${ASANA_WORKSPACE_GID}/tags?opt_fields=name,gid&limit=100`,
+    { headers: authHeaders }
+  );
+  const tagsJson = tagsRes.ok ? await tagsRes.json() : { data: [] };
+  const existingMap = Object.fromEntries((tagsJson.data || []).map(t => [t.name, t.gid]));
+  await Promise.all(
+    tagNames.map(async (name) => {
+      try {
+        const tagGid = await getOrCreateTag(name, existingMap, authHeaders);
+        await fetch(`${ASANA_BASE}/tasks/${taskGid}/addTag`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ data: { tag: tagGid } }),
+        });
+      } catch (err) {
+        console.error(`Tag skipped for "${name}":`, err.message);
+      }
+    })
+  );
+}
+
 function buildCustomFields(role, basics) {
   const fields = {};
 
@@ -88,6 +175,11 @@ function buildCustomFields(role, basics) {
   const ptKey = (basics.positionType || '').toLowerCase().replace(/-/g, '');
   if (positionTypeEnumGid[ptKey]) {
     fields[CF_POSITION_TYPE] = positionTypeEnumGid[ptKey];
+  }
+
+  // Interview Status → default to "New"
+  if (CF_INTERVIEW_STATUS_NEW !== 'PENDING') {
+    fields[CF_INTERVIEW_STATUS] = CF_INTERVIEW_STATUS_NEW;
   }
 
   // Text fields
@@ -158,7 +250,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: err.message });
   }
 
-  // ── 2. Place in "New Candidates" section ─────────────────────────────────
+  // ── 2. Apply tags (non-fatal) ────────────────────────────────────────────
+  try {
+    const tagNames = collectTagNames(role, roleQuestions);
+    await applyTags(taskGid, tagNames, authHeaders);
+  } catch (err) {
+    console.error('Tag application error:', err.message);
+  }
+
+  // ── 3. Place in "New Candidates" section ─────────────────────────────────
   try {
     const sectionRes = await fetch(
       `${ASANA_BASE}/sections/${ASANA_SECTION_GID}/addTask`,

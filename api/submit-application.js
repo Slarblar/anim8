@@ -1,7 +1,31 @@
 const ASANA_PROJECT_GID   = '1213548438306670';
-const ASANA_SECTION_GID   = '1213548438306671';
+const ASANA_SECTION_GID   = '1213548438306671'; // New Candidates
 const ASANA_WORKSPACE_GID = '1210991035370090';
 const ASANA_BASE          = 'https://app.asana.com/api/1.0';
+
+// ── Custom field GIDs ────────────────────────────────────────────────────────
+const CF_ROLE          = '1213548447605501';
+const CF_POSITION_TYPE = '1213548453655352';
+const CF_PORTFOLIO     = '1213548447450214';
+const CF_CV            = '1213637269318806';
+const CF_EMAIL         = '1213752796441066';
+
+// ── Role enum option GIDs ────────────────────────────────────────────────────
+const roleEnumGid = {
+  animator:     '1213548447605502', // Animator
+  conceptArtist:'1213548447605503', // Concept / Storyboard
+  modeler:      '1213548447605504', // Modeler
+  designer:     '1213548447605505', // Designer
+  designIntern: '1213548447605505', // Designer (closest match)
+  videoEditor:  '1213548447605511', // Editor
+};
+
+// ── Position type enum option GIDs ───────────────────────────────────────────
+const positionTypeEnumGid = {
+  fulltime: '1213548447605488', // Full-time
+  parttime: '1213548447605489', // Part-time
+  contract: '1213548447605490', // Contract
+};
 
 const roleLabels = {
   designer:     'Designer',
@@ -12,38 +36,6 @@ const roleLabels = {
   animator:     'Animator',
 };
 
-const roleTagMap = {
-  designer:     'designer',
-  designIntern: 'design-intern',
-  conceptArtist:'concept-artist',
-  videoEditor:  'video-editor',
-  modeler:      '3d-modeler',
-  animator:     'animator',
-};
-
-const softwareTagMap = {
-  'Maya':             'maya',
-  'Blender':          'blender',
-  'ZBrush':           'zbrush',
-  'Substance Painter':'substance-painter',
-  'Marvelous Designer':'marvelous-designer',
-  'Houdini':          'houdini',
-  'Cinema 4D':        'cinema-4d',
-  'Unreal Engine':    'unreal-engine',
-  'Unity':            'unity',
-  'Figma':            'figma',
-  'Illustrator':      'illustrator',
-  'Photoshop':        'photoshop',
-  'InDesign':         'indesign',
-  'Procreate':        'procreate',
-  'Clip Studio':      'clip-studio',
-  'After Effects':    'after-effects',
-  'Premiere':         'premiere',
-  'DaVinci Resolve':  'davinci-resolve',
-  'Nuke':             'nuke',
-};
-
-// Converts camelCase key to a readable label ("toolsOther" → "Tools Other")
 function formatKey(key) {
   return key
     .replace(/([A-Z])/g, ' $1')
@@ -85,71 +77,29 @@ function buildNotes(role, basics, roleQuestions, universalQuestions) {
   return lines.join('\n');
 }
 
-function collectTagNames(role, roleQuestions) {
-  const tags = new Set();
+function buildCustomFields(role, basics) {
+  const fields = {};
 
-  if (roleTagMap[role]) tags.add(roleTagMap[role]);
-
-  if (roleQuestions && typeof roleQuestions === 'object') {
-    for (const value of Object.values(roleQuestions)) {
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          if (softwareTagMap[item]) tags.add(softwareTagMap[item]);
-        }
-      }
-    }
+  // Role enum
+  if (roleEnumGid[role]) {
+    fields[CF_ROLE] = { gid: roleEnumGid[role] };
   }
 
-  return [...tags];
-}
+  // Position type enum
+  const ptKey = (basics.positionType || '').toLowerCase().replace('-', '');
+  if (positionTypeEnumGid[ptKey]) {
+    fields[CF_POSITION_TYPE] = { gid: positionTypeEnumGid[ptKey] };
+  }
 
-async function getOrCreateTag(name, existingMap, authHeaders) {
-  if (existingMap[name]) return existingMap[name];
+  // Text fields
+  if (basics.portfolio) fields[CF_PORTFOLIO] = basics.portfolio;
+  if (basics.cv)        fields[CF_CV]        = basics.cv;
+  if (basics.email)     fields[CF_EMAIL]     = basics.email;
 
-  const res = await fetch(`${ASANA_BASE}/tags`, {
-    method: 'POST',
-    headers: authHeaders,
-    body: JSON.stringify({
-      data: { name, workspace: { gid: ASANA_WORKSPACE_GID } },
-    }),
-  });
-  if (!res.ok) throw new Error(`Failed to create tag "${name}"`);
-  const json = await res.json();
-  return json.data.gid;
-}
-
-async function applyTags(taskGid, tagNames, authHeaders) {
-  if (tagNames.length === 0) return;
-
-  // Fetch all existing workspace tags in one request
-  const tagsRes = await fetch(
-    `${ASANA_BASE}/workspaces/${ASANA_WORKSPACE_GID}/tags?opt_fields=name,gid&limit=100`,
-    { headers: authHeaders }
-  );
-  const tagsJson = tagsRes.ok ? await tagsRes.json() : { data: [] };
-  const existingMap = Object.fromEntries(
-    (tagsJson.data || []).map(t => [t.name, t.gid])
-  );
-
-  // Resolve all tags in parallel then apply them
-  await Promise.all(
-    tagNames.map(async (name) => {
-      try {
-        const tagGid = await getOrCreateTag(name, existingMap, authHeaders);
-        await fetch(`${ASANA_BASE}/tasks/${taskGid}/addTag`, {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({ data: { tag: tagGid } }),
-        });
-      } catch (err) {
-        console.error(`Tag operation skipped for "${name}":`, err.message);
-      }
-    })
-  );
+  return fields;
 }
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -176,10 +126,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'Invalid request body' });
   }
 
-  const taskName = `${basics.name} — ${roleLabels[role] || role}`;
-  const notes    = buildNotes(role, basics, roleQuestions, universalQuestions);
+  const taskName     = `${basics.name} — ${roleLabels[role] || role}`;
+  const notes        = buildNotes(role, basics, roleQuestions, universalQuestions);
+  const customFields = buildCustomFields(role, basics);
 
-  // ── 1. Create task ───────────────────────────────────────────────────────
+  // ── 1. Create task with custom fields ────────────────────────────────────
   let taskGid;
   try {
     const taskRes = await fetch(`${ASANA_BASE}/tasks`, {
@@ -189,8 +140,9 @@ export default async function handler(req, res) {
         data: {
           name: taskName,
           notes,
-          projects:  [ASANA_PROJECT_GID],
-          workspace: ASANA_WORKSPACE_GID,
+          projects:      [ASANA_PROJECT_GID],
+          workspace:     ASANA_WORKSPACE_GID,
+          custom_fields: customFields,
         },
       }),
     });
@@ -207,7 +159,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: err.message });
   }
 
-  // ── 2. Place in "New Candidates" section (non-fatal) ─────────────────────
+  // ── 2. Place in "New Candidates" section ─────────────────────────────────
   try {
     const sectionRes = await fetch(
       `${ASANA_BASE}/sections/${ASANA_SECTION_GID}/addTask`,
@@ -223,14 +175,6 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     console.error('Section placement error:', err.message);
-  }
-
-  // ── 3. Tags (non-fatal) ───────────────────────────────────────────────────
-  try {
-    const tagNames = collectTagNames(role, roleQuestions);
-    await applyTags(taskGid, tagNames, authHeaders);
-  } catch (err) {
-    console.error('Tag application error:', err.message);
   }
 
   return res.status(200).json({ success: true, taskId: taskGid });

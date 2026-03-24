@@ -540,6 +540,54 @@
     .conditional.open { display: block; animation: qBlockIn 0.25s ease; }
     .conditional .field:last-child { margin-bottom: 0; }
 
+    /* ── CONSENT CHECKBOX ───────────────────────── */
+    .consent-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 0 40px 20px;
+    }
+    .consent-row input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 5px;
+      background: transparent;
+      cursor: pointer;
+      margin-top: 2px;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .consent-row input[type="checkbox"]:checked {
+      background: var(--green);
+      border-color: var(--green);
+    }
+    .consent-row input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px; top: 1px;
+      width: 6px; height: 10px;
+      border: 2px solid #0d0e1a;
+      border-top: none; border-left: none;
+      transform: rotate(45deg);
+    }
+    .consent-row input[type="checkbox"].consent-error {
+      border-color: var(--error);
+    }
+    .consent-label {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .consent-label a { color: var(--green); text-decoration: none; }
+    .consent-label a:hover { text-decoration: underline; }
+    @media (max-width: 600px) {
+      .consent-row { padding: 0 20px 16px; }
+    }
+
     /* ── BUTTON ROW ──────────────────────────────── */
     .btn-row {
       display: flex;
@@ -742,6 +790,12 @@
             <input type="email" id="f-email"       data-ph="emailPlaceholder">
             <span class="error-msg"></span>
           </div>
+          <div class="field" id="field-phone">
+            <label class="field-label" data-t="phone" for="f-phone"></label>
+            <input type="tel" id="f-phone" data-ph="phonePlaceholder">
+            <p class="field-hint" data-t="phoneHint"></p>
+            <span class="error-msg" data-t="required"></span>
+          </div>
           <div class="field" id="field-portfolio">
             <label class="field-label" data-t="portfolio" for="f-portfolio"></label>
             <input type="text"  id="f-portfolio"   data-ph="portfolioPlaceholder">
@@ -806,6 +860,10 @@
             <span class="error-msg" data-t="required"></span>
           </div>
         </div>
+        <div class="consent-row">
+          <input type="checkbox" id="f-consent" />
+          <label class="consent-label" for="f-consent" id="consent-label-text"></label>
+        </div>
         <div class="btn-row">
           <button class="btn-back"    onclick="prevStep()"    data-t="back"></button>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
@@ -865,6 +923,9 @@ const translations = {
     namePlaceholder: "Your full name",
     email: "Email address",
     emailPlaceholder: "you@email.com",
+    phone: "Phone number",
+    phonePlaceholder: "+1 (555) 000-0000",
+    phoneHint: "Include country code — we work with international teams",
     portfolio: "Portfolio URL",
     portfolioPlaceholder: "https://",
     cv: "CV / Resume link",
@@ -885,6 +946,8 @@ const translations = {
     tellUsMore: "Tell us more",
     tellUsMorePlaceholder: "Share any relevant detail",
     step5Title: "You're all done",
+    consentText: "I agree to share the information in this application with the Anim-8 team. Your data is used only for hiring purposes and will not be shared with third parties.",
+    consentRequired: "Please agree to continue",
     step1Label: "Role",
     step2Label: "Basics",
     step3Label: "Questions",
@@ -983,6 +1046,9 @@ const translations = {
     namePlaceholder: "Họ và tên đầy đủ của bạn",
     email: "Địa chỉ email",
     emailPlaceholder: "ban@email.com",
+    phone: "Số điện thoại",
+    phonePlaceholder: "+84 000 000 000",
+    phoneHint: "Bao gồm mã quốc gia — chúng tôi làm việc với các nhóm quốc tế",
     portfolio: "Đường dẫn portfolio",
     portfolioPlaceholder: "https://",
     cv: "Đường dẫn CV / Hồ sơ",
@@ -1002,6 +1068,8 @@ const translations = {
     yesNo: { yes: "Có", no: "Không" },
     tellUsMore: "Cho chúng tôi biết thêm",
     tellUsMorePlaceholder: "Chia sẻ thêm chi tiết liên quan",
+    consentText: "Tôi đồng ý chia sẻ thông tin trong đơn ứng tuyển này với đội ngũ Anim-8. Dữ liệu của bạn chỉ được sử dụng cho mục đích tuyển dụng và sẽ không được chia sẻ với bên thứ ba.",
+    consentRequired: "Vui lòng đồng ý để tiếp tục",
     step5Title: "Bạn đã hoàn tất",
     step1Label: "Vị trí",
     step2Label: "Cơ bản",
@@ -1158,6 +1226,8 @@ function applyTranslations() {
   document.querySelectorAll('[data-ph]').forEach(el => {
     el.placeholder = T(el.dataset.ph);
   });
+  const consentLbl = document.getElementById('consent-label-text');
+  if (consentLbl) consentLbl.textContent = T('consentText');
   populateRoleSelect();
 }
 
@@ -1476,6 +1546,9 @@ function validateStep(step) {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('email', 'invalidEmail'); ok = false; }
     else clrErr('email');
 
+    const phone = document.getElementById('f-phone').value.trim();
+    if (!phone) { setErr('phone', 'required'); ok = false; } else clrErr('phone');
+
     const port = document.getElementById('f-portfolio').value.trim();
     if (!port) { setErr('portfolio', 'required'); ok = false; }
     else if (!port.startsWith('http://') && !port.startsWith('https://')) { setErr('portfolio', 'invalidUrl'); ok = false; }
@@ -1525,6 +1598,17 @@ function validateStep(step) {
     const avail = document.getElementById('f-availability').value.trim();
     if (!why)   { setErr('why-anim8', 'required'); ok = false; }   else clrErr('why-anim8');
     if (!avail) { setErr('availability', 'required'); ok = false; } else clrErr('availability');
+
+    const consent = document.getElementById('f-consent');
+    if (!consent.checked) {
+      consent.classList.add('consent-error');
+      const lbl = document.getElementById('consent-label-text');
+      lbl.style.color = 'var(--error)';
+      ok = false;
+    } else {
+      consent.classList.remove('consent-error');
+      document.getElementById('consent-label-text').style.color = '';
+    }
   }
 
   return ok;
@@ -1544,6 +1628,7 @@ async function handleSubmit() {
       positionType: document.querySelector('#position-type-group .pill-btn.selected')?.dataset.pt || '',
       name:         document.getElementById('f-name').value.trim(),
       email:        document.getElementById('f-email').value.trim(),
+      phone:        document.getElementById('f-phone').value.trim(),
       portfolio:    document.getElementById('f-portfolio').value.trim(),
       cv:           document.getElementById('f-cv').value.trim(),
       otherLinks:   document.getElementById('f-other-links').value.trim(),

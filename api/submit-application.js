@@ -9,6 +9,7 @@ const CF_POSITION_TYPE = '1213548453655352';
 const CF_PORTFOLIO     = '1213548447450214';
 const CF_CV            = '1213637269318806';
 const CF_EMAIL         = '1213752796441066';
+const CF_PHONE         = '1213752796441070';
 
 // ── Role enum option GIDs ────────────────────────────────────────────────────
 const roleEnumGid = {
@@ -186,6 +187,7 @@ function buildCustomFields(role, basics) {
   if (basics.portfolio) fields[CF_PORTFOLIO] = basics.portfolio;
   if (basics.cv)        fields[CF_CV]        = basics.cv;
   if (basics.email)     fields[CF_EMAIL]     = basics.email;
+  if (basics.phone)     fields[CF_PHONE]     = basics.phone;
 
   return fields;
 }

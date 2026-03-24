@@ -80,15 +80,14 @@ function buildNotes(role, basics, roleQuestions, universalQuestions) {
 function buildCustomFields(role, basics) {
   const fields = {};
 
-  // Role enum
+  // Enum fields take the option GID directly as a string
   if (roleEnumGid[role]) {
-    fields[CF_ROLE] = { gid: roleEnumGid[role] };
+    fields[CF_ROLE] = roleEnumGid[role];
   }
 
-  // Position type enum
-  const ptKey = (basics.positionType || '').toLowerCase().replace('-', '');
+  const ptKey = (basics.positionType || '').toLowerCase().replace(/-/g, '');
   if (positionTypeEnumGid[ptKey]) {
-    fields[CF_POSITION_TYPE] = { gid: positionTypeEnumGid[ptKey] };
+    fields[CF_POSITION_TYPE] = positionTypeEnumGid[ptKey];
   }
 
   // Text fields

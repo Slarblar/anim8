@@ -1573,6 +1573,7 @@ async function handleSubmit() {
     if (!result.success) throw new Error(result.error || 'Submission failed');
     goToStep(5);
   } catch (err) {
+    console.error('Submission error:', err);
     btn.disabled    = false;
     btn.textContent = T('submit');
     errEl.textContent   = T('submitError');

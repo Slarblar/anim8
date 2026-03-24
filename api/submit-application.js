@@ -252,15 +252,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: err.message });
   }
 
-  // ── 2. Apply tags (non-fatal) ────────────────────────────────────────────
-  try {
-    const tagNames = collectTagNames(role, roleQuestions);
-    await applyTags(taskGid, tagNames, authHeaders);
-  } catch (err) {
-    console.error('Tag application error:', err.message);
-  }
+  // ── 2. Respond immediately — tags & section run in background ───────────
+  res.status(200).json({ success: true, taskId: taskGid });
 
-  // ── 3. Place in "New Candidates" section ─────────────────────────────────
+  // ── 3. Place in "New Candidates" section (post-response) ─────────────────
   try {
     const sectionRes = await fetch(
       `${ASANA_BASE}/sections/${ASANA_SECTION_GID}/addTask`,
@@ -278,5 +273,11 @@ export default async function handler(req, res) {
     console.error('Section placement error:', err.message);
   }
 
-  return res.status(200).json({ success: true, taskId: taskGid });
+  // ── 4. Apply tags (post-response) ────────────────────────────────────────
+  try {
+    const tagNames = collectTagNames(role, roleQuestions);
+    await applyTags(taskGid, tagNames, authHeaders);
+  } catch (err) {
+    console.error('Tag application error:', err.message);
+  }
 }

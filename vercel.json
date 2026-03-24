@@ -3,6 +3,10 @@
     "api/submit-application.js": {
       "memory": 128,
       "maxDuration": 30
+    },
+    "api/submit-contact.js": {
+      "memory": 128,
+      "maxDuration": 15
     }
   },
   "headers": [

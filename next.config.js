@@ -7,6 +7,11 @@ const nextConfig = {
         destination: '/apply/index.html',
         permanent: false,
       },
+      {
+        source: '/contact',
+        destination: '/contact/index.html',
+        permanent: false,
+      },
     ]
   },
   images: {

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact — Anim-8 Studio</title>
+  <link rel="stylesheet" href="https://use.typekit.net/yde3ltr.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:      #1b1c2c;
+      --black:     #090a14;
+      --black-2:   #0d0e1a;
+      --green:     #7cc142;
+      --cyan:      #38c2d6;
+      --pink:      #dd0b83;
+      --text:      #f1f5f9;
+      --muted:     #94a3b8;
+      --error:     #f87171;
+      --font-body: 'Be Vietnam Pro', 'futura-pt-book', 'futura-pt', sans-serif;
+      --font-head: 'futura-pt-heavy', 'futura-pt', 'Be Vietnam Pro', sans-serif;
+      --r:         10px;
+    }
+
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+    body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 20px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.025;
+      z-index: 0;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ── LAYOUT ──────────────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    /* ── HEADER ──────────────────────────────────── */
+    .page-header {
+      margin-bottom: 32px;
+    }
+
+    .nav-logo {
+      display: inline-block;
+      margin-bottom: 36px;
+    }
+
+    .nav-logo img {
+      height: 22px;
+      display: block;
+    }
+
+    .page-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 14px;
+    }
+
+    .page-eyebrow::before {
+      content: '';
+      display: block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+
+    .page-title {
+      font-family: var(--font-head);
+      font-size: clamp(28px, 6vw, 40px);
+      font-weight: 900;
+      line-height: 1.08;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .page-sub {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── CARD ────────────────────────────────────── */
+    .form-card {
+      background: var(--black-2);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .form-body {
+      padding: 36px 40px;
+    }
+
+    /* ── FIELDS ──────────────────────────────────── */
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field:last-child { margin-bottom: 0; }
+
+    .field-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .field-label .optional {
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 11px;
+      opacity: 0.6;
+      margin-left: 4px;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    textarea,
+    select {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--r);
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="tel"]:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--green);
+      background: rgba(124,193,66,0.04);
+      box-shadow: 0 0 0 3px rgba(124,193,66,0.1);
+    }
+
+    input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.15); }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 38px;
+      cursor: pointer;
+    }
+
+    select option { background: var(--black-2); color: var(--text); }
+
+    textarea {
+      resize: vertical;
+      min-height: 130px;
+    }
+
+    .field.has-error input,
+    .field.has-error textarea,
+    .field.has-error select {
+      border-color: var(--error);
+      background: rgba(248,113,113,0.04);
+    }
+
+    .error-msg {
+      display: none;
+      font-size: 12px;
+      color: var(--error);
+      margin-top: 5px;
+    }
+
+    .field.has-error .error-msg { display: block; }
+
+    /* ── FOOTER ──────────────────────────────────── */
+    .form-footer {
+      padding: 20px 40px 28px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px 24px;
+      background: var(--green);
+      color: var(--black);
+      border: none;
+      border-radius: var(--r);
+      font-family: var(--font-head);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+
+    .btn-submit:hover {
+      background: #8dd44f;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(124,193,66,0.25);
+    }
+
+    .btn-submit:active { transform: translateY(0); }
+
+    .btn-submit:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── SUCCESS STATE ───────────────────────────── */
+    .success-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 56px 40px;
+      gap: 16px;
+    }
+
+    .success-state.visible { display: flex; }
+
+    .success-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(124,193,66,0.12);
+      border: 1px solid rgba(124,193,66,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--green);
+      font-size: 22px;
+    }
+
+    .success-title {
+      font-family: var(--font-head);
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .success-sub {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 320px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--green);
+      text-decoration: none;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+
+    .back-link:hover { opacity: 0.75; }
+
+    /* ── SUBMIT ERROR ─────────────────────────────── */
+    .submit-error {
+      font-size: 12px;
+      color: var(--error);
+      text-align: center;
+      display: none;
+    }
+
+    .submit-error.visible { display: block; }
+
+    /* ── RESPONSIVE ──────────────────────────────── */
+    @media (max-width: 600px) {
+      body { padding: 32px 16px; }
+      .form-body { padding: 24px 20px; }
+      .form-footer { padding: 16px 20px 24px; }
+      .success-state { padding: 40px 24px; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-header">
+    <a class="nav-logo" href="/">
+      <img src="/images/logos/anim-8-completewordmark-white-01.svg" alt="Anim-8" />
+    </a>
+    <p class="page-eyebrow">Start a Project</p>
+    <h1 class="page-title">Let's build something<br />worth watching.</h1>
+    <p class="page-sub">Tell us about your project and we'll get back to you within 24 hours.</p>
+  </div>
+
+  <div class="form-card">
+
+    <!-- ── FORM ───────────────────────────────────── -->
+    <div id="form-wrap">
+      <div class="form-body">
+
+        <div class="row">
+          <div class="field" id="field-name">
+            <label class="field-label" for="f-name">Full Name</label>
+            <input type="text" id="f-name" placeholder="Your name" />
+            <span class="error-msg">This field is required</span>
+          </div>
+          <div class="field" id="field-company">
+            <label class="field-label" for="f-company">Company / Brand</label>
+            <input type="text" id="f-company" placeholder="Brand name" />
+            <span class="error-msg">This field is required</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" id="field-email">
+            <label class="field-label" for="f-email">Email Address</label>
+            <input type="email" id="f-email" placeholder="you@brand.com" />
+            <span class="error-msg" id="email-error">Please enter a valid email</span>
+          </div>
+          <div class="field" id="field-phone">
+            <label class="field-label" for="f-phone">Phone <span class="optional">optional</span></label>
+            <input type="tel" id="f-phone" placeholder="+1 (000) 000-0000" />
+          </div>
+        </div>
+
+        <div class="field" id="field-project-type">
+          <label class="field-label" for="f-project-type">Project Type</label>
+          <select id="f-project-type">
+            <option value="" disabled selected>Select a project type…</option>
+            <option value="3D Animation">3D Animation</option>
+            <option value="Character Design">Character Design</option>
+            <option value="Brand Identity">Brand Identity</option>
+            <option value="IP / World-building">IP / World-building</option>
+            <option value="Motion Graphics">Motion Graphics</option>
+            <option value="Design Retainer">Design Retainer</option>
+            <option value="Other">Other</option>
+          </select>
+          <span class="error-msg">Please select a project type</span>
+        </div>
+
+        <div class="field" id="field-message">
+          <label class="field-label" for="f-message">Message / Brief</label>
+          <textarea id="f-message" placeholder="Tell us about your vision, timeline, and budget…"></textarea>
+          <span class="error-msg">This field is required</span>
+        </div>
+
+      </div>
+
+      <div class="form-footer">
+        <span class="submit-error" id="submit-error">Something went wrong. Please email us at hello@anim-8.xyz</span>
+        <button class="btn-submit" id="btn-submit" onclick="handleSubmit()">Send Message →</button>
+      </div>
+    </div>
+
+    <!-- ── SUCCESS ─────────────────────────────────── -->
+    <div class="success-state" id="success-state">
+      <div class="success-icon">✓</div>
+      <p class="success-title">Message received.</p>
+      <p class="success-sub">We'll review your brief and get back to you within 24 hours.</p>
+      <a class="back-link" href="/">← Back to Anim-8</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function validate() {
+    let ok = true;
+
+    const fields = ['name', 'company', 'message'];
+    fields.forEach(id => {
+      const el    = document.getElementById(`f-${id}`);
+      const field = document.getElementById(`field-${id}`);
+      if (!el.value.trim()) { field.classList.add('has-error'); ok = false; }
+      else field.classList.remove('has-error');
+    });
+
+    const email = document.getElementById('f-email');
+    const emailField = document.getElementById('field-email');
+    const emailErr   = document.getElementById('email-error');
+    if (!email.value.trim()) {
+      emailErr.textContent = 'This field is required';
+      emailField.classList.add('has-error'); ok = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+      emailErr.textContent = 'Please enter a valid email';
+      emailField.classList.add('has-error'); ok = false;
+    } else {
+      emailField.classList.remove('has-error');
+    }
+
+    const pt    = document.getElementById('f-project-type');
+    const ptField = document.getElementById('field-project-type');
+    if (!pt.value) { ptField.classList.add('has-error'); ok = false; }
+    else ptField.classList.remove('has-error');
+
+    return ok;
+  }
+
+  document.querySelectorAll('input, textarea, select').forEach(el => {
+    el.addEventListener('input', () => {
+      el.closest('.field')?.classList.remove('has-error');
+    });
+  });
+
+  async function handleSubmit() {
+    if (!validate()) return;
+
+    const btn     = document.getElementById('btn-submit');
+    const errEl   = document.getElementById('submit-error');
+
+    btn.disabled    = true;
+    btn.textContent = 'Sending…';
+    errEl.classList.remove('visible');
+
+    const body = {
+      name:        document.getElementById('f-name').value.trim(),
+      company:     document.getElementById('f-company').value.trim(),
+      email:       document.getElementById('f-email').value.trim(),
+      phone:       document.getElementById('f-phone').value.trim(),
+      projectType: document.getElementById('f-project-type').value,
+      message:     document.getElementById('f-message').value.trim(),
+    };
+
+    try {
+      const res    = await fetch('/api/submit-contact', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || 'Submission failed');
+
+      document.getElementById('form-wrap').style.display   = 'none';
+      document.getElementById('success-state').classList.add('visible');
+    } catch (err) {
+      console.error('Contact form error:', err);
+      errEl.classList.add('visible');
+      btn.disabled    = false;
+      btn.textContent = 'Send Message →';
+    }
+  }
+</script>
+</body>
+</html>

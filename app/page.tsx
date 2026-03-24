@@ -153,7 +153,7 @@ export default function LandingPage() {
           <li><a href="#process">Process</a></li>
           <li><a href="#about">About</a></li>
         </ul>
-        <a href="#cta" className="nav-cta">Start a Project</a>
+        <a href="/contact" className="nav-cta">Start a Project</a>
         <button
           className={`hamburger-btn${menuOpen ? ' open' : ''}`}
           onClick={() => setMenuOpen(o => !o)}
@@ -426,7 +426,7 @@ export default function LandingPage() {
             We take on a handful of projects each quarter.
             If the work matters to you, it&apos;ll matter to us.
           </p>
-          <a href="mailto:hello@anim-8.xyz" className="btn btn-fill reveal d3">
+          <a href="/contact" className="btn btn-fill reveal d3">
             Start a Conversation →
           </a>
           <p className="cta-fine reveal d4">hello@anim-8.xyz · anim-8.xyz</p>
@@ -445,7 +445,7 @@ export default function LandingPage() {
         <ul className="footer-links">
           <li><a href="#work">Work</a></li>
           <li><a href="#services">Services</a></li>
-          <li><a href="#cta">Contact</a></li>
+          <li><a href="/contact">Contact</a></li>
         </ul>
         <p className="footer-copy">© 2025 Anim-8 Studio. All rights reserved.</p>
       </footer>

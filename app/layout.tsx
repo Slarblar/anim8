@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
+  icons: {
+    icon: '/images/favicon-anim-8-01.svg',
+    shortcut: '/images/favicon-anim-8-01.svg',
+  },
   title: 'Anim-8 | 3D Creative Studio for Brands & IP',
   description: 'Anim-8 is a full-pipeline 3D creative studio helping brands and IP owners develop characters, worlds, and assets — from concept to production-ready. Led by RTFKT co-founder Chris Le.',
   keywords: ['3D characters', 'character production', 'IP development', 'brand characters', 'character modeling', 'rigging', 'animation', 'entertainment studio', 'RTFKT'],

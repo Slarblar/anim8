@@ -499,9 +499,15 @@ body.landing-active.hov #cursor-ring {
 .lp .wc:nth-child(3) .wc-placeholder { background: linear-gradient(135deg, #10151a, #151e28); }
 .lp .wc:nth-child(4) .wc-placeholder { background: linear-gradient(135deg, #1a1018, #251020); }
 .lp .wc:nth-child(5) .wc-placeholder { background: linear-gradient(135deg, #101a18, #102018); }
-.lp .wc-preview { position: absolute; inset: 0; z-index: 1; opacity: 0; transition: opacity 0.55s; }
+.lp .wc-preview { position: absolute; inset: 0; z-index: 1; opacity: 0; transition: opacity 0.55s; pointer-events: none; }
 .lp .wc-preview video { width:100%; height:100%; object-fit:cover; filter: saturate(0.65); }
+.lp .wc-gumlet { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
 .lp .wc:hover .wc-preview { opacity: 1; }
+
+/* Video cards — thumbnail always visible, play button fades on hover */
+.lp .wc.has-video .wc-preview { opacity: 1; }
+.lp .wc.has-video .wc-play { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+.lp .wc.has-video:hover .wc-play { opacity: 0; transform: translate(-50%,-50%) scale(0.75); transition: opacity 0.3s, transform 0.3s; }
 .lp .wc-overlay {
   position: absolute; inset: 0; z-index: 2;
   background: linear-gradient(to top, rgba(22,23,31,0.95) 0%, rgba(22,23,31,0.15) 50%, transparent 100%);
@@ -523,15 +529,15 @@ body.landing-active.hov #cursor-ring {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%,-50%) scale(0.75);
   width: 60px; height: 60px;
-  border: 2px solid rgba(124,193,66,0.6); border-radius: 50%;
+  background: var(--green); border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity 0.3s, transform 0.35s var(--ease-out), box-shadow 0.3s;
   z-index: 3;
 }
-.lp .wc-play svg { fill: var(--green); width: 16px; margin-left: 3px; }
+.lp .wc-play svg { fill: var(--bg-deep); width: 16px; margin-left: 3px; }
 .lp .wc:hover .wc-play {
   opacity: 1; transform: translate(-50%,-50%) scale(1);
-  box-shadow: 0 0 40px rgba(124,193,66,0.25);
+  box-shadow: var(--green-glow);
 }
 
 /* ─── MODAL PLAYER ──────────────────────────────────────────── */
@@ -575,6 +581,7 @@ body.landing-active.hov #cursor-ring {
   z-index: 10;
 }
 #lp-modal .modal-video video { width:100%; height:100%; object-fit:cover; }
+#lp-modal .modal-video-iframe { position:absolute; inset:0; width:100%; height:100%; border:none; }
 #lp-modal .modal-ph {
   width:100%; height:100%;
   display:flex; align-items:center; justify-content:center;

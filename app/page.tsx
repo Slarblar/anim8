@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import './page.css'
+import { WorkCard } from '@/components/ui/WorkCard'
+import { WorkModal } from '@/components/ui/WorkModal'
+import type { WorkItem } from '@/components/ui/WorkCard'
 
-const workData = [
-  { client: 'Sao House',         title: 'Character Universe' },
+const workData: WorkItem[] = [
+  { client: 'Sao House',         title: 'Character Universe', gumletId: '69c31bf3bf49c9eb69baf7fc' },
   { client: 'VeeFriends',        title: '3D Animation' },
   { client: 'Phin the Frog',     title: 'Original IP' },
   { client: 'SLCSCOOP',          title: 'Character Design' },
@@ -119,19 +122,7 @@ export default function LandingPage() {
     return () => ro.disconnect()
   }, [])
 
-  // Keyboard modal navigation
-  useEffect(() => {
-    if (!modalOpen) return
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeModal()
-      if (e.key === 'ArrowRight') setActiveIdx(i => (i + 1) % workData.length)
-      if (e.key === 'ArrowLeft') setActiveIdx(i => (i - 1 + workData.length) % workData.length)
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [modalOpen, closeModal])
-
-  const current = workData[activeIdx]
+  const handleNavigate = useCallback((idx: number) => setActiveIdx(idx), [])
 
   return (
     <div className="lp">
@@ -301,62 +292,26 @@ export default function LandingPage() {
           </div>
           <div className="work-grid">
             {workData.map((item, i) => (
-              <div
+              <WorkCard
                 key={i}
-                className={`wc reveal${i > 0 ? ` d${Math.min(i, 4)}` : ''}`}
+                item={item}
+                index={i}
+                className={`reveal${i > 0 ? ` d${Math.min(i, 4)}` : ''}`}
                 onClick={() => openModal(i)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={e => e.key === 'Enter' && openModal(i)}
-              >
-                <div className="wc-placeholder" />
-                <div className="wc-preview" />
-                <div className="wc-overlay">
-                  <div className="wc-play">
-                    <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>
-                  </div>
-                  <div className="wc-meta">
-                    <p className="wc-client">{item.client}</p>
-                    <h3 className="wc-title">{item.title}</h3>
-                  </div>
-                </div>
-              </div>
+              />
             ))}
           </div>
         </div>
       </section>
 
       {/* ══ MODAL PLAYER ═════════════════════════════════════ */}
-      <div
-        id="lp-modal"
-        className={modalOpen ? 'open' : ''}
-        onClick={e => { if (e.target === e.currentTarget) closeModal() }}
-      >
-        <div className="modal-wrap">
-          <div className="modal-video">
-            <div className="modal-ph">[ VIDEO PLAYBACK ]</div>
-          </div>
-          <div className="modal-footer">
-            <div className="modal-info">
-              <p className="modal-client-label">{current.client}</p>
-              <h3 className="modal-title-text">{current.title}</h3>
-            </div>
-            <button className="modal-close-btn" onClick={closeModal}>✕</button>
-          </div>
-          <div className="modal-nav-row">
-            {workData.map((item, i) => (
-              <div
-                key={i}
-                className={`mnav${i === activeIdx ? ' active' : ''}`}
-                onClick={() => setActiveIdx(i)}
-              >
-                <div className="mn-client">{item.client}</div>
-                <div className="mn-title">{item.title}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <WorkModal
+        items={workData}
+        activeIdx={activeIdx}
+        isOpen={modalOpen}
+        onClose={closeModal}
+        onNavigate={handleNavigate}
+      />
 
       {/* ══ PROCESS ══════════════════════════════════════════ */}
       <section id="process">

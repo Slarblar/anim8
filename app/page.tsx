@@ -2,17 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import './page.css'
-import { WorkCard } from '@/components/ui/WorkCard'
-import { WorkModal } from '@/components/ui/WorkModal'
-import type { WorkItem } from '@/components/ui/WorkCard'
-
-const workData: WorkItem[] = [
-  { client: 'Sao House',         title: 'Character Universe', gumletId: '69c31bf3bf49c9eb69baf7fc' },
-  { client: 'VeeFriends',        title: '3D Animation' },
-  { client: 'Phin the Frog',     title: 'Original IP' },
-  { client: 'SLCSCOOP',          title: 'Character Design' },
-  { client: 'Insomniac x RNBW', title: 'Product Packaging' },
-]
+import { GlobeWork } from '@/components/ui/GlobeWork'
 
 const clientLinks: Record<string, string> = {
   'VeeFriends':        'https://veefriends.com/',
@@ -29,20 +19,7 @@ const clientNames = [
 ]
 
 export default function LandingPage() {
-  const [modalOpen, setModalOpen] = useState(false)
-  const [activeIdx, setActiveIdx] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
-
-  const openModal = (idx: number) => {
-    setActiveIdx(idx)
-    setModalOpen(true)
-    document.body.style.overflow = 'hidden'
-  }
-
-  const closeModal = useCallback(() => {
-    setModalOpen(false)
-    document.body.style.overflow = ''
-  }, [])
 
   const closeMenu = useCallback(() => setMenuOpen(false), [])
 
@@ -121,8 +98,6 @@ export default function LandingPage() {
     document.querySelectorAll('.lp .reveal').forEach(el => ro.observe(el))
     return () => ro.disconnect()
   }, [])
-
-  const handleNavigate = useCallback((idx: number) => setActiveIdx(idx), [])
 
   return (
     <div className="lp">
@@ -239,8 +214,10 @@ export default function LandingPage() {
         <div className="container">
           <div className="services-head">
             <div>
-              <p className="section-tag reveal">What We Build</p>
-              <h2 className="services-h2 reveal d1">Studio quality.<br />Without the friction.</h2>
+              <p className="section-tag reveal">— WHAT WE BUILD</p>
+              <h2 className="services-h2 reveal d1">
+                STUDIO QUALITY.<br />WITHOUT THE FRICTION.
+              </h2>
             </div>
           </div>
           <div className="services-grid">
@@ -251,7 +228,6 @@ export default function LandingPage() {
                 Characters, worlds, expression systems.
                 The kind of creative that sticks around long after the campaign ends.
               </p>
-              <div className="svc-icon"><span /><span /><span /></div>
             </div>
             <div className="svc reveal d1">
               <p className="svc-num">02</p>
@@ -259,7 +235,6 @@ export default function LandingPage() {
               <p className="svc-desc">
                 We design brands. Identity, systems, all the way through.
               </p>
-              <div className="svc-icon"><span /><span /><span /></div>
             </div>
             <div className="svc reveal d2">
               <p className="svc-num">03</p>
@@ -268,7 +243,6 @@ export default function LandingPage() {
                 A senior creative voice, without the overhead.
                 For teams that need someone to push the creative further.
               </p>
-              <div className="svc-icon"><span /><span /><span /></div>
             </div>
             <div className="svc reveal d3">
               <p className="svc-num">04</p>
@@ -277,41 +251,15 @@ export default function LandingPage() {
                 Ongoing work, same quality, no drop-off.
                 For brands that need to stay in the feed.
               </p>
-              <div className="svc-icon"><span /><span /><span /></div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ══ WORK GRID ════════════════════════════════════════ */}
+      {/* ══ WORK GLOBE ═══════════════════════════════════════ */}
       <section id="work">
-        <div className="container">
-          <div className="work-head">
-            <p className="section-tag reveal">Selected Work</p>
-            <h2 className="work-h2 reveal d1">Built for scroll.<br />Designed to stop it.</h2>
-          </div>
-          <div className="work-grid">
-            {workData.map((item, i) => (
-              <WorkCard
-                key={i}
-                item={item}
-                index={i}
-                className={`reveal${i > 0 ? ` d${Math.min(i, 4)}` : ''}`}
-                onClick={() => openModal(i)}
-              />
-            ))}
-          </div>
-        </div>
+        <GlobeWork />
       </section>
-
-      {/* ══ MODAL PLAYER ═════════════════════════════════════ */}
-      <WorkModal
-        items={workData}
-        activeIdx={activeIdx}
-        isOpen={modalOpen}
-        onClose={closeModal}
-        onNavigate={handleNavigate}
-      />
 
       {/* ══ PROCESS ══════════════════════════════════════════ */}
       <section id="process">

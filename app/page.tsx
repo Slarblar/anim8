@@ -153,7 +153,7 @@ export default function LandingPage() {
           <div className="hero-bg-overlay" />
         </div>
         <div className="container hero-content">
-          <p className="hero-eyebrow">Anim-8 Studio</p>
+          <p className="hero-eyebrow">Anim-8</p>
           <h1 className="hero-h1">
             <span className="line"><span className="inner">We Build</span></span>
             <span className="line"><span className="inner">Worlds For</span></span>
@@ -350,7 +350,7 @@ export default function LandingPage() {
           <li><a href="#services">Services</a></li>
           <li><a href="/contact">Contact</a></li>
         </ul>
-        <p className="footer-copy">© 2025 Anim-8 Studio. All rights reserved.</p>
+        <p className="footer-copy">© 2026 Anim-8. All rights reserved.</p>
       </footer>
     </div>
   )

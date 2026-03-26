@@ -289,6 +289,11 @@ body.landing-active.hov #cursor-ring {
 }
 @keyframes lp-scrollPulse { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
 
+/* Hero scroll cue — hidden on phones (line collides with stacked CTAs) */
+@media (max-width: 767px) {
+  .lp .hero-scroll { display: none; }
+}
+
 /* ─── CLIENT STRIP ──────────────────────────────────────────── */
 .lp #clients {
   background: var(--bg-deep);
@@ -629,10 +634,6 @@ body.landing-active.hov #cursor-ring {
   .lp .globe-section-h2 {
     font-size: clamp(17px, 5vw, 24px) !important;
   }
-  .lp .globe-count {
-    top: 10px;
-    right: 12px;
-  }
 }
 
 /* Subline under globe headline (same id as drag hint for fade-on-interact JS) */
@@ -678,6 +679,10 @@ body.landing-active.hov #cursor-ring {
   pointer-events: none;
   z-index: 10;
   font-family: 'DM Sans', var(--font), sans-serif;
+}
+/* Landscape counts (16:9 / 9:16) — desktop only; floated awkwardly on small viewports */
+@media (max-width: 1023px) {
+  .lp .globe-count { display: none; }
 }
 
 /* Fallback if .globe-hint appears without .globe-section-subline */

@@ -14,7 +14,7 @@ const clientLinks: Record<string, string> = {
 }
 
 const clientNames = [
-  'VeeFriends', 'RTFKT', 'Sao House', 'SLCSCOOP',
+  'Sao House', 'VeeFriends', 'RTFKT', 'SLCSCOOP',
   'Insomniac x RNBW', 'Sakira Mods',
 ]
 
@@ -160,7 +160,7 @@ export default function LandingPage() {
             <span className="line"><span className="inner">Brands &amp; IP.</span></span>
           </h1>
           <p className="hero-sub">
-            We build characters. We build brands.
+            Most studios make assets. We build the universe around them.
           </p>
           <div className="hero-actions">
             <a href="#work" className="btn btn-fill">See Our Work</a>

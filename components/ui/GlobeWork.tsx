@@ -219,9 +219,12 @@ export function GlobeWork() {
       const SPHERE_SCALE = 0.92
       const RADIUS = computeRadius() * SPHERE_SCALE
 
+      const stageSlot = root.querySelector('#globe-stage')
+      const stageRoot = stageSlot instanceof HTMLElement ? stageSlot : root
+
       function computeCamZ() {
-        const rw_ = Math.max(1, root.clientWidth)
-        const rh_ = Math.max(1, root.clientHeight)
+        const rw_ = Math.max(1, stageRoot.clientWidth)
+        const rh_ = Math.max(1, stageRoot.clientHeight)
         const aspect = rw_ / rh_
         const fovRad = (isMobile ? 50 : 46) * Math.PI / 180
         let neededZ = (RADIUS * 1.15) / Math.tan(fovRad / 2)
@@ -408,8 +411,8 @@ export function GlobeWork() {
       }
       const globeCanvas: HTMLCanvasElement = q
 
-      const rw = Math.max(1, root.clientWidth)
-      const rh = Math.max(1, root.clientHeight)
+      const rw = Math.max(1, stageRoot.clientWidth)
+      const rh = Math.max(1, stageRoot.clientHeight)
 
       const renderer = new THREE.WebGLRenderer({
         canvas: globeCanvas,
@@ -1012,8 +1015,8 @@ export function GlobeWork() {
       // ── Resize ───────────────────────────────────────────────
       const onResize = () => {
         isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 600
-        const rw2 = Math.max(1, root.clientWidth)
-        const rh2 = Math.max(1, root.clientHeight)
+        const rw2 = Math.max(1, stageRoot.clientWidth)
+        const rh2 = Math.max(1, stageRoot.clientHeight)
         camera.aspect = rw2 / rh2
         camera.fov    = isMobile ? 50 : 46
         camera.updateProjectionMatrix()
@@ -1055,9 +1058,7 @@ export function GlobeWork() {
 
   return (
     <div ref={wrapRef} className="globe-work-wrap">
-      <canvas id="globe-canvas" />
-
-      {/* Section header — top left overlay */}
+      {/* Header first in DOM: on mobile it stacks above the stage; on desktop it still overlays (absolute + z-index). */}
       <div className="globe-section-header">
         <p className="globe-section-tag">Selected Work</p>
         <h2 className="globe-section-h2">Built for scroll.<br />Designed to stop it.</h2>
@@ -1066,8 +1067,10 @@ export function GlobeWork() {
         </p>
       </div>
 
-      {/* Card count — top right */}
-      <div id="globe-count" className="globe-count" />
+      <div id="globe-stage" className="globe-stage">
+        <canvas id="globe-canvas" />
+        <div id="globe-count" className="globe-count" />
+      </div>
 
       <GlobeWorkModal globeGallery={globeGallery} />
     </div>

@@ -548,6 +548,13 @@ body.landing-active.hov #cursor-ring {
   min-height: 680px;
   overflow: hidden;
   touch-action: none;
+  box-sizing: border-box;
+}
+/* WebGL + count — full bleed behind the overlaid header on desktop */
+.lp .globe-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 /* Section header overlaid on globe — top left (clears fixed nav ~70px) */
 .lp .globe-section-header {
@@ -586,17 +593,45 @@ body.landing-active.hov #cursor-ring {
   margin: 0;
 }
 
-/* Mobile: shorter globe strip so users can scroll past; camera framing (JS) keeps the sphere smaller than the canvas */
+/* Mobile: stack title above the globe. No padding on the wrap — that created a dead band; inset lives on the header only. */
 @media (max-width: 599px) {
   .lp .globe-work-wrap {
-    height: clamp(360px, 54vh, 500px);
+    display: flex;
+    flex-direction: column;
+    height: clamp(380px, 58vh, 520px);
     min-height: 0;
+    padding-top: 0;
+  }
+  .lp .globe-stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    z-index: 1;
   }
   .lp .globe-section-header {
-    top: max(72px, calc(env(safe-area-inset-top, 0px) + 52px));
+    position: relative;
+    flex: 0 0 auto;
+    top: auto;
+    left: auto;
+    right: auto;
+    z-index: 10;
+    /* Single clearance: not safe-area + nav as two stacks (that was ~90px+). max(nav band, notch) only. */
+    padding: max(44px, env(safe-area-inset-top, 0px)) clamp(18px, 4vw, 24px) 4px;
+    max-width: 100%;
+  }
+  .lp .globe-section-tag {
+    margin-bottom: 8px;
+  }
+  .lp .globe-section-subline.globe-hint {
+    margin-top: 8px;
   }
   .lp .globe-section-h2 {
-    font-size: clamp(18px, 5.2vw, 26px) !important;
+    font-size: clamp(17px, 5vw, 24px) !important;
+  }
+  .lp .globe-count {
+    top: 10px;
+    right: 12px;
   }
 }
 
@@ -1452,7 +1487,8 @@ body.landing-active::-webkit-scrollbar-thumb { background: rgba(124,193,66,0.4);
   .lp .wc:nth-child(3) { grid-column: 1 / span 3; grid-row: 2; }
   .lp .wc:nth-child(4) { grid-column: 4 / span 2; grid-row: 2; }
   .lp .wc:nth-child(5) { grid-column: 6 / span 2; grid-row: 2; }
-  .lp #work { padding: 90px 0; }
+  /* Globe-only — tall section padding read as dead space above the 3D block */
+  .lp #work { padding: 0 0 48px; }
 
   /* Process: 2 columns */
   .lp .steps { grid-template-columns: repeat(2, 1fr); }
@@ -1496,8 +1532,8 @@ body.landing-active::-webkit-scrollbar-thumb { background: rgba(124,193,66,0.4);
   .lp .services-grid { grid-template-columns: 1fr; border-left: none; }
   .lp .svc { padding: 36px 28px 48px; }
 
-  /* Work */
-  .lp #work { padding: 72px 0; }
+  /* Work — globe-only; keep a small bottom gutter before #process */
+  .lp #work { padding: 0 0 28px; }
   .lp .work-grid { grid-template-columns: 1fr 1fr; grid-template-rows: none; gap: 3px; }
   .lp .wc { aspect-ratio: 16/9; }
   .lp .wc:nth-child(1) { grid-column: span 2; grid-row: auto; }

@@ -18,6 +18,13 @@ const clientNames = [
   'Insomniac x RNBW', 'Sakira Mods',
 ]
 
+function landingUsesCustomCursor() {
+  if (typeof window === 'undefined') return false
+  if (window.matchMedia('(pointer: coarse)').matches) return false
+  if (window.matchMedia('(hover: none)').matches) return false
+  return true
+}
+
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -32,8 +39,9 @@ export default function LandingPage() {
     }
   }, [])
 
-  // Custom cursor
+  // Custom cursor (mouse / fine pointer only — skip touch-first devices)
   useEffect(() => {
+    if (!landingUsesCustomCursor()) return
     const dot = document.getElementById('cursor-dot')
     const ring = document.getElementById('cursor-ring')
     if (!dot || !ring) return
@@ -58,8 +66,9 @@ export default function LandingPage() {
     }
   }, [])
 
-  // Cursor ring hover expansion
+  // Cursor ring hover expansion (same devices as custom cursor)
   useEffect(() => {
+    if (!landingUsesCustomCursor()) return
     const addHov = () => document.body.classList.add('hov')
     const remHov = () => document.body.classList.remove('hov')
     const els = document.querySelectorAll('a,button,.wc,.svc,.mnav,.step,.stat')

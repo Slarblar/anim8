@@ -74,6 +74,25 @@ body.landing-active.hov #cursor-ring {
   border-color: var(--green);
 }
 
+/* No custom cursor trail on touch-first / no-hover viewports */
+@media (hover: none), (pointer: coarse) {
+  body.landing-active {
+    cursor: auto;
+  }
+  #cursor-dot,
+  #cursor-ring {
+    display: none !important;
+  }
+  .lp .btn,
+  .lp .nav-cta,
+  .lp .wc,
+  .lp .hamburger-btn,
+  #lp-modal .modal-close-btn,
+  #lp-modal .mnav {
+    cursor: pointer;
+  }
+}
+
 /* ─── RESET (scoped) ────────────────────────────────────────── */
 .lp a { color: inherit; text-decoration: none; }
 .lp img,

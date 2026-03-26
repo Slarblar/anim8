@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type * as THREEType from 'three'
-import { GlobeModalImageCarousel } from './GlobeModalImageCarousel'
+import { getGlobeModalAbstractCanvasSize, setGlobeModalVideoWrapStyles } from '@/lib/viewportBreakpoints'
+import { GlobeWorkModal, type GlobeWorkGalleryState } from './GlobeWorkModal'
 
 interface GlobeItem {
   format: 'landscape' | 'portrait'
@@ -20,8 +21,6 @@ interface GlobeItem {
    */
   galleryImages?: string[]
 }
-
-type GlobeGalleryState = { srcs: string[]; format: 'landscape' | 'portrait'; accent: string }
 
 // Proxy route — serves the thumbnail from same origin, bypassing CDN CORS restrictions
 const GUMLET_THUMB = (id: string) => `/api/thumb?id=${id}`
@@ -177,7 +176,7 @@ function drawAbstract(ctx: CanvasRenderingContext2D, w: number, h: number, accen
 
 export function GlobeWork() {
   const wrapRef = useRef<HTMLDivElement>(null)
-  const [globeGallery, setGlobeGallery] = useState<GlobeGalleryState | null>(null)
+  const [globeGallery, setGlobeGallery] = useState<GlobeWorkGalleryState>(null)
   const setGlobeGalleryRef = useRef(setGlobeGallery)
   setGlobeGalleryRef.current = setGlobeGallery
 
@@ -199,7 +198,7 @@ export function GlobeWork() {
       let isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 600
 
       // ── Card dimensions ──────────────────────────────────────
-      const SCALE = isMobile ? 0.68 : 1.0
+      const SCALE = isMobile ? 0.58 : 1.0
       const CARD = {
         landscape: { w: 1.55 * SCALE, h: 0.875 * SCALE },
         portrait:  { w: 0.62 * SCALE, h: 1.10  * SCALE },
@@ -221,10 +220,14 @@ export function GlobeWork() {
       const RADIUS = computeRadius() * SPHERE_SCALE
 
       function computeCamZ() {
-        const aspect  = window.innerWidth / window.innerHeight
-        const fovRad  = (isMobile ? 52 : 46) * Math.PI / 180
-        let neededZ   = (RADIUS * 1.15) / Math.tan(fovRad / 2)
+        const rw_ = Math.max(1, root.clientWidth)
+        const rh_ = Math.max(1, root.clientHeight)
+        const aspect = rw_ / rh_
+        const fovRad = (isMobile ? 50 : 46) * Math.PI / 180
+        let neededZ = (RADIUS * 1.15) / Math.tan(fovRad / 2)
         if (aspect < 0.65) neededZ *= 1.15
+        // Pull back on mobile so the globe reads smaller in the (shorter) wrap — touch target is only modestly larger than the sphere
+        if (isMobile) neededZ *= 1.18
         return neededZ
       }
 
@@ -424,7 +427,7 @@ export function GlobeWork() {
       const scene = new THREE.Scene()
       scene.fog = new THREE.FogExp2(0x1e1f2e, isMobile ? 0.015 : 0.019)
 
-      const FOV    = isMobile ? 52 : 46
+      const FOV    = isMobile ? 50 : 46
       const camera = new THREE.PerspectiveCamera(FOV, rw / rh, 0.1, 200)
       camera.position.set(0, 0, computeCamZ())
 
@@ -843,42 +846,32 @@ export function GlobeWork() {
             format: item.format,
             accent: item.accent,
           })
-          mCanvas.style.display    = 'none'
+          mCanvas.style.display = 'none'
           mVideoWrap.style.display = 'none'
-          mIframe.src              = ''
+          mVideoWrap.style.width = ''
+          mVideoWrap.style.maxHeight = ''
+          mVideoWrap.style.aspectRatio = ''
+          mIframe.src = ''
         } else if (item.gumletId) {
-          // Show Gumlet video player
-          mCanvas.style.display    = 'none'
+          mCanvas.style.display = 'none'
           mVideoWrap.style.display = 'block'
-          // Set aspect ratio based on format
-          mVideoWrap.style.aspectRatio = isP ? '9/16' : '16/9'
-          if (isP) {
-            mVideoWrap.style.maxHeight = window.innerWidth >= 600 ? '' : '60vw'
-            mVideoWrap.style.width     = window.innerWidth >= 600 ? '' : '100%'
-          } else {
-            mVideoWrap.style.width     = '100%'
-            mVideoWrap.style.maxHeight = '45vh'
-          }
+          setGlobeModalVideoWrapStyles(mVideoWrap, window.innerWidth, window.innerHeight, isP)
           mIframe.src = item.gumletEmbedQuery
             ? `https://play.gumlet.io/embed/${item.gumletId}?${item.gumletEmbedQuery}`
             : GUMLET_EMBED(item.gumletId)
         } else {
-          // Show abstract canvas art
-          mCanvas.style.display    = 'block'
+          mCanvas.style.display = 'block'
           mVideoWrap.style.display = 'none'
-          mIframe.src              = ''
+          mVideoWrap.style.width = ''
+          mVideoWrap.style.maxHeight = ''
+          mVideoWrap.style.aspectRatio = ''
+          mIframe.src = ''
 
-          let W: number, H: number
-          if (isP) {
-            const isDesk = window.innerWidth >= 600
-            const maxH = window.innerWidth >= 1440 ? 520 : window.innerWidth >= 1024 ? 460 : 400
-            H = isDesk ? Math.min(window.innerHeight * 0.6, maxH) : window.innerWidth * 0.88 * (9 / 16)
-            W = isDesk ? Math.round(H * 9 / 16) : window.innerWidth * 0.88
-          } else {
-            W = Math.min(560, window.innerWidth * 0.88)
-            H = W * (9 / 16)
-          }
-          W = Math.round(W); H = Math.round(H)
+          const { W, H } = getGlobeModalAbstractCanvasSize(
+            window.innerWidth,
+            window.innerHeight,
+            item.format,
+          )
 
           mCanvas.width  = W * 2; mCanvas.height = H * 2
           mCanvas.style.width  = W + 'px'; mCanvas.style.height = H + 'px'
@@ -1022,7 +1015,7 @@ export function GlobeWork() {
         const rw2 = Math.max(1, root.clientWidth)
         const rh2 = Math.max(1, root.clientHeight)
         camera.aspect = rw2 / rh2
-        camera.fov    = isMobile ? 52 : 46
+        camera.fov    = isMobile ? 50 : 46
         camera.updateProjectionMatrix()
         camera.position.z = computeCamZ()
         renderer.setSize(rw2, rh2)
@@ -1076,44 +1069,7 @@ export function GlobeWork() {
       {/* Card count — top right */}
       <div id="globe-count" className="globe-count" />
 
-      {/* Modal overlay */}
-      <div id="globe-modal-overlay" className="globe-modal-overlay">
-        <div id="globe-modal-card" className="globe-modal-card">
-          <button id="globe-modal-close" className="globe-modal-close">&#x2715;</button>
-          <canvas id="globe-modal-canvas" className="globe-modal-canvas" />
-          <div id="globe-modal-video-wrap" className="globe-modal-video-wrap" style={{ display: 'none' }}>
-            <iframe
-              id="globe-modal-iframe"
-              className="globe-modal-iframe"
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-              referrerPolicy="origin"
-              title="Work preview"
-            />
-          </div>
-          <div
-            className="globe-modal-gallery-wrap"
-            style={{ display: globeGallery ? 'block' : 'none' }}
-            aria-hidden={!globeGallery}
-          >
-            {globeGallery ? (
-              <GlobeModalImageCarousel
-                images={globeGallery.srcs}
-                format={globeGallery.format}
-                accent={globeGallery.accent}
-              />
-            ) : null}
-          </div>
-          <div id="globe-modal-body" className="globe-modal-body">
-            <div id="globe-modal-eyebrow" className="globe-modal-eyebrow">
-              <span id="globe-modal-label" className="globe-modal-label" />
-              <span id="globe-modal-format-tag" className="globe-modal-format-tag" />
-            </div>
-            <div id="globe-modal-title" className="globe-modal-title" />
-            <div id="globe-modal-desc" className="globe-modal-desc" />
-            <div id="globe-modal-glow-bar" className="globe-modal-glow-bar" />
-          </div>
-        </div>
-      </div>
+      <GlobeWorkModal globeGallery={globeGallery} />
     </div>
   )
 }

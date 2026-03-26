@@ -389,7 +389,12 @@ export function GlobeWork() {
       const rw = Math.max(1, root.clientWidth)
       const rh = Math.max(1, root.clientHeight)
 
-      const renderer = new THREE.WebGLRenderer({ canvas: globeCanvas, antialias: !isMobile, alpha: false })
+      const renderer = new THREE.WebGLRenderer({
+        canvas: globeCanvas,
+        antialias: !isMobile,
+        alpha: false,
+        powerPreference: 'high-performance',
+      })
       threeRenderer = renderer
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.setSize(rw, rh)
@@ -519,6 +524,7 @@ export function GlobeWork() {
 
       const tetherLines: THREEType.Line[] = []
       const TETHER_R_SCALE = 0.93
+      const arcSamplePool: THREEType.Vector3[] = []
 
       for (let i = 0; i < N; i++) {
         const item = ITEMS[i]
@@ -569,15 +575,14 @@ export function GlobeWork() {
           // Fixed 32–52 steps made long great-circle arcs read as jagged polylines; scale with span.
           const segPerRad = isMobile ? 42 : 68
           const nArc = Math.min(240, Math.max(40, Math.ceil(arcAngle * segPerRad)))
-          const arcPt = new THREE.Vector3()
-          const arcSamples: THREEType.Vector3[] = []
+          const nPts = nArc + 1
+          while (arcSamplePool.length < nPts) arcSamplePool.push(new THREE.Vector3())
           for (let s = 0; s <= nArc; s++) {
             const u = s / nArc
-            arcPt.copy(a).applyAxisAngle(axis, arcAngle * u).multiplyScalar(rArc)
-            arcSamples.push(arcPt.clone())
+            arcSamplePool[s].copy(a).applyAxisAngle(axis, arcAngle * u).multiplyScalar(rArc)
           }
 
-          const tetherGeo = new THREE.BufferGeometry().setFromPoints(arcSamples)
+          const tetherGeo = new THREE.BufferGeometry().setFromPoints(arcSamplePool.slice(0, nPts))
           disposables.push(tetherGeo)
           const tetherMat = new THREE.LineBasicMaterial({
             color:                 0x98a2cc,
@@ -622,6 +627,8 @@ export function GlobeWork() {
       for (const m of meshes) group.add(m)
       for (const g of glowMeshes) group.add(g)
 
+      renderer.compile(scene, camera)
+
       // Update count display
       const countEl = root.querySelector<HTMLElement>('#globe-count')
       if (countEl) {
@@ -633,6 +640,9 @@ export function GlobeWork() {
       // ── Interaction ──────────────────────────────────────────
       const raycaster = new THREE.Raycaster()
       const mouse2    = new THREE.Vector2()
+      let hoverPickX: number | null = null
+      let hoverPickY: number | null = null
+      let modalIsOpen = false
 
       let isDragging    = false
       let prevMx = 0, prevMy = 0, downMx = 0, downMy = 0
@@ -645,6 +655,7 @@ export function GlobeWork() {
       const hintEl = root.querySelector<HTMLElement>('#globe-hint')
 
       function updateHover(cx: number, cy: number) {
+        if (modalIsOpen) return
         const rect = globeCanvas.getBoundingClientRect()
         mouse2.set(
           ((cx - rect.left) / rect.width)  *  2 - 1,
@@ -685,7 +696,8 @@ export function GlobeWork() {
           prevMx = e.clientX; prevMy = e.clientY
           // rotation applied in animate loop — not here
         } else {
-          updateHover(e.clientX, e.clientY)
+          hoverPickX = e.clientX
+          hoverPickY = e.clientY
         }
       }
       const onMouseUp = (e: MouseEvent) => {
@@ -694,11 +706,21 @@ export function GlobeWork() {
         if (Math.sqrt(dx * dx + dy * dy) < 8 && hoveredMesh) {
           openModal(hoveredMesh.userData.item as GlobeItem)
         } else {
-          updateHover(e.clientX, e.clientY)
+          hoverPickX = e.clientX
+          hoverPickY = e.clientY
         }
       }
 
+      const onPointerLeave = () => {
+        hoverPickX = null
+        hoverPickY = null
+        const prev = hoveredMesh
+        hoveredMesh = null
+        if (prev) globeCanvas.className = isDragging ? 'dragging' : ''
+      }
+
       globeCanvas.addEventListener('mousedown', onMouseDown)
+      globeCanvas.addEventListener('pointerleave', onPointerLeave)
       window.addEventListener('mousemove', onMouseMove)
       window.addEventListener('mouseup',   onMouseUp)
 
@@ -773,6 +795,8 @@ export function GlobeWork() {
       const mGlow      = root.querySelector<HTMLElement>('#globe-modal-glow-bar')!
 
       function openModal(item: GlobeItem) {
+        hoverPickX = null
+        hoverPickY = null
         const isP = item.format === 'portrait'
         mCard.className = 'globe-modal-card fmt-' + item.format
         mCard.style.boxShadow = `0 40px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04),0 0 60px ${rgba(item.accent, 0.12)}`
@@ -850,9 +874,13 @@ export function GlobeWork() {
           Boolean(item.gumletId || item.galleryImages?.length),
         )
         overlay.classList.add('open')
+        modalIsOpen = true
       }
 
       function closeModal() {
+        modalIsOpen = false
+        hoverPickX = null
+        hoverPickY = null
         setGlobeGalleryRef.current(null)
         overlay.classList.remove('globe-modal-overlay--media')
         overlay.classList.remove('open')
@@ -873,6 +901,12 @@ export function GlobeWork() {
       function animate() {
         animId = requestAnimationFrame(animate)
         const dt = Math.min(clock.getDelta(), 0.05)
+
+        if (!modalIsOpen && hoverPickX !== null && hoverPickY !== null) {
+          updateHover(hoverPickX, hoverPickY)
+          hoverPickX = null
+          hoverPickY = null
+        }
 
         // Always apply accumulated velocity — ensures 60fps-locked rotation regardless of mouse polling rate
         group.rotation.x += velX
@@ -935,6 +969,17 @@ export function GlobeWork() {
 
         renderer.render(scene, camera)
       }
+      const onVisibilityChange = () => {
+        if (document.hidden) {
+          cancelAnimationFrame(animId)
+          animId = 0
+        } else {
+          clock.getDelta()
+          if (animId === 0) animate()
+        }
+      }
+      document.addEventListener('visibilitychange', onVisibilityChange)
+
       animate()
 
       // ── Resize ───────────────────────────────────────────────
@@ -953,7 +998,9 @@ export function GlobeWork() {
       // ── Cleanup ──────────────────────────────────────────────
       return () => {
         cancelAnimationFrame(animId)
+        document.removeEventListener('visibilitychange', onVisibilityChange)
         globeCanvas.removeEventListener('mousedown',  onMouseDown)
+        globeCanvas.removeEventListener('pointerleave', onPointerLeave)
         window.removeEventListener('mousemove',  onMouseMove)
         window.removeEventListener('mouseup',    onMouseUp)
         globeCanvas.removeEventListener('touchstart', onTouchStart)

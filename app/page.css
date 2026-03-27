@@ -734,9 +734,9 @@ body.landing-active.hov #cursor-ring {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(22,23,31,0.88);
-  backdrop-filter: blur(24px) saturate(1.8) brightness(0.7);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8) brightness(0.7);
+  background: rgba(22,23,31,0.42);
+  backdrop-filter: blur(10px) saturate(1.25) brightness(0.92);
+  -webkit-backdrop-filter: blur(10px) saturate(1.25) brightness(0.92);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -767,9 +767,9 @@ body.landing-active.hov #cursor-ring {
   pointer-events: all;
 }
 .lp .globe-modal-overlay.open.globe-modal-overlay--media {
-  background: rgba(22,23,31,0.62);
-  backdrop-filter: blur(16px) saturate(1.45) brightness(0.9);
-  -webkit-backdrop-filter: blur(16px) saturate(1.45) brightness(0.9);
+  background: rgba(22,23,31,0.28);
+  backdrop-filter: blur(6px) saturate(1.15) brightness(0.96);
+  -webkit-backdrop-filter: blur(6px) saturate(1.15) brightness(0.96);
 }
 .lp .globe-modal-card {
   background: rgba(22,23,31,0.97);

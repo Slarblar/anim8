@@ -20,12 +20,32 @@ interface GlobeItem {
    * an image carousel (zoom / pan / next) instead of Gumlet or the abstract canvas.
    */
   galleryImages?: string[]
+  /**
+   * Silent looping preview on the 3D card (muted, `playsInline`) — **plays while the pointer hovers**
+   * the card (paused on the first frame otherwise). Same card shape as thumbnails.
+   *
+   * **Not** the Gumlet **embed** page (`play.gumlet.io/embed/...`) — that is an iframe document and
+   * cannot be sampled into WebGL. Use a **stream** URL instead, e.g. Gumlet HLS
+   * `https://video.gumlet.io/{workspaceId}/{assetId}/main.m3u8` (same pattern as `GumletBackground`),
+   * or an MP4/WebM with CORS. If `NEXT_PUBLIC_GUMLET_STREAM_BASE` is set, previews use
+   * `{base}/{gumletId}/main.m3u8`. Otherwise, **`gumletId` alone is enough**: the app resolves HLS via
+   * `/api/gumlet-playback` (scrapes the Gumlet embed page JSON-LD).
+   */
+  globePreviewVideoUrl?: string
 }
 
 // Proxy route — serves the thumbnail from same origin, bypassing CDN CORS restrictions
 const GUMLET_THUMB = (id: string) => `/api/thumb?id=${id}`
 const GUMLET_EMBED = (id: string) =>
   `https://play.gumlet.io/embed/${id}?autoplay=true&loop=false&primary_color=7cc142&start_high_res=true`
+
+/** Explicit preview URL or env-based HLS (API lookup from gumletId happens in boot). */
+function resolveGlobeCardStreamFromConfig(item: GlobeItem): string | null {
+  if (item.globePreviewVideoUrl) return item.globePreviewVideoUrl
+  const base = process.env.NEXT_PUBLIC_GUMLET_STREAM_BASE?.replace(/\/$/, '')
+  if (base && item.gumletId) return `${base}/${item.gumletId}/main.m3u8`
+  return null
+}
 
 const ITEMS: GlobeItem[] = [
   { format: 'landscape', label: 'SAO HOUSE',   title: 'Character Universe',      accent: '#7cc142', style: 0, gumletId: '69c31bf3bf49c9eb69baf7fc', desc: 'A coffee shop as the origin story. We build the characters, the world, and the content ecosystem that makes people care before they ever walk through the door.' },
@@ -235,16 +255,31 @@ export function GlobeWork() {
       }
 
       // ── Texture helpers ──────────────────────────────────────
-      function makeTexture(item: GlobeItem, thumbImg?: HTMLImageElement): THREEType.CanvasTexture {
+      type GlobeCardDims = { TW: number; TH: number; artH: number; CR: number; isP: boolean }
+      type GlobeCardMedia =
+        | { kind: 'abstract' }
+        | { kind: 'image'; img: HTMLImageElement }
+        | { kind: 'video'; video: HTMLVideoElement }
+
+      function getGlobeCardDims(item: GlobeItem): GlobeCardDims {
         const isP = item.format === 'portrait'
         const TW  = isP ? (isMobile ? 256 : 320) : (isMobile ? 384 : 512)
         const TH  = isP ? (isMobile ? 455 : 568) : (isMobile ? 240 : 320)
         const CR  = Math.round(TW * CORNER_R)
+        return { TW, TH, artH: TH * 0.62, CR, isP }
+      }
 
-        const c   = document.createElement('canvas')
-        c.width = TW; c.height = TH
-        const ctx = c.getContext('2d')!
+      function paintGlobeCardCanvas(
+        ctx: CanvasRenderingContext2D,
+        item: GlobeItem,
+        dims: GlobeCardDims,
+        media: GlobeCardMedia,
+        opts: { grain: boolean },
+      ) {
+        const { TW, TH, artH, CR, isP } = dims
 
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.globalCompositeOperation = 'source-over'
         rrPath(ctx, 0, 0, TW, TH, CR)
         ctx.clip()
 
@@ -254,32 +289,43 @@ export function GlobeWork() {
         ctx.fillStyle = bg
         ctx.fillRect(0, 0, TW, TH)
 
-        const artH = TH * 0.62
-        let thumbDrawn = false
-        if (thumbImg) {
+        let artDrawn = false
+        const drawCover = (el: CanvasImageSource, nw: number, nh: number) => {
+          const scale = Math.max(TW / nw, artH / nh)
+          const sw = nw * scale
+          const sh = nh * scale
+          const tx = (TW - sw) / 2
+          const ty = sh > artH ? 0 : (artH - sh) / 2
+          ctx.drawImage(el, tx, ty, sw, sh)
+          ctx.fillStyle = 'rgba(9,10,22,0.06)'
+          ctx.fillRect(0, 0, TW, artH)
+          ctx.fillStyle = rgba(item.accent, 0.012)
+          ctx.fillRect(0, 0, TW, artH)
+          artDrawn = true
+        }
+
+        if (media.kind === 'video' && media.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
           try {
-            const scale = Math.max(TW / thumbImg.naturalWidth, artH / thumbImg.naturalHeight)
-            const sw    = thumbImg.naturalWidth  * scale
-            const sh    = thumbImg.naturalHeight * scale
-            // Cover + vertical center crops top & bottom equally — heads often sit high in frame; pin top when we overflow height.
-            const tx = (TW - sw) / 2
-            const ty = sh > artH ? 0 : (artH - sh) / 2
-            ctx.drawImage(thumbImg, tx, ty, sw, sh)
-            // Light veil for text contrast — keep thumbs clearer than a heavy “fog”
-            ctx.fillStyle = 'rgba(9,10,22,0.26)'
-            ctx.fillRect(0, 0, TW, artH)
-            ctx.fillStyle = rgba(item.accent, 0.035)
-            ctx.fillRect(0, 0, TW, artH)
-            thumbDrawn = true
+            const vw = media.video.videoWidth || 1
+            const vh = media.video.videoHeight || 1
+            drawCover(media.video, vw, vh)
           } catch {
-            // Canvas tainted (CORS) — fall through to abstract art
+            /* CORS / decode */
           }
         }
-        if (!thumbDrawn) {
+        if (!artDrawn && media.kind === 'image') {
+          try {
+            const img = media.img
+            drawCover(img, img.naturalWidth || 1, img.naturalHeight || 1)
+          } catch {
+            /* tainted canvas */
+          }
+        }
+        if (!artDrawn) {
           drawAbstract(ctx, TW, artH, item.accent, item.style)
         }
 
-        if (!isMobile) {
+        if (opts.grain) {
           const imgData = ctx.getImageData(0, 0, TW, TH)
           const d = imgData.data
           const grainAmp = 14 * 0.55
@@ -294,7 +340,6 @@ export function GlobeWork() {
           ctx.clip()
         }
 
-        // Fade only the title band — old start (0.45·TH) sat inside art (0–0.62·TH) and dulled thumbs
         const fade = ctx.createLinearGradient(0, artH, 0, TH)
         fade.addColorStop(0, 'rgba(9,10,22,0)')
         fade.addColorStop(0.36, 'rgba(9,10,22,0.84)')
@@ -313,8 +358,6 @@ export function GlobeWork() {
         ctx.fillRect(CR, TH - 2, TW - CR * 2, 2)
 
         const PAD = 18
-
-        // Title — left-aligned, bottom-anchored, word-wrap
         const titleSize = isP ? 17 : 21
         const lh        = isP ? 23 : 27
         ctx.font      = `900 ${titleSize}px 'Jost',sans-serif`
@@ -337,30 +380,172 @@ export function GlobeWork() {
           ctx.fillText(lines[li], PAD, titleTop + li * lh)
         }
 
-        // Label (subline) — sits above title with clear gap
         const labelY = titleTop - 26
         ctx.fillStyle = rgba(item.accent, 0.9)
         ctx.font      = `700 11px 'Jost',sans-serif`
         ctx.textAlign = 'left'
         ctx.fillText(item.label.toUpperCase(), PAD, labelY)
 
-        // Radial edge blend — dissolves card into the scene at its borders.
-        // Center above geometric midpoint so portrait art (top-heavy thumbs) isn’t vignetted; keep core wide enough text stays legible.
         ctx.globalCompositeOperation = 'destination-in'
-        const outerR   = Math.max(TW, TH) * 0.65
+        const outerR   = Math.max(TW, TH) * 0.72
         const edgeCy   = isP ? TH * 0.40 : TH * 0.46
         const edgeMask = ctx.createRadialGradient(TW / 2, edgeCy, 0, TW / 2, edgeCy, outerR)
         edgeMask.addColorStop(0,    'rgba(0,0,0,1)')
-        edgeMask.addColorStop(0.56, 'rgba(0,0,0,1)')
-        edgeMask.addColorStop(0.88, 'rgba(0,0,0,0.93)')
-        edgeMask.addColorStop(1,    'rgba(0,0,0,0.30)')
+        edgeMask.addColorStop(0.62, 'rgba(0,0,0,1)')
+        edgeMask.addColorStop(0.92, 'rgba(0,0,0,0.88)')
+        edgeMask.addColorStop(1,    'rgba(0,0,0,0.55)')
         ctx.fillStyle = edgeMask
         ctx.fillRect(0, 0, TW, TH)
         ctx.globalCompositeOperation = 'source-over'
+      }
+
+      type CardTextureBundle = {
+        texture: THREEType.CanvasTexture
+        tickFallback: () => void
+        paintVideoFrame: () => void
+        /** Static thumb / abstract — same look as before hover (not a paused video frame). */
+        paintAsThumbnail: () => void
+        startPreviewPump: () => void
+        stopPreviewPump: () => void
+        disposePreview: () => void
+      }
+
+      function resolveCardMedia(
+        item: GlobeItem,
+        idx: number,
+        thumbImg: HTMLImageElement | undefined,
+        videoMap: Map<number, HTMLVideoElement>,
+      ): GlobeCardMedia {
+        const v = videoMap.get(idx)
+        if (v && v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          return { kind: 'video', video: v }
+        }
+        if (thumbImg) return { kind: 'image', img: thumbImg }
+        return { kind: 'abstract' }
+      }
+
+      function createCardTexture(
+        idx: number,
+        item: GlobeItem,
+        thumbImg: HTMLImageElement | undefined,
+        videoMap: Map<number, HTMLVideoElement>,
+        hlsByVideo: WeakMap<HTMLVideoElement, import('hls.js').default>,
+      ): CardTextureBundle {
+        const dims = getGlobeCardDims(item)
+        const c = document.createElement('canvas')
+        c.width = dims.TW
+        c.height = dims.TH
+        const ctx = c.getContext('2d')!
+        const video = videoMap.get(idx)
+        const useVideoPipeline = Boolean(video)
+
+        const paint = () => {
+          const media = resolveCardMedia(item, idx, thumbImg, videoMap)
+          paintGlobeCardCanvas(ctx, item, dims, media, {
+            grain: !isMobile && !useVideoPipeline,
+          })
+        }
+
+        paint()
 
         const tex = new THREE.CanvasTexture(c)
         disposables.push(tex)
-        return tex
+
+        let vfcHandle = 0
+        const cancelVfc = () => {
+          if (video && typeof video.cancelVideoFrameCallback === 'function' && vfcHandle !== 0) {
+            try {
+              video.cancelVideoFrameCallback(vfcHandle)
+            } catch { /* noop */ }
+            vfcHandle = 0
+          }
+        }
+
+        const paintVideoFrame = () => {
+          if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return
+          paintGlobeCardCanvas(ctx, item, dims, { kind: 'video', video }, { grain: false })
+          tex.needsUpdate = true
+        }
+
+        const paintAsThumbnail = () => {
+          const media: GlobeCardMedia = thumbImg
+            ? { kind: 'image', img: thumbImg }
+            : { kind: 'abstract' }
+          paintGlobeCardCanvas(ctx, item, dims, media, { grain: !isMobile && !useVideoPipeline })
+          tex.needsUpdate = true
+        }
+
+        const startPreviewPump = () => {
+          if (!video || typeof video.requestVideoFrameCallback !== 'function') return
+          cancelVfc()
+          const step = () => {
+            if (destroyed || !video || video.paused) {
+              vfcHandle = 0
+              return
+            }
+            if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+              paintGlobeCardCanvas(ctx, item, dims, { kind: 'video', video }, { grain: false })
+              tex.needsUpdate = true
+            }
+            if (!video.paused) {
+              vfcHandle = video.requestVideoFrameCallback(step)
+            }
+          }
+          vfcHandle = video.requestVideoFrameCallback(step)
+        }
+
+        const stopPreviewPump = () => {
+          cancelVfc()
+        }
+
+        if (video) {
+          video.pause()
+          video.currentTime = 0
+          if (thumbImg) {
+            paintAsThumbnail()
+          } else if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            paint()
+            tex.needsUpdate = true
+          } else {
+            video.addEventListener(
+              'loadeddata',
+              () => {
+                paint()
+                tex.needsUpdate = true
+              },
+              { once: true },
+            )
+          }
+        }
+
+        return {
+          texture: tex,
+          tickFallback: () => {
+            if (!video || typeof video.requestVideoFrameCallback === 'function') return
+            if (video.paused) return
+            if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+              paintGlobeCardCanvas(ctx, item, dims, { kind: 'video', video }, { grain: false })
+              tex.needsUpdate = true
+            }
+          },
+          paintVideoFrame,
+          paintAsThumbnail,
+          startPreviewPump,
+          stopPreviewPump,
+          disposePreview: () => {
+            stopPreviewPump()
+            if (video) {
+              const hls = hlsByVideo.get(video)
+              if (hls) {
+                hlsByVideo.delete(video)
+                hls.destroy()
+              }
+              video.pause()
+              video.removeAttribute('src')
+              video.load()
+            }
+          },
+        }
       }
 
       const glowCache: Record<string, THREEType.CanvasTexture> = {}
@@ -399,6 +584,104 @@ export function GlobeWork() {
       )
       if (destroyed) return
 
+      // Resolve HLS URLs from Gumlet embed pages (JSON-LD contentUrl) so gumletId alone enables hover previews.
+      const hlsByGumletId = new Map<string, string>()
+      const uniqueGumletIds = [
+        ...new Set(ITEMS.map((it) => it.gumletId).filter((x): x is string => Boolean(x))),
+      ]
+      await Promise.all(
+        uniqueGumletIds.map(async (gid) => {
+          if (destroyed) return
+          try {
+            const r = await fetch(`/api/gumlet-playback?id=${encodeURIComponent(gid)}`)
+            if (!r.ok) return
+            const j = (await r.json()) as { hls?: string | null }
+            if (typeof j.hls === 'string' && j.hls.length > 0) {
+              hlsByGumletId.set(gid, j.hls)
+            }
+          } catch {
+            /* ignore */
+          }
+        }),
+      )
+      if (destroyed) return
+
+      // Silent card previews (muted + playsInline — required for autoplay). HLS (.m3u8) uses hls.js on Chromium.
+      const videoMap = new Map<number, HTMLVideoElement>()
+      const globeCardHlsByVideo = new WeakMap<HTMLVideoElement, import('hls.js').default>()
+
+      async function attachCardVideoStream(v: HTMLVideoElement, url: string): Promise<void> {
+        v.crossOrigin = 'anonymous'
+        if (/\.m3u8(\?|$)/i.test(url)) {
+          if (v.canPlayType('application/vnd.apple.mpegurl')) {
+            v.src = url
+            return
+          }
+          const { default: Hls } = await import('hls.js')
+          if (Hls.isSupported()) {
+            const hls = new Hls({
+              maxBufferLength: 10,
+              maxMaxBufferLength: 18,
+              capLevelToPlayerSize: true,
+            })
+            hls.loadSource(url)
+            hls.attachMedia(v)
+            globeCardHlsByVideo.set(v, hls)
+            return
+          }
+        }
+        v.src = url
+      }
+
+      await Promise.all(
+        ITEMS.map((item, idx) => {
+          const previewUrl =
+            resolveGlobeCardStreamFromConfig(item)
+            ?? (item.gumletId ? hlsByGumletId.get(item.gumletId) ?? null : null)
+          if (!previewUrl) return Promise.resolve()
+          return new Promise<void>((resolve) => {
+            let settled = false
+            const finish = () => {
+              if (settled) return
+              settled = true
+              resolve()
+            }
+            const v = document.createElement('video')
+            v.muted = true
+            v.defaultMuted = true
+            v.loop = true
+            v.autoplay = true
+            v.playsInline = true
+            v.setAttribute('playsinline', '')
+            v.setAttribute('webkit-playsinline', '')
+            v.preload = 'auto'
+            void (async () => {
+              try {
+                await attachCardVideoStream(v, previewUrl)
+              } catch {
+                finish()
+                return
+              }
+              const timer = setTimeout(finish, 20000)
+              let mediaReady = false
+              const markReady = () => {
+                if (mediaReady) return
+                mediaReady = true
+                clearTimeout(timer)
+                v.pause()
+                v.currentTime = 0
+                videoMap.set(idx, v)
+                finish()
+              }
+              v.addEventListener('loadeddata', markReady, { once: true })
+              v.addEventListener('canplay', markReady, { once: true })
+              v.addEventListener('error', () => { clearTimeout(timer); finish() }, { once: true })
+            })()
+          })
+        }),
+      )
+      if (destroyed) return
+
       // Wait for fonts before drawing card textures
       await document.fonts.ready
       if (destroyed) return
@@ -428,7 +711,7 @@ export function GlobeWork() {
       renderer.toneMappingExposure = 1.1
 
       const scene = new THREE.Scene()
-      scene.fog = new THREE.FogExp2(0x1e1f2e, isMobile ? 0.015 : 0.019)
+      scene.fog = new THREE.FogExp2(0x1e1f2e, isMobile ? 0.008 : 0.011)
 
       const FOV    = isMobile ? 50 : 46
       const camera = new THREE.PerspectiveCamera(FOV, rw / rh, 0.1, 200)
@@ -504,6 +787,7 @@ export function GlobeWork() {
       scene.add(group)
       const meshes: THREEType.Mesh[]     = []
       const glowMeshes: THREEType.Mesh[] = []
+      const cardDisposeFns: Array<() => void> = []
 
       type GlobeSlot = {
         pos: THREEType.Vector3
@@ -557,8 +841,10 @@ export function GlobeWork() {
 
         const geo = new THREE.PlaneGeometry(dim.w, dim.h)
         disposables.push(geo)
+        const cardBundle = createCardTexture(i, item, thumbMap.get(i), videoMap, globeCardHlsByVideo)
+        cardDisposeFns.push(cardBundle.disposePreview)
         const mat = new THREE.MeshStandardMaterial({
-          map:               makeTexture(item, thumbMap.get(i)),
+          map:               cardBundle.texture,
           transparent:       true,
           alphaTest:         0.05,
           depthWrite:        true,
@@ -579,7 +865,41 @@ export function GlobeWork() {
 
         const bMat = new THREE.Matrix4().makeBasis(rt, nu, out)
         mesh.quaternion.setFromRotationMatrix(bMat)
-        mesh.userData = { item, out: out.clone() }
+        const previewVid = videoMap.get(i)
+        let globeCardPlayback: { start: () => void; stop: () => void } | undefined
+        if (previewVid) {
+          const thumbLoaded = Boolean(thumbMap.get(i))
+          globeCardPlayback = {
+            start: () => {
+              let kicked = false
+              const kick = () => {
+                if (kicked) return
+                kicked = true
+                cardBundle.startPreviewPump()
+                cardBundle.paintVideoFrame()
+              }
+              previewVid.addEventListener('playing', kick, { once: true })
+              void previewVid.play().then(() => { if (!previewVid.paused) kick() }).catch(() => {})
+            },
+            stop: () => {
+              cardBundle.stopPreviewPump()
+              previewVid.pause()
+              previewVid.currentTime = 0
+              if (thumbLoaded) {
+                cardBundle.paintAsThumbnail()
+              } else {
+                previewVid.addEventListener('seeked', () => { cardBundle.paintVideoFrame() }, { once: true })
+                cardBundle.paintVideoFrame()
+              }
+            },
+          }
+        }
+        mesh.userData = {
+          item,
+          out: out.clone(),
+          cardTextureTick: cardBundle.tickFallback,
+          globeCardPlayback,
+        }
         meshes.push(mesh)
 
         const j = nearestIdx[i]
@@ -680,6 +1000,9 @@ export function GlobeWork() {
       // ── Interaction ──────────────────────────────────────────
       const raycaster = new THREE.Raycaster()
       const mouse2    = new THREE.Vector2()
+      /** Last pointer position for continuous hover raycasts (globe rotates — one-shot pick goes stale). */
+      let lastPointerX = 0
+      let lastPointerY = 0
       let hoverPickX: number | null = null
       let hoverPickY: number | null = null
       let modalIsOpen = false
@@ -724,11 +1047,14 @@ export function GlobeWork() {
         globeCanvas.classList.add('dragging')
         hintEl?.classList.add('fade')
       }
-      const MAX_VEL = 0.03  // ~1.8 rad/s at 60fps — firm orbital speed cap
+      const MAX_VEL = 0.022  // lower cap — calmer spin after drag
+      const DRAG_ROT = 0.00135  // was 0.002 — slower manual orbit
       const onMouseMove = (e: MouseEvent) => {
+        lastPointerX = e.clientX
+        lastPointerY = e.clientY
         if (isDragging) {
-          const rawY = (e.clientX - prevMx) * 0.002
-          const rawX = (e.clientY - prevMy) * 0.002
+          const rawY = (e.clientX - prevMx) * DRAG_ROT
+          const rawX = (e.clientY - prevMy) * DRAG_ROT
           velY = velY * 0.94 + rawY * 0.06
           velX = velX * 0.94 + rawX * 0.06
           velY = Math.max(-MAX_VEL, Math.min(MAX_VEL, velY))
@@ -754,6 +1080,9 @@ export function GlobeWork() {
       const onPointerLeave = () => {
         hoverPickX = null
         hoverPickY = null
+        // Prevent the per-frame raycast from re-applying hover using stale coords still inside the rect.
+        lastPointerX = -1e9
+        lastPointerY = -1e9
         const prev = hoveredMesh
         hoveredMesh = null
         if (prev) globeCanvas.className = isDragging ? 'dragging' : ''
@@ -788,8 +1117,8 @@ export function GlobeWork() {
           camera.position.z = Math.min(maxZ, Math.max(minZ, pinchStartZ * scale))
         } else if (e.touches.length === 1 && isDragging) {
           const t = e.touches[0]
-          const rawY = (t.clientX - prevMx) * 0.002
-          const rawX = (t.clientY - prevMy) * 0.002
+          const rawY = (t.clientX - prevMx) * DRAG_ROT
+          const rawX = (t.clientY - prevMy) * DRAG_ROT
           velY = velY * 0.94 + rawY * 0.06
           velX = velX * 0.94 + rawX * 0.06
           velY = Math.max(-MAX_VEL, Math.min(MAX_VEL, velY))
@@ -834,7 +1163,35 @@ export function GlobeWork() {
       const mDesc      = root.querySelector<HTMLElement>('#globe-modal-desc')!
       const mGlow      = root.querySelector<HTMLElement>('#globe-modal-glow-bar')!
 
+      let prevHoverForPreview: THREEType.Mesh | null = null
+      type GlobeCardUserData = { globeCardPlayback?: { start: () => void; stop: () => void } }
+
+      function syncGlobePreviewHover() {
+        if (modalIsOpen) {
+          if (prevHoverForPreview !== null) {
+            ;(prevHoverForPreview.userData as GlobeCardUserData).globeCardPlayback?.stop()
+            prevHoverForPreview = null
+          }
+          return
+        }
+        if (hoveredMesh === prevHoverForPreview) return
+        const prev = prevHoverForPreview
+        const cur = hoveredMesh
+        prevHoverForPreview = cur
+        if (prev) {
+          ;(prev.userData as GlobeCardUserData).globeCardPlayback?.stop()
+        }
+        if (cur) {
+          ;(cur.userData as GlobeCardUserData).globeCardPlayback?.start()
+        }
+      }
+
       function openModal(item: GlobeItem) {
+        for (const m of meshes) {
+          ;(m.userData as GlobeCardUserData).globeCardPlayback?.stop()
+        }
+        prevHoverForPreview = null
+
         hoverPickX = null
         hoverPickY = null
         const isP = item.format === 'portrait'
@@ -938,6 +1295,24 @@ export function GlobeWork() {
           hoverPickY = null
         }
 
+        // Keep hover (and video preview) aligned with the card under the cursor while the globe spins.
+        if (!modalIsOpen && !isDragging && !pinchActive) {
+          const r = globeCanvas.getBoundingClientRect()
+          if (
+            lastPointerX >= r.left &&
+            lastPointerX <= r.right &&
+            lastPointerY >= r.top &&
+            lastPointerY <= r.bottom
+          ) {
+            updateHover(lastPointerX, lastPointerY)
+          } else if (hoveredMesh !== null) {
+            hoveredMesh = null
+            globeCanvas.className = isDragging ? 'dragging' : ''
+          }
+        }
+
+        syncGlobePreviewHover()
+
         // Always apply accumulated velocity — ensures 60fps-locked rotation regardless of mouse polling rate
         group.rotation.x += velX
         group.rotation.y += velY
@@ -948,9 +1323,9 @@ export function GlobeWork() {
           velX *= decay
           velY *= decay
           // Very slow X-axis centering — drifts back toward equatorial over ~60s
-          group.rotation.x += (-group.rotation.x) * (0.0005 * dt * 60)
-          // Satellite orbit auto-rotation — ~162s per full revolution (20% slower than 0.0008 baseline)
-          group.rotation.y += 0.00064 * (dt * 60)
+          group.rotation.x += (-group.rotation.x) * (0.00035 * dt * 60)
+          // Satellite orbit auto-rotation — ~5.5 min per full revolution (was ~2.7 min at 0.00064)
+          group.rotation.y += 0.00032 * (dt * 60)
         }
 
         const hoverActive = hoveredMesh !== null
@@ -997,6 +1372,11 @@ export function GlobeWork() {
           haloPulseMesh.scale.setScalar(1 + 0.018 * b0)
         }
 
+        for (let mi = 0; mi < meshes.length; mi++) {
+          const tick = (meshes[mi].userData as { cardTextureTick?: () => void }).cardTextureTick
+          tick?.()
+        }
+
         renderer.render(scene, camera)
       }
       const onVisibilityChange = () => {
@@ -1038,6 +1418,7 @@ export function GlobeWork() {
         globeCanvas.removeEventListener('touchend',   onTouchEnd)
         window.removeEventListener('resize',     onResize)
         document.removeEventListener('keydown',  onKeyDown)
+        for (const f of cardDisposeFns) f()
         for (const d of disposables) d.dispose()
         renderer.dispose()
       }

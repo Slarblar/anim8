@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import './page.css'
 import { GlobeWork } from '@/components/ui/GlobeWork'
 
@@ -18,6 +18,14 @@ const clientNames = [
   'Insomniac x RNBW', 'Sakira Mods',
 ]
 
+/** Mirrors `app/careers/page.tsx` production team (EN) for landing Team section. */
+const landingProductionTeam = [
+  { name: 'Darren Flowers', role: 'Technical Director', studio: 'Eden Offline · Sakira Mods TikTok' },
+  { name: 'Khai Pham', role: 'Lead Modeler', studio: 'Sparx · Activision' },
+  { name: 'Luka', role: 'Animation Supervisor', studio: 'ILM · AAA Senior Animator' },
+  { name: 'Keira Duong', role: 'Chief Operating Officer', studio: 'Big 4 Advisory · Finance & Growth' },
+] as const
+
 function landingUsesCustomCursor() {
   if (typeof window === 'undefined') return false
   if (window.matchMedia('(pointer: coarse)').matches) return false
@@ -27,8 +35,26 @@ function landingUsesCustomCursor() {
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [clientsTickerPaused, setClientsTickerPaused] = useState(false)
+  const clientsPauseAcRef = useRef<AbortController | null>(null)
 
   const closeMenu = useCallback(() => setMenuOpen(false), [])
+
+  /** Pause partners ticker while finger / pointer is down (mobile + pen); hover handled in CSS for mouse. */
+  const onClientsPointerDown = useCallback(() => {
+    clientsPauseAcRef.current?.abort()
+    const ac = new AbortController()
+    clientsPauseAcRef.current = ac
+    setClientsTickerPaused(true)
+    const resume = () => {
+      if (clientsPauseAcRef.current !== ac) return
+      clientsPauseAcRef.current = null
+      setClientsTickerPaused(false)
+      ac.abort()
+    }
+    window.addEventListener('pointerup', resume, { signal: ac.signal })
+    window.addEventListener('pointercancel', resume, { signal: ac.signal })
+  }, [])
 
   // Activate landing body class
   useEffect(() => {
@@ -127,6 +153,7 @@ export default function LandingPage() {
           <li><a href="#services">Services</a></li>
           <li><a href="#process">Process</a></li>
           <li><a href="#about">About</a></li>
+          <li><a href="#team">Team</a></li>
         </ul>
         <a href="/contact" className="nav-cta">Start a Project</a>
         <button
@@ -145,6 +172,7 @@ export default function LandingPage() {
         <a href="#services" onClick={closeMenu}>Services</a>
         <a href="#process"  onClick={closeMenu}>Process</a>
         <a href="#about"    onClick={closeMenu}>About</a>
+        <a href="#team"     onClick={closeMenu}>Team</a>
         <a href="#cta" className="mobile-nav-cta" onClick={closeMenu}>Start a Project</a>
       </div>
 
@@ -183,8 +211,8 @@ export default function LandingPage() {
       </section>
 
       {/* ══ CLIENT STRIP ═════════════════════════════════════ */}
-      <div id="clients">
-        <div className="clients-track">
+      <div id="clients" onPointerDown={onClientsPointerDown}>
+        <div className={`clients-track${clientsTickerPaused ? ' clients-track--paused' : ''}`}>
           {[...clientNames, ...clientNames, ...clientNames, ...clientNames].flatMap((name, i) => [
             clientLinks[name]
               ? <a key={`n${i}`} className="client-name" href={clientLinks[name]} target="_blank" rel="noopener noreferrer">{name}</a>
@@ -345,6 +373,103 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ══ TEAM ═══════════════════════════════════════════════ */}
+      <section id="team" className="lp-team">
+        <div className="container">
+          <p className="section-tag reveal" style={{ justifyContent: 'center' }}>
+            Team
+          </p>
+          <h2 className="lp-team-h2 reveal d1">The people behind the work</h2>
+          <p className="lp-team-intro reveal d1">
+            We run a tight core with trusted collaborators. You&apos;ll see our co-founders here — other
+            partners work with us out of the spotlight by choice.
+          </p>
+
+          <div className="lp-team-founders reveal d1">
+            <p className="lp-team-sublabel">Co-founders</p>
+            <div className="lp-team-founders-row">
+              <article className="lp-team-founder-card">
+                <div className="lp-team-founder-avatar">
+                  <img
+                    src="/images/founders/jordannguyen.webp"
+                    alt="Jordan Nguyen"
+                    width={112}
+                    height={112}
+                    loading="lazy"
+                  />
+                </div>
+                <h3 className="lp-team-founder-name">Jordan Nguyen</h3>
+                <p className="lp-team-founder-role">Co-founder</p>
+                <p className="lp-team-founder-cred">Spacestation Animation · Quarter Machine</p>
+                <a
+                  className="lp-team-founder-link"
+                  href="https://www.jordannguyen.me"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Portfolio ↗
+                </a>
+              </article>
+              <article className="lp-team-founder-card">
+                <div className="lp-team-founder-avatar">
+                  <img
+                    src="/images/founders/chrisle.webp"
+                    alt="Chris Le"
+                    width={112}
+                    height={112}
+                    loading="lazy"
+                  />
+                </div>
+                <h3 className="lp-team-founder-name">Chris Le</h3>
+                <p className="lp-team-founder-role">Co-founder</p>
+                <p className="lp-team-founder-cred">RTFKT · Nike</p>
+                <div className="lp-team-founder-links">
+                  <a
+                    className="lp-team-founder-link"
+                    href="https://www.instagram.com/clegfx/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Instagram ↗
+                  </a>
+                  <a
+                    className="lp-team-founder-link"
+                    href="https://www.imdb.com/name/nm2211997/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    IMDb ↗
+                  </a>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div className="lp-team-production reveal d2">
+            <p className="lp-team-sublabel">Production team</p>
+            <div className="lp-team-grid">
+              {landingProductionTeam.map((member) => (
+                <div key={member.name} className="lp-team-card">
+                  <p className="lp-team-card-name">{member.name}</p>
+                  <p className="lp-team-card-role">{member.role}</p>
+                  <p className="lp-team-card-studio">{member.studio}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lp-team-cta reveal d3">
+            <p className="lp-team-cta-text">
+              We hire carefully and mostly through relationships. If you&apos;re exceptional and the fit
+              might be mutual, we&apos;d like to hear from you.
+            </p>
+            <a href="/careers" className="btn btn-outline lp-team-cta-btn">
+              Be part of our team
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ══ FOOTER ═══════════════════════════════════════════ */}
       <footer>
         <div className="footer-logo-wrap">
@@ -357,7 +482,9 @@ export default function LandingPage() {
         <ul className="footer-links">
           <li><a href="#work">Work</a></li>
           <li><a href="#services">Services</a></li>
+          <li><a href="#team">Team</a></li>
           <li><a href="/contact">Contact</a></li>
+          <li><a href="/privacy">Privacy</a></li>
         </ul>
         <p className="footer-copy">© 2026 Anim-8. All rights reserved.</p>
       </footer>

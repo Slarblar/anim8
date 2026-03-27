@@ -71,6 +71,11 @@ export function Footer({ showConfidentialityNotice = false }: { showConfidential
                   Careers
                 </a>
               </li>
+              <li>
+                <a href="/privacy" className="hover:text-brand-cyan transition-colors">
+                  Privacy &amp; cookies
+                </a>
+              </li>
             </ul>
           </div>
         </div>

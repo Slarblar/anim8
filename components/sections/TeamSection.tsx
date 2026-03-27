@@ -64,7 +64,7 @@ export function TeamSection() {
     { 
       name: 'Khai Pham', 
       role: 'Lead Modeler',
-      credentials: 'Sparx, Activision, Ubisoft, Riot, Disney, Marvel',
+      credentials: 'Sparx, Activision, Ubisoft, Marvel',
       details: [
         'Character modeling and art direction',
         'Team mentorship and style consistency',
@@ -74,7 +74,7 @@ export function TeamSection() {
     { 
       name: 'Luka', 
       role: 'Senior Modeler',
-      credentials: 'AAA Game Development Experience',
+      credentials: 'ILM · AAA Senior Animator',
       details: [
         'High-quality character and prop modeling',
         'Advanced sculpting and retopology',

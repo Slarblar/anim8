@@ -1671,8 +1671,28 @@ async function handleSubmit() {
 /* ═══════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════ */
+function applyRolePrefillFromQuery() {
+  const role = new URLSearchParams(window.location.search).get('role');
+  if (!role || !Object.prototype.hasOwnProperty.call(roleQConfig, role)) return;
+  const sel = document.getElementById('role-select');
+  if (!sel) return;
+  sel.value = role;
+}
+
+function scrollToRoleFieldIfLinked() {
+  const params = new URLSearchParams(window.location.search);
+  const role = params.get('role');
+  const validRole = role && Object.prototype.hasOwnProperty.call(roleQConfig, role);
+  if (window.location.hash !== '#field-role' && !validRole) return;
+  requestAnimationFrame(() => {
+    document.getElementById('field-role')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   applyTranslations();
+  applyRolePrefillFromQuery();
+  scrollToRoleFieldIfLinked();
   updateProgress();
 
   document.addEventListener('input', e => {

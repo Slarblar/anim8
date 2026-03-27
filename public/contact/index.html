@@ -65,6 +65,56 @@
       margin-bottom: 32px;
     }
 
+    .page-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .page-top-row .nav-logo {
+      margin-bottom: 0;
+    }
+
+    .btn-close-page {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px 10px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+
+    .btn-close-page .btn-close-x {
+      font-size: 20px;
+      font-weight: 300;
+      line-height: 1;
+      color: var(--text);
+      opacity: 0.85;
+      margin-left: 2px;
+    }
+
+    .btn-close-page:hover {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(124,193,66,0.08);
+    }
+
+    .btn-close-page:hover .btn-close-x {
+      color: var(--green);
+    }
+
     .nav-logo {
       display: inline-block;
       margin-bottom: 36px;
@@ -329,6 +379,8 @@
       .form-footer { padding: 16px 20px 24px; }
       .success-state { padding: 40px 24px; }
       .row { grid-template-columns: 1fr; }
+      .page-top-row { margin-bottom: 22px; }
+      .btn-close-page { padding: 8px 12px 8px 14px; letter-spacing: 0.1em; }
     }
   </style>
 </head>
@@ -336,9 +388,14 @@
 <div class="page">
 
   <div class="page-header">
-    <a class="nav-logo" href="/">
-      <img src="/images/logos/anim-8-completewordmark-white-01.svg" alt="Anim-8" />
-    </a>
+    <div class="page-top-row">
+      <a class="nav-logo" href="/">
+        <img src="/images/logos/anim-8-completewordmark-white-01.svg" alt="Anim-8" />
+      </a>
+      <button type="button" class="btn-close-page" id="btn-leave-contact" aria-label="Close and go back">
+        Back<span class="btn-close-x" aria-hidden="true">×</span>
+      </button>
+    </div>
     <p class="page-eyebrow">Start a Project</p>
     <h1 class="page-title">Let's build something<br />worth watching.</h1>
     <p class="page-sub">Tell us about your project and we'll get back to you within 24 hours.</p>
@@ -454,6 +511,24 @@
       el.closest('.field')?.classList.remove('has-error');
     });
   });
+
+  (function initLeaveContact() {
+    var btn = document.getElementById('btn-leave-contact');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      try {
+        var ref = document.referrer;
+        if (ref && window.history.length > 1) {
+          var r = new URL(ref);
+          if (r.origin === window.location.origin) {
+            window.history.back();
+            return;
+          }
+        }
+      } catch (e) {}
+      window.location.href = '/';
+    });
+  })();
 
   async function handleSubmit() {
     if (!validate()) return;

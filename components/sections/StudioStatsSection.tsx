@@ -131,8 +131,7 @@ export function StudioStatsSection() {
             'RTFKT Co-founder',
             'CloneX 20K+ Avatars',
             'Spacestation Animation',
-            'Sparx · Activision · Ubisoft',
-            'Riot · Disney · Marvel',
+            'Sparx · Activision · Ubisoft · Marvel',
           ].map((cred) => (
             <span
               key={cred}

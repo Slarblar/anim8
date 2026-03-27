@@ -7,6 +7,7 @@ import { Header } from '@/components/ui/Header'
 import { Footer } from '@/components/ui/Footer'
 import { Section } from '@/components/ui/Section'
 import { t, type Lang } from './translations'
+import { CareersFloatingPortfolio } from '@/components/careers/CareersFloatingPortfolio'
 
 // ── Shared sub-components ──────────────────────────────────────────────────────
 
@@ -65,7 +66,7 @@ function RoleCardGrid({
   right: React.ReactNode
 }) {
   return (
-    <div className="rounded-2xl overflow-hidden border border-white/8">
+    <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(56,194,214,0.06)]">
       <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
         {overview}
       </div>
@@ -83,6 +84,54 @@ function RoleCardRow({ left, right }: { left: React.ReactNode; right: React.Reac
       <div className={`${cellBase} md:flex-1`}>
         {right}
       </div>
+    </div>
+  )
+}
+
+/** Query values must match `public/apply/index.html` `#role-select` option values. */
+const APPLY_ROLE_QUERY = {
+  designer: 'designer',
+  intern: 'designIntern',
+  modeler: 'modeler',
+  storyboard: 'conceptArtist',
+  video: 'videoEditor',
+} as const
+
+function RoleApplyLink({ applyRole, label }: { applyRole: string; label: string }) {
+  const href = `/apply?role=${encodeURIComponent(applyRole)}#field-role`
+  return (
+    <a
+      href={href}
+      className="mt-8 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-brand-cyan/40 text-brand-cyan text-xs font-bold uppercase tracking-widest hover:bg-brand-cyan/10 hover:border-brand-cyan/60 transition-colors font-mono"
+    >
+      {label}
+      <span aria-hidden className="text-sm">
+        ↗
+      </span>
+    </a>
+  )
+}
+
+/** Fixed mesh + grid — brand lime / cyan / pink on navy (careers only). */
+function CareersAmbientLayer() {
+  return (
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
+      <div className="absolute inset-0 bg-brand-navy" />
+      <div className="absolute -top-[35%] left-[5%] h-[min(90vw,720px)] w-[min(90vw,720px)] rounded-full bg-brand-lime/[0.09] blur-[120px]" />
+      <div className="absolute top-[25%] -right-[15%] h-[min(75vw,560px)] w-[min(75vw,560px)] rounded-full bg-brand-cyan/[0.08] blur-[100px]" />
+      <div className="absolute bottom-[5%] left-[20%] h-[min(70vw,480px)] w-[min(70vw,480px)] rounded-full bg-brand-pink/[0.05] blur-[110px]" />
+      <div className="absolute -bottom-[20%] right-[10%] h-[min(85vw,640px)] w-[min(85vw,640px)] rounded-full bg-brand-cyan/[0.06] blur-[130px]" />
+      <div
+        className="absolute inset-0 opacity-[0.45]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)`,
+          backgroundSize: '72px 72px',
+          maskImage: 'radial-gradient(ellipse 85% 65% at 50% 35%, black 20%, transparent 70%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse 85% 65% at 50% 35%, black 20%, transparent 70%)',
+        }}
+      />
     </div>
   )
 }
@@ -114,22 +163,26 @@ export default function CareersPage() {
   const c = t[lang]
   const monoClass = lang === 'en' ? 'font-mono' : ''
 
-  const applyHref =
-    'mailto:Tyler@anim-8.xyz?subject=Application%20%E2%80%94%20[Role]%20%7C%20Portfolio%20Submission&body=Hi%20Tyler%2C%0A%0AI%27d%20like%20to%20apply%20for%20the%20[Role]%20position%20at%20Anim-8.%0A%0APlease%20find%20my%20portfolio%20and%20CV%20attached.%0A%0ABest%2C%0A[Your%20Name]'
+  /** Web apply form (`public/apply/index.html` → `/apply`) */
+  const applyHref = '/apply'
 
   return (
     <>
       <Header />
 
       <main
-        className={`bg-brand-navy min-h-screen${lang === 'vn' ? ' font-be-vietnam' : ''}`}
+        className={`relative isolate min-h-screen overflow-x-hidden bg-brand-navy${lang === 'vn' ? ' font-be-vietnam' : ''}`}
         lang={lang === 'vn' ? 'vi' : 'en'}
       >
+        <CareersAmbientLayer />
+        <CareersFloatingPortfolio />
 
+        <div className="relative z-10">
         {/* ── HERO ── */}
-        <section className="relative pt-36 sm:pt-44 md:pt-56 lg:pt-72 pb-16 md:pb-20 px-4 overflow-hidden border-b border-white/5">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-brand-lime/5 blur-[120px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-brand-cyan/5 blur-[100px] pointer-events-none" />
+        <section className="relative pt-36 sm:pt-44 md:pt-56 lg:pt-72 pb-16 md:pb-20 px-4 overflow-hidden border-b border-white/10 bg-gradient-to-b from-[#232438]/95 via-brand-navy/82 to-brand-navy/78 backdrop-blur-[2px]">
+          <div className="absolute top-0 right-0 w-[min(100vw,640px)] h-[min(100vw,640px)] rounded-full bg-brand-lime/[0.12] blur-[100px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[min(80vw,520px)] h-[min(80vw,520px)] rounded-full bg-brand-cyan/[0.10] blur-[90px] pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] max-w-[1000px] aspect-square rounded-full bg-brand-pink/[0.04] blur-[140px] pointer-events-none" />
 
           <div className="container-custom text-center">
             <motion.p
@@ -189,7 +242,7 @@ export default function CareersPage() {
         </section>
 
         {/* ── ROLES NAV + LANGUAGE TOGGLE ── */}
-        <nav className="sticky top-0 z-40 bg-brand-navy/90 backdrop-blur-md border-b border-white/5">
+        <nav className="sticky top-0 z-40 border-b border-white/10 bg-brand-navy/70 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
           <div className="flex items-center px-4 md:px-8 lg:px-16">
             <div className="flex overflow-x-auto flex-1 hide-scrollbar">
               {c.rolesNav.map((role) => (
@@ -211,7 +264,7 @@ export default function CareersPage() {
         </nav>
 
         {/* ── ROLE 1: DESIGNER ── */}
-        <Section id="designer" className="bg-brand-navy border-b border-white/5">
+        <Section id="designer" className="relative border-b border-white/5 bg-gradient-to-br from-brand-lime/[0.08] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm">
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -237,13 +290,14 @@ export default function CareersPage() {
                   left={<><CardLabel>{c.designer.do.label}</CardLabel><BulletList items={c.designer.do.items} /></>}
                   right={<><CardLabel>{c.designer.looking.label}</CardLabel><BulletList items={c.designer.looking.items} /></>}
                 />
+                <RoleApplyLink applyRole={APPLY_ROLE_QUERY.designer} label={c.roleApply} />
               </motion.div>
             </AnimatePresence>
           </div>
         </Section>
 
         {/* ── ROLE 2: DESIGN INTERN ── */}
-        <Section id="design-intern" className="bg-brand-navy border-b border-white/5">
+        <Section id="design-intern" className="relative border-b border-white/5 bg-gradient-to-bl from-brand-cyan/[0.07] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm">
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -269,13 +323,14 @@ export default function CareersPage() {
                   left={<><CardLabel>{c.intern.do.label}</CardLabel><BulletList items={c.intern.do.items} /></>}
                   right={<><CardLabel>{c.intern.looking.label}</CardLabel><BulletList items={c.intern.looking.items} /></>}
                 />
+                <RoleApplyLink applyRole={APPLY_ROLE_QUERY.intern} label={c.roleApply} />
               </motion.div>
             </AnimatePresence>
           </div>
         </Section>
 
         {/* ── ROLE 3: 3D MODELER ── */}
-        <Section id="3d-modeler" className="bg-brand-navy border-b border-white/5">
+        <Section id="3d-modeler" className="relative border-b border-white/5 bg-gradient-to-b from-brand-navy/88 via-background-dark/25 to-brand-navy/80 backdrop-blur-sm">
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -296,7 +351,7 @@ export default function CareersPage() {
                   </span>
                 </div>
 
-                <div className="rounded-2xl overflow-hidden border border-white/5">
+                <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(124,193,66,0.05)]">
                   {/* Overview - full width */}
                   <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
                     <CardLabel>{c.modeler.overview.label}</CardLabel>
@@ -347,13 +402,14 @@ export default function CareersPage() {
                     <BulletList items={c.modeler.portfolio.items} />
                   </div>
                 </div>
+                <RoleApplyLink applyRole={APPLY_ROLE_QUERY.modeler} label={c.roleApply} />
               </motion.div>
             </AnimatePresence>
           </div>
         </Section>
 
         {/* ── ROLE 4: STORYBOARD ── */}
-        <Section id="storyboard" className="bg-brand-navy border-b border-white/5">
+        <Section id="storyboard" className="relative border-b border-white/5 bg-gradient-to-tr from-brand-pink/[0.06] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm">
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -386,13 +442,14 @@ export default function CareersPage() {
                     </div>
                   </>}
                 />
+                <RoleApplyLink applyRole={APPLY_ROLE_QUERY.storyboard} label={c.roleApply} />
               </motion.div>
             </AnimatePresence>
           </div>
         </Section>
 
         {/* ── ROLE 5: VIDEO EDITOR / VFX ARTIST ── */}
-        <Section id="video-editor" className="bg-brand-navy border-b border-white/5">
+        <Section id="video-editor" className="relative border-b border-white/5 bg-gradient-to-br from-brand-cyan/[0.05] via-brand-navy/84 to-brand-lime/[0.05] backdrop-blur-sm">
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -413,7 +470,7 @@ export default function CareersPage() {
                   </span>
                 </div>
 
-                <div className="rounded-2xl overflow-hidden border border-white/8">
+                <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(56,194,214,0.06)]">
                   {/* Overview */}
                   <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
                     <CardLabel>{c.video.overview.label}</CardLabel>
@@ -452,13 +509,14 @@ export default function CareersPage() {
                     <BulletList items={c.video.general.items} />
                   </div>
                 </div>
+                <RoleApplyLink applyRole={APPLY_ROLE_QUERY.video} label={c.roleApply} />
               </motion.div>
             </AnimatePresence>
           </div>
         </Section>
 
         {/* ── ABOUT ── */}
-        <Section id="about" className="bg-brand-navy border-b border-white/5">
+        <Section id="about" className="relative border-b border-white/5 bg-gradient-to-b from-white/[0.04] via-brand-navy/82 to-background-dark/20 backdrop-blur-sm">
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -509,17 +567,17 @@ export default function CareersPage() {
                     <div className="space-y-6">
                       {[
                         {
-                          initials: 'JN',
                           name: 'Jordan Nguyen',
+                          image: '/images/founders/jordannguyen.webp',
                           role: lang === 'vn' ? 'Đồng Sáng Lập' : 'Co-founder',
                           studio: 'Spacestation Animation · Quarter Machine',
                           links: [{ label: 'Portfolio ↗', href: 'https://www.jordannguyen.me' }],
                         },
                         {
-                          initials: 'CL',
                           name: 'Chris Le',
+                          image: '/images/founders/chrisle.webp',
                           role: lang === 'vn' ? 'Đồng Sáng Lập' : 'Co-founder',
-                          studio: 'RTFKT · Nike Web3',
+                          studio: 'RTFKT · Nike',
                           links: [
                             { label: 'Instagram ↗', href: 'https://www.instagram.com/clegfx/' },
                             { label: 'IMDb ↗', href: 'https://www.imdb.com/name/nm2211997/' },
@@ -527,8 +585,14 @@ export default function CareersPage() {
                         },
                       ].map((person) => (
                         <div key={person.name} className="flex items-start gap-4 pb-5 border-b border-white/5 last:border-0 last:pb-0">
-                          <div className="w-10 h-10 rounded-full bg-brand-lime/10 border border-brand-lime/30 flex items-center justify-center flex-shrink-0 text-brand-lime text-sm font-bold">
-                            {person.initials}
+                          <div className="relative w-14 h-14 rounded-full border-[3px] border-brand-lime/40 overflow-hidden bg-white/5 flex-shrink-0">
+                            <Image
+                              src={person.image}
+                              alt={person.name}
+                              fill
+                              className="object-cover"
+                              sizes="56px"
+                            />
                           </div>
                           <div className="space-y-0.5">
                             <p className="text-white font-bold text-sm">{person.name}</p>
@@ -560,8 +624,8 @@ export default function CareersPage() {
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
                       { name: 'Darren Flowers', role: lang === 'vn' ? 'Giám Đốc Kỹ Thuật' : 'Technical Director', studio: 'Eden Offline · Sakira Mods TikTok' },
-                      { name: 'Khai Pham', role: lang === 'vn' ? 'Trưởng Nhóm Dựng Hình' : 'Lead Modeler', studio: 'Sparx · Activision · Riot · Disney' },
-                      { name: 'Luka', role: lang === 'vn' ? 'Giám Đốc Hoạt Hình' : 'Animation Supervisor', studio: 'AAA Game Development' },
+                      { name: 'Khai Pham', role: lang === 'vn' ? 'Trưởng Nhóm Dựng Hình' : 'Lead Modeler', studio: 'Sparx · Activision' },
+                      { name: 'Luka', role: lang === 'vn' ? 'Giám Đốc Hoạt Hình' : 'Animation Supervisor', studio: 'ILM · AAA Senior Animator' },
                       { name: 'Keira Duong', role: lang === 'vn' ? 'Giám Đốc Điều Hành' : 'Chief Operating Officer', studio: 'Big 4 Advisory · Finance & Growth' },
                     ].map((member) => (
                       <div key={member.name} className="bg-white/3 border border-white/5 rounded-xl p-4">
@@ -598,7 +662,7 @@ export default function CareersPage() {
         </Section>
 
         {/* ── CTA ── */}
-        <Section id="cta" className="bg-brand-navy">
+        <Section id="cta" className="relative border-t border-brand-lime/15 bg-gradient-to-t from-[#1c1d2e]/92 via-brand-navy/85 to-brand-lime/[0.08] backdrop-blur-sm">
           <div className="container-custom text-center">
             <AnimatePresence mode="wait">
               <motion.div
@@ -628,6 +692,7 @@ export default function CareersPage() {
           </div>
         </Section>
 
+        </div>
       </main>
 
       <Footer />

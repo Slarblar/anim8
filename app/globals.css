@@ -888,3 +888,43 @@
     overflow: visible;
   }
 }
+
+/* Careers page — drift is translate-only; 3D tilt lives on inner wrapper */
+@keyframes careers-portfolio-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  33% { transform: translate3d(0.5vw, -1vh, 0); }
+  66% { transform: translate3d(-0.4vw, 0.8vh, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .careers-portfolio-float-card {
+    animation: none !important;
+  }
+}
+
+/**
+ * Careers floating thumbs: stay in the side gutter (matches .container-custom ~1400px logic)
+ * so cards can sit inward from the chrome without overlapping the reading column.
+ */
+.careers-portfolio-float-card {
+  box-sizing: border-box;
+  width: min(17vw, 172px);
+  max-width: min(
+    172px,
+    max(68px, calc((100vw - min(100vw - 2rem, 87.5rem)) / 2 - 1.125rem))
+  );
+}
+
+@media (max-width: 639px) {
+  .careers-portfolio-float-card {
+    width: min(24vw, 108px);
+    max-width: min(108px, max(52px, calc((100vw - min(100vw - 2rem, 87.5rem)) / 2 - 0.5rem)));
+  }
+}
+
+.careers-portfolio-float-nudge-l {
+  transform: translateX(clamp(8px, 1.8vw, 16px));
+}
+.careers-portfolio-float-nudge-r {
+  transform: translateX(calc(-1 * clamp(8px, 1.8vw, 16px)));
+}

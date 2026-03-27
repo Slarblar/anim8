@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { CookieBanner } from '@/components/ui/CookieBanner'
 
 export const metadata: Metadata = {
   icons: {
@@ -47,6 +48,7 @@ export default function RootLayout({
       </head>
       <body>
         {children}
+        <CookieBanner />
       </body>
     </html>
   )

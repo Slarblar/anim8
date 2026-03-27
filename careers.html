@@ -387,16 +387,17 @@
   }
   .leader-item:last-child { border-bottom: none; }
   .leader-avatar {
-    width: 38px; height: 38px;
+    width: 56px; height: 56px;
     border-radius: 50%;
-    background: var(--surface2);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Bebas Neue';
-    font-size: 1rem;
-    color: var(--accent);
-    border: 1px solid var(--border);
+    overflow: hidden;
     flex-shrink: 0;
-    margin-top: 2px;
+    border: 3px solid rgba(124, 193, 66, 0.4);
+    background: var(--surface2);
+  }
+  .leader-avatar img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
   }
   .leader-info { display: flex; flex-direction: column; gap: 3px; }
   .leader-name {
@@ -1041,7 +1042,9 @@
         <p class="card-label">Creative Leadership</p>
         <div>
           <div class="leader-item">
-            <div class="leader-avatar">JN</div>
+            <div class="leader-avatar">
+              <img src="/images/founders/jordannguyen.webp" alt="Jordan Nguyen" width="56" height="56" loading="lazy" />
+            </div>
             <div class="leader-info">
               <span class="leader-name">Jordan Nguyen</span>
               <span class="leader-role">Co-founder</span>
@@ -1052,11 +1055,13 @@
             </div>
           </div>
           <div class="leader-item">
-            <div class="leader-avatar">CL</div>
+            <div class="leader-avatar">
+              <img src="/images/founders/chrisle.webp" alt="Chris Le" width="56" height="56" loading="lazy" />
+            </div>
             <div class="leader-info">
               <span class="leader-name">Chris Le</span>
               <span class="leader-role">Co-founder</span>
-              <span class="leader-studio">RTFKT · Nike Web3</span>
+              <span class="leader-studio">RTFKT · Nike</span>
               <div class="leader-links">
                 <a href="https://www.instagram.com/clegfx/" target="_blank">Instagram ↗</a>
                 <a href="https://www.imdb.com/name/nm2211997/" target="_blank">IMDb ↗</a>
@@ -1077,12 +1082,12 @@
           <div style="background: var(--surface2); padding: 1.2rem 1.4rem;">
             <div style="font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 3px;">Khai Pham</div>
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">Lead Modeler</div>
-            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em;">Sparx · Activision · Riot · Disney</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em;">Sparx · Activision</div>
           </div>
           <div style="background: var(--surface2); padding: 1.2rem 1.4rem;">
             <div style="font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 3px;">Luka</div>
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;">Senior Modeler</div>
-            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em;">AAA Game Development</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em;">ILM · AAA Senior Animator</div>
           </div>
           <div style="background: var(--surface2); padding: 1.2rem 1.4rem;">
             <div style="font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 3px;">Keira Duong</div>
@@ -1131,7 +1136,7 @@
   <p class="cta-label">Ready to Apply?</p>
   <h2 class="cta-title">LET'S MAKE<br>SOMETHING GREAT.</h2>
   <p class="cta-sub">Send your portfolio and CV to the Anim-8 team. We review every application personally.</p>
-  <a href="mailto:Tyler@anim-8.xyz?subject=Application%20%E2%80%94%20[Role]%20%7C%20Portfolio%20Submission&body=Hi%20Tyler%2C%0A%0AI%27d%20like%20to%20apply%20for%20the%20[Role]%20position%20at%20Anim-8.%0A%0APlease%20find%20my%20portfolio%20and%20CV%20attached.%0A%0ABest%2C%0A[Your%20Name]" class="cta-btn">Send Your CV & Portfolio</a>
+  <a href="/apply" class="cta-btn">Send Your CV & Portfolio</a>
 </div>
 
 <!-- FOOTER -->

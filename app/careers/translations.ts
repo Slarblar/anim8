@@ -292,6 +292,9 @@ export const t = {
       },
     },
 
+    /** Link from each role block → `/apply?role=…#field-role` */
+    roleApply: 'Apply',
+
     // ── CTA ────────────────────────────────────────────────
     cta: {
       label: 'Ready to Apply?',
@@ -594,6 +597,8 @@ export const t = {
         ],
       },
     },
+
+    roleApply: 'Ứng tuyển',
 
     // ── CTA ────────────────────────────────────────────────
     cta: {

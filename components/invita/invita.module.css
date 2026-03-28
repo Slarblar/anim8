@@ -1,0 +1,718 @@
+/* Scoped from client invita.html — root wrapper .invitaRoot */
+
+.invitaRoot,
+.invitaRoot *,
+.invitaRoot *::before,
+.invitaRoot *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.invitaRoot {
+  --cream: #faf7f2;
+  --warm-white: #fdf9f4;
+  --stone: #e8e2d9;
+  --stone-dark: #c9c1b4;
+  --bark: #8a7d6e;
+  --earth: #5c4f42;
+  --deep: #2a231d;
+  --teal: #2d7a63;
+  --teal-light: #eaf4ef;
+  --teal-mid: #c5e0d6;
+  --teal-dark: #1a5445;
+  --amber: #c17f35;
+  --amber-light: #fbf2e4;
+  --red: #c0392b;
+  --red-light: #fdeeec;
+  --purple: #6b3fa6;
+  --purple-light: #f3eefb;
+
+  font-family: var(--font-invita-dm), 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--deep);
+  min-height: 100vh;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+.invitaRoot header {
+  background: var(--warm-white);
+  border-bottom: 1px solid var(--stone);
+  padding: 0 48px;
+}
+
+.invitaRoot .hdr {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+}
+
+.invitaRoot .wm {
+  font-family: var(--font-invita-cormorant), 'Cormorant', serif;
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.invitaRoot .ws {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--bark);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.invitaRoot .pills {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.invitaRoot .pill {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+
+.invitaRoot .pillSd {
+  background: var(--teal-light);
+  color: var(--teal);
+  border-color: var(--teal-mid);
+}
+
+.invitaRoot .pillLv {
+  background: #eef2fb;
+  color: #3a4fa6;
+  border-color: #c8d2f2;
+}
+
+.invitaRoot .pillFtl {
+  background: var(--amber-light);
+  color: var(--amber);
+  border-color: #edd5a8;
+}
+
+.invitaRoot .pillCm {
+  background: var(--purple-light);
+  color: var(--purple);
+  border-color: #d9c8f2;
+}
+
+.invitaRoot .pillCp {
+  background: #fef0f0;
+  color: #a63a3a;
+  border-color: #f2c8c8;
+}
+
+.invitaRoot nav {
+  background: var(--warm-white);
+  border-bottom: 1px solid var(--stone);
+  padding: 0 48px;
+}
+
+.invitaRoot .navI {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+}
+
+.invitaRoot .ntab {
+  padding: 14px 22px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bark);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: var(--font-invita-dm), 'DM Sans', sans-serif;
+  transition: color 0.2s;
+}
+
+.invitaRoot .ntab:hover {
+  color: var(--earth);
+}
+
+.invitaRoot .ntab.active {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+}
+
+.invitaRoot .main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 36px 48px 80px;
+}
+
+.invitaRoot .ph {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.invitaRoot .st {
+  font-family: var(--font-invita-cormorant), 'Cormorant', serif;
+  font-size: 26px;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+}
+
+.invitaRoot .ar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.invitaRoot .gbtn {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bark);
+  background: none;
+  border: 1px solid var(--stone-dark);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-invita-dm), 'DM Sans', sans-serif;
+  transition: all 0.2s;
+}
+
+.invitaRoot .gbtn:hover {
+  background: var(--stone);
+  color: var(--earth);
+}
+
+.invitaRoot .alink {
+  font-size: 11px;
+  color: var(--bark);
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--stone-dark);
+  padding: 6px 14px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.invitaRoot .alink:hover {
+  color: var(--teal);
+}
+
+.invitaRoot .kr {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.invitaRoot .kc {
+  background: var(--warm-white);
+  border: 1px solid var(--stone);
+  border-radius: 10px;
+  padding: 20px 22px;
+}
+
+.invitaRoot .kl {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bark);
+  margin-bottom: 8px;
+}
+
+.invitaRoot .kv {
+  font-family: var(--font-invita-cormorant), 'Cormorant', serif;
+  font-size: 44px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--deep);
+}
+
+.invitaRoot .kv.green {
+  color: var(--teal);
+}
+
+.invitaRoot .kv.red {
+  color: var(--red);
+}
+
+.invitaRoot .kv.amber {
+  color: var(--amber);
+}
+
+.invitaRoot .ks {
+  font-size: 11px;
+  color: var(--bark);
+  margin-top: 4px;
+}
+
+.invitaRoot .gl {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bark);
+  margin-bottom: 12px;
+}
+
+.invitaRoot .sg {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.invitaRoot .sc {
+  background: var(--warm-white);
+  border: 1px solid var(--stone);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.invitaRoot .sc.hw {
+  border-left: 3px solid var(--teal);
+}
+
+.invitaRoot .sc.ho {
+  border-left: 3px solid var(--red);
+}
+
+.invitaRoot .sn {
+  font-size: 11px;
+  color: var(--bark);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invitaRoot .sv {
+  font-family: var(--font-invita-cormorant), 'Cormorant', serif;
+  font-size: 30px;
+  font-weight: 300;
+  color: var(--deep);
+}
+
+.invitaRoot table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--warm-white);
+  border: 1px solid var(--stone);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.invitaRoot th {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bark);
+  padding: 11px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--stone);
+  background: var(--cream);
+  font-weight: 400;
+}
+
+.invitaRoot td {
+  padding: 11px 16px;
+  font-size: 13px;
+  color: var(--earth);
+  border-bottom: 1px solid var(--stone);
+  vertical-align: middle;
+}
+
+.invitaRoot tr:last-child td {
+  border-bottom: none;
+}
+
+.invitaRoot tr:hover td {
+  background: var(--cream);
+}
+
+.invitaRoot .tn {
+  font-weight: 400;
+  color: var(--deep);
+}
+
+.invitaRoot .sb {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: var(--stone);
+  color: var(--earth);
+  white-space: nowrap;
+}
+
+.invitaRoot .lb {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.invitaRoot .dn {
+  font-size: 12px;
+  color: var(--bark);
+}
+
+.invitaRoot .dl {
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 500;
+}
+
+.invitaRoot .ds {
+  font-size: 12px;
+  color: var(--amber);
+}
+
+.invitaRoot .er td {
+  text-align: center;
+  padding: 40px;
+  color: var(--bark);
+  font-style: italic;
+  font-family: var(--font-invita-cormorant), 'Cormorant', serif;
+  font-size: 17px;
+}
+
+.invitaRoot .mf {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.invitaRoot .mb {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--stone-dark);
+  background: none;
+  color: var(--bark);
+  cursor: pointer;
+  font-family: var(--font-invita-dm), 'DM Sans', sans-serif;
+  transition: all 0.15s;
+}
+
+.invitaRoot .mb:hover {
+  background: var(--stone);
+}
+
+.invitaRoot .mb.active {
+  background: var(--teal);
+  color: white;
+  border-color: var(--teal-dark);
+}
+
+.invitaRoot .rc {
+  background: var(--warm-white);
+  border: 1px solid var(--stone);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: opacity 0.3s;
+}
+
+.invitaRoot .rci {
+  flex: 1;
+  min-width: 0;
+}
+
+.invitaRoot .rcn {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--deep);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invitaRoot .rcm {
+  font-size: 11px;
+  color: var(--bark);
+}
+
+.invitaRoot .rs {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.invitaRoot .rb {
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  border: 1px solid var(--stone-dark);
+  background: var(--cream);
+  color: var(--bark);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-invita-dm), 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invitaRoot .rb:hover {
+  background: var(--teal-light);
+  border-color: var(--teal-mid);
+  color: var(--teal);
+}
+
+.invitaRoot .rb.rated {
+  background: var(--teal);
+  border-color: var(--teal-dark);
+  color: white;
+}
+
+.invitaRoot .rdone {
+  font-size: 11px;
+  color: var(--teal);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.invitaRoot .fw {
+  max-width: 620px;
+}
+
+.invitaRoot .fi {
+  font-family: var(--font-invita-cormorant), 'Cormorant', serif;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--bark);
+  margin-bottom: 28px;
+  line-height: 1.7;
+}
+
+.invitaRoot .fg {
+  margin-bottom: 18px;
+}
+
+.invitaRoot .fl {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bark);
+  margin-bottom: 6px;
+}
+
+.invitaRoot input[type='text'],
+.invitaRoot input[type='date'],
+.invitaRoot select,
+.invitaRoot textarea {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--stone-dark);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: var(--font-invita-dm), 'DM Sans', sans-serif;
+  font-weight: 300;
+  background: var(--warm-white);
+  color: var(--deep);
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: none;
+}
+
+.invitaRoot input:focus,
+.invitaRoot select:focus,
+.invitaRoot textarea:focus {
+  border-color: var(--teal);
+}
+
+.invitaRoot select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A7D6E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  padding-right: 34px;
+  cursor: pointer;
+}
+
+.invitaRoot textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+.invitaRoot .frow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.invitaRoot .fdiv {
+  height: 1px;
+  background: var(--stone);
+  margin: 24px 0;
+}
+
+.invitaRoot .bsp {
+  padding: 12px 30px;
+  background: var(--teal);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: var(--font-invita-dm), 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.invitaRoot .bsp:hover {
+  background: var(--teal-dark);
+}
+
+.invitaRoot .bsp:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.invitaRoot .bsc {
+  padding: 12px 22px;
+  background: none;
+  color: var(--bark);
+  border: 1px solid var(--stone-dark);
+  border-radius: 4px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: var(--font-invita-dm), 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.invitaRoot .bsc:hover {
+  background: var(--stone);
+}
+
+.invitaRoot .bn {
+  padding: 11px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 18px;
+  display: none;
+}
+
+.invitaRoot .bnOk {
+  background: var(--teal-light);
+  color: var(--teal);
+  border: 1px solid var(--teal-mid);
+}
+
+.invitaRoot .bnErr {
+  background: var(--red-light);
+  color: var(--red);
+  border: 1px solid #f2bcb8;
+}
+
+.invitaRoot .ls {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--bark);
+  font-family: var(--font-invita-cormorant), 'Cormorant', serif;
+  font-style: italic;
+  font-size: 18px;
+}
+
+.invitaRoot .sp {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: invitaSpin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes invitaSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.invitaRoot .invitaFooter {
+  border-top: 1px solid var(--stone);
+  padding: 20px 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.invitaRoot .ft {
+  font-size: 11px;
+  color: var(--stone-dark);
+  letter-spacing: 0.06em;
+}
+
+.invitaRoot .rateIntro {
+  font-family: var(--font-invita-cormorant), 'Cormorant', serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--bark);
+  margin-bottom: 24px;
+  line-height: 1.7;
+}
+
+.invitaRoot .kpiTableSpaced {
+  margin-bottom: 28px;
+}
+
+.invitaRoot .formActions {
+  display: flex;
+  gap: 10px;
+}
+
+.invitaRoot .bnVisible {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .invitaRoot header,
+  .invitaRoot nav {
+    padding: 0 20px;
+  }
+
+  .invitaRoot .main,
+  .invitaRoot .invitaFooter {
+    padding: 24px 20px 60px;
+  }
+
+  .invitaRoot .kr,
+  .invitaRoot .sg {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .invitaRoot .frow {
+    grid-template-columns: 1fr;
+  }
+
+  .invitaRoot .pills {
+    display: none;
+  }
+}

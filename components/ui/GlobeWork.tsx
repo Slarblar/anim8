@@ -1261,8 +1261,8 @@ export function GlobeWork() {
           velY *= decay
           // Very slow X-axis centering — drifts back toward equatorial over ~60s
           group.rotation.x += (-group.rotation.x) * (0.00035 * dt * 60)
-          // Satellite orbit auto-rotation — ~5.5 min per full revolution (was ~2.7 min at 0.00064)
-          group.rotation.y += 0.00032 * (dt * 60)
+          // Satellite orbit auto-rotation — ~5.5 min/rev desktop; ~30% faster on mobile
+          group.rotation.y += 0.00032 * (isMobile ? 1.3 : 1) * (dt * 60)
         }
 
         const hoverActive = hoveredMesh !== null

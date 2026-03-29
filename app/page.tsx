@@ -401,14 +401,16 @@ export default function LandingPage() {
                 <h3 className="lp-team-founder-name">Jordan Nguyen</h3>
                 <p className="lp-team-founder-role">Co-founder</p>
                 <p className="lp-team-founder-cred">Spacestation Animation · Quarter Machine</p>
-                <a
-                  className="lp-team-founder-link"
-                  href="https://www.jordannguyen.me"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Portfolio ↗
-                </a>
+                <div className="lp-team-founder-links">
+                  <a
+                    className="lp-team-founder-link"
+                    href="https://www.jordannguyen.me"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Portfolio ↗
+                  </a>
+                </div>
               </article>
               <article className="lp-team-founder-card">
                 <div className="lp-team-founder-avatar">

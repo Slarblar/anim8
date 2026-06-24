@@ -70,7 +70,7 @@ const roleLabels = {
   conceptArtist:'Storyboard & Concept Artist',
   videoEditor:  'Video Editor / VFX Artist',
   modeler:      '3D Modeler / Generalist',
-  animator:     'Animator',
+  animator:     'Senior Animator',
 };
 
 function formatKey(key) {

@@ -928,3 +928,25 @@
 .careers-portfolio-float-nudge-r {
   transform: translateX(calc(-1 * clamp(8px, 1.8vw, 16px)));
 }
+
+/* Careers — role tab strip must not trap vertical wheel when sticky */
+.careers-roles-nav-scroll {
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  touch-action: pan-y pinch-zoom;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html.careers-page-active {
+  scroll-padding-top: 3.75rem;
+}

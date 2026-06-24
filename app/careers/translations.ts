@@ -8,13 +8,14 @@ export const t = {
       { label: 'Studio', value: 'Anim-8' },
       { label: 'Location', value: 'District 3, Ho Chi Minh City' },
       { label: 'Clients', value: 'U.S.-based Global Projects' },
-      { label: 'Open Roles', value: '5 Positions' },
+      { label: 'Open Roles', value: '6 Positions' },
     ],
     metaInstagram: 'Instagram',
     rolesNav: [
       { id: 'designer', label: 'Designer · Full-Time' },
       { id: 'design-intern', label: 'Design Intern' },
       { id: '3d-modeler', label: '3D Modeler / Generalist' },
+      { id: 'senior-animator', label: 'Senior Animator' },
       { id: 'storyboard', label: 'Storyboard & Concept Artist' },
       { id: 'video-editor', label: 'Video Editor / VFX Artist' },
     ],
@@ -155,6 +156,75 @@ export const t = {
     },
 
     // ── ROLE 4 ─────────────────────────────────────────────
+    animator: {
+      tag: 'Full-Time',
+      title: 'SENIOR ANIMATOR',
+      comp: '$900–$1,600 USD / month · + Bonus',
+      badge: 'Character\nAnimation',
+      overview: {
+        label: 'Position Overview',
+        body: "We're looking for a Senior Animator with deep character animation experience to drive performance on our social media and cinematic content pipeline. You'll animate hero characters and key moments from storyboards and rigs—working fast, iterating on feedback, and pushing quality in a tight indie-studio turnaround. This is a highly collaborative role: you'll communicate daily with modelers, supervisors, directors, and editors to ship polished animation that holds up on screen.",
+        boldPhrase: 'deep character animation experience',
+      },
+      animation: {
+        label: 'Character Animation (Primary Focus)',
+        items: [
+          'Animate characters with strong acting, weight, timing, and appeal—from subtle dialogue to full-body action.',
+          'Translate storyboards and animatics into clear, readable performance that matches creative direction.',
+          'Work from production-ready rigs; polish blocking through spline, refinement, and final polish passes.',
+          'Iterate quickly on notes from animation supervision and U.S. creative leadership.',
+          'Maintain consistent quality and style across shots, sequences, and deliverables.',
+        ],
+      },
+      pipeline: {
+        label: 'Pipeline Integration',
+        items: [
+          'Export animation via FBX from Maya or Blender into Unreal Engine for real-time rendering and review.',
+          'Collaborate with modelers and technical artists on rig issues, deformation, and asset readiness.',
+          'Organize shot files, naming conventions, and animation libraries for fast handoff to editorial.',
+          'Support pipeline improvements that help the team move faster without sacrificing craft.',
+          'Troubleshoot animation export and engine playback issues across the production chain.',
+        ],
+      },
+      collaboration: {
+        label: 'Collaboration & Communication',
+        items: [
+          'Communicate clearly in English with international directors, producers, and teammates.',
+          'Give and receive constructive feedback in dailies, reviews, and async updates.',
+          'Work closely with our Animation Supervisor and cross-discipline artists in a small-team environment.',
+          'Proactively flag blockers, scope questions, and creative risks before they slow delivery.',
+          'Help raise the bar for the team through example, mentorship, and shared best practices.',
+        ],
+      },
+      qualifications: {
+        label: 'Required Qualifications',
+        items: [
+          '5+ years of professional character animation experience (film, games, or high-end digital content).',
+          'Expert-level proficiency in Maya or Blender for character animation workflows.',
+          'Portfolio demonstrating strong acting, body mechanics, and polished final animation.',
+          'Experience working in fast-paced production with tight deadlines and frequent iteration.',
+          'Comfortable collaborating across time zones with U.S.-based creative leadership.',
+        ],
+      },
+      software: {
+        label: 'Software Proficiency',
+        expertLabel: 'Expert Level',
+        midLabel: 'Intermediate',
+        niceLabel: 'Beneficial',
+      },
+      portfolio: {
+        label: 'Portfolio Requirements',
+        items: [
+          'Character animation reels with clear acting choices and strong body mechanics.',
+          'Examples of dialogue, action, or performance-driven shots (not just cycles or tests).',
+          'Evidence you can work from storyboard or animatic direction to finished animation.',
+          'Breakdown of your process: blocking, splining, polish, and how you handle notes.',
+          'Bonus: experience animating for real-time engines or social-first content formats.',
+        ],
+      },
+    },
+
+    // ── ROLE 5 ─────────────────────────────────────────────
     storyboard: {
       tag: 'Full-Time',
       title: 'STORYBOARD & CONCEPT ARTIST',
@@ -197,7 +267,7 @@ export const t = {
       },
     },
 
-    // ── ROLE 5 ─────────────────────────────────────────────
+    // ── ROLE 6 ─────────────────────────────────────────────
     video: {
       tag: 'Internship · Junior · Senior — Full-Time',
       title: 'VIDEO EDITOR / VFX ARTIST',
@@ -314,13 +384,14 @@ export const t = {
       { label: 'Xưởng Phim', value: 'Anim-8' },
       { label: 'Địa Chỉ', value: 'Quận 3, TP. Hồ Chí Minh' },
       { label: 'Khách Hàng', value: 'Dự Án Quốc Tế (Hoa Kỳ)' },
-      { label: 'Vị Trí Mở', value: '5 Vị Trí' },
+      { label: 'Vị Trí Mở', value: '6 Vị Trí' },
     ],
     metaInstagram: 'Instagram',
     rolesNav: [
       { id: 'designer', label: 'Designer · Toàn Thời Gian' },
       { id: 'design-intern', label: 'Design Intern' },
       { id: '3d-modeler', label: '3D Modeler / Generalist' },
+      { id: 'senior-animator', label: 'Senior Animator' },
       { id: 'storyboard', label: 'Storyboard & Concept Artist' },
       { id: 'video-editor', label: 'Video Editor / VFX Artist' },
     ],
@@ -461,6 +532,75 @@ export const t = {
     },
 
     // ── ROLE 4 ─────────────────────────────────────────────
+    animator: {
+      tag: 'Toàn Thời Gian',
+      title: 'SENIOR ANIMATOR',
+      comp: '$900–$1,600 USD / tháng · + Thưởng',
+      badge: 'Hoạt Hình\nNhân Vật',
+      overview: {
+        label: 'Tổng Quan Vị Trí',
+        body: 'Chúng tôi đang tìm kiếm một Senior Animator với kinh nghiệm sâu về hoạt hình nhân vật để dẫn dắt performance trong pipeline nội dung mạng xã hội và điện ảnh của chúng tôi. Bạn sẽ animate các nhân vật hero và khoảnh khắc quan trọng từ storyboard và rig—làm việc nhanh, lặp lại theo phản hồi, và đẩy chất lượng trong turnaround của một studio indie. Đây là vị trí cộng tác cao: bạn sẽ giao tiếp hàng ngày với modeler, supervisor, đạo diễn và editor để ship animation hoàn chỉnh, giữ vững trên màn hình.',
+        boldPhrase: 'kinh nghiệm sâu về hoạt hình nhân vật',
+      },
+      animation: {
+        label: 'Hoạt Hình Nhân Vật (Trọng Tâm Chính)',
+        items: [
+          'Animate nhân vật với diễn xuất, trọng lượng, timing và sức hút mạnh—từ thoại tinh tế đến action toàn thân.',
+          'Chuyển storyboard và animatic thành performance rõ ràng, dễ đọc, phù hợp định hướng sáng tạo.',
+          'Làm việc từ rig sẵn sàng sản xuất; hoàn thiện từ blocking qua spline, refinement đến polish cuối.',
+          'Lặp lại nhanh theo ghi chú từ animation supervision và lãnh đạo sáng tạo Hoa Kỳ.',
+          'Duy trì chất lượng và phong cách nhất quán trên shots, sequences và deliverables.',
+        ],
+      },
+      pipeline: {
+        label: 'Tích Hợp Pipeline',
+        items: [
+          'Xuất animation qua FBX từ Maya hoặc Blender sang Unreal Engine cho rendering thời gian thực và review.',
+          'Phối hợp với modeler và technical artist về vấn đề rig, deformation và tài sản sẵn sàng sản xuất.',
+          'Tổ chức file shot, quy ước đặt tên và thư viện animation để bàn giao nhanh cho editorial.',
+          'Hỗ trợ cải thiện pipeline giúp team di chuyển nhanh hơn mà không hy sinh chất lượng.',
+          'Khắc phục sự cố xuất animation và playback trên engine trong chuỗi sản xuất.',
+        ],
+      },
+      collaboration: {
+        label: 'Cộng Tác & Giao Tiếp',
+        items: [
+          'Giao tiếp rõ ràng bằng tiếng Anh với đạo diễn, nhà sản xuất và đồng đội quốc tế.',
+          'Đưa và nhận phản hồi mang tính xây dựng trong dailies, review và cập nhật async.',
+          'Làm việc chặt chẽ với Animation Supervisor và các họa sĩ đa lĩnh vực trong môi trường team nhỏ.',
+          'Chủ động báo blockers, câu hỏi scope và rủi ro sáng tạo trước khi chúng làm chậm delivery.',
+          'Giúp nâng cao tiêu chuẩn team qua tấm gương, mentorship và best practices được chia sẻ.',
+        ],
+      },
+      qualifications: {
+        label: 'Yêu Cầu Bắt Buộc',
+        items: [
+          '5+ năm kinh nghiệm hoạt hình nhân vật chuyên nghiệp (phim, game hoặc nội dung kỹ thuật số cao cấp).',
+          'Thành thạo chuyên sâu Maya hoặc Blender cho quy trình hoạt hình nhân vật.',
+          'Portfolio thể hiện diễn xuất mạnh, body mechanics và animation hoàn chỉnh, được polish.',
+          'Kinh nghiệm làm việc trong sản xuất nhanh với deadline gấp và lặp lại thường xuyên.',
+          'Thoải mái cộng tác xuyên múi giờ với lãnh đạo sáng tạo tại Hoa Kỳ.',
+        ],
+      },
+      software: {
+        label: 'Thành Thạo Phần Mềm',
+        expertLabel: 'Cấp Độ Chuyên Gia',
+        midLabel: 'Cấp Độ Trung Bình',
+        niceLabel: 'Là Điểm Cộng',
+      },
+      portfolio: {
+        label: 'Yêu Cầu Portfolio',
+        items: [
+          'Demo reel hoạt hình nhân vật với lựa chọn diễn xuất rõ ràng và body mechanics mạnh.',
+          'Ví dụ dialogue, action hoặc shots dựa trên performance (không chỉ cycles hoặc tests).',
+          'Bằng chứng bạn có thể làm từ storyboard hoặc animatic direction đến animation hoàn chỉnh.',
+          'Phân tích quy trình: blocking, splining, polish và cách bạn xử lý notes.',
+          'Điểm cộng: kinh nghiệm animate cho real-time engine hoặc định dạng nội dung social-first.',
+        ],
+      },
+    },
+
+    // ── ROLE 5 ─────────────────────────────────────────────
     storyboard: {
       tag: 'Toàn Thời Gian',
       title: 'STORYBOARD & CONCEPT ARTIST',
@@ -503,7 +643,7 @@ export const t = {
       },
     },
 
-    // ── ROLE 5 ─────────────────────────────────────────────
+    // ── ROLE 6 ─────────────────────────────────────────────
     video: {
       tag: 'Thực Tập · Junior · Senior — Toàn Thời Gian',
       title: 'VIDEO EDITOR / VFX ARTIST',

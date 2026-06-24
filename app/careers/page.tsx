@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { Header } from '@/components/ui/Header'
@@ -93,6 +93,7 @@ const APPLY_ROLE_QUERY = {
   designer: 'designer',
   intern: 'designIntern',
   modeler: 'modeler',
+  animator: 'animator',
   storyboard: 'conceptArtist',
   video: 'videoEditor',
 } as const
@@ -156,12 +157,46 @@ function LanguageToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => v
   )
 }
 
+const ROLE_SECTION_CLASS = 'scroll-mt-[3.75rem]'
+
+/** Sticky role tabs use horizontal overflow; forward vertical wheel to the page so scroll does not get trapped. */
+function useRolesNavWheelPassthrough(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      window.scrollBy({ top: e.deltaY, left: 0, behavior: 'auto' })
+      e.preventDefault()
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [ref])
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CareersPage() {
   const [lang, setLang] = useState<Lang>('en')
+  const rolesNavScrollRef = useRef<HTMLDivElement>(null)
   const c = t[lang]
   const monoClass = lang === 'en' ? 'font-mono' : ''
+
+  useRolesNavWheelPassthrough(rolesNavScrollRef)
+
+  useEffect(() => {
+    document.documentElement.classList.add('careers-page-active')
+    document.documentElement.style.scrollPaddingTop = '3.75rem'
+    document.body.classList.remove('landing-active')
+    document.body.style.overflow = ''
+
+    return () => {
+      document.documentElement.classList.remove('careers-page-active')
+      document.documentElement.style.scrollPaddingTop = ''
+    }
+  }, [])
 
   /** Web apply form (`public/apply/index.html` → `/apply`) */
   const applyHref = '/apply'
@@ -171,7 +206,7 @@ export default function CareersPage() {
       <Header />
 
       <main
-        className={`relative isolate min-h-screen overflow-x-hidden bg-brand-navy${lang === 'vn' ? ' font-be-vietnam' : ''}`}
+        className={`relative min-h-screen overflow-x-clip bg-brand-navy${lang === 'vn' ? ' font-be-vietnam' : ''}`}
         lang={lang === 'vn' ? 'vi' : 'en'}
       >
         <CareersAmbientLayer />
@@ -244,7 +279,10 @@ export default function CareersPage() {
         {/* ── ROLES NAV + LANGUAGE TOGGLE ── */}
         <nav className="sticky top-0 z-40 border-b border-white/10 bg-brand-navy/70 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.18)]">
           <div className="flex items-center px-4 md:px-8 lg:px-16">
-            <div className="flex overflow-x-auto flex-1 hide-scrollbar">
+            <div
+              ref={rolesNavScrollRef}
+              className="careers-roles-nav-scroll flex overflow-x-auto flex-1 hide-scrollbar"
+            >
               {c.rolesNav.map((role) => (
                 <a
                   key={role.id}
@@ -264,7 +302,7 @@ export default function CareersPage() {
         </nav>
 
         {/* ── ROLE 1: DESIGNER ── */}
-        <Section id="designer" className="relative border-b border-white/5 bg-gradient-to-br from-brand-lime/[0.08] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm">
+        <Section id="designer" className={`relative border-b border-white/5 bg-gradient-to-br from-brand-lime/[0.08] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -297,7 +335,7 @@ export default function CareersPage() {
         </Section>
 
         {/* ── ROLE 2: DESIGN INTERN ── */}
-        <Section id="design-intern" className="relative border-b border-white/5 bg-gradient-to-bl from-brand-cyan/[0.07] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm">
+        <Section id="design-intern" className={`relative border-b border-white/5 bg-gradient-to-bl from-brand-cyan/[0.07] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -330,7 +368,7 @@ export default function CareersPage() {
         </Section>
 
         {/* ── ROLE 3: 3D MODELER ── */}
-        <Section id="3d-modeler" className="relative border-b border-white/5 bg-gradient-to-b from-brand-navy/88 via-background-dark/25 to-brand-navy/80 backdrop-blur-sm">
+        <Section id="3d-modeler" className={`relative border-b border-white/5 bg-gradient-to-b from-brand-navy/88 via-background-dark/25 to-brand-navy/80 backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -408,8 +446,83 @@ export default function CareersPage() {
           </div>
         </Section>
 
-        {/* ── ROLE 4: STORYBOARD ── */}
-        <Section id="storyboard" className="relative border-b border-white/5 bg-gradient-to-tr from-brand-pink/[0.06] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm">
+        {/* ── ROLE 4: SENIOR ANIMATOR ── */}
+        <Section id="senior-animator" className={`relative border-b border-white/5 bg-gradient-to-tr from-brand-lime/[0.06] via-brand-navy/84 to-brand-pink/[0.04] backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
+          <div className="container-custom">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`animator-${lang}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
+                  <div>
+                    <RoleTag>{c.animator.tag}</RoleTag>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl">{c.animator.title}</h2>
+                    <p className={`text-brand-cyan ${monoClass} text-sm md:text-base`}>{c.animator.comp}</p>
+                  </div>
+                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
+                    {c.animator.badge}
+                  </span>
+                </div>
+
+                <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,92,42,0.05)]">
+                  <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
+                    <CardLabel>{c.animator.overview.label}</CardLabel>
+                    <p className="text-text-muted leading-relaxed">{c.animator.overview.body}</p>
+                  </div>
+                  <RoleCardRow
+                    left={<><CardLabel>{c.animator.animation.label}</CardLabel><BulletList items={c.animator.animation.items} /></>}
+                    right={<><CardLabel>{c.animator.pipeline.label}</CardLabel><BulletList items={c.animator.pipeline.items} /></>}
+                  />
+                  <RoleCardRow
+                    left={<><CardLabel>{c.animator.collaboration.label}</CardLabel><BulletList items={c.animator.collaboration.items} /></>}
+                    right={<><CardLabel>{c.animator.qualifications.label}</CardLabel><BulletList items={c.animator.qualifications.items} /></>}
+                  />
+                  <div className={`${cellBase} border-t border-white/8`}>
+                    <CardLabel>{c.animator.software.label}</CardLabel>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-text-muted font-mono mb-2">{c.animator.software.expertLabel}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {['Maya / Blender', 'Character Animation', 'Graph Editor / Dope Sheet'].map(s => (
+                            <SoftwareTag key={s} level="expert">{s}</SoftwareTag>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-text-muted font-mono mb-2">{c.animator.software.midLabel}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {['Unreal Engine', 'FBX Pipeline', 'Shot Organization'].map(s => (
+                            <SoftwareTag key={s} level="mid">{s}</SoftwareTag>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-text-muted font-mono mb-2">{c.animator.software.niceLabel}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {['MotionBuilder', 'Rigging Basics', 'After Effects'].map(s => (
+                            <SoftwareTag key={s} level="nice">{s}</SoftwareTag>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`${cellBase} border-t border-white/8`}>
+                    <CardLabel>{c.animator.portfolio.label}</CardLabel>
+                    <BulletList items={c.animator.portfolio.items} />
+                  </div>
+                </div>
+                <RoleApplyLink applyRole={APPLY_ROLE_QUERY.animator} label={c.roleApply} />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </Section>
+
+        {/* ── ROLE 5: STORYBOARD ── */}
+        <Section id="storyboard" className={`relative border-b border-white/5 bg-gradient-to-tr from-brand-pink/[0.06] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -448,8 +561,8 @@ export default function CareersPage() {
           </div>
         </Section>
 
-        {/* ── ROLE 5: VIDEO EDITOR / VFX ARTIST ── */}
-        <Section id="video-editor" className="relative border-b border-white/5 bg-gradient-to-br from-brand-cyan/[0.05] via-brand-navy/84 to-brand-lime/[0.05] backdrop-blur-sm">
+        {/* ── ROLE 6: VIDEO EDITOR / VFX ARTIST ── */}
+        <Section id="video-editor" className={`relative border-b border-white/5 bg-gradient-to-br from-brand-cyan/[0.05] via-brand-navy/84 to-brand-lime/[0.05] backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div
@@ -516,7 +629,7 @@ export default function CareersPage() {
         </Section>
 
         {/* ── ABOUT ── */}
-        <Section id="about" className="relative border-b border-white/5 bg-gradient-to-b from-white/[0.04] via-brand-navy/82 to-background-dark/20 backdrop-blur-sm">
+        <Section id="about" className={`relative border-b border-white/5 bg-gradient-to-b from-white/[0.04] via-brand-navy/82 to-background-dark/20 backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
           <div className="container-custom">
             <AnimatePresence mode="wait">
               <motion.div

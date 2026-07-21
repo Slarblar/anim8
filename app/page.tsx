@@ -22,7 +22,7 @@ const clientNames = [
 const landingProductionTeam = [
   { name: 'Darren Flowers', role: 'Technical Director', studio: 'Eden Offline · Sakira Mods TikTok' },
   { name: 'Khai Pham', role: 'Lead Modeler', studio: 'Sparx · Activision' },
-  { name: 'Luka', role: 'Animation Supervisor', studio: 'ILM · AAA Senior Animator' },
+  { name: 'Luka Trinh', role: 'Animation Supervisor', studio: 'ILM · AAA Senior Animator' },
   { name: 'Keira Duong', role: 'Chief Operating Officer', studio: 'Big 4 Advisory · Finance & Growth' },
 ] as const
 

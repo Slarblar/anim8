@@ -1,0 +1,12 @@
+/** Client portal — ANIM-8 CLIENT INTAKE custom field GIDs (not secret). */
+
+export const ANIM8_CALENDAR_URL =
+  'https://calendar.app.google/4AfMaz1uEfPVW9r49';
+
+export const INTAKE_PROJECT_GID = '1216732614798537';
+export const PRODUCTION_PIPELINE_GID = '1211367100593569';
+export const DESIGN_PIPELINE_GID = '1212054441677535';
+
+export const FIELD_PRIMARY_LINK = '1211366364979261';
+export const FIELD_CLIENT_STATUS = '1211366366275944';
+export const CLIENT_STATUS_NEW_SUBMISSION = '1216732614798550';

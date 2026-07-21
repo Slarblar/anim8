@@ -72,7 +72,7 @@ export function TeamSection() {
       image: '/images/team/khai.webp'
     },
     { 
-      name: 'Luka', 
+      name: 'Luka Trinh', 
       role: 'Senior Modeler',
       credentials: 'ILM · AAA Senior Animator',
       details: [

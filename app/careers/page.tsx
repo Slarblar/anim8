@@ -738,7 +738,7 @@ export default function CareersPage() {
                     {[
                       { name: 'Darren Flowers', role: lang === 'vn' ? 'Giám Đốc Kỹ Thuật' : 'Technical Director', studio: 'Eden Offline · Sakira Mods TikTok' },
                       { name: 'Khai Pham', role: lang === 'vn' ? 'Trưởng Nhóm Dựng Hình' : 'Lead Modeler', studio: 'Sparx · Activision' },
-                      { name: 'Luka', role: lang === 'vn' ? 'Giám Đốc Hoạt Hình' : 'Animation Supervisor', studio: 'ILM · AAA Senior Animator' },
+                      { name: 'Luka Trinh', role: lang === 'vn' ? 'Giám Đốc Hoạt Hình' : 'Animation Supervisor', studio: 'ILM · AAA Senior Animator' },
                       { name: 'Keira Duong', role: lang === 'vn' ? 'Giám Đốc Điều Hành' : 'Chief Operating Officer', studio: 'Big 4 Advisory · Finance & Growth' },
                     ].map((member) => (
                       <div key={member.name} className="bg-white/3 border border-white/5 rounded-xl p-4">

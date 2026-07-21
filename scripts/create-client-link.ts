@@ -41,6 +41,7 @@ async function main() {
   requireRedisEnv();
 
   const { createClientLink } = await import('../lib/client-registry');
+  const { logClientPortalLinks } = await import('../lib/client-portal-url');
 
   const record = await createClientLink({
     displayName: 'TurnEmSideways',
@@ -51,7 +52,7 @@ async function main() {
     ],
   });
 
-  console.log(`Portal link: https://anim8studios.com/clients/${record.slug}`);
+  logClientPortalLinks(record.slug);
 }
 
 main();

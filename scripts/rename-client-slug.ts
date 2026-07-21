@@ -13,12 +13,13 @@ const NEW_SLUG = 'turnemsideways2026';
 
 async function main() {
   const { renameClientLink } = await import('../lib/client-registry');
+  const { clientPortalUrl, logClientPortalLinks } = await import('../lib/client-portal-url');
 
   const record = await renameClientLink(OLD_SLUG, NEW_SLUG);
 
   console.log(`Renamed ${OLD_SLUG} -> ${record.slug}`);
-  console.log(`Portal link: https://anim8studios.com/clients/${record.slug}`);
-  console.log(`Old link deactivated: https://anim8studios.com/clients/${OLD_SLUG}`);
+  logClientPortalLinks(record.slug);
+  console.log(`Old link deactivated: ${clientPortalUrl(OLD_SLUG)}`);
 }
 
 main().catch((err) => {

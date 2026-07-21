@@ -20,7 +20,7 @@ export default function ClientPortalNotFound() {
             href="/"
             className="mt-6 inline-block text-xs font-bold uppercase tracking-widest text-brand-cyan transition hover:text-brand-lime font-mono"
           >
-            ← anim8studios.com
+            ← anim-8.xyz
           </Link>
         </div>
       </main>

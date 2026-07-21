@@ -68,7 +68,7 @@ function ProgressBar({
           {progress.completedSubtasks}/{progress.totalSubtasks} steps · {progress.percent}%
         </span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full border border-white/5 bg-black/20">
+      <div className="portal-progress-track mt-0 h-2 rounded-full border border-white/5 bg-black/20">
         <div
           className={portalProgressFill}
           style={{ width: `${progress.percent}%` }}

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth-guards';
-import { decidePtoRequest, getPtoRequest } from '@/lib/pto-requests';
+import { countBusinessDays, decidePtoRequest, getPtoRequest } from '@/lib/pto-requests';
 import { createPtoCalendarEvent } from '@/lib/google-calendar';
 import { notifyEmployeePtoDecision } from '@/lib/crew-notify';
+import { adjustCrewMemberPtoBalance } from '@/lib/crew-directory';
 
 type PatchBody = { decision?: 'approved' | 'rejected'; note?: string };
 
@@ -30,6 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   try {
     let calendarEventId: string | undefined;
     let calendarError: string | null = null;
+    let balanceError: string | null = null;
 
     if (body.decision === 'approved') {
       try {
@@ -46,6 +48,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         // creds aren't configured yet. Surface it so the admin can retry.
         calendarError =
           err instanceof Error ? err.message : 'Failed to create the calendar event.';
+      }
+
+      // Only PTO draws down the balance — WFH is unlimited (Handbook 3.1/3.7).
+      if (existing.type === 'PTO') {
+        try {
+          const days = countBusinessDays(existing.startDate, existing.endDate);
+          await adjustCrewMemberPtoBalance(existing.employeeEmail, -days);
+        } catch (err) {
+          balanceError =
+            err instanceof Error ? err.message : 'Failed to update the PTO balance.';
+        }
       }
     }
 
@@ -67,7 +80,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       decisionNote: body.note,
     });
 
-    return NextResponse.json({ request: updated, calendarError });
+    return NextResponse.json({ request: updated, calendarError, balanceError });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Action failed.' },

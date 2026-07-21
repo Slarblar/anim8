@@ -32,6 +32,19 @@ function keyFor(id: string): string {
   return `${KEY_PREFIX}${id}`;
 }
 
+/** Mon–Fri only, inclusive — matches the Handbook's "working days" definition. */
+export function countBusinessDays(startDate: string, endDate: string): number {
+  let count = 0;
+  const cur = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  while (cur <= end) {
+    const day = cur.getUTCDay();
+    if (day !== 0 && day !== 6) count++;
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return count;
+}
+
 export async function createPtoRequest(input: {
   employeeEmail: string;
   employeeName: string;

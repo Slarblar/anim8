@@ -15,6 +15,11 @@ import {
   adminInput,
 } from './admin-ui';
 
+type EnrichedPtoRequest = PtoRequest & {
+  employeeBalanceDays: number | null;
+  requestedDays: number | null;
+};
+
 function formatRange(startDate: string, endDate: string): string {
   return startDate === endDate ? startDate : `${startDate} – ${endDate}`;
 }
@@ -25,7 +30,13 @@ function StatusBadge({ status }: { status: PtoRequest['status'] }) {
   return <span className={adminBadgePending}>Pending</span>;
 }
 
-function RequestRow({ request, onChanged }: { request: PtoRequest; onChanged: () => void }) {
+function RequestRow({
+  request,
+  onChanged,
+}: {
+  request: EnrichedPtoRequest;
+  onChanged: () => void;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
@@ -41,13 +52,18 @@ function RequestRow({ request, onChanged }: { request: PtoRequest; onChanged: ()
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ decision, note: note || undefined }),
         });
-        const data = (await res.json()) as { error?: string; calendarError?: string | null };
+        const data = (await res.json()) as {
+          error?: string;
+          calendarError?: string | null;
+          balanceError?: string | null;
+        };
         if (!res.ok) {
           setError(data.error ?? 'Action failed.');
           return;
         }
-        if (data.calendarError) {
-          setError(`Approved, but the calendar event failed: ${data.calendarError}`);
+        const issues = [data.calendarError, data.balanceError].filter(Boolean);
+        if (issues.length > 0) {
+          setError(`Decision saved, but: ${issues.join(' ')}`);
         }
         onChanged();
       } catch {
@@ -58,6 +74,12 @@ function RequestRow({ request, onChanged }: { request: PtoRequest; onChanged: ()
     },
     [request.id, note, onChanged]
   );
+
+  const overdraft =
+    request.status === 'pending' &&
+    request.employeeBalanceDays !== null &&
+    request.requestedDays !== null &&
+    request.requestedDays > request.employeeBalanceDays;
 
   return (
     <li className={`${adminCard} space-y-3`}>
@@ -71,10 +93,24 @@ function RequestRow({ request, onChanged }: { request: PtoRequest; onChanged: ()
             {request.type === 'PTO' ? 'Time off' : 'Work from home'} ·{' '}
             {formatRange(request.startDate, request.endDate)}
           </p>
+          {request.type === 'PTO' && request.employeeBalanceDays !== null ? (
+            <p className="mt-1 text-xs text-text-muted">
+              Requesting {request.requestedDays} working day{request.requestedDays === 1 ? '' : 's'} ·
+              Balance: {request.employeeBalanceDays} day{request.employeeBalanceDays === 1 ? '' : 's'}
+            </p>
+          ) : null}
           {request.note ? <p className="mt-1 text-xs text-text-muted">{request.note}</p> : null}
         </div>
         <StatusBadge status={request.status} />
       </div>
+
+      {overdraft ? (
+        <p className="rounded-lg border border-brand-pink/30 bg-brand-pink/10 px-3 py-2 text-xs text-brand-pink">
+          ⚠ This would take {request.employeeName.split(' ')[0]}&apos;s balance negative (
+          {((request.employeeBalanceDays ?? 0) - (request.requestedDays ?? 0)).toFixed(1)} days) — approve
+          only if that&apos;s expected.
+        </p>
+      ) : null}
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
@@ -122,14 +158,14 @@ function RequestRow({ request, onChanged }: { request: PtoRequest; onChanged: ()
 
 export function AdminPtoRequestsPage() {
   const [filter, setFilter] = useState<'pending' | 'all'>('pending');
-  const [requests, setRequests] = useState<PtoRequest[] | null>(null);
+  const [requests, setRequests] = useState<EnrichedPtoRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const res = await fetch(`/api/admin/pto-requests?status=${filter}`);
-      const data = (await res.json()) as { requests?: PtoRequest[]; error?: string };
+      const data = (await res.json()) as { requests?: EnrichedPtoRequest[]; error?: string };
       if (!res.ok) {
         setError(data.error ?? 'Could not load requests.');
         return;

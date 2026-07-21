@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth-guards';
-import { deactivateClientLink, reactivateClientLink, renameClientLink } from '@/lib/client-registry';
+import {
+  deactivateClientLink,
+  deleteClientLink,
+  reactivateClientLink,
+  renameClientLink,
+} from '@/lib/client-registry';
 
 type PatchBody = {
   action?: 'deactivate' | 'reactivate' | 'rename';
@@ -37,6 +42,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Action failed.' },
+      { status: 400 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: { slug: string } }) {
+  const admin = await requireAdminSession();
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    await deleteClientLink(params.slug);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Delete failed.' },
       { status: 400 }
     );
   }

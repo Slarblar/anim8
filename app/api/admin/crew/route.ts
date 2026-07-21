@@ -15,6 +15,7 @@ type CreateCrewBody = {
   name?: string;
   role?: string;
   startDate?: string;
+  initialPtoBalanceDays?: number;
 };
 
 export async function POST(req: NextRequest) {
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest) {
       name: body.name,
       role: body.role ?? '',
       startDate: body.startDate || null,
+      initialPtoBalanceDays:
+        typeof body.initialPtoBalanceDays === 'number' ? body.initialPtoBalanceDays : undefined,
     });
     return NextResponse.json({ member });
   } catch (err) {

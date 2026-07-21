@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CrewPtoHistory } from '@/components/crew/CrewPtoHistory';
+import { CrewPtoBalance } from '@/components/crew/CrewPtoBalance';
 import { adminBody, adminBtnPrimary } from '@/components/admin/admin-ui';
 
 export default function CrewPtoPage() {
@@ -17,6 +18,7 @@ export default function CrewPtoPage() {
         </Link>
       </div>
 
+      <CrewPtoBalance />
       <CrewPtoHistory />
     </div>
   );

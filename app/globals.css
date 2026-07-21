@@ -1356,6 +1356,70 @@ html.careers-page-active {
     transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
 }
 
+/* Admin — collapsible rows (crew directory, etc). Same grid-template-rows
+   trick as .portal-task-expand so height animates smoothly without JS
+   measuring, plus a fade/slide on the inner content. */
+.admin-collapse-card {
+  transition:
+    border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-collapse-card--expanded {
+  border-color: rgba(56, 194, 214, 0.28);
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.55),
+    0 0 44px rgba(56, 194, 214, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.admin-collapse-toggle {
+  cursor: pointer;
+}
+
+.admin-collapse-chevron {
+  display: inline-flex;
+  font-size: 1.125rem;
+  line-height: 1;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s ease;
+}
+
+.admin-collapse-toggle:hover .admin-collapse-chevron {
+  color: #fff;
+}
+
+.admin-collapse-chevron--open {
+  transform: rotate(180deg);
+}
+
+.admin-collapse-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-collapse-expand--open {
+  grid-template-rows: 1fr;
+}
+
+.admin-collapse-expand-inner {
+  overflow: hidden;
+  min-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-collapse-expand--open .admin-collapse-expand-inner {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.08s,
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
+}
+
 @keyframes portal-alert-in {
   from {
     opacity: 0;
@@ -1431,7 +1495,11 @@ html.careers-page-active {
   .portal-task-badges,
   .portal-task-expand,
   .portal-task-expand-inner,
-  .portal-task-chevron {
+  .portal-task-chevron,
+  .admin-collapse-card,
+  .admin-collapse-expand,
+  .admin-collapse-expand-inner,
+  .admin-collapse-chevron {
     transition: none;
   }
 }

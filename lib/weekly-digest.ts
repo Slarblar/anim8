@@ -1,0 +1,37 @@
+import { getCrewEventsForDate, type CalendarStatusEntry } from './google-calendar';
+import { listPendingPtoRequests, type PtoRequest } from './pto-requests';
+
+export type WeeklyDigest = {
+  weekStart: string;
+  scheduleByDate: Array<{ date: string; entries: CalendarStatusEntry[] }>;
+  pending: PtoRequest[];
+};
+
+function mondayOfWeek(asOf: Date): Date {
+  const date = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), asOf.getUTCDate()));
+  const day = date.getUTCDay(); // 0 = Sunday
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setUTCDate(date.getUTCDate() + diff);
+  return date;
+}
+
+/** This week's (Mon–Fri) approved PTO/WFH schedule, plus anything still awaiting approval. */
+export async function buildWeeklyDigest(asOf: Date = new Date()): Promise<WeeklyDigest> {
+  const monday = mondayOfWeek(asOf);
+  const weekdays = [0, 1, 2, 3, 4].map((offset) => {
+    const date = new Date(monday);
+    date.setUTCDate(date.getUTCDate() + offset);
+    return date.toISOString().slice(0, 10);
+  });
+
+  const [entriesByDate, pending] = await Promise.all([
+    Promise.all(weekdays.map((date) => getCrewEventsForDate(date))),
+    listPendingPtoRequests(),
+  ]);
+
+  return {
+    weekStart: weekdays[0],
+    scheduleByDate: weekdays.map((date, i) => ({ date, entries: entriesByDate[i] })),
+    pending,
+  };
+}

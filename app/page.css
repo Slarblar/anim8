@@ -5,6 +5,8 @@
   --green-glow: 0 0 24px rgba(124,193,66,0.35), 0 0 60px rgba(124,193,66,0.12);
   --magenta:    #dd0b83;
   --cyan:       #38c2d6;
+  --cursor:     var(--cyan);
+  --cursor-glow: 0 0 24px rgba(56,194,214,0.4), 0 0 60px rgba(56,194,214,0.15);
   --bg:         #1e1f2e;
   --bg-deep:    #16171f;
   --surface:    #22233a;
@@ -50,28 +52,32 @@ body.landing-active {
 }
 
 /* ─── CUSTOM CURSOR ─────────────────────────────────────────── */
+/* mix-blend-mode: difference inverts against whatever's underneath, so the
+   cursor stays visible even over anim8-blue buttons/text instead of blending in. */
 #cursor-dot {
   width: 7px; height: 7px;
-  background: var(--green);
+  background: var(--cursor);
   border-radius: 50%;
   position: fixed; top: 0; left: 0;
   pointer-events: none; z-index: 9999;
   transform: translate(-50%,-50%);
-  box-shadow: var(--green-glow);
+  box-shadow: var(--cursor-glow);
   transition: transform 0.05s linear;
+  mix-blend-mode: difference;
 }
 #cursor-ring {
   width: 32px; height: 32px;
-  border: 1.5px solid rgba(124,193,66,0.4);
+  border: 1.5px solid rgba(56,194,214,0.5);
   border-radius: 50%;
   position: fixed; top: 0; left: 0;
   pointer-events: none; z-index: 9998;
   transform: translate(-50%,-50%);
   transition: transform 0.12s var(--ease-out), width 0.25s, height 0.25s, border-color 0.25s;
+  mix-blend-mode: difference;
 }
 body.landing-active.hov #cursor-ring {
   width: 52px; height: 52px;
-  border-color: var(--green);
+  border-color: var(--cursor);
 }
 
 /* No custom cursor trail on touch-first / no-hover viewports */

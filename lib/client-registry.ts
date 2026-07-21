@@ -153,6 +153,28 @@ export async function reactivateClientLink(slug: string): Promise<void> {
   await getKv().set(`${KEY_PREFIX}${slug}`, { ...record, active: true, redirectTo: undefined });
 }
 
+/**
+ * Permanently removes a client record from KV — unlike deactivate, this
+ * can't be undone (no more "reactivate"). Any other slugs that redirect
+ * to this one (via renameClientLink) are cleared so they don't 404 into
+ * a dangling redirect.
+ */
+export async function deleteClientLink(slug: string): Promise<void> {
+  const record = await getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
+  if (!record) throw new Error(`No client found for slug: ${slug}`);
+
+  const allKeys = await getKv().keys(`${KEY_PREFIX}*`);
+  const allRecords = await Promise.all(allKeys.map((key) => getKv().get<ClientRecord>(key)));
+  const danglingRedirects = allRecords.filter(
+    (r): r is ClientRecord => !!r && r.redirectTo === slug
+  );
+  await Promise.all(
+    danglingRedirects.map((r) => getKv().set(`${KEY_PREFIX}${r.slug}`, { ...r, redirectTo: undefined }))
+  );
+
+  await getKv().del(`${KEY_PREFIX}${slug}`);
+}
+
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }

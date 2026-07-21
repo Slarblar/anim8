@@ -8,6 +8,7 @@ import {
   adminBadgeActive,
   adminBadgeInactive,
   adminBody,
+  adminBtnDanger,
   adminBtnGhost,
   adminBtnPrimary,
   adminBtnSecondary,
@@ -136,7 +137,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
 
       <div>
         <label className={adminLabel} htmlFor="fieldOption">
-          Asana "Design Clients" value
+          Asana &quot;Design Clients&quot; value
         </label>
         <select
           id="fieldOption"
@@ -180,6 +181,8 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
   const [linksLoading, setLinksLoading] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [newSlug, setNewSlug] = useState(client.slug);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const runAction = useCallback(
     async (body: Record<string, unknown>) => {
@@ -205,6 +208,24 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
     },
     [client.slug, onChanged]
   );
+
+  const runDelete = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/clients/${client.slug}`, { method: 'DELETE' });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Delete failed.');
+        return;
+      }
+      onChanged();
+    } catch {
+      setError('Delete failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [client.slug, onChanged]);
 
   const loadLinks = useCallback(async () => {
     if (links) {
@@ -267,7 +288,43 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
         <button type="button" className={adminBtnGhost} onClick={() => setRenaming((v) => !v)}>
           Rename link
         </button>
+        <button
+          type="button"
+          className={adminBtnGhost}
+          onClick={() => {
+            setConfirmingDelete((v) => !v);
+            setDeleteConfirmText('');
+          }}
+        >
+          Delete permanently
+        </button>
       </div>
+
+      {confirmingDelete ? (
+        <div className="space-y-2 rounded-lg border border-brand-pink/30 bg-brand-pink/10 p-3">
+          <p className="text-xs text-red-100">
+            This permanently deletes <strong>{client.displayName}</strong>&apos;s portal link and
+            history — unlike Deactivate, this can&apos;t be undone. Type the slug{' '}
+            <code className="rounded bg-black/30 px-1">{client.slug}</code> to confirm.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className={`${adminInput} max-w-xs`}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={client.slug}
+            />
+            <button
+              type="button"
+              className={adminBtnDanger}
+              disabled={loading || deleteConfirmText !== client.slug}
+              onClick={runDelete}
+            >
+              {loading ? 'Deleting…' : 'Delete permanently'}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {renaming ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -340,7 +397,7 @@ export function AdminClientsPage() {
       <div>
         <h1 className="text-2xl font-black uppercase tracking-tight text-white">Clients</h1>
         <p className={`${adminBody} mt-1`}>
-          Manage client portal links and their Asana "Design Clients" mapping.
+          Manage client portal links and their Asana &quot;Design Clients&quot; mapping.
         </p>
       </div>
 

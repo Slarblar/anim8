@@ -5,6 +5,7 @@ import {
   CLIENT_STATUS_NEW_SUBMISSION,
   FIELD_CLIENT_STATUS,
   FIELD_PRIMARY_LINK,
+  INTAKE_SECTION_NEW_SUBMISSIONS,
 } from '@/lib/client-portal-asana-config';
 
 // Basic per-slug throttle so a leaked link can't be used to spam Asana.
@@ -112,7 +113,7 @@ export async function POST(
       notes: brief.trim(),
       dueOn: typeof dueOn === 'string' && dueOn ? dueOn : undefined,
       projectGid: client.intakeProjectGid,
-      sectionGid: client.intakeSectionGid,
+      sectionGid: INTAKE_SECTION_NEW_SUBMISSIONS,
       customFields,
     });
 

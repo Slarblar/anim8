@@ -38,6 +38,9 @@ export const portalBtnPrimary =
 export const portalBtnSecondary =
   'inline-flex w-full min-[480px]:w-auto shrink-0 items-center justify-center rounded-lg border-2 border-white/25 bg-white/5 px-4 py-2.5 min-[480px]:px-5 text-xs min-[480px]:text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10 focus-lime';
 
+export const portalBtnDanger =
+  'inline-flex w-full min-[480px]:w-auto shrink-0 items-center justify-center rounded-lg border border-brand-pink/40 bg-brand-pink/10 px-4 py-2.5 min-[480px]:px-5 text-xs min-[480px]:text-sm font-bold text-brand-pink transition hover:border-brand-pink/55 hover:bg-brand-pink/15 focus-lime disabled:opacity-50';
+
 /** High-visibility callout for booking instructions. */
 export const portalCallout =
   'rounded-[20px] border-2 border-brand-cyan/40 bg-brand-cyan/10 px-5 py-4 text-sm leading-relaxed text-white';

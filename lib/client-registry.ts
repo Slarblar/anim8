@@ -60,8 +60,8 @@ const LEGACY_SLUG_REDIRECTS: Record<string, string> = {
 
 /** ANIM-8 CLIENT INTAKE — every client's submissions land here by default. */
 export const DEFAULT_INTAKE_PROJECT_GID = '1216732614798537';
-/** "Untitled section" — the default landing spot within that project. */
-export const DEFAULT_INTAKE_SECTION_GID = '1216732614798538';
+/** "New Submissions" — portal requests land here for client review. */
+export const DEFAULT_INTAKE_SECTION_GID = '1216734900877796';
 
 export async function getClientBySlug(slug: string): Promise<ClientRecord | null> {
   const record = await getClientRecordBySlug(slug);

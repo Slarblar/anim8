@@ -22,7 +22,7 @@ export function ClientPortalShell({
   wide = false,
 }: ClientPortalShellProps) {
   return (
-    <div className="client-portal-shell relative min-h-screen">
+    <div className="client-portal-shell relative isolate min-h-screen">
       <ClientPortalFloatingCards slug={slug} />
 
       <header className="glass-nav relative z-20">

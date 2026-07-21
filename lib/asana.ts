@@ -1,9 +1,14 @@
 import {
+  CLIENT_STATUS_IN_PROGRESS,
+  CLIENT_STATUS_NEW_SUBMISSION,
   DESIGN_PIPELINE_GID,
   FIELD_BILLABLE_HOURS,
+  FIELD_CLIENT_STATUS,
   FIELD_COST_ESTIMATE,
   FIELD_PIPELINE_STATUS,
   INTAKE_PROJECT_GID,
+  INTAKE_SECTION_APPROVED,
+  INTAKE_SECTION_BLOCKED,
   PRODUCTION_PIPELINE_GID,
 } from './client-portal-asana-config';
 import 'server-only';
@@ -56,6 +61,8 @@ export type ClientPortalTask = {
   dueOn: string | null;
   billableHours: number | null;
   costEstimate: number | null;
+  /** True when estimates are set and client can approve or reject. */
+  needsClientApproval: boolean;
   progress: TaskProgress;
 };
 
@@ -73,7 +80,7 @@ type AsanaCustomFieldRaw = {
   gid: string;
   number_value?: number | null;
   display_value?: string | null;
-  enum_value?: { name?: string | null } | null;
+  enum_value?: { gid?: string | null; name?: string | null } | null;
 };
 
 type AsanaTaskRaw = {
@@ -92,7 +99,35 @@ const TASK_OPT_FIELDS = [
   'custom_fields.number_value',
   'custom_fields.display_value',
   'custom_fields.enum_value.name',
+  'custom_fields.enum_value.gid',
 ].join(',');
+
+const TASK_DETAIL_OPT_FIELDS = [
+  'name',
+  'permalink_url',
+  'custom_fields.gid',
+  'custom_fields.number_value',
+  'custom_fields.enum_value.gid',
+  'custom_fields.enum_value.name',
+].join(',');
+
+function readEnumCustomFieldOptionGid(
+  customFields: AsanaCustomFieldRaw[] | undefined,
+  fieldGid: string
+): string | null {
+  const field = customFields?.find((item) => item.gid === fieldGid);
+  return field?.enum_value?.gid ?? null;
+}
+
+function taskNeedsClientApproval(task: AsanaTaskRaw): boolean {
+  if (readEnumCustomFieldOptionGid(task.custom_fields, FIELD_CLIENT_STATUS) !== CLIENT_STATUS_NEW_SUBMISSION) {
+    return false;
+  }
+  return (
+    readNumberCustomField(task.custom_fields, FIELD_BILLABLE_HOURS) != null &&
+    readNumberCustomField(task.custom_fields, FIELD_COST_ESTIMATE) != null
+  );
+}
 
 function readNumberCustomField(
   customFields: AsanaCustomFieldRaw[] | undefined,
@@ -202,6 +237,7 @@ function toPortalTask(task: AsanaTaskRaw, progress: TaskProgress): ClientPortalT
     dueOn: task.due_on,
     billableHours: readNumberCustomField(task.custom_fields, FIELD_BILLABLE_HOURS),
     costEstimate: readNumberCustomField(task.custom_fields, FIELD_COST_ESTIMATE),
+    needsClientApproval: taskNeedsClientApproval(task),
     progress,
   };
 }
@@ -321,4 +357,123 @@ export async function attachFileToTask(taskGid: string, file: File): Promise<voi
     const body = await res.text().catch(() => '');
     throw new Error(`Attachment upload failed: ${res.status} ${body}`);
   }
+}
+
+type ClientOwnedTask = {
+  gid: string;
+  name: string;
+  permalink_url: string;
+  billableHours: number | null;
+  costEstimate: number | null;
+};
+
+export async function getClientOwnedTask(
+  taskGid: string,
+  filters: ClientFieldFilter[]
+): Promise<ClientOwnedTask | null> {
+  type TaskDetail = {
+    gid: string;
+    name: string;
+    permalink_url: string;
+    custom_fields?: AsanaCustomFieldRaw[];
+  };
+
+  let task: TaskDetail;
+  try {
+    task = await asanaFetch<TaskDetail>(
+      `/tasks/${taskGid}?opt_fields=${TASK_DETAIL_OPT_FIELDS}`
+    );
+  } catch {
+    return null;
+  }
+
+  for (const filter of filters) {
+    if (readEnumCustomFieldOptionGid(task.custom_fields, filter.fieldGid) !== filter.optionGid) {
+      return null;
+    }
+  }
+
+  return {
+    gid: task.gid,
+    name: task.name,
+    permalink_url: task.permalink_url,
+    billableHours: readNumberCustomField(task.custom_fields, FIELD_BILLABLE_HOURS),
+    costEstimate: readNumberCustomField(task.custom_fields, FIELD_COST_ESTIMATE),
+  };
+}
+
+async function updateTaskCustomFields(
+  taskGid: string,
+  customFields: Record<string, string>
+): Promise<void> {
+  await asanaFetch(`/tasks/${taskGid}`, {
+    method: 'PUT',
+    body: JSON.stringify({ data: { custom_fields: customFields } }),
+  });
+}
+
+async function moveTaskToSection(taskGid: string, sectionGid: string): Promise<void> {
+  await asanaFetch(`/sections/${sectionGid}/addTask`, {
+    method: 'POST',
+    body: JSON.stringify({ data: { task: taskGid } }),
+  });
+}
+
+async function addTaskStory(taskGid: string, text: string): Promise<void> {
+  await asanaFetch(`/tasks/${taskGid}/stories`, {
+    method: 'POST',
+    body: JSON.stringify({ data: { text } }),
+  });
+}
+
+export async function approveClientEstimate(
+  taskGid: string,
+  filters: ClientFieldFilter[],
+  clientName: string
+): Promise<void> {
+  const task = await getClientOwnedTask(taskGid, filters);
+  if (!task) {
+    throw new Error('Task not found');
+  }
+  if (task.billableHours == null || task.costEstimate == null) {
+    throw new Error('Estimate not ready');
+  }
+
+  await updateTaskCustomFields(taskGid, {
+    [FIELD_CLIENT_STATUS]: CLIENT_STATUS_IN_PROGRESS,
+  });
+  await moveTaskToSection(taskGid, INTAKE_SECTION_APPROVED);
+  await addTaskStory(
+    taskGid,
+    `[Client portal] ${clientName} approved the estimate (${task.billableHours} hrs · $${task.costEstimate.toLocaleString('en-US')}).`
+  );
+}
+
+export async function rejectClientEstimate(input: {
+  taskGid: string;
+  filters: ClientFieldFilter[];
+  clientName: string;
+  contactEmail?: string;
+  reason: string;
+}): Promise<void> {
+  const task = await getClientOwnedTask(input.taskGid, input.filters);
+  if (!task) {
+    throw new Error('Task not found');
+  }
+
+  const storyLines = [
+    `[Client portal] ${input.clientName} rejected the estimate.`,
+    `Reason: ${input.reason.trim()}`,
+  ];
+  if (input.contactEmail?.trim()) {
+    storyLines.push(`Contact: ${input.contactEmail.trim()}`);
+  }
+  if (task.billableHours != null && task.costEstimate != null) {
+    storyLines.push(
+      `Estimate shown: ${task.billableHours} hrs · $${task.costEstimate.toLocaleString('en-US')}`
+    );
+  }
+
+  await moveTaskToSection(input.taskGid, INTAKE_SECTION_BLOCKED);
+  await addTaskStory(input.taskGid, storyLines.join('\n'));
 }

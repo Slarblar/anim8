@@ -125,7 +125,7 @@ export function ClientPortalFloatingCards({ slug }: ClientPortalFloatingCardsPro
 
   return (
     <div
-      className="client-portal-float-layer pointer-events-none fixed inset-0 z-[1] overflow-hidden [perspective:1600px] [perspective-origin:50%_38%]"
+      className="client-portal-float-layer pointer-events-none fixed inset-0 overflow-hidden [perspective:1600px] [perspective-origin:50%_38%]"
       aria-hidden
     >
       {cards.map((card, i) => {

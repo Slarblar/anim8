@@ -1,5 +1,13 @@
 /** Shared Tailwind classes for client portal pages — matches main site / privacy patterns. */
 
+/** Client-facing title — e.g. TurnEmSideways → Turn Em Sideways */
+export function formatPortalDisplayName(name: string): string {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .trim();
+}
+
 export const portalEyebrow =
   'text-brand-lime text-xs font-bold uppercase tracking-[0.2em] font-mono';
 

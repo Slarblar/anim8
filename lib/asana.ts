@@ -71,8 +71,13 @@ export type ClientPortalActiveTask = ClientPortalTask & {
   status: string | null;
 };
 
+export type ClientPortalApprovedTask = ClientPortalTask & {
+  status: string | null;
+};
+
 export type ClientPortalTasks = {
   pending: ClientPortalTask[];
+  approved: ClientPortalApprovedTask[];
   active: ClientPortalActiveTask[];
 };
 
@@ -259,15 +264,14 @@ function sortTasksByDueDate<T extends { due_on: string | null }>(tasks: T[]): T[
 }
 
 /**
- * Pending tasks live in CLIENT INTAKE. Active tasks are in the production
- * or design pipeline. Tasks still attached to intake after kickoff are
- * excluded from pending once they appear in a pipeline.
+ * Pending = intake + New Submission. Approved = intake + client approved (pre-pipeline).
+ * Active = production or design pipeline.
  */
 export async function getClientPortalTasks(
   filters: ClientFieldFilter[],
   intakeProjectGid: string = INTAKE_PROJECT_GID
 ): Promise<ClientPortalTasks> {
-  const [pendingRaw, productionRaw, designRaw] = await Promise.all([
+  const [intakeRaw, productionRaw, designRaw] = await Promise.all([
     searchProjectTasks(intakeProjectGid, filters),
     searchProjectTasks(PRODUCTION_PIPELINE_GID, filters),
     searchProjectTasks(DESIGN_PIPELINE_GID, filters),
@@ -284,11 +288,29 @@ export async function getClientPortalTasks(
   }
 
   const activeGids = new Set(activeRaw.keys());
-  const intakeOnlyRaw = pendingRaw.filter((task) => !activeGids.has(task.gid));
+  const intakeOnlyRaw = intakeRaw.filter((task) => !activeGids.has(task.gid));
+
+  const pendingRaw = intakeOnlyRaw.filter(
+    (task) =>
+      readEnumCustomFieldOptionGid(task.custom_fields, FIELD_CLIENT_STATUS) ===
+      CLIENT_STATUS_NEW_SUBMISSION
+  );
+  const approvedRaw = intakeOnlyRaw.filter(
+    (task) =>
+      readEnumCustomFieldOptionGid(task.custom_fields, FIELD_CLIENT_STATUS) !==
+      CLIENT_STATUS_NEW_SUBMISSION
+  );
+
   const sortedActiveRaw = sortTasksByDueDate(Array.from(activeRaw.values()));
 
-  const [pending, activeWithProgress] = await Promise.all([
-    enrichTasksWithProgress(intakeOnlyRaw),
+  const [pending, approved, activeWithProgress] = await Promise.all([
+    enrichTasksWithProgress(pendingRaw),
+    Promise.all(
+      approvedRaw.map(async (task) => ({
+        ...toPortalTask(task, await getSubtaskProgress(task.gid)),
+        status: readEnumCustomFieldLabel(task.custom_fields, FIELD_CLIENT_STATUS),
+      }))
+    ),
     Promise.all(
       sortedActiveRaw.map(async (task) => ({
         ...toPortalTask(task, await getSubtaskProgress(task.gid)),
@@ -298,7 +320,7 @@ export async function getClientPortalTasks(
     ),
   ]);
 
-  return { pending, active: activeWithProgress };
+  return { pending, approved, active: activeWithProgress };
 }
 
 /** @deprecated Use getClientPortalTasks. */

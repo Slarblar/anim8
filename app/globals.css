@@ -1270,6 +1270,92 @@ html.careers-page-active {
   transform: translateY(-1px);
 }
 
+.portal-task-card {
+  transition:
+    border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-task-card--expanded {
+  border-color: rgba(56, 194, 214, 0.28);
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.55),
+    0 0 44px rgba(56, 194, 214, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.portal-task-card-toggle {
+  cursor: pointer;
+}
+
+.portal-task-chevron {
+  display: inline-flex;
+  font-size: 1.125rem;
+  line-height: 1;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s ease;
+}
+
+.portal-task-card-toggle:hover .portal-task-chevron {
+  color: #fff;
+}
+
+.portal-task-chevron--open {
+  transform: rotate(180deg);
+}
+
+.portal-task-card-toggle:active .portal-task-chevron.portal-task-chevron--open {
+  transform: rotate(180deg) scale(0.88);
+}
+
+.portal-task-badges {
+  overflow: hidden;
+  max-height: 5rem;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-task-badges--hidden {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-task-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-task-expand--open {
+  grid-template-rows: 1fr;
+}
+
+.portal-task-expand-inner {
+  overflow: hidden;
+  min-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-task-expand--open .portal-task-expand-inner {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.08s,
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
+}
+
 @keyframes portal-alert-in {
   from {
     opacity: 0;
@@ -1338,6 +1424,14 @@ html.careers-page-active {
   }
 
   .portal-dismissible-alert--exit {
+    transition: none;
+  }
+
+  .portal-task-card,
+  .portal-task-badges,
+  .portal-task-expand,
+  .portal-task-expand-inner,
+  .portal-task-chevron {
     transition: none;
   }
 }

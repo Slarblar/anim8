@@ -10,6 +10,7 @@ import {
   portalBtnSecondary,
   portalCallout,
   portalEyebrow,
+  formatPortalDisplayName,
   portalPageTitle,
   portalSectionTitle,
   portalTaskCard,
@@ -29,7 +30,7 @@ export function ClientScheduleCall({ slug, displayName }: ClientScheduleCallProp
         <p className={portalEyebrow}>Client portal</p>
         <h1 className={`${portalPageTitle} mt-2 min-[480px]:mt-3`}>Schedule a call</h1>
         <p className={`${portalBody} mt-2 min-[480px]:mt-3 max-w-2xl text-white/90`}>
-          Book time with the Anim-8 team for {displayName}. Choose a slot that works for you —
+          Book time with the Anim-8 team for {formatPortalDisplayName(displayName)}. Choose a slot that works for you —
           you&apos;ll get a calendar invite by email.
         </p>
       </div>

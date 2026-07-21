@@ -19,6 +19,7 @@ import {
   portalAlertError,
   portalBody,
   portalBtnPrimary,
+  formatPortalDisplayName,
   portalEyebrow,
   portalInput,
   portalLabel,
@@ -100,7 +101,7 @@ export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps)
             className={`${portalBody} mt-2 min-[480px]:mt-3 max-w-2xl`}
             variants={portalVariants(!!reduceMotion, portalFadeUp)}
           >
-            Submit a project brief for {displayName}. Our team will review scope and follow up with
+            Submit a project brief for {formatPortalDisplayName(displayName)}. Our team will review scope and follow up with
             next steps.
           </motion.p>
         </motion.header>

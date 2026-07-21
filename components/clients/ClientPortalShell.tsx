@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { Footer } from '@/components/ui/Footer';
 import { ClientPortalFloatingCards } from './ClientPortalFloatingCards';
 import { portalBackLink } from './portal-ui';
 
@@ -64,6 +65,10 @@ export function ClientPortalShell({
       >
         {children}
       </main>
+
+      <div className="relative z-10">
+        <Footer />
+      </div>
     </div>
   );
 }

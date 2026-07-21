@@ -20,7 +20,7 @@ export function Footer({ showConfidentialityNotice = false }: { showConfidential
                 priority
               />
               <p className="text-text-muted">
-                Full-pipeline 3D character production studio.
+                Full-stack creative studio for brands &amp; IP.
               </p>
             </div>
           </div>

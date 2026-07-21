@@ -1,14 +1,12 @@
-import { notFound } from 'next/navigation';
+import { resolveClientPortal } from '@/lib/client-portal-access';
 import { ClientScheduleCall } from '@/components/clients/ClientScheduleCall';
-import { getClientBySlug } from '@/lib/client-registry';
 
 type PageProps = {
   params: { slug: string };
 };
 
 export default async function ClientSchedulePage({ params }: PageProps) {
-  const client = await getClientBySlug(params.slug);
-  if (!client) notFound();
+  const client = await resolveClientPortal(params.slug);
 
   return (
     <ClientScheduleCall slug={client.slug} displayName={client.displayName} />

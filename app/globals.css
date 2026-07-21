@@ -1178,7 +1178,12 @@ html.careers-page-active {
   --portal-surface-border: rgba(255, 255, 255, 0.09);
   --portal-text: #eef1f7;
   --portal-text-muted: #8b95a8;
+  --portal-grid-size: 2.25rem;
+  --portal-grid-line: rgba(56, 194, 214, 0.07);
+  --portal-grid-line-major: rgba(56, 194, 214, 0.12);
 
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   color: var(--portal-text);
   background-color: var(--portal-bg-deep);
@@ -1187,6 +1192,31 @@ html.careers-page-active {
     radial-gradient(ellipse 65% 45% at 100% 100%, rgba(56, 194, 214, 0.018), transparent 52%),
     radial-gradient(ellipse 80% 55% at 50% 45%, rgba(255, 255, 255, 0.008), transparent 72%),
     linear-gradient(180deg, var(--portal-bg-soft) 0%, var(--portal-bg-base) 42%, var(--portal-bg-deep) 100%);
+}
+
+.client-portal-root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--portal-grid-line-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--portal-grid-line-major) 1px, transparent 1px),
+    linear-gradient(var(--portal-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--portal-grid-line) 1px, transparent 1px);
+  background-size:
+    calc(var(--portal-grid-size) * 4) calc(var(--portal-grid-size) * 4),
+    calc(var(--portal-grid-size) * 4) calc(var(--portal-grid-size) * 4),
+    var(--portal-grid-size) var(--portal-grid-size),
+    var(--portal-grid-size) var(--portal-grid-size);
+  -webkit-mask-image: radial-gradient(ellipse 92% 82% at 50% 44%, #000 18%, transparent 76%);
+  mask-image: radial-gradient(ellipse 92% 82% at 50% 44%, #000 18%, transparent 76%);
+}
+
+.client-portal-root > * {
+  position: relative;
+  z-index: 1;
 }
 
 .client-portal-shell .glass-nav {

@@ -1,7 +1,6 @@
-import { notFound } from 'next/navigation';
+import { resolveClientPortal } from '@/lib/client-portal-access';
 import { ClientPortal } from '@/components/clients/ClientPortal';
 import { getClientPortalTasks } from '@/lib/asana';
-import { getClientBySlug } from '@/lib/client-registry';
 
 type PageProps = {
   params: { slug: string };
@@ -9,8 +8,7 @@ type PageProps = {
 };
 
 export default async function ClientPortalPage({ params, searchParams }: PageProps) {
-  const client = await getClientBySlug(params.slug);
-  if (!client) notFound();
+  const client = await resolveClientPortal(params.slug);
 
   let pendingProjects: Awaited<ReturnType<typeof getClientPortalTasks>>['pending'] = [];
   let activeProjects: Awaited<ReturnType<typeof getClientPortalTasks>>['active'] = [];

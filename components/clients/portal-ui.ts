@@ -48,6 +48,9 @@ export function pipelineBadgeClass(pipeline: 'Production' | 'Design'): string {
     : 'rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono';
 }
 
+export const portalStatusBadge =
+  'rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono';
+
 /** Animated lime→cyan fill for portal task progress bars. */
 export const portalProgressFill =
   'portal-progress-fill h-full rounded-full transition-[width] duration-500 ease-out';

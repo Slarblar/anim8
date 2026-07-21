@@ -1,5 +1,8 @@
 import {
   DESIGN_PIPELINE_GID,
+  FIELD_BILLABLE_HOURS,
+  FIELD_COST_ESTIMATE,
+  FIELD_PIPELINE_STATUS,
   INTAKE_PROJECT_GID,
   PRODUCTION_PIPELINE_GID,
 } from './client-portal-asana-config';
@@ -51,11 +54,14 @@ export type ClientPortalTask = {
   gid: string;
   name: string;
   dueOn: string | null;
+  billableHours: number | null;
+  costEstimate: number | null;
   progress: TaskProgress;
 };
 
 export type ClientPortalActiveTask = ClientPortalTask & {
   pipeline: 'Production' | 'Design';
+  status: string | null;
 };
 
 export type ClientPortalTasks = {
@@ -63,14 +69,52 @@ export type ClientPortalTasks = {
   active: ClientPortalActiveTask[];
 };
 
+type AsanaCustomFieldRaw = {
+  gid: string;
+  number_value?: number | null;
+  display_value?: string | null;
+  enum_value?: { name?: string | null } | null;
+};
+
 type AsanaTaskRaw = {
   gid: string;
   name: string;
   due_on: string | null;
   completed: boolean;
+  custom_fields?: AsanaCustomFieldRaw[];
 };
 
-const TASK_OPT_FIELDS = ['name', 'due_on', 'completed'].join(',');
+const TASK_OPT_FIELDS = [
+  'name',
+  'due_on',
+  'completed',
+  'custom_fields.gid',
+  'custom_fields.number_value',
+  'custom_fields.display_value',
+  'custom_fields.enum_value.name',
+].join(',');
+
+function readNumberCustomField(
+  customFields: AsanaCustomFieldRaw[] | undefined,
+  fieldGid: string
+): number | null {
+  const field = customFields?.find((item) => item.gid === fieldGid);
+  if (field?.number_value == null) return null;
+  return field.number_value;
+}
+
+function readEnumCustomFieldLabel(
+  customFields: AsanaCustomFieldRaw[] | undefined,
+  fieldGid: string
+): string | null {
+  const field = customFields?.find((item) => item.gid === fieldGid);
+  const raw = field?.enum_value?.name ?? field?.display_value;
+  if (!raw) return null;
+
+  // Strip leading emoji / symbols from Asana labels like "🔄 In Progress".
+  const cleaned = raw.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+  return cleaned || raw.trim();
+}
 async function searchProjectTasks(
   projectGid: string,
   filters: ClientFieldFilter[]
@@ -156,6 +200,8 @@ function toPortalTask(task: AsanaTaskRaw, progress: TaskProgress): ClientPortalT
     gid: task.gid,
     name: displayTaskName(task.name),
     dueOn: task.due_on,
+    billableHours: readNumberCustomField(task.custom_fields, FIELD_BILLABLE_HOURS),
+    costEstimate: readNumberCustomField(task.custom_fields, FIELD_COST_ESTIMATE),
     progress,
   };
 }
@@ -178,7 +224,8 @@ function sortTasksByDueDate<T extends { due_on: string | null }>(tasks: T[]): T[
 
 /**
  * Pending tasks live in CLIENT INTAKE. Active tasks are in the production
- * or design pipeline — deduped if a task somehow matches both searches.
+ * or design pipeline. Tasks still attached to intake after kickoff are
+ * excluded from pending once they appear in a pipeline.
  */
 export async function getClientPortalTasks(
   filters: ClientFieldFilter[],
@@ -200,14 +247,17 @@ export async function getClientPortalTasks(
     }
   }
 
+  const activeGids = new Set(activeRaw.keys());
+  const intakeOnlyRaw = pendingRaw.filter((task) => !activeGids.has(task.gid));
   const sortedActiveRaw = sortTasksByDueDate(Array.from(activeRaw.values()));
 
   const [pending, activeWithProgress] = await Promise.all([
-    enrichTasksWithProgress(pendingRaw),
+    enrichTasksWithProgress(intakeOnlyRaw),
     Promise.all(
       sortedActiveRaw.map(async (task) => ({
         ...toPortalTask(task, await getSubtaskProgress(task.gid)),
         pipeline: task.pipeline,
+        status: readEnumCustomFieldLabel(task.custom_fields, FIELD_PIPELINE_STATUS),
       }))
     ),
   ]);
@@ -218,7 +268,9 @@ export async function getClientPortalTasks(
 /** @deprecated Use getClientPortalTasks. */
 export async function getClientTasks(filters: ClientFieldFilter[]) {
   return getClientPortalTasks(filters);
-}export async function createClientSubmission(input: {
+}
+
+export async function createClientSubmission(input: {
   name: string;
   notes: string;
   dueOn?: string;

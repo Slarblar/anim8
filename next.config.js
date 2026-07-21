@@ -12,6 +12,21 @@ const nextConfig = {
         destination: '/contact/index.html',
         permanent: false,
       },
+      {
+        source: '/clients/turnemsideways-2026',
+        destination: '/clients/turnemsideways2026',
+        permanent: true,
+      },
+      {
+        source: '/clients/turnemsideways-2026/:path*',
+        destination: '/clients/turnemsideways2026/:path*',
+        permanent: true,
+      },
+      {
+        source: '/clients/turnemsideways',
+        destination: '/clients/turnemsideways2026',
+        permanent: true,
+      },
     ]
   },
   images: {

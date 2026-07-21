@@ -45,10 +45,18 @@ export type ClientRecord = {
   /** Section within that project — defaults to the top "Untitled section" */
   intakeSectionGid: string;
   active: boolean;
+  /** When a link is renamed, old slug records point here. */
+  redirectTo?: string;
   createdAt: string;
 };
 
 const KEY_PREFIX = 'client-portal:';
+
+/** Hard-coded fallbacks for links shared before rename metadata existed. */
+const LEGACY_SLUG_REDIRECTS: Record<string, string> = {
+  'turnemsideways-2026': 'turnemsideways2026',
+  turnemsideways: 'turnemsideways2026',
+};
 
 /** ANIM-8 CLIENT INTAKE — every client's submissions land here by default. */
 export const DEFAULT_INTAKE_PROJECT_GID = '1216732614798537';
@@ -59,6 +67,14 @@ export async function getClientBySlug(slug: string): Promise<ClientRecord | null
   const record = await getClientRecordBySlug(slug);
   if (!record || !record.active) return null;
   return record;
+}
+
+export async function getClientPortalRedirect(slug: string): Promise<string | null> {
+  const legacy = LEGACY_SLUG_REDIRECTS[slug];
+  if (legacy) return legacy;
+
+  const record = await getClientRecordBySlug(slug);
+  return record?.redirectTo ?? null;
 }
 
 async function getClientRecordBySlug(slug: string): Promise<ClientRecord | null> {
@@ -127,7 +143,11 @@ export async function renameClientLink(
 
   const record: ClientRecord = { ...oldRecord, slug: newSlug, active: true };
   await getKv().set(`${KEY_PREFIX}${newSlug}`, record);
-  await getKv().set(`${KEY_PREFIX}${oldSlug}`, { ...oldRecord, active: false });
+  await getKv().set(`${KEY_PREFIX}${oldSlug}`, {
+    ...oldRecord,
+    active: false,
+    redirectTo: newSlug,
+  });
   return record;
 }
 

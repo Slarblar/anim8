@@ -17,9 +17,11 @@ import {
   portalBtnPrimary,
   portalBtnSecondary,
   portalEyebrow,
+  portalLabel,
   portalPageTitle,
   portalProgressFill,
   portalSectionTitle,
+  portalStatusBadge,
   portalTaskCard,
 } from './portal-ui';
 
@@ -35,12 +37,45 @@ type ClientPortalProps = {
 const PROGRESS_POLL_MS = 45_000;
 
 function formatDueDate(dueOn: string | null): string {
-  if (!dueOn) return 'No due date';
+  if (!dueOn) return '—';
   return new Date(`${dueOn}T00:00:00`).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
+}
+
+function formatBillableHours(hours: number | null): string {
+  if (hours == null) return '—';
+  return `${hours.toLocaleString('en-US', { maximumFractionDigits: 1 })} hrs`;
+}
+
+function formatCostEstimate(cost: number | null): string {
+  if (cost == null) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(cost);
+}
+
+function TaskMetaRow({ task }: { task: ClientPortalTask | ClientPortalActiveTask }) {
+  return (
+    <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-white/5 pt-3">
+      <div className="min-w-0">
+        <dt className={portalLabel}>Date</dt>
+        <dd className="mt-1 text-sm text-white font-mono">{formatDueDate(task.dueOn)}</dd>
+      </div>
+      <div className="min-w-0">
+        <dt className={portalLabel}>Billable hours</dt>
+        <dd className="mt-1 text-sm text-white font-mono">{formatBillableHours(task.billableHours)}</dd>
+      </div>
+      <div className="min-w-0">
+        <dt className={portalLabel}>Cost</dt>
+        <dd className="mt-1 text-sm text-white font-mono">{formatCostEstimate(task.costEstimate)}</dd>
+      </div>
+    </dl>
+  );
 }
 
 function ProgressBar({
@@ -112,13 +147,16 @@ function TaskList({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-bold text-white text-sm min-[480px]:text-base break-words">{task.name}</p>
+                {showPipeline && 'status' in task && task.status ? (
+                  <span className={portalStatusBadge}>{task.status}</span>
+                ) : null}
                 {showPipeline && 'pipeline' in task ? (
                   <span className={pipelineBadgeClass(task.pipeline)}>
                     {task.pipeline}
                   </span>
                 ) : null}
               </div>
-              <p className={`mt-1 ${portalBody}`}>Due {formatDueDate(task.dueOn)}</p>
+              <TaskMetaRow task={task} />
             </div>
           </div>
           <ProgressBar progress={task.progress} pending={pendingSection} />

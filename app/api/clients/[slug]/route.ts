@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getClientBySlug } from '@/lib/client-registry';
+import { getClientBySlug, getClientPortalRedirect } from '@/lib/client-registry';
 import { createClientSubmission, attachFileToTask, getClientPortalTasks } from '@/lib/asana';
 import {
   CLIENT_STATUS_NEW_SUBMISSION,
@@ -14,14 +14,30 @@ import {
 const recentSubmissions = new Map<string, number>();
 const THROTTLE_MS = 60_000;
 
+async function resolveClientForApi(req: NextRequest, slug: string) {
+  const client = await getClientBySlug(slug);
+  if (client) return { client } as const;
+
+  const redirectSlug = await getClientPortalRedirect(slug);
+  if (redirectSlug) {
+    const url = new URL(`/api/clients/${redirectSlug}${req.nextUrl.search}`, req.url);
+    return { redirect: NextResponse.redirect(url, 308) } as const;
+  }
+
+  return { notFound: true } as const;
+}
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  const client = await getClientBySlug(params.slug);
-  if (!client) {
+  const resolved = await resolveClientForApi(req, params.slug);
+  if ('redirect' in resolved && resolved.redirect) return resolved.redirect;
+  if ('notFound' in resolved) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
+
+  const { client } = resolved;
 
   try {
     const tasks = await getClientPortalTasks(
@@ -42,10 +58,13 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  const client = await getClientBySlug(params.slug);
-  if (!client) {
+  const resolved = await resolveClientForApi(req, params.slug);
+  if ('redirect' in resolved && resolved.redirect) return resolved.redirect;
+  if ('notFound' in resolved) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
+
+  const { client } = resolved;
 
   const lastSubmit = recentSubmissions.get(client.slug);
   if (lastSubmit && Date.now() - lastSubmit < THROTTLE_MS) {

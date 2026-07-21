@@ -1270,6 +1270,45 @@ html.careers-page-active {
   transform: translateY(-1px);
 }
 
+@keyframes portal-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.portal-dismissible-alert {
+  overflow: hidden;
+  will-change: opacity, transform, max-height, margin;
+}
+
+.portal-dismissible-alert--enter {
+  animation: portal-alert-in 0.35s ease-out forwards;
+}
+
+.portal-dismissible-alert--exit {
+  opacity: 0;
+  transform: translateY(-10px);
+  max-height: 0;
+  margin-top: 0 !important;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.42s ease,
+    transform 0.42s ease,
+    max-height 0.42s ease,
+    margin 0.42s ease,
+    padding 0.42s ease,
+    border-width 0.42s ease;
+}
+
 @keyframes portal-submit-spin {
   to {
     transform: rotate(360deg);
@@ -1292,6 +1331,14 @@ html.careers-page-active {
   .portal-submit-spinner {
     animation: none;
     opacity: 0.85;
+  }
+
+  .portal-dismissible-alert--enter {
+    animation: none;
+  }
+
+  .portal-dismissible-alert--exit {
+    transition: none;
   }
 }
 

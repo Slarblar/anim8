@@ -7,12 +7,13 @@ import type {
   TaskProgress,
 } from '@/lib/asana';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { ClientPortalShell } from './ClientPortalShell';
 import { ClientRejectModal } from './ClientRejectModal';
+import { PortalDismissibleAlert } from './PortalDismissibleAlert';
 import {
   pipelineBadgeClass,
-  portalAlertSuccess,
   portalAlertWarning,
   portalBody,
   portalBtnDanger,
@@ -217,15 +218,21 @@ function TaskList({
               <TaskMetaRow task={task} />
             </div>
           </div>
-          <ProgressBar progress={task.progress} pending={pendingSection && !task.needsClientApproval} />
           {pendingSection && slug && onApprove && onReject ? (
-            <PendingApprovalActions
-              task={task}
-              loading={actionLoadingGid === task.gid}
-              onApprove={onApprove}
-              onReject={onReject}
-            />
-          ) : null}
+            <>
+              {task.progress.percent !== null ? (
+                <ProgressBar progress={task.progress} />
+              ) : null}
+              <PendingApprovalActions
+                task={task}
+                loading={actionLoadingGid === task.gid}
+                onApprove={onApprove}
+                onReject={onReject}
+              />
+            </>
+          ) : (
+            <ProgressBar progress={task.progress} pending={pendingSection} />
+          )}
         </li>
       ))}
     </ul>
@@ -249,6 +256,8 @@ export function ClientPortal({
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [rejectError, setRejectError] = useState<string | null>(null);
   const [approveSuccess, setApproveSuccess] = useState<string | null>(null);
+  const [submittedDismissed, setSubmittedDismissed] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setPendingProjects(initialPending);
@@ -355,23 +364,31 @@ export function ClientPortal({
         </p>
       </div>
 
-      {showSubmittedSuccess ? (
-        <p className={`${portalAlertSuccess} mt-8`}>
-          Request submitted. We will follow up soon.
-        </p>
-      ) : null}
+      <PortalDismissibleAlert
+        message="Request submitted. We will follow up soon."
+        visible={showSubmittedSuccess && !submittedDismissed}
+        onDismiss={() => {
+          setSubmittedDismissed(true);
+          router.replace(`/clients/${slug}`, { scroll: false });
+        }}
+      />
 
       {tasksError ? (
         <p className={`${portalAlertWarning} mt-8`}>{tasksError}</p>
       ) : null}
 
-      {actionError ? (
-        <p className={`${portalAlertWarning} mt-8`}>{actionError}</p>
-      ) : null}
+      <PortalDismissibleAlert
+        message={actionError ?? ''}
+        visible={!!actionError}
+        variant="warning"
+        onDismiss={() => setActionError(null)}
+      />
 
-      {approveSuccess ? (
-        <p className={`${portalAlertSuccess} mt-8`}>{approveSuccess}</p>
-      ) : null}
+      <PortalDismissibleAlert
+        message={approveSuccess ?? ''}
+        visible={!!approveSuccess}
+        onDismiss={() => setApproveSuccess(null)}
+      />
 
       <section className="mt-8 min-[480px]:mt-10 md:mt-12">
         <h2 className={portalSectionTitle}>Pending projects</h2>

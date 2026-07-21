@@ -1,34 +1,6 @@
-import { createClient, type VercelKV } from '@vercel/kv';
 import { customAlphabet } from 'nanoid';
 import type { ClientFieldFilter } from './asana';
-
-function getKvUrl(): string {
-  return (
-    process.env.STORAGE_KV_REST_API_URL ??
-    process.env.KV_REST_API_URL ??
-    ''
-  );
-}
-
-function getKvToken(): string {
-  return (
-    process.env.STORAGE_KV_REST_API_TOKEN ??
-    process.env.KV_REST_API_TOKEN ??
-    ''
-  );
-}
-
-let kv: VercelKV | null = null;
-
-function getKv(): VercelKV {
-  if (!kv) {
-    kv = createClient({
-      url: getKvUrl(),
-      token: getKvToken(),
-    });
-  }
-  return kv;
-}
+import { getKv } from './kv';
 
 // Lowercase alphanumeric only, 10 chars — no ambiguous characters, easy to
 // read aloud if you ever need to give someone a link over the phone.
@@ -69,6 +41,17 @@ export async function getClientBySlug(slug: string): Promise<ClientRecord | null
   return record;
 }
 
+/** Admin — every client record, active or deactivated, newest first. */
+export async function listClientRecords(): Promise<ClientRecord[]> {
+  const keys = await getKv().keys(`${KEY_PREFIX}*`);
+  if (keys.length === 0) return [];
+
+  const records = await Promise.all(keys.map((key) => getKv().get<ClientRecord>(key)));
+  return records
+    .filter((record): record is ClientRecord => !!record)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
 export async function getClientPortalRedirect(slug: string): Promise<string | null> {
   const legacy = LEGACY_SLUG_REDIRECTS[slug];
   if (legacy) return legacy;
@@ -79,6 +62,11 @@ export async function getClientPortalRedirect(slug: string): Promise<string | nu
 
 async function getClientRecordBySlug(slug: string): Promise<ClientRecord | null> {
   return getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
+}
+
+/** Admin — fetch a client record regardless of active/deactivated status. */
+export async function getClientRecordForAdmin(slug: string): Promise<ClientRecord | null> {
+  return getClientRecordBySlug(slug);
 }
 
 function validateSlug(slug: string): void {
@@ -154,8 +142,15 @@ export async function renameClientLink(
 /** Revoke a link without losing history — flip `active` back to restore it. */
 export async function deactivateClientLink(slug: string): Promise<void> {
   const record = await getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
-  if (!record) return;
+  if (!record) throw new Error(`No client found for slug: ${slug}`);
   await getKv().set(`${KEY_PREFIX}${slug}`, { ...record, active: false });
+}
+
+/** Restore a previously deactivated client link. */
+export async function reactivateClientLink(slug: string): Promise<void> {
+  const record = await getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
+  if (!record) throw new Error(`No client found for slug: ${slug}`);
+  await getKv().set(`${KEY_PREFIX}${slug}`, { ...record, active: true, redirectTo: undefined });
 }
 
 function slugify(name: string): string {

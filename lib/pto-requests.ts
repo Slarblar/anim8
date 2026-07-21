@@ -1,0 +1,123 @@
+import { customAlphabet } from 'nanoid';
+import { getKv } from './kv';
+
+export type PtoRequestType = 'PTO' | 'WFH';
+export type PtoRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export type PtoRequest = {
+  id: string;
+  employeeEmail: string;
+  employeeName: string;
+  type: PtoRequestType;
+  /** YYYY-MM-DD, inclusive. */
+  startDate: string;
+  /** YYYY-MM-DD, inclusive. */
+  endDate: string;
+  note: string;
+  status: PtoRequestStatus;
+  calendarEventId?: string;
+  createdAt: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  decisionNote?: string;
+};
+
+const KEY_PREFIX = 'pto-request:';
+const PENDING_INDEX_KEY = 'pto-request-index:pending';
+const ALL_INDEX_KEY = 'pto-request-index:all';
+
+const genId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 12);
+
+function keyFor(id: string): string {
+  return `${KEY_PREFIX}${id}`;
+}
+
+export async function createPtoRequest(input: {
+  employeeEmail: string;
+  employeeName: string;
+  type: PtoRequestType;
+  startDate: string;
+  endDate: string;
+  note: string;
+}): Promise<PtoRequest> {
+  if (!input.startDate || !input.endDate) {
+    throw new Error('Start and end dates are required.');
+  }
+  if (input.endDate < input.startDate) {
+    throw new Error('End date must be on or after the start date.');
+  }
+
+  const record: PtoRequest = {
+    id: genId(),
+    employeeEmail: input.employeeEmail.trim().toLowerCase(),
+    employeeName: input.employeeName.trim(),
+    type: input.type,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    note: input.note.trim(),
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+
+  const kv = getKv();
+  await kv.set(keyFor(record.id), record);
+  await kv.sadd(ALL_INDEX_KEY, record.id);
+  await kv.sadd(PENDING_INDEX_KEY, record.id);
+  return record;
+}
+
+export async function getPtoRequest(id: string): Promise<PtoRequest | null> {
+  return getKv().get<PtoRequest>(keyFor(id));
+}
+
+async function hydrate(ids: string[]): Promise<PtoRequest[]> {
+  if (ids.length === 0) return [];
+  const records = await Promise.all(ids.map((id) => getPtoRequest(id)));
+  return records.filter((record): record is PtoRequest => !!record);
+}
+
+export async function listPtoRequestsForEmployee(email: string): Promise<PtoRequest[]> {
+  const ids = await getKv().smembers(ALL_INDEX_KEY);
+  const records = await hydrate(ids);
+  return records
+    .filter((record) => record.employeeEmail === email.trim().toLowerCase())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function listPendingPtoRequests(): Promise<PtoRequest[]> {
+  const ids = await getKv().smembers(PENDING_INDEX_KEY);
+  const records = await hydrate(ids);
+  return records.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
+export async function listAllPtoRequests(): Promise<PtoRequest[]> {
+  const ids = await getKv().smembers(ALL_INDEX_KEY);
+  const records = await hydrate(ids);
+  return records.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function decidePtoRequest(input: {
+  id: string;
+  decision: 'approved' | 'rejected';
+  decidedBy: string;
+  calendarEventId?: string;
+  decisionNote?: string;
+}): Promise<PtoRequest> {
+  const existing = await getPtoRequest(input.id);
+  if (!existing) throw new Error('Request not found.');
+  if (existing.status !== 'pending') throw new Error('Request has already been decided.');
+
+  const record: PtoRequest = {
+    ...existing,
+    status: input.decision,
+    decidedAt: new Date().toISOString(),
+    decidedBy: input.decidedBy,
+    calendarEventId: input.calendarEventId,
+    decisionNote: input.decisionNote,
+  };
+
+  const kv = getKv();
+  await kv.set(keyFor(input.id), record);
+  await kv.srem(PENDING_INDEX_KEY, input.id);
+  return record;
+}

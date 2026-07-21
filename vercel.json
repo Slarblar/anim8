@@ -9,6 +9,12 @@
       "maxDuration": 15
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/sync-crew-calendar",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

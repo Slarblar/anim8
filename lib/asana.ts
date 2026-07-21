@@ -93,6 +93,7 @@ type AsanaTaskRaw = {
   name: string;
   due_on: string | null;
   completed: boolean;
+  permalink_url?: string;
   custom_fields?: AsanaCustomFieldRaw[];
 };
 
@@ -100,6 +101,7 @@ const TASK_OPT_FIELDS = [
   'name',
   'due_on',
   'completed',
+  'permalink_url',
   'custom_fields.gid',
   'custom_fields.number_value',
   'custom_fields.display_value',
@@ -328,6 +330,29 @@ export async function getClientTasks(filters: ClientFieldFilter[]) {
   return getClientPortalTasks(filters);
 }
 
+/** Admin — quick "view in Asana" links for a client, across intake + both pipelines. */
+export async function getClientTaskLinks(
+  filters: ClientFieldFilter[],
+  intakeProjectGid: string = INTAKE_PROJECT_GID
+): Promise<Array<{ gid: string; name: string; permalinkUrl: string }>> {
+  const [intakeRaw, productionRaw, designRaw] = await Promise.all([
+    searchProjectTasks(intakeProjectGid, filters),
+    searchProjectTasks(PRODUCTION_PIPELINE_GID, filters),
+    searchProjectTasks(DESIGN_PIPELINE_GID, filters),
+  ]);
+
+  const seen = new Map<string, AsanaTaskRaw>();
+  for (const task of [...intakeRaw, ...productionRaw, ...designRaw]) {
+    seen.set(task.gid, task);
+  }
+
+  return Array.from(seen.values()).map((task) => ({
+    gid: task.gid,
+    name: displayTaskName(task.name),
+    permalinkUrl: task.permalink_url ?? '',
+  }));
+}
+
 export async function createClientSubmission(input: {
   name: string;
   notes: string;
@@ -498,4 +523,25 @@ export async function rejectClientEstimate(input: {
 
   await moveTaskToSection(input.taskGid, INTAKE_SECTION_BLOCKED);
   await addTaskStory(input.taskGid, storyLines.join('\n'));
+}
+
+export type AsanaEnumOption = { gid: string; name: string; enabled: boolean };
+
+/** Admin — existing values of an enum custom field (e.g. "Design Clients"). */
+export async function getCustomFieldEnumOptions(fieldGid: string): Promise<AsanaEnumOption[]> {
+  const field = await asanaFetch<{ enum_options?: AsanaEnumOption[] }>(
+    `/custom_fields/${fieldGid}?opt_fields=enum_options.name,enum_options.enabled`
+  );
+  return field.enum_options ?? [];
+}
+
+/** Admin — add a brand-new client to an enum custom field (e.g. new "Design Clients" option). */
+export async function createCustomFieldEnumOption(
+  fieldGid: string,
+  name: string
+): Promise<AsanaEnumOption> {
+  return asanaFetch<AsanaEnumOption>(`/custom_fields/${fieldGid}/enum_options`, {
+    method: 'POST',
+    body: JSON.stringify({ data: { name } }),
+  });
 }

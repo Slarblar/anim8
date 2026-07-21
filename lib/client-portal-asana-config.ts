@@ -3,6 +3,9 @@
 export const ANIM8_CALENDAR_URL =
   'https://calendar.app.google/4AfMaz1uEfPVW9r49';
 
+/** "Design Clients" enum field — each option identifies one client's tasks. */
+export const FIELD_DESIGN_CLIENTS = '1212054697251949';
+
 export const INTAKE_PROJECT_GID = '1216732614798537';
 export const INTAKE_SECTION_NEW_SUBMISSIONS = '1216734900877796';
 export const INTAKE_SECTION_APPROVED = '1216732614798538';

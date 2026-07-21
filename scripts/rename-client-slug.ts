@@ -8,8 +8,8 @@ import { resolve } from 'path';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
-const OLD_SLUG = 'turnemsideways-xnp8gtgynu';
-const NEW_SLUG = 'turnemsideways-2026';
+const OLD_SLUG = 'turnemsideways-2026';
+const NEW_SLUG = 'turnemsideways2026';
 
 async function main() {
   const { renameClientLink } = await import('../lib/client-registry');

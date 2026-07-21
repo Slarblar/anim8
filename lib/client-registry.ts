@@ -66,9 +66,9 @@ async function getClientRecordBySlug(slug: string): Promise<ClientRecord | null>
 }
 
 function validateSlug(slug: string): void {
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+  if (!/^[a-z0-9]+$/.test(slug)) {
     throw new Error(
-      'Slug must be lowercase letters, numbers, and hyphens only (e.g. turnemsideways-2026).'
+      'Slug must be lowercase letters and numbers only (e.g. turnemsideways2026).'
     );
   }
 }
@@ -85,7 +85,7 @@ export async function createClientLink(input: {
   intakeProjectGid?: string;
   intakeSectionGid?: string;
 }): Promise<ClientRecord> {
-  const slug = input.slug ?? `${slugify(input.displayName)}-${nanoid()}`;
+  const slug = input.slug ?? `${slugify(input.displayName)}${nanoid()}`;
   validateSlug(slug);
 
   const existing = await getClientRecordBySlug(slug);
@@ -139,8 +139,5 @@ export async function deactivateClientLink(slug: string): Promise<void> {
 }
 
 function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }

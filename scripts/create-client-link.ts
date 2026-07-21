@@ -4,7 +4,7 @@
  * Edit the `displayName` / `contactEmail` / `filters` below for the next
  * client you provision, run once, send them the printed link.
  *
- * Optional: pass `slug: 'clientname-2026'` for a readable link instead of
+ * Optional: pass `slug: 'clientname2026'` for a readable link instead of
  * a random slug.
  * Requires Redis env vars in .env.local — copy from Vercel Storage → your
  * Redis store → ".env.local" tab. Uses STORAGE_KV_REST_API_URL / TOKEN

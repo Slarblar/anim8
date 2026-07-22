@@ -3,6 +3,7 @@ import type { WeeklyDigest } from './weekly-digest';
 import { countBusinessDays, type PtoRequest } from './pto-requests';
 import { getCrewMember } from './crew-directory';
 import { emailButton, escapeHtml, noteBlock, renderEmailHtml, statLine, warningBanner } from './email-template';
+import { formatBothTimeZones } from './timezone-format';
 
 const RESEND_API = 'https://api.resend.com/emails';
 
@@ -103,8 +104,11 @@ export async function notifyAdminsNewPtoRequest(request: PtoRequest): Promise<bo
 
   const subject = `New ${request.type} request — ${request.employeeName}`;
 
+  const submittedBoth = formatBothTimeZones(request.createdAt);
+
   const textLines = [
     `${request.employeeName} requested ${request.type} for ${range}.`,
+    `Submitted: ${submittedBoth}`,
     request.note ? `\nNote: ${request.note}` : null,
     balanceDays !== null ? `\nCurrent balance: ${balanceDays} days · Requesting: ${requestedDays} days` : null,
     overdraft ? `\n⚠ This would take their balance negative.` : null,
@@ -117,6 +121,9 @@ export async function notifyAdminsNewPtoRequest(request: PtoRequest): Promise<bo
 
   const bodyHtml = [
     `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> requested <strong style="color:#ffffff;">${escapeHtml(request.type)}</strong> for <strong style="color:#ffffff;">${escapeHtml(range)}</strong>.</p>`,
+    // Shown in both Vietnam (studio) and admin-team timezones — this is a static
+    // email, so it can't detect the reader's own zone the way the web app can.
+    `<p style="margin:0 0 12px 0;font-size:12px;color:#8b95a8;">Submitted ${escapeHtml(submittedBoth)}</p>`,
     balanceDays !== null
       ? `<div style="margin:16px 0;">${statLine('Current balance', `${balanceDays} day${balanceDays === 1 ? '' : 's'}`)}${statLine('Requesting', `${requestedDays} day${requestedDays === 1 ? '' : 's'}`)}</div>`
       : '<div style="margin:16px 0 0 0;"></div>',
@@ -148,15 +155,18 @@ export async function notifyEmployeePtoDecision(input: {
   endDate: string;
   decision: 'approved' | 'rejected';
   decisionNote?: string;
+  decidedAt?: string;
 }): Promise<boolean> {
   const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
   const subject = `Your ${input.type} request was ${input.decision}`;
   const range = formatRange(input.startDate, input.endDate);
+  const decidedBoth = input.decidedAt ? formatBothTimeZones(input.decidedAt) : null;
 
   const text = [
     `Hi ${input.employeeName},`,
     '',
     `Your ${input.type} request for ${range} was ${input.decision}.`,
+    decidedBoth ? `Decided: ${decidedBoth}` : null,
     input.decisionNote ? `\nNote: ${input.decisionNote}` : null,
   ]
     .filter((line) => line !== null)
@@ -165,7 +175,10 @@ export async function notifyEmployeePtoDecision(input: {
   const badgeColor = input.decision === 'approved' ? '#7cc142' : '#dd0b83';
   const bodyHtml = [
     `<p style="margin:0 0 12px 0;">Hi ${escapeHtml(input.employeeName.split(' ')[0])},</p>`,
-    `<p style="margin:0 0 16px 0;">Your <strong style="color:#ffffff;">${escapeHtml(input.type)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}</strong> was <strong style="color:${badgeColor};text-transform:uppercase;">${escapeHtml(input.decision)}</strong>.</p>`,
+    `<p style="margin:0 0 4px 0;">Your <strong style="color:#ffffff;">${escapeHtml(input.type)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}</strong> was <strong style="color:${badgeColor};text-transform:uppercase;">${escapeHtml(input.decision)}</strong>.</p>`,
+    decidedBoth
+      ? `<p style="margin:0 0 16px 0;font-size:12px;color:#8b95a8;">Decided ${escapeHtml(decidedBoth)}</p>`
+      : '<div style="margin:0 0 16px 0;"></div>',
     input.decisionNote ? noteBlock(input.decisionNote) : '',
   ].join('\n');
 

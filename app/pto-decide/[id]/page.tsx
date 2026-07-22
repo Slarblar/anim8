@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { countBusinessDays, getPtoRequest } from '@/lib/pto-requests';
 import { getCrewMember } from '@/lib/crew-directory';
+import { formatBothTimeZones } from '@/lib/timezone-format';
 
 /**
  * Public, no-login-required page reached from the "New PTO/WFH request"
@@ -71,8 +72,7 @@ export default async function PtoDecidePage({
           {request.employeeName}&apos;s {request.type} request for {range(request.startDate, request.endDate)} was{' '}
           {request.status}
           {decidedByName ? ` by ${decidedByName}` : ''}
-          {request.decidedAt ? ` on ${new Date(request.decidedAt).toLocaleString()}` : ''}. No further action
-          needed.
+          {request.decidedAt ? ` on ${formatBothTimeZones(request.decidedAt)}` : ''}. No further action needed.
         </p>
         {request.decisionNote ? (
           <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-text-muted">

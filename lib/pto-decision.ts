@@ -69,6 +69,7 @@ export async function applyPtoDecision(input: {
     endDate: existing.endDate,
     decision: input.decision,
     decisionNote: input.note,
+    decidedAt: updated.decidedAt,
   });
 
   return { request: updated, calendarError, balanceError };

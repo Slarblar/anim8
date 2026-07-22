@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import 'server-only';
 import type { WeekdayCode } from './crew-directory';
+import { studioTodayDateString } from './studio-date';
 
 /**
  * Google Calendar sync for PTO/WFH — uses a service account (not domain-wide
@@ -99,10 +100,15 @@ const WEEKDAY_NUMBER: Record<WeekdayCode, number> = {
   fri: 5,
 };
 
-/** Next date (today included) that falls on the given weekday, as YYYY-MM-DD (UTC). */
+/**
+ * Next date (today included) that falls on the given weekday, as YYYY-MM-DD.
+ * "Today" is anchored to the studio's local day (Vietnam), same as the status
+ * board — using raw UTC "today" here instead let this briefly disagree with
+ * `studioTodayDateString()` for the ~7 hours/day where UTC and VN are on
+ * different calendar days, occasionally seeding a fixed WFH series one day off.
+ */
 function nextOccurrenceOf(day: WeekdayCode): string {
-  const now = new Date();
-  const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const date = new Date(`${studioTodayDateString()}T00:00:00Z`);
   const diff = (WEEKDAY_NUMBER[day] - date.getUTCDay() + 7) % 7;
   date.setUTCDate(date.getUTCDate() + diff);
   return date.toISOString().slice(0, 10);

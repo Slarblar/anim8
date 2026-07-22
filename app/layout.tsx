@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { CookieBanner } from '@/components/ui/CookieBanner'
-import { beVietnamPro, notoSans } from '@/lib/vi-fonts'
 
 export const metadata: Metadata = {
   icons: {
@@ -46,7 +45,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${beVietnamPro.variable} ${notoSans.variable}`}>
+      <body>
         {children}
         <CookieBanner />
       </body>

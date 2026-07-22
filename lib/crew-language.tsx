@@ -19,8 +19,8 @@ type CrewLanguageContextValue = {
 const CrewLanguageContext = createContext<CrewLanguageContextValue | null>(null);
 
 /**
- * Syncs `<html lang>` + `crew-lang-vn` so globals.css can lock Be Vietnam Pro.
- * futura-pt mangling Vietnamese diacritics is what caused the mixed-glyph bounce.
+ * Syncs `<html lang>` + `crew-lang-vn` so globals.css applies the system UI
+ * Vietnamese stack (Segoe UI sans — same family as the reliable .font-mono).
  */
 function applyHtmlLang(lang: CrewLang) {
   const root = document.documentElement;

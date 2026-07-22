@@ -8,6 +8,9 @@
     --font-futura-book: 'futura-pt-book', sans-serif;
     --font-futura-bold: 'futura-pt-bold', sans-serif;
     --font-futura-heavy: 'futura-pt-heavy', sans-serif;
+    /* Same family ecosystem as .font-mono (Segoe UI Mono) — reliable Vietnamese diacritics. */
+    --font-crew-vi-sans: ui-sans-serif, system-ui, 'Segoe UI', 'Segoe UI Variable', 'Helvetica Neue', Arial, sans-serif;
+    --font-crew-vi-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, monospace;
   }
 
   html {
@@ -1785,18 +1788,19 @@ html.careers-page-active {
 }
 
 /*
- * Vietnamese (crew EN/VN toggle) — Be Vietnam Pro + Noto Sans, never Futura.
- * Scoped to .crew-shell so Typekit display fonts can't steal partial glyphs.
- * Self-hosted via next/font (see lib/vi-fonts.ts); boot script in crew/layout
- * adds html.crew-lang-vn before paint when localStorage is vn.
+ * Vietnamese (crew EN/VN toggle) — system UI sans, same reliability as .font-mono.
+ * Do not use Futura or webfont stacks here; Typekit + partial glyph coverage
+ * is what caused broken diacritics. html.crew-lang-vn is set in crew/layout
+ * boot script + CrewLanguageProvider.
  */
 html.crew-lang-vn .crew-shell,
 html.crew-lang-vn .crew-shell *:not(.font-mono) {
-  font-family: var(--font-be-vietnam), var(--font-noto-sans), 'Segoe UI', system-ui, sans-serif !important;
+  font-family: var(--font-crew-vi-sans) !important;
   font-synthesis: none;
 }
 
-html.crew-lang-vn .crew-shell .font-mono {
-  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, monospace !important;
+html.crew-lang-vn .crew-shell .font-mono,
+html.crew-lang-vn .crew-shell .font-mono * {
+  font-family: var(--font-crew-vi-mono) !important;
 }
 

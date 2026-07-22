@@ -126,17 +126,11 @@ export function CrewStatusChart() {
         ) : (
           <span />
         )}
-        <button
-          type="button"
-          className={adminBtnGhost}
-          onClick={refresh}
-          disabled={refreshing}
-          aria-label={lang === 'vn' ? crewT.vn.statusChart.refreshNow : crewT.en.statusChart.refreshNow}
-          title={lang === 'vn' ? crewT.vn.statusChart.refreshNow : crewT.en.statusChart.refreshNow}
-        >
+        <button type="button" className={`${adminBtnGhost} gap-1.5`} onClick={refresh} disabled={refreshing}>
           <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
             🔄
           </span>
+          <HoverTranslate en={crewT.en.statusChart.refreshNow} vn={crewT.vn.statusChart.refreshNow} />
         </button>
       </div>
 

@@ -9,6 +9,9 @@ import {
   adminInput,
   adminLabel,
 } from '@/components/admin/admin-ui';
+import { useCrewLanguage } from '@/lib/crew-language';
+import { crewT } from '@/lib/crew-translations';
+import { HoverTranslate } from './HoverTranslate';
 
 /** Client-side mirror of lib/pto-requests.ts `countBusinessDays` — kept
  * separate (rather than imported) so this client component doesn't pull
@@ -28,6 +31,8 @@ function countBusinessDays(startDate: string, endDate: string): number {
 
 export function NewPtoRequestForm() {
   const router = useRouter();
+  const { lang } = useCrewLanguage();
+  const c = crewT[lang].ptoPage;
   const [type, setType] = useState<'PTO' | 'WFH'>('PTO');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -63,23 +68,25 @@ export function NewPtoRequestForm() {
         });
         const data = (await res.json()) as { error?: string };
         if (!res.ok) {
-          setError(data.error ?? 'Could not submit request.');
+          setError(data.error ?? c.formSubmitError);
           return;
         }
         router.push('/crew/pto');
       } catch {
-        setError('Could not submit request. Please try again.');
+        setError(c.formSubmitErrorRetry);
       } finally {
         setSubmitting(false);
       }
     },
-    [type, startDate, endDate, note, router]
+    [type, startDate, endDate, note, router, c.formSubmitError, c.formSubmitErrorRetry]
   );
 
   return (
     <form onSubmit={handleSubmit} className={`${adminCard} space-y-4`}>
       <div>
-        <label className={adminLabel}>Type</label>
+        <label className={adminLabel}>
+          <HoverTranslate en={crewT.en.ptoPage.formTypeLabel} vn={crewT.vn.ptoPage.formTypeLabel} />
+        </label>
         <div className="flex gap-2">
           {(['PTO', 'WFH'] as const).map((option) => (
             <button
@@ -92,19 +99,22 @@ export function NewPtoRequestForm() {
                   : 'border-white/10 bg-white/[0.03] text-text-muted hover:border-white/25'
               }`}
             >
-              {option === 'PTO' ? 'Time off' : 'Work from home'}
+              <HoverTranslate
+                en={option === 'PTO' ? crewT.en.ptoPage.typePto : crewT.en.ptoPage.typeWfh}
+                vn={option === 'PTO' ? crewT.vn.ptoPage.typePto : crewT.vn.ptoPage.typeWfh}
+              />
             </button>
           ))}
         </div>
         {type === 'PTO' ? (
           <p className="mt-2 text-xs text-text-muted">
             {balanceDays !== null ? (
-              <>
-                You have <span className="font-bold text-brand-cyan">{balanceDays}</span> day
-                {balanceDays === 1 ? '' : 's'} available
-              </>
+              <HoverTranslate
+                en={crewT.en.ptoPage.formHaveAvailable(balanceDays)}
+                vn={crewT.vn.ptoPage.formHaveAvailable(balanceDays)}
+              />
             ) : (
-              'Loading your available balance…'
+              <HoverTranslate en={crewT.en.ptoPage.formLoadingBalance} vn={crewT.vn.ptoPage.formLoadingBalance} />
             )}
           </p>
         ) : null}
@@ -113,7 +123,7 @@ export function NewPtoRequestForm() {
       <div className="grid gap-4 min-[480px]:grid-cols-2">
         <div>
           <label className={adminLabel} htmlFor="startDate">
-            Start date
+            <HoverTranslate en={crewT.en.ptoPage.formStartDate} vn={crewT.vn.ptoPage.formStartDate} />
           </label>
           <input
             id="startDate"
@@ -126,7 +136,7 @@ export function NewPtoRequestForm() {
         </div>
         <div>
           <label className={adminLabel} htmlFor="endDate">
-            End date
+            <HoverTranslate en={crewT.en.ptoPage.formEndDate} vn={crewT.vn.ptoPage.formEndDate} />
           </label>
           <input
             id="endDate"
@@ -142,36 +152,42 @@ export function NewPtoRequestForm() {
 
       <div>
         <label className={adminLabel} htmlFor="note">
-          Note (optional)
+          <HoverTranslate en={crewT.en.ptoPage.formNoteOptional} vn={crewT.vn.ptoPage.formNoteOptional} />
         </label>
         <textarea
           id="note"
           className={`${adminInput} min-h-24 resize-none`}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Anything your admin should know…"
+          placeholder={lang === 'vn' ? crewT.vn.ptoPage.formNotePlaceholder : crewT.en.ptoPage.formNotePlaceholder}
         />
       </div>
 
       {type === 'PTO' && startDate && endDate ? (
         <p className="text-xs text-text-muted">
-          Requesting <span className="font-bold text-white">{requestedDays}</span> working day
-          {requestedDays === 1 ? '' : 's'}
+          <HoverTranslate
+            en={crewT.en.ptoPage.formRequestingDays(requestedDays)}
+            vn={crewT.vn.ptoPage.formRequestingDays(requestedDays)}
+          />
         </p>
       ) : null}
 
       {overdraft ? (
         <p className="rounded-lg border border-brand-pink/30 bg-brand-pink/10 px-3.5 py-2.5 text-xs text-brand-pink">
-          ⚠ This request is for {requestedDays} days, more than your {balanceDays} day
-          {balanceDays === 1 ? '' : 's'} available. You can still submit it — your admin will review it — but it
-          will take your balance negative if approved as-is.
+          <HoverTranslate
+            en={crewT.en.ptoPage.formOverdraftWarning(requestedDays, balanceDays ?? 0)}
+            vn={crewT.vn.ptoPage.formOverdraftWarning(requestedDays, balanceDays ?? 0)}
+          />
         </p>
       ) : null}
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
       <button type="submit" className={`${adminBtnPrimary} w-full`} disabled={submitting}>
-        {submitting ? 'Submitting…' : 'Submit request'}
+        <HoverTranslate
+          en={submitting ? crewT.en.ptoPage.formSubmitting : crewT.en.ptoPage.formSubmit}
+          vn={submitting ? crewT.vn.ptoPage.formSubmitting : crewT.vn.ptoPage.formSubmit}
+        />
       </button>
     </form>
   );

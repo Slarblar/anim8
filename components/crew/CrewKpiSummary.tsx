@@ -84,17 +84,11 @@ export function CrewKpiSummary() {
         <p className={crewBody}>
           <HoverTranslate en={crewT.en.kpiPage.syncedFromAsana} vn={crewT.vn.kpiPage.syncedFromAsana} />
         </p>
-        <button
-          type="button"
-          className={adminBtnGhost}
-          onClick={refresh}
-          disabled={refreshing}
-          aria-label={lang === 'vn' ? crewT.vn.kpiPage.refreshNow : crewT.en.kpiPage.refreshNow}
-          title={lang === 'vn' ? crewT.vn.kpiPage.refreshNow : crewT.en.kpiPage.refreshNow}
-        >
+        <button type="button" className={`${adminBtnGhost} gap-1.5`} onClick={refresh} disabled={refreshing}>
           <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
             🔄
           </span>
+          <HoverTranslate en={crewT.en.kpiPage.refreshNow} vn={crewT.vn.kpiPage.refreshNow} />
         </button>
       </div>
 

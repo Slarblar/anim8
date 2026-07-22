@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { adminBody, adminCard } from '@/components/admin/admin-ui';
+import { useCrewLanguage } from '@/lib/crew-language';
+import { crewT } from '@/lib/crew-translations';
+import { HoverTranslate } from './HoverTranslate';
 
 type PtoBalance = {
   balanceDays: number | null;
@@ -10,6 +13,8 @@ type PtoBalance = {
 };
 
 export function CrewPtoBalance() {
+  const { lang } = useCrewLanguage();
+  const c = crewT[lang].ptoPage;
   const [balance, setBalance] = useState<PtoBalance | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,11 +31,12 @@ export function CrewPtoBalance() {
         setBalance(data);
       })
       .catch(() => {
-        if (!cancelled) setError('Could not load your PTO balance.');
+        if (!cancelled) setError(c.balanceLoadError);
       });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (error) return null;
@@ -42,11 +48,17 @@ export function CrewPtoBalance() {
         <p className="text-3xl font-black text-brand-cyan">
           {balance.balanceDays}
           <span className="ml-1.5 text-sm font-bold text-text-muted">
-            day{balance.balanceDays === 1 ? '' : 's'} available
+            <HoverTranslate
+              en={crewT.en.ptoPage.dayAvailable(balance.balanceDays)}
+              vn={crewT.vn.ptoPage.dayAvailable(balance.balanceDays)}
+            />
           </span>
         </p>
         <p className={`${adminBody} mt-1`}>
-          Entitled to {balance.entitlementDays}/year · accrues monthly (Handbook 3.7)
+          <HoverTranslate
+            en={crewT.en.ptoPage.entitledTo(balance.entitlementDays)}
+            vn={crewT.vn.ptoPage.entitledTo(balance.entitlementDays)}
+          />
         </p>
       </div>
     </div>

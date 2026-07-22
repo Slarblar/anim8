@@ -481,13 +481,13 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
     <li
       className={`${adminCard} admin-collapse-card ${expanded ? 'admin-collapse-card--expanded' : ''}`}
     >
-      <button
-        type="button"
-        className="admin-collapse-toggle flex w-full items-start justify-between gap-3 text-left"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <div className="min-w-0 flex-1">
+      <div className="flex w-full items-start justify-between gap-3">
+        <button
+          type="button"
+          className="admin-collapse-toggle min-w-0 flex-1 text-left"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
           <div className="flex items-start justify-between gap-3">
             <p className="min-w-0 truncate font-bold text-white">{member.name}</p>
             <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
@@ -512,14 +512,28 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
             ) : null}
             {!member.startDate ? <span className="text-brand-pink">No start date</span> : null}
           </p>
+        </button>
+        <div className="flex shrink-0 items-center gap-2 pt-0.5">
+          <Link
+            href={`/admin/kpi/${encodeURIComponent(member.email)}`}
+            className={`${adminBtnGhost} shrink-0`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            View KPI
+          </Link>
+          <button
+            type="button"
+            className={`admin-collapse-chevron shrink-0 text-brand-cyan transition hover:text-white ${
+              expanded ? 'admin-collapse-chevron--open' : ''
+            }`}
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse details' : 'Expand details'}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            ▾
+          </button>
         </div>
-        <span
-          className={`admin-collapse-chevron mt-0.5 shrink-0 text-brand-cyan ${expanded ? 'admin-collapse-chevron--open' : ''}`}
-          aria-hidden
-        >
-          ▾
-        </span>
-      </button>
+      </div>
 
       <div
         className={`admin-collapse-expand ${expanded ? 'admin-collapse-expand--open' : ''}`}
@@ -603,12 +617,6 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href={`/admin/kpi/${encodeURIComponent(member.email)}`}
-                className={adminBtnGhost}
-              >
-                View KPI
-              </Link>
               <button type="button" className={adminBtnGhost} onClick={() => setShowAdjust((v) => !v)}>
                 Adjust PTO
               </button>

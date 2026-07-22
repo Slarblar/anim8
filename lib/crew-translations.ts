@@ -85,12 +85,46 @@ type KpiPageT = {
   vsLastMonth: string;
 };
 
+type PtoPageT = {
+  title: string;
+  subtitle: string;
+  newRequest: string;
+  balanceLoadError: string;
+  dayAvailable: (n: number) => string;
+  entitledTo: (entitlementDays: number | null) => string;
+  typePto: string;
+  typeWfh: string;
+  historyLoading: string;
+  historyEmpty: string;
+  historyLoadError: string;
+  noteLabel: string;
+  statusApproved: string;
+  statusRejected: string;
+  statusPending: string;
+  newRequestTitle: string;
+  newRequestSubtitle: string;
+  formTypeLabel: string;
+  formHaveAvailable: (n: number) => string;
+  formLoadingBalance: string;
+  formStartDate: string;
+  formEndDate: string;
+  formNoteOptional: string;
+  formNotePlaceholder: string;
+  formRequestingDays: (n: number) => string;
+  formOverdraftWarning: (requested: number, balance: number) => string;
+  formSubmit: string;
+  formSubmitting: string;
+  formSubmitError: string;
+  formSubmitErrorRetry: string;
+};
+
 type CrewTranslations = {
   nav: NavT;
   statusPage: StatusPageT;
   statusChart: StatusChartT;
   dashboard: DashboardT;
   kpiPage: KpiPageT;
+  ptoPage: PtoPageT;
 };
 
 export const crewT: Record<CrewLang, CrewTranslations> = {
@@ -171,6 +205,43 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       flatVsLastMonth: '— flat vs last month',
       vsLastMonth: 'vs last month',
     },
+    ptoPage: {
+      title: 'PTO / WFH',
+      subtitle: 'Requests need admin approval before they show on the calendar and status chart.',
+      newRequest: 'New request',
+      balanceLoadError: 'Could not load your PTO balance.',
+      dayAvailable: (n) => `day${n === 1 ? '' : 's'} available`,
+      entitledTo: (entitlementDays) =>
+        `Entitled to ${entitlementDays ?? '—'}/year · accrues monthly (Handbook 3.7)`,
+      typePto: 'Time off',
+      typeWfh: 'Work from home',
+      historyLoading: 'Loading your requests…',
+      historyEmpty: "You haven't submitted any requests yet.",
+      historyLoadError: 'Could not load your requests.',
+      noteLabel: 'Note',
+      statusApproved: 'Approved',
+      statusRejected: 'Rejected',
+      statusPending: 'Pending',
+      newRequestTitle: 'New PTO / WFH request',
+      newRequestSubtitle:
+        "Submit a request — an admin will approve or reject it, and it'll sync to the team calendar.",
+      formTypeLabel: 'Type',
+      formHaveAvailable: (n) => `You have ${n} day${n === 1 ? '' : 's'} available`,
+      formLoadingBalance: 'Loading your available balance…',
+      formStartDate: 'Start date',
+      formEndDate: 'End date',
+      formNoteOptional: 'Note (optional)',
+      formNotePlaceholder: 'Anything your admin should know…',
+      formRequestingDays: (n) => `Requesting ${n} working day${n === 1 ? '' : 's'}`,
+      formOverdraftWarning: (requested, balance) =>
+        `⚠ This request is for ${requested} days, more than your ${balance} day${
+          balance === 1 ? '' : 's'
+        } available. You can still submit it — your admin will review it — but it will take your balance negative if approved as-is.`,
+      formSubmit: 'Submit request',
+      formSubmitting: 'Submitting…',
+      formSubmitError: 'Could not submit request.',
+      formSubmitErrorRetry: 'Could not submit request. Please try again.',
+    },
   },
   vn: {
     nav: {
@@ -248,6 +319,41 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       noScoredTasksYtd: 'Chưa có task nào được chấm điểm trong năm nay.',
       flatVsLastMonth: '— không đổi so với tháng trước',
       vsLastMonth: 'so với tháng trước',
+    },
+    ptoPage: {
+      title: 'Nghỉ phép / WFH',
+      subtitle: 'Yêu cầu cần được admin duyệt trước khi hiển thị trên lịch và bảng trạng thái.',
+      newRequest: 'Tạo yêu cầu',
+      balanceLoadError: 'Không thể tải số ngày nghỉ phép của bạn.',
+      dayAvailable: () => 'ngày còn lại',
+      entitledTo: (entitlementDays) =>
+        `Được cấp ${entitlementDays ?? '—'} ngày/năm · tích lũy theo tháng (Handbook 3.7)`,
+      typePto: 'Nghỉ phép',
+      typeWfh: 'Làm việc tại nhà',
+      historyLoading: 'Đang tải yêu cầu của bạn…',
+      historyEmpty: 'Bạn chưa gửi yêu cầu nào.',
+      historyLoadError: 'Không thể tải yêu cầu của bạn.',
+      noteLabel: 'Ghi chú',
+      statusApproved: 'Đã duyệt',
+      statusRejected: 'Đã từ chối',
+      statusPending: 'Đang chờ',
+      newRequestTitle: 'Yêu cầu nghỉ phép / WFH mới',
+      newRequestSubtitle:
+        'Gửi yêu cầu — admin sẽ duyệt hoặc từ chối, và yêu cầu sẽ được đồng bộ vào lịch của nhóm.',
+      formTypeLabel: 'Loại',
+      formHaveAvailable: (n) => `Bạn còn ${n} ngày nghỉ`,
+      formLoadingBalance: 'Đang tải số ngày nghỉ khả dụng…',
+      formStartDate: 'Ngày bắt đầu',
+      formEndDate: 'Ngày kết thúc',
+      formNoteOptional: 'Ghi chú (không bắt buộc)',
+      formNotePlaceholder: 'Điều gì admin cần biết…',
+      formRequestingDays: (n) => `Yêu cầu ${n} ngày làm việc`,
+      formOverdraftWarning: (requested, balance) =>
+        `⚠ Yêu cầu này là ${requested} ngày, nhiều hơn ${balance} ngày còn lại của bạn. Bạn vẫn có thể gửi — admin sẽ xem xét — nhưng nếu được duyệt, số ngày nghỉ của bạn sẽ bị âm.`,
+      formSubmit: 'Gửi yêu cầu',
+      formSubmitting: 'Đang gửi…',
+      formSubmitError: 'Không thể gửi yêu cầu.',
+      formSubmitErrorRetry: 'Không thể gửi yêu cầu. Vui lòng thử lại.',
     },
   },
 };

@@ -236,17 +236,11 @@ export function AdminKpiBoard() {
             Crew progress from the 🐸 Anim8 KPI project — sorted by this month&apos;s score.
           </p>
         </div>
-        <button
-          type="button"
-          className={adminBtnGhost}
-          onClick={refresh}
-          disabled={refreshing}
-          aria-label="Refresh now"
-          title="Refresh now"
-        >
+        <button type="button" className={`${adminBtnGhost} gap-1.5`} onClick={refresh} disabled={refreshing}>
           <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
             🔄
           </span>
+          Refresh now
         </button>
       </div>
 

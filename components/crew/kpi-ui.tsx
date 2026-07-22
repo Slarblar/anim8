@@ -207,6 +207,15 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
   // with a little headroom for standout months.
   const BAR_SCALE_MAX = 120;
 
+  // Slow, deliberate "charging up" grow — cubic-bezier(0.16, 1, 0.3, 1) is a
+  // true exponential ease-out (fast burst at the start, long slow tail at the
+  // end), but at ~0.85s it read as an instant snap. Stretched way out so the
+  // exponential shape is actually visible.
+  const BAR_FILL_DURATION = 2.2;
+  const BAR_STAGGER = 0.18;
+  const BAR_CAP_FADE_DURATION = 0.6;
+  const BAR_CAP_FADE_DELAY_BASE = BAR_FILL_DURATION * 0.6;
+
   return (
     <div>
       <div className="flex items-end gap-4 min-[480px]:gap-6">
@@ -231,7 +240,7 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
                   style={
                     {
                       height: `${grown ? heightPct : 0}%`,
-                      transition: `height 0.85s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.1}s`,
+                      transition: `height ${BAR_FILL_DURATION}s cubic-bezier(0.16, 1, 0.3, 1) ${i * BAR_STAGGER}s`,
                       background: isCurrent
                         ? `linear-gradient(to top, ${band.colorDark} 0%, ${band.color} 60%, ${band.colorLight} 100%)`
                         : `linear-gradient(to top, rgba(${glowRgb},0.55) 0%, rgba(${glowRgb},0.75) 60%, rgba(${glowRgb},0.85) 100%)`,
@@ -254,7 +263,7 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
                       style={{
                         boxShadow: isCurrent ? undefined : '0 0 5px 1px rgba(255,255,255,0.55)',
                         opacity: grown ? 1 : 0,
-                        transition: `opacity 0.3s ease-out ${i * 0.1 + 0.55}s`,
+                        transition: `opacity ${BAR_CAP_FADE_DURATION}s ease-out ${i * BAR_STAGGER + BAR_CAP_FADE_DELAY_BASE}s`,
                       }}
                     />
                   ) : null}

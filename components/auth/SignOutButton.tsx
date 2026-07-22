@@ -1,8 +1,9 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { signOut } from 'next-auth/react';
 
-export function SignOutButton({ className, label }: { className?: string; label?: string }) {
+export function SignOutButton({ className, label }: { className?: string; label?: ReactNode }) {
   return (
     <button
       type="button"

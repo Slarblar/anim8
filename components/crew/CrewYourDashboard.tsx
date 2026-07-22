@@ -1,20 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { PersonKPISummary } from '@/lib/kpi-shared';
-import { performanceBandLabel } from '@/lib/kpi-shared';
 import { adminAlertError, adminBtnPrimary, adminCard } from '@/components/admin/admin-ui';
+import { localizeAsanaRating } from '@/lib/crew-asana-i18n';
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
+import { HoverTranslate } from './HoverTranslate';
 import {
+  AsanaRatingLabel,
   MonthlyBarChart,
+  PerformanceBandLabel,
   ScoreDelta,
   StatCard,
   crewBody,
   crewSectionTitle,
   getScoreBand,
-  stripRatingNumber,
   topRating,
 } from './kpi-ui';
 
@@ -25,30 +27,38 @@ type MeResponse = { name: string; email: string };
 /** Compact rating badge for the condensed dashboard — top bucket over the last 3 months, plus the full split. */
 function RatingSummaryCard({
   label,
-  noRatingsLabel,
+  noRatingsLabelEn,
+  noRatingsLabelVn,
   breakdown,
 }: {
-  label: string;
-  noRatingsLabel: string;
+  label: ReactNode;
+  noRatingsLabelEn: string;
+  noRatingsLabelVn: string;
   breakdown: PersonKPISummary['qualityRatingsLast3Months'];
 }) {
+  const { lang } = useCrewLanguage();
   const top = topRating(breakdown);
   const total = breakdown.reduce((sum, b) => sum + b.count, 0);
 
   return (
     <StatCard
       label={label}
-      value={top ? stripRatingNumber(top.rating) : '—'}
+      value={top ? <AsanaRatingLabel rating={top.rating} /> : '—'}
       sub={
         total > 0 ? (
           <span className="text-xs font-bold text-text-muted">
             {breakdown
               .filter((b) => b.count > 0)
-              .map((b) => `${b.count} ${stripRatingNumber(b.rating).toLowerCase()}`)
+              .map((b) => {
+                const { primary } = localizeAsanaRating(b.rating, lang);
+                return `${b.count} ${primary}`;
+              })
               .join(' · ')}
           </span>
         ) : (
-          <span className="text-xs font-bold text-text-muted">{noRatingsLabel}</span>
+          <span className="text-xs font-bold text-text-muted">
+            <HoverTranslate en={noRatingsLabelEn} vn={noRatingsLabelVn} />
+          </span>
         )
       }
     />
@@ -92,10 +102,17 @@ export function CrewYourDashboard() {
     <div className="space-y-5">
       <div className="crew-fade-in-up flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-          {firstName ? c.welcomeBack(firstName) : c.title}
+          {firstName ? (
+            <HoverTranslate
+              en={crewT.en.dashboard.welcomeBack(firstName)}
+              vn={crewT.vn.dashboard.welcomeBack(firstName)}
+            />
+          ) : (
+            <HoverTranslate en={crewT.en.dashboard.title} vn={crewT.vn.dashboard.title} />
+          )}
         </h2>
         <Link href="/crew/kpi" className="text-sm font-bold text-brand-cyan transition hover:brightness-125">
-          {c.fullKpiHistory}
+          <HoverTranslate en={crewT.en.dashboard.fullKpiHistory} vn={crewT.vn.dashboard.fullKpiHistory} />
         </Link>
       </div>
 
@@ -108,18 +125,23 @@ export function CrewYourDashboard() {
         >
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted font-mono">
-              {c.ptoAvailable}
+              <HoverTranslate en={crewT.en.dashboard.ptoAvailable} vn={crewT.vn.dashboard.ptoAvailable} />
             </p>
             <p className="mt-2 text-3xl font-black text-brand-cyan md:text-4xl">
               {balance?.balanceDays ?? '—'}
               {balance?.balanceDays !== null && balance?.balanceDays !== undefined ? (
-                <span className="ml-1 text-base font-bold text-text-muted">{c.dayUnit(balance.balanceDays)}</span>
+                <span className="ml-1 text-base font-bold text-text-muted">
+                  <HoverTranslate
+                    en={crewT.en.dashboard.dayUnit(balance.balanceDays)}
+                    vn={crewT.vn.dashboard.dayUnit(balance.balanceDays)}
+                  />
+                </span>
               ) : null}
             </p>
           </div>
           {/* Glow removed here specifically — keeps this card calm next to the KPI stat cards. */}
           <Link href="/crew/pto/new" className={`${adminBtnPrimary} !shadow-none text-center`}>
-            {c.requestPto}
+            <HoverTranslate en={crewT.en.dashboard.requestPto} vn={crewT.vn.dashboard.requestPto} />
           </Link>
         </div>
 
@@ -127,7 +149,7 @@ export function CrewYourDashboard() {
           <>
             <div className="crew-fade-in-up" style={{ animationDelay: '0.1s' }}>
               <StatCard
-                label={c.thisMonthKpi}
+                label={<HoverTranslate en={crewT.en.dashboard.thisMonthKpi} vn={crewT.vn.dashboard.thisMonthKpi} />}
                 value={kpi.currentMonthScore.toFixed(2)}
                 sub={
                   <>
@@ -136,7 +158,7 @@ export function CrewYourDashboard() {
                         className="text-xs font-bold uppercase tracking-wider font-mono"
                         style={{ color: getScoreBand(kpi.currentMonthScore).color }}
                       >
-                        {performanceBandLabel(kpi.currentMonthBand)}
+                        <PerformanceBandLabel bandKey={kpi.currentMonthBand} />
                       </span>
                     ) : null}
                     {kpi.currentMonthScore > 0 ? ' · ' : null}
@@ -147,15 +169,22 @@ export function CrewYourDashboard() {
             </div>
             <div className="crew-fade-in-up" style={{ animationDelay: '0.15s' }}>
               <RatingSummaryCard
-                label={c.quality3mo}
-                noRatingsLabel={c.noRatings3mo}
+                label={<HoverTranslate en={crewT.en.dashboard.quality3mo} vn={crewT.vn.dashboard.quality3mo} />}
+                noRatingsLabelEn={crewT.en.dashboard.noRatings3mo}
+                noRatingsLabelVn={crewT.vn.dashboard.noRatings3mo}
                 breakdown={kpi.qualityRatingsLast3Months}
               />
             </div>
             <div className="crew-fade-in-up" style={{ animationDelay: '0.2s' }}>
               <RatingSummaryCard
-                label={c.collaboration3mo}
-                noRatingsLabel={c.noRatings3mo}
+                label={
+                  <HoverTranslate
+                    en={crewT.en.dashboard.collaboration3mo}
+                    vn={crewT.vn.dashboard.collaboration3mo}
+                  />
+                }
+                noRatingsLabelEn={crewT.en.dashboard.noRatings3mo}
+                noRatingsLabelVn={crewT.vn.dashboard.noRatings3mo}
                 breakdown={kpi.collaborationRatingsLast3Months}
               />
             </div>
@@ -165,7 +194,9 @@ export function CrewYourDashboard() {
             className="crew-fade-in-up min-[480px]:col-span-1 min-[900px]:col-span-3 flex items-center glass-card p-5 min-[480px]:p-6"
             style={{ animationDelay: '0.1s' }}
           >
-            <p className={crewBody}>{c.noKpiDataYet}</p>
+            <p className={crewBody}>
+              <HoverTranslate en={crewT.en.dashboard.noKpiDataYet} vn={crewT.vn.dashboard.noKpiDataYet} />
+            </p>
           </div>
         ) : null}
       </div>
@@ -173,8 +204,15 @@ export function CrewYourDashboard() {
       {kpi && kpi.lastThreeMonthly.some((m) => m.score > 0) ? (
         <div className="crew-fade-in-up" style={{ animationDelay: '0.25s' }}>
           <div className={adminCard}>
-            <p className={crewSectionTitle}>{c.past3MonthsPerformance}</p>
-            <p className={`${crewBody} mt-1`}>{c.totalKpiByMonth}</p>
+            <p className={crewSectionTitle}>
+              <HoverTranslate
+                en={crewT.en.dashboard.past3MonthsPerformance}
+                vn={crewT.vn.dashboard.past3MonthsPerformance}
+              />
+            </p>
+            <p className={`${crewBody} mt-1`}>
+              <HoverTranslate en={crewT.en.dashboard.totalKpiByMonth} vn={crewT.vn.dashboard.totalKpiByMonth} />
+            </p>
             <div className="mt-6">
               <MonthlyBarChart months={kpi.lastThreeMonthly} />
             </div>

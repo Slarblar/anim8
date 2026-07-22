@@ -11,7 +11,7 @@ export default async function CrewLayout({ children }: { children: ReactNode }) 
 
   return (
     <CrewLanguageProvider>
-      <div className="min-h-screen bg-brand-black text-white">
+      <div className="crew-shell min-h-screen bg-brand-black text-white">
         <header className="border-b border-white/10 bg-brand-black/95">
           <CrewNav admin={admin} email={session?.user?.email} />
         </header>

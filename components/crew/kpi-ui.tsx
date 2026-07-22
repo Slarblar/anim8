@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { PersonMonthlyKPI, RatingCount } from '@/lib/kpi-shared';
+import { localizeAsanaRating, localizePerformanceBand } from '@/lib/crew-asana-i18n';
+import { useCrewLanguage } from '@/lib/crew-language';
+import { crewT } from '@/lib/crew-translations';
 import { adminCard } from '@/components/admin/admin-ui';
+import { HoverTranslate } from './HoverTranslate';
 
 /**
  * Bigger, more "premium" text scale for the /crew dashboard + KPI pages
@@ -26,6 +30,60 @@ export const RATING_COLORS: Record<string, string> = {
 
 export function stripRatingNumber(rating: string): string {
   return rating.replace(/^\d+\s*-\s*/, '');
+}
+
+/** Localized Asana rating label with hover revealing the other language. */
+export function AsanaRatingLabel({ rating, className }: { rating: string; className?: string }) {
+  const { lang } = useCrewLanguage();
+  const { primary, other, known } = localizeAsanaRating(rating, lang);
+  if (!known) return <span className={className}>{primary}</span>;
+  return <HoverTranslate en={lang === 'en' ? primary : other} vn={lang === 'vn' ? primary : other} className={className} />;
+}
+
+/** Localized performance band name (Great / Average / …) with hover translation. */
+export function PerformanceBandLabel({
+  bandKey,
+  withRange = false,
+  className,
+  style,
+}: {
+  bandKey: string;
+  withRange?: boolean;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  const { lang } = useCrewLanguage();
+  const { primary, other } = localizePerformanceBand(bandKey, lang, withRange);
+  return (
+    <span style={style}>
+      <HoverTranslate
+        en={lang === 'en' ? primary : other}
+        vn={lang === 'vn' ? primary : other}
+        className={className}
+      />
+    </span>
+  );
+}
+
+/** Shared legend row for bar + line charts. */
+export function ScoreBandLegend() {
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 pt-4">
+      {SCORE_BANDS.map((band) => (
+        <span key={band.key} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider font-mono">
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: band.color, boxShadow: `0 0 5px 0.5px rgba(${hexToRgbTriple(band.color)},0.7)` }}
+          />
+          <PerformanceBandLabel
+            bandKey={band.key}
+            withRange
+            className="text-text-muted"
+          />
+        </span>
+      ))}
+    </div>
+  );
 }
 
 /** "#rrggbb" -> "r, g, b", for building rgba() strings from the band hex colors below. */
@@ -83,17 +141,31 @@ export function ScoreDelta({ current, previous }: { current: number; previous: n
   if (previous === 0) return null;
   const diff = current - previous;
   if (Math.abs(diff) < 0.005) {
-    return <span className="text-xs font-bold text-text-muted">— flat vs last month</span>;
+    return (
+      <span className="text-xs font-bold text-text-muted">
+        <HoverTranslate en={crewT.en.kpiPage.flatVsLastMonth} vn={crewT.vn.kpiPage.flatVsLastMonth} />
+      </span>
+    );
   }
   const up = diff > 0;
+  const amount = Math.abs(diff).toFixed(2);
   return (
     <span className={`text-xs font-bold ${up ? 'text-brand-lime' : 'text-brand-pink'}`}>
-      {up ? '▲' : '▼'} {Math.abs(diff).toFixed(2)} vs last month
+      {up ? '▲' : '▼'} {amount}{' '}
+      <HoverTranslate en={crewT.en.kpiPage.vsLastMonth} vn={crewT.vn.kpiPage.vsLastMonth} />
     </span>
   );
 }
 
-export function StatCard({ label, value, sub }: { label: string; value: string; sub?: React.ReactNode }) {
+export function StatCard({
+  label,
+  value,
+  sub,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  sub?: ReactNode;
+}) {
   return (
     <div className={adminCard}>
       <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted font-mono">{label}</p>
@@ -122,16 +194,24 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
   }, [months]);
 
   if (months.length === 0) {
-    return <p className={crewBody}>No scored tasks logged yet.</p>;
+    return (
+      <p className={crewBody}>
+        <HoverTranslate en={crewT.en.kpiPage.noScoredTasksYet} vn={crewT.vn.kpiPage.noScoredTasksYet} />
+      </p>
+    );
   }
 
-  const maxScore = Math.max(1, ...months.map((m) => m.score));
+  // Fixed ceiling so a ~70 (Average) month reads as ~60% full, not "top of the chart"
+  // just because it was the highest of three similar months. 120 sits above Great (100+)
+  // with a little headroom for standout months.
+  const BAR_SCALE_MAX = 120;
 
   return (
     <div>
       <div className="flex items-end gap-4 min-[480px]:gap-6">
         {months.map((month, i) => {
-          const heightPct = month.score > 0 ? Math.max(4, Math.round((month.score / maxScore) * 100)) : 0;
+          const heightPct =
+            month.score > 0 ? Math.max(4, Math.min(100, Math.round((month.score / BAR_SCALE_MAX) * 100))) : 0;
           const isCurrent = i === months.length - 1;
           const band = getScoreBand(month.score);
           const glowRgb = hexToRgbTriple(band.color);
@@ -185,20 +265,7 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
       </div>
 
       {/* Legend — teaches the color code from the KPI Scoring Documentation at a glance. */}
-      <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 pt-4">
-        {SCORE_BANDS.map((band) => (
-          <span
-            key={band.key}
-            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono"
-          >
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: band.color, boxShadow: `0 0 5px 0.5px rgba(${hexToRgbTriple(band.color)},0.7)` }}
-            />
-            {band.label}
-          </span>
-        ))}
-      </div>
+      <ScoreBandLegend />
     </div>
   );
 }
@@ -224,13 +291,15 @@ export function KpiLineChart({ months }: { months: PersonMonthlyKPI[] }) {
   const chartH = height - padTop - padBottom;
   const baselineY = padTop + chartH;
 
-  const maxScore = Math.max(1, ...months.map((m) => m.score));
+  // Same fixed ceiling as the bar chart — keeps YTD and 3-month views on one scale.
+  const LINE_SCALE_MAX = 120;
+  const maxScore = LINE_SCALE_MAX;
 
   const points: ChartPoint[] = useMemo(
     () =>
       months.map((month, i) => ({
         x: months.length === 1 ? padX + chartW / 2 : padX + (i / (months.length - 1)) * chartW,
-        y: padTop + (1 - month.score / maxScore) * chartH,
+        y: padTop + (1 - Math.min(month.score, maxScore) / maxScore) * chartH,
         month,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,67 +307,82 @@ export function KpiLineChart({ months }: { months: PersonMonthlyKPI[] }) {
   );
 
   if (months.length === 0) {
-    return <p className={crewBody}>No scored tasks logged yet this year.</p>;
+    return (
+      <p className={crewBody}>
+        <HoverTranslate en={crewT.en.kpiPage.noScoredTasksYtd} vn={crewT.vn.kpiPage.noScoredTasksYtd} />
+      </p>
+    );
   }
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${baselineY} L ${points[0].x.toFixed(1)} ${baselineY} Z`;
 
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[480px]" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="kpiAreaFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7cc142" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#7cc142" stopOpacity="0" />
-          </linearGradient>
-        </defs>
+    <div>
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[480px]" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="kpiAreaFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#7cc142" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#7cc142" stopOpacity="0" />
+            </linearGradient>
+          </defs>
 
-        <path
-          d={areaPath}
-          fill="url(#kpiAreaFill)"
-          style={{ opacity: drawn ? 1 : 0, transition: 'opacity 1.1s ease-out 0.2s' }}
-        />
+          <path
+            d={areaPath}
+            fill="url(#kpiAreaFill)"
+            style={{ opacity: drawn ? 1 : 0, transition: 'opacity 1.1s ease-out 0.2s' }}
+          />
 
-        <path
-          d={linePath}
-          fill="none"
-          stroke="#7cc142"
-          strokeWidth={1.65}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          pathLength={1}
-          className="kpi-line-glow"
-          style={{
-            strokeDasharray: 1,
-            strokeDashoffset: drawn ? 0 : 1,
-            transition: 'stroke-dashoffset 1.6s ease-out',
-          }}
-        />
+          <path
+            d={linePath}
+            fill="none"
+            stroke="#7cc142"
+            strokeWidth={1.65}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pathLength={1}
+            className="kpi-line-glow"
+            style={{
+              strokeDasharray: 1,
+              strokeDashoffset: drawn ? 0 : 1,
+              transition: 'stroke-dashoffset 1.6s ease-out',
+            }}
+          />
 
-        {points.map((p, i) => (
-          <g
-            key={p.month.month}
-            style={{ opacity: drawn ? 1 : 0, transition: `opacity 0.4s ease-out ${0.3 + i * 0.06}s` }}
-          >
-            {i === points.length - 1 ? (
-              <circle cx={p.x} cy={p.y} r={9} fill="#7cc142" className="kpi-dot-pulse" />
-            ) : null}
-            <circle cx={p.x} cy={p.y} r={4.5} fill="#0f0f0f" stroke="#7cc142" strokeWidth={1.5} />
-            <text x={p.x} y={p.y - 12} textAnchor="middle" className="fill-white text-[10px] font-bold font-mono">
-              {p.month.score}
-            </text>
-            <text
-              x={p.x}
-              y={height - 8}
-              textAnchor="middle"
-              className="fill-[#8b95a8] text-[9px] font-bold uppercase tracking-wider font-mono"
-            >
-              {p.month.label}
-            </text>
-          </g>
-        ))}
-      </svg>
+          {points.map((p, i) => {
+            const hasScore = p.month.score > 0;
+            const band = getScoreBand(p.month.score);
+            // Empty months (score 0) stay muted — don't paint them "Poor" red just because there's no data yet.
+            const fill = hasScore ? band.color : '#3a3f4b';
+            const stroke = hasScore ? band.colorLight : '#6b7280';
+            return (
+              <g
+                key={p.month.month}
+                style={{ opacity: drawn ? 1 : 0, transition: `opacity 0.4s ease-out ${0.3 + i * 0.06}s` }}
+              >
+                {i === points.length - 1 && hasScore ? (
+                  <circle cx={p.x} cy={p.y} r={9} fill={fill} className="kpi-dot-pulse" />
+                ) : null}
+                <circle cx={p.x} cy={p.y} r={4.5} fill={fill} stroke={stroke} strokeWidth={1.5} />
+                <text x={p.x} y={p.y - 12} textAnchor="middle" className="fill-white text-[10px] font-bold font-mono">
+                  {p.month.score}
+                </text>
+                <text
+                  x={p.x}
+                  y={height - 8}
+                  textAnchor="middle"
+                  className="fill-[#8b95a8] text-[9px] font-bold uppercase tracking-wider font-mono"
+                >
+                  {p.month.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <ScoreBandLegend />
     </div>
   );
 }
@@ -309,8 +393,8 @@ export function RatingDonut({
   subtitle,
   breakdown,
 }: {
-  title: string;
-  subtitle: string;
+  title: ReactNode;
+  subtitle: ReactNode;
   breakdown: RatingCount[];
 }) {
   const [grown, setGrown] = useState(false);
@@ -345,7 +429,9 @@ export function RatingDonut({
       <p className={`${crewBody} mt-1`}>{subtitle}</p>
 
       {total === 0 ? (
-        <p className={`${crewBody} mt-4`}>No ratings logged in this window yet.</p>
+        <p className={`${crewBody} mt-4`}>
+          <HoverTranslate en={crewT.en.kpiPage.noRatingsWindow} vn={crewT.vn.kpiPage.noRatingsWindow} />
+        </p>
       ) : (
         <div className="mt-5 flex flex-wrap items-center gap-6">
           <div className="kpi-animate-hue relative shrink-0" style={{ width: size, height: size }}>
@@ -380,7 +466,9 @@ export function RatingDonut({
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-3xl font-black text-white">{total}</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">rated</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">
+                <HoverTranslate en={crewT.en.kpiPage.rated} vn={crewT.vn.kpiPage.rated} />
+              </span>
             </div>
           </div>
 
@@ -392,7 +480,7 @@ export function RatingDonut({
                     className="h-3 w-3 shrink-0 rounded-full"
                     style={{ backgroundColor: RATING_COLORS[b.rating] ?? '#8b95a8' }}
                   />
-                  <span className="truncate">{stripRatingNumber(b.rating)}</span>
+                  <AsanaRatingLabel rating={b.rating} className="truncate" />
                 </span>
                 <span className="font-mono font-bold text-white">{b.count}</span>
               </li>

@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import type { CrewStatusEntry, CrewStatusSnapshot } from '@/lib/crew-status-cache';
 import type { EmploymentType } from '@/lib/crew-directory';
 import { adminAlertError, adminBody, adminBtnGhost, adminCard } from '@/components/admin/admin-ui';
-import { useCrewLanguage, type CrewLang } from '@/lib/crew-language';
+import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
+import { HoverTranslate } from './HoverTranslate';
 
 const AVATAR_PLACEHOLDER = '/images/avatars/avatar-placeholder.png';
 
@@ -27,36 +28,41 @@ function CrewAvatar({ entry }: { entry: CrewStatusEntry }) {
   );
 }
 
-function StatusPill({ status, lang }: { status: CrewStatusEntry['status']; lang: CrewLang }) {
-  const c = crewT[lang].statusChart;
-
+function StatusPill({ status }: { status: CrewStatusEntry['status'] }) {
   if (status === 'PTO') {
     return (
       <span className="rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
-        🌴 {c.statusOut}
+        🌴 <HoverTranslate en={crewT.en.statusChart.statusOut} vn={crewT.vn.statusChart.statusOut} />
       </span>
     );
   }
   if (status === 'WFH') {
     return (
       <span className="rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-cyan font-mono">
-        🏠 {c.statusWfh}
+        🏠 <HoverTranslate en={crewT.en.statusChart.statusWfh} vn={crewT.vn.statusChart.statusWfh} />
       </span>
     );
   }
   return (
     <span className="rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono">
-      {c.statusInStudio}
+      <HoverTranslate en={crewT.en.statusChart.statusInStudio} vn={crewT.vn.statusChart.statusInStudio} />
     </span>
   );
 }
 
-function employmentLabel(type: EmploymentType | undefined, lang: CrewLang): string | null {
+function EmploymentLabel({ type }: { type: EmploymentType | undefined }) {
   if (!type) return null;
-  const c = crewT[lang].statusChart;
-  if (type === 'part_time') return c.employmentPartTime;
-  if (type === 'contractor') return c.employmentContractor;
-  return c.employmentFullTime;
+  const pair =
+    type === 'part_time'
+      ? { en: crewT.en.statusChart.employmentPartTime, vn: crewT.vn.statusChart.employmentPartTime }
+      : type === 'contractor'
+        ? { en: crewT.en.statusChart.employmentContractor, vn: crewT.vn.statusChart.employmentContractor }
+        : { en: crewT.en.statusChart.employmentFullTime, vn: crewT.vn.statusChart.employmentFullTime };
+  return (
+    <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">
+      <HoverTranslate en={pair.en} vn={pair.vn} />
+    </span>
+  );
 }
 
 export function CrewStatusChart() {
@@ -103,55 +109,63 @@ export function CrewStatusChart() {
     load();
   }, [load]);
 
+  const updatedTime = snapshot
+    ? new Date(snapshot.updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : '';
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {snapshot ? (
           <p className={adminBody}>
-            {c.updatedAt(new Date(snapshot.updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))}
+            <HoverTranslate
+              en={crewT.en.statusChart.updatedAt(updatedTime)}
+              vn={crewT.vn.statusChart.updatedAt(updatedTime)}
+            />
           </p>
         ) : (
           <span />
         )}
         <button type="button" className={adminBtnGhost} onClick={refresh} disabled={refreshing}>
-          {refreshing ? c.refreshing : c.refreshNow}
+          {refreshing ? (
+            <HoverTranslate en={crewT.en.statusChart.refreshing} vn={crewT.vn.statusChart.refreshing} />
+          ) : (
+            <HoverTranslate en={crewT.en.statusChart.refreshNow} vn={crewT.vn.statusChart.refreshNow} />
+          )}
         </button>
       </div>
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
       {snapshot === null && !error ? (
-        <p className={adminBody}>{c.loading}</p>
+        <p className={adminBody}>
+          <HoverTranslate en={crewT.en.statusChart.loading} vn={crewT.vn.statusChart.loading} />
+        </p>
       ) : snapshot && snapshot.entries.length === 0 ? (
-        <p className={adminBody}>{c.noCrewMembers}</p>
+        <p className={adminBody}>
+          <HoverTranslate en={crewT.en.statusChart.noCrewMembers} vn={crewT.vn.statusChart.noCrewMembers} />
+        </p>
       ) : snapshot ? (
         <ul className="grid gap-3 min-[480px]:grid-cols-2 min-[900px]:grid-cols-3">
-          {snapshot.entries.map((entry) => {
-            const employment = employmentLabel(entry.employmentType, lang);
-            return (
-              <li key={entry.name} className={`${adminCard} flex items-center justify-between gap-3`}>
-                <span className="flex min-w-0 items-center gap-2.5">
-                  <CrewAvatar entry={entry} />
-                  <span className="min-w-0">
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      {entry.location ? (
-                        <span className="shrink-0 text-sm leading-none" title={entry.location === 'US' ? 'US' : 'VN'}>
-                          {entry.location === 'US' ? '🇺🇸' : '🇻🇳'}
-                        </span>
-                      ) : null}
-                      <span className="min-w-0 truncate font-bold text-white">{entry.name}</span>
-                    </span>
-                    {employment ? (
-                      <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">
-                        {employment}
+          {snapshot.entries.map((entry) => (
+            <li key={entry.name} className={`${adminCard} flex items-center justify-between gap-3`}>
+              <span className="flex min-w-0 items-center gap-2.5">
+                <CrewAvatar entry={entry} />
+                <span className="min-w-0">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {entry.location ? (
+                      <span className="shrink-0 text-sm leading-none" title={entry.location === 'US' ? 'US' : 'VN'}>
+                        {entry.location === 'US' ? '🇺🇸' : '🇻🇳'}
                       </span>
                     ) : null}
+                    <span className="min-w-0 truncate font-bold text-white">{entry.name}</span>
                   </span>
+                  <EmploymentLabel type={entry.employmentType} />
                 </span>
-                <StatusPill status={entry.status} lang={lang} />
-              </li>
-            );
-          })}
+              </span>
+              <StatusPill status={entry.status} />
+            </li>
+          ))}
         </ul>
       ) : null}
     </div>

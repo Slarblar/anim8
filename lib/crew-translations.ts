@@ -52,11 +52,45 @@ type DashboardT = {
   couldNotLoad: string;
 };
 
+type KpiPageT = {
+  title: string;
+  subtitle: string;
+  syncedFromAsana: string;
+  refreshNow: string;
+  refreshing: string;
+  loadError: string;
+  refreshError: string;
+  loading: string;
+  noDataTitle: string;
+  noDataBody: (email: string | null) => string;
+  ytdScore: string;
+  ytdTasks: string;
+  thisMonth: string;
+  lastMonth: string;
+  fteNote: (hours: number, fte: string) => string;
+  past3Months: string;
+  past3MonthsSub: string;
+  performanceOverTime: string;
+  performanceOverTimeSub: string;
+  qualityCollabTitle: string;
+  qualityCollabSub: string;
+  qualityRating: string;
+  collaborationRating: string;
+  last3Months: string;
+  rated: string;
+  noRatingsWindow: string;
+  noScoredTasksYet: string;
+  noScoredTasksYtd: string;
+  flatVsLastMonth: string;
+  vsLastMonth: string;
+};
+
 type CrewTranslations = {
   nav: NavT;
   statusPage: StatusPageT;
   statusChart: StatusChartT;
   dashboard: DashboardT;
+  kpiPage: KpiPageT;
 };
 
 export const crewT: Record<CrewLang, CrewTranslations> = {
@@ -103,6 +137,40 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       noKpiDataYet: 'No KPI data yet — check back once scored tasks are assigned to you in Asana.',
       couldNotLoad: 'Could not load your dashboard.',
     },
+    kpiPage: {
+      title: 'KPI',
+      subtitle: 'Your performance metrics, pulled straight from Asana.',
+      syncedFromAsana: 'Synced from the 🐸 Anim8 KPI project in Asana · refreshes every 6 hours.',
+      refreshNow: 'Refresh now',
+      refreshing: 'Refreshing…',
+      loadError: 'Could not load your KPI data.',
+      refreshError: 'Refresh failed.',
+      loading: 'Loading your KPI data…',
+      noDataTitle: 'No KPI data found yet',
+      noDataBody: (email) =>
+        `We couldn't find any scored tasks assigned to ${email ?? 'your account'} in the 🐸 Anim8 KPI project. Ask your producer to confirm tasks are assigned to that email in Asana, or check back once some tasks have a "Total KPI Score" set.`,
+      ytdScore: 'YTD KPI score',
+      ytdTasks: 'YTD scored tasks',
+      thisMonth: 'This month',
+      lastMonth: 'Last month',
+      fteNote: (hours, fte) =>
+        `Scores are FTE-normalized for your ${hours}h/week schedule (FTE ${fte}) — Effort & Delivery are scaled to a 40h week so bands match full-time peers. Quality, Collaboration, and R&D are not scaled.`,
+      past3Months: 'Past 3 months performance',
+      past3MonthsSub: 'Total KPI score by month.',
+      performanceOverTime: 'Performance over time',
+      performanceOverTimeSub: 'Total KPI score by month — year to date.',
+      qualityCollabTitle: 'Quality & collaboration ratings',
+      qualityCollabSub: 'How your scored tasks were rated over the last 3 months.',
+      qualityRating: 'Quality rating',
+      collaborationRating: 'Collaboration rating',
+      last3Months: 'Last 3 months',
+      rated: 'rated',
+      noRatingsWindow: 'No ratings logged in this window yet.',
+      noScoredTasksYet: 'No scored tasks logged yet.',
+      noScoredTasksYtd: 'No scored tasks logged yet this year.',
+      flatVsLastMonth: '— flat vs last month',
+      vsLastMonth: 'vs last month',
+    },
   },
   vn: {
     nav: {
@@ -146,6 +214,40 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       totalKpiByMonth: 'Điểm KPI tổng theo tháng.',
       noKpiDataYet: 'Chưa có dữ liệu KPI — hãy kiểm tra lại khi có công việc được chấm điểm trên Asana.',
       couldNotLoad: 'Không thể tải bảng tin của bạn.',
+    },
+    kpiPage: {
+      title: 'KPI',
+      subtitle: 'Chỉ số hiệu suất của bạn, lấy trực tiếp từ Asana.',
+      syncedFromAsana: 'Đồng bộ từ dự án 🐸 Anim8 KPI trên Asana · làm mới mỗi 6 giờ.',
+      refreshNow: 'Làm mới',
+      refreshing: 'Đang làm mới…',
+      loadError: 'Không thể tải dữ liệu KPI của bạn.',
+      refreshError: 'Làm mới không thành công.',
+      loading: 'Đang tải dữ liệu KPI…',
+      noDataTitle: 'Chưa có dữ liệu KPI',
+      noDataBody: (email) =>
+        `Không tìm thấy công việc đã chấm điểm gán cho ${email ?? 'tài khoản của bạn'} trong dự án 🐸 Anim8 KPI. Hãy nhờ producer xác nhận task được gán đúng email trên Asana, hoặc quay lại khi đã có "Total KPI Score".`,
+      ytdScore: 'Điểm KPI cả năm',
+      ytdTasks: 'Số task đã chấm (cả năm)',
+      thisMonth: 'Tháng này',
+      lastMonth: 'Tháng trước',
+      fteNote: (hours, fte) =>
+        `Điểm đã chuẩn hóa FTE theo lịch ${hours} giờ/tuần của bạn (FTE ${fte}) — Effort & Delivery được quy về tuần 40 giờ để cùng thang với full-time. Quality, Collaboration và R&D không bị nhân.`,
+      past3Months: 'Hiệu suất 3 tháng qua',
+      past3MonthsSub: 'Tổng điểm KPI theo tháng.',
+      performanceOverTime: 'Hiệu suất theo thời gian',
+      performanceOverTimeSub: 'Tổng điểm KPI theo tháng — từ đầu năm đến nay.',
+      qualityCollabTitle: 'Đánh giá chất lượng & phối hợp',
+      qualityCollabSub: 'Cách các task của bạn được đánh giá trong 3 tháng qua.',
+      qualityRating: 'Đánh giá chất lượng',
+      collaborationRating: 'Đánh giá phối hợp',
+      last3Months: '3 tháng qua',
+      rated: 'đã đánh giá',
+      noRatingsWindow: 'Chưa có đánh giá trong khoảng thời gian này.',
+      noScoredTasksYet: 'Chưa có task nào được chấm điểm.',
+      noScoredTasksYtd: 'Chưa có task nào được chấm điểm trong năm nay.',
+      flatVsLastMonth: '— không đổi so với tháng trước',
+      vsLastMonth: 'so với tháng trước',
     },
   },
 };

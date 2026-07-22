@@ -7,14 +7,14 @@ type HoverTranslateProps = {
   en: string;
   vn: string;
   className?: string;
-  /** Optional leading/trailing content (emoji, icons) that shouldn't be in the tooltip. */
+  /** Optional leading content (emoji, icons) that stays put while the text swaps. */
   children?: ReactNode;
 };
 
 /**
- * Shows the active-language string; on hover/focus reveals the other language
- * in a small tooltip. Dotted underline + help cursor tip people off that a
- * translation is one hover away — useful for a bilingual EN/VN crew.
+ * Shows the active-language string; on hover/focus crossfades in-place to the
+ * other language. Dotted underline marks phrases that can flip — useful for a
+ * bilingual EN/VN crew without needing a tooltip.
  */
 export function HoverTranslate({ en, vn, className, children }: HoverTranslateProps) {
   const { lang } = useCrewLanguage();
@@ -32,9 +32,14 @@ export function HoverTranslate({ en, vn, className, children }: HoverTranslatePr
   }
 
   return (
-    <span className={`crew-hover-translate ${className ?? ''}`.trim()} data-translate={other} tabIndex={0}>
+    <span className={`crew-hover-translate ${className ?? ''}`.trim()} tabIndex={0}>
       {children}
-      {primary}
+      <span className="crew-hover-translate__swap">
+        <span className="crew-hover-translate__primary">{primary}</span>
+        <span className="crew-hover-translate__other" aria-hidden="true">
+          {other}
+        </span>
+      </span>
     </span>
   );
 }

@@ -1780,9 +1780,8 @@ html.careers-page-active {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/** Hover-to-see-the-other-language tip — dotted underline marks translatable phrases. */
+/** Hover swaps active language → other language in place (crossfade + slight lift). */
 .crew-hover-translate {
-  position: relative;
   cursor: help;
   border-bottom: 1px dotted rgba(255, 255, 255, 0.28);
   text-decoration: none;
@@ -1794,41 +1793,58 @@ html.careers-page-active {
   border-radius: 2px;
 }
 
-.crew-hover-translate::after {
-  content: attr(data-translate);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  z-index: 40;
-  transform: translateX(-50%) translateY(4px);
-  padding: 0.35rem 0.55rem;
-  border-radius: 0.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(15, 15, 15, 0.96);
-  color: #f1f5f9;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.3;
-  white-space: nowrap;
-  max-width: min(18rem, 70vw);
-  white-space: normal;
-  text-align: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+.crew-hover-translate__swap {
+  display: inline-grid;
+  justify-items: start;
+  align-items: baseline;
+  vertical-align: baseline;
 }
 
-.crew-hover-translate:hover::after,
-.crew-hover-translate:focus-visible::after {
+.crew-hover-translate__primary,
+.crew-hover-translate__other {
+  grid-area: 1 / 1;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.crew-hover-translate__primary {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0);
+}
+
+.crew-hover-translate__other {
+  opacity: 0;
+  transform: translateY(0.2em);
+  pointer-events: none;
+}
+
+.crew-hover-translate:hover .crew-hover-translate__primary,
+.crew-hover-translate:focus-visible .crew-hover-translate__primary {
+  opacity: 0;
+  transform: translateY(-0.2em);
+}
+
+.crew-hover-translate:hover .crew-hover-translate__other,
+.crew-hover-translate:focus-visible .crew-hover-translate__other {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .crew-hover-translate::after {
+  .crew-hover-translate__primary,
+  .crew-hover-translate__other {
     transition: none;
+  }
+
+  .crew-hover-translate:hover .crew-hover-translate__primary,
+  .crew-hover-translate:focus-visible .crew-hover-translate__primary {
+    transform: none;
+  }
+
+  .crew-hover-translate:hover .crew-hover-translate__other,
+  .crew-hover-translate:focus-visible .crew-hover-translate__other {
+    transform: none;
   }
 }
 

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { SignOutButton } from '@/components/auth/SignOutButton';
+import { PendingRequestsBadge } from '@/components/admin/PendingRequestsBadge';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -22,8 +23,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               <Link href="/admin/crew" className="transition hover:text-brand-cyan">
                 Crew directory
               </Link>
-              <Link href="/admin/pto-requests" className="transition hover:text-brand-cyan">
+              <Link href="/admin/pto-requests" className="inline-flex items-center transition hover:text-brand-cyan">
                 PTO requests
+                <PendingRequestsBadge />
               </Link>
             </nav>
           </div>

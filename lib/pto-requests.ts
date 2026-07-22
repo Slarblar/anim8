@@ -103,6 +103,11 @@ export async function listPendingPtoRequests(): Promise<PtoRequest[]> {
   return records.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
+/** Cheap count for nav badges — avoids hydrating every pending record. */
+export async function countPendingPtoRequests(): Promise<number> {
+  return getKv().scard(PENDING_INDEX_KEY);
+}
+
 export async function listAllPtoRequests(): Promise<PtoRequest[]> {
   const ids = await getKv().smembers(ALL_INDEX_KEY);
   const records = await hydrate(ids);

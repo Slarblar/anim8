@@ -20,8 +20,12 @@ export type CrewMember = {
   location: CrewLocation;
   /** Standing days-of-week this person works from home. Mirrored to recurring Google Calendar events. */
   fixedWfhDays: WeekdayCode[];
-  /** Google Calendar event IDs for the current fixedWfhDays recurring series — used to clean up on change. */
-  fixedWfhCalendarEventIds: string[];
+  /**
+   * Google Calendar recurring-event ID for each fixedWfhDays entry, keyed by
+   * day — lets us diff on change (only touch days that actually flipped)
+   * instead of tearing down and recreating the whole schedule every time.
+   */
+  fixedWfhCalendarEventIds: Partial<Record<WeekdayCode, string>>;
 };
 
 /** Fills in fields that may be missing on records created before they existed. */
@@ -30,7 +34,7 @@ function withDefaults(record: CrewMember): CrewMember {
     ...record,
     location: record.location ?? 'VN',
     fixedWfhDays: record.fixedWfhDays ?? [],
-    fixedWfhCalendarEventIds: record.fixedWfhCalendarEventIds ?? [],
+    fixedWfhCalendarEventIds: record.fixedWfhCalendarEventIds ?? {},
   };
 }
 
@@ -116,7 +120,7 @@ export async function addOrUpdateCrewMember(input: {
     ptoBalanceUpdatedAt: existing?.ptoBalanceUpdatedAt ?? new Date().toISOString(),
     location: existing?.location ?? 'VN',
     fixedWfhDays: existing?.fixedWfhDays ?? [],
-    fixedWfhCalendarEventIds: existing?.fixedWfhCalendarEventIds ?? [],
+    fixedWfhCalendarEventIds: existing?.fixedWfhCalendarEventIds ?? {},
   };
 
   await getKv().set(keyFor(email), record);
@@ -161,7 +165,7 @@ export async function setCrewMemberLocation(
 export async function setCrewMemberFixedWfh(
   email: string,
   fixedWfhDays: WeekdayCode[],
-  fixedWfhCalendarEventIds: string[]
+  fixedWfhCalendarEventIds: Partial<Record<WeekdayCode, string>>
 ): Promise<CrewMember> {
   const existing = await getCrewMember(email);
   if (!existing) throw new Error(`No crew member found for email: ${email}`);

@@ -64,14 +64,35 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
       const existing = await getCrewMember(params.email);
       if (!existing) throw new Error(`No crew member found for email: ${params.email}`);
 
-      const days = body.fixedWfhDays as WeekdayCode[];
-      // Tear down the old recurring series (if any) and recreate one per selected day —
-      // simplest way to keep the calendar in sync with whatever the admin just clicked.
-      await Promise.all(existing.fixedWfhCalendarEventIds.map((id) => deleteCalendarEvent(id)));
-      const newEventIds = await Promise.all(
-        days.map((day) => createFixedWfhCalendarEvent({ employeeName: existing.name, day }))
+      const newDays = body.fixedWfhDays as WeekdayCode[];
+      const oldDays = existing.fixedWfhDays;
+      const daysToRemove = oldDays.filter((day) => !newDays.includes(day));
+      const daysToAdd = newDays.filter((day) => !oldDays.includes(day));
+
+      // Only touch the days that actually changed — deleting/recreating the whole
+      // schedule on every click made even a single-day toggle do up to 10 Calendar
+      // API round trips.
+      await Promise.all(
+        daysToRemove.map((day) => {
+          const eventId = existing.fixedWfhCalendarEventIds[day];
+          return eventId ? deleteCalendarEvent(eventId) : Promise.resolve();
+        })
       );
-      member = await setCrewMemberFixedWfh(params.email, days, newEventIds);
+      const addedEventIds = await Promise.all(
+        daysToAdd.map(async (day) => [day, await createFixedWfhCalendarEvent({ employeeName: existing.name, day })] as const)
+      );
+
+      const nextEventIds: Partial<Record<WeekdayCode, string>> = {};
+      for (const day of newDays) {
+        if (!daysToAdd.includes(day)) {
+          nextEventIds[day] = existing.fixedWfhCalendarEventIds[day];
+        }
+      }
+      for (const [day, id] of addedEventIds) {
+        nextEventIds[day] = id;
+      }
+
+      member = await setCrewMemberFixedWfh(params.email, newDays, nextEventIds);
     }
     return NextResponse.json({ ok: true, member });
   } catch (err) {

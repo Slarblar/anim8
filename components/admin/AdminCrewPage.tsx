@@ -254,6 +254,13 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
   const [adjustAmount, setAdjustAmount] = useState('');
   const [editingStart, setEditingStart] = useState(false);
   const [startDateInput, setStartDateInput] = useState(member.startDate ?? '');
+  // Staged locally — each Calendar sync is a real round trip, so day clicks only
+  // update this in-memory selection until "Apply schedule" is pressed.
+  const [pendingWfhDays, setPendingWfhDays] = useState<WeekdayCode[]>(member.fixedWfhDays ?? []);
+
+  useEffect(() => {
+    setPendingWfhDays(member.fixedWfhDays ?? []);
+  }, [member.fixedWfhDays]);
 
   const entitlement = annualLeaveEntitlementDays(member.startDate);
 
@@ -298,17 +305,26 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
     patch({ location: (member.location ?? 'VN') === 'US' ? 'VN' : 'US' });
   }, [member.location, patch]);
 
-  const toggleWfhDay = useCallback(
-    (day: WeekdayCode) => {
-      const current = member.fixedWfhDays ?? [];
-      const next = current.includes(day) ? current.filter((d) => d !== day) : [...current, day];
-      patch({ fixedWfhDays: next });
-    },
-    [member.fixedWfhDays, patch]
-  );
+  const toggleWfhDay = useCallback((day: WeekdayCode) => {
+    setPendingWfhDays((current) =>
+      current.includes(day) ? current.filter((d) => d !== day) : [...current, day]
+    );
+  }, []);
+
+  const savedWfhDays = member.fixedWfhDays ?? [];
+  const wfhDaysChanged =
+    pendingWfhDays.length !== savedWfhDays.length ||
+    pendingWfhDays.some((d) => !savedWfhDays.includes(d));
+
+  const applyWfhSchedule = useCallback(() => {
+    patch({ fixedWfhDays: pendingWfhDays });
+  }, [pendingWfhDays, patch]);
+
+  const resetWfhSchedule = useCallback(() => {
+    setPendingWfhDays(savedWfhDays);
+  }, [savedWfhDays]);
 
   const balance = member.ptoBalanceDays ?? 0;
-  const fixedWfhDays = member.fixedWfhDays ?? [];
 
   return (
     <li
@@ -334,9 +350,9 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
               {balance} day{balance === 1 ? '' : 's'} PTO
             </span>
             <span className="text-text-muted">{(member.location ?? 'VN') === 'US' ? '🇺🇸 US' : '🇻🇳 VN'}</span>
-            {fixedWfhDays.length > 0 ? (
+            {savedWfhDays.length > 0 ? (
               <span className="text-brand-cyan">
-                WFH {fixedWfhDays.map((d) => WEEKDAYS.find((w) => w.code === d)?.label).join('/')}
+                WFH {savedWfhDays.map((d) => WEEKDAYS.find((w) => w.code === d)?.label).join('/')}
               </span>
             ) : null}
             {!member.startDate ? <span className="text-brand-pink">No start date</span> : null}
@@ -372,8 +388,23 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           </div>
 
           <div>
-            <p className={adminLabel}>Fixed WFH schedule (click a day to toggle — syncs to the shared calendar)</p>
-            <FixedWfhDayPicker days={fixedWfhDays} onToggleDay={toggleWfhDay} disabled={loading} />
+            <p className={adminLabel}>Fixed WFH schedule (click days, then apply — each apply syncs to the shared calendar)</p>
+            <FixedWfhDayPicker days={pendingWfhDays} onToggleDay={toggleWfhDay} disabled={loading} />
+            {wfhDaysChanged ? (
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  className={adminBtnGhost}
+                  disabled={loading}
+                  onClick={applyWfhSchedule}
+                >
+                  {loading ? 'Syncing…' : 'Apply schedule'}
+                </button>
+                <button type="button" className={adminBtnGhost} disabled={loading} onClick={resetWfhSchedule}>
+                  Reset
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { PersonMonthlyKPI, RatingCount } from '@/lib/kpi';
 import { adminCard } from '@/components/admin/admin-ui';
 
@@ -25,6 +26,50 @@ export const RATING_COLORS: Record<string, string> = {
 
 export function stripRatingNumber(rating: string): string {
   return rating.replace(/^\d+\s*-\s*/, '');
+}
+
+/** "#rrggbb" -> "r, g, b", for building rgba() strings from the band hex colors below. */
+function hexToRgbTriple(hex: string): string {
+  const clean = hex.replace('#', '');
+  const value = parseInt(clean, 16);
+  return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
+}
+
+export type ScoreBand = {
+  key: 'great' | 'good' | 'average' | 'bad' | 'poor';
+  label: string;
+  /** Score at/above which a Total KPI Score qualifies for this band (bands are checked best-first). */
+  min: number;
+  color: string;
+  colorDark: string;
+  colorLight: string;
+};
+
+/**
+ * Total KPI Score performance bands — straight from the Anim8 KPI Scoring
+ * Documentation ("1. Performance Bands"), so the /crew KPI charts use the
+ * exact same green -> yellow -> orange -> red read as the reference doc and
+ * people can tell at a glance whether they're trending up or slipping.
+ * Ordered best -> worst; `getScoreBand` returns the first match.
+ */
+export const SCORE_BANDS: ScoreBand[] = [
+  { key: 'great', label: 'Great (100+)', min: 100, color: '#22c55e', colorDark: '#123a1f', colorLight: '#86efac' },
+  { key: 'good', label: 'Good (80–99.9)', min: 80, color: '#7cc142', colorDark: '#34540f', colorLight: '#b6ec7a' },
+  {
+    key: 'average',
+    label: 'Average (60–79.9)',
+    min: 60,
+    color: '#eab308',
+    colorDark: '#4a3c08',
+    colorLight: '#fde68a',
+  },
+  { key: 'bad', label: 'Bad (40–59.9)', min: 40, color: '#f97316', colorDark: '#4a2408', colorLight: '#fdba74' },
+  { key: 'poor', label: 'Poor (<40)', min: 0, color: '#ef4444', colorDark: '#3f1414', colorLight: '#fca5a5' },
+];
+
+/** Which performance band a Total KPI Score falls into. A score of 0 (no data yet) reads as the lowest band, but the bar itself is hidden (height 0) so it never actually shows red for "no data". */
+export function getScoreBand(score: number): ScoreBand {
+  return SCORE_BANDS.find((band) => score >= band.min) ?? SCORE_BANDS[SCORE_BANDS.length - 1];
 }
 
 /** Whichever rating bucket has the most scored tasks in the window — "no ratings yet" when the window is empty. */
@@ -59,11 +104,13 @@ export function StatCard({ label, value, sub }: { label: string; value: string; 
 }
 
 /**
- * Animated bar chart, styled like a video-game health/mana bar: a solid
- * green glowing fill with a bright white glowing cap right at the top
- * edge, growing up from the track on mount. The current month pulses
- * (glow breathing + a diagonal shimmer sweep); past months hold a
- * calmer, static glow so the current one reads as "live".
+ * Animated bar chart, styled like a video-game health/mana bar: a glowing
+ * fill with a bright white glowing cap right at the top edge, growing up
+ * from the track on mount. The current month pulses (glow breathing + a
+ * diagonal shimmer sweep); past months hold a calmer, static glow so the
+ * current one reads as "live". Fill color follows the Total KPI Score
+ * performance band (green -> yellow -> orange -> red, see `SCORE_BANDS`)
+ * so anyone can tell at a glance whether they're trending up or slipping.
  */
 export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
   const [grown, setGrown] = useState(false);
@@ -81,65 +128,77 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
   const maxScore = Math.max(1, ...months.map((m) => m.score));
 
   return (
-    <div className="flex items-end gap-4 min-[480px]:gap-6">
-      {months.map((month, i) => {
-        const heightPct = month.score > 0 ? Math.max(4, Math.round((month.score / maxScore) * 100)) : 0;
-        const isCurrent = i === months.length - 1;
-        return (
-          <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-2.5">
-            <span className="text-sm font-black text-white font-mono md:text-base">{month.score}</span>
+    <div>
+      <div className="flex items-end gap-4 min-[480px]:gap-6">
+        {months.map((month, i) => {
+          const heightPct = month.score > 0 ? Math.max(4, Math.round((month.score / maxScore) * 100)) : 0;
+          const isCurrent = i === months.length - 1;
+          const band = getScoreBand(month.score);
+          const glowRgb = hexToRgbTriple(band.color);
+          return (
+            <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-2.5">
+              <span className="text-sm font-black text-white font-mono md:text-base">{month.score}</span>
 
-            {/* Track — dark recessed "bezel" the fill grows inside of. */}
-            <div className="relative flex h-36 w-full items-end overflow-hidden rounded-lg border border-white/10 bg-black/40 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] min-[480px]:h-44">
-              <div
-                className={`relative w-full overflow-hidden rounded-[6px] ${isCurrent ? 'kpi-bar-fill--active' : ''}`}
-                style={{
-                  height: `${grown ? heightPct : 0}%`,
-                  transition: `height 0.85s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.1}s`,
-                  background: isCurrent
-                    ? 'linear-gradient(to top, #34540f 0%, #7cc142 60%, #b6ec7a 100%)'
-                    : 'linear-gradient(to top, rgba(52,84,15,0.55) 0%, rgba(124,193,66,0.55) 60%, rgba(182,236,122,0.55) 100%)',
-                  boxShadow: isCurrent ? undefined : '0 0 8px rgba(124,193,66,0.2)',
-                }}
-              >
-                {/* Diagonal shimmer sweep — current month only, reads as "charging up". */}
-                {isCurrent ? <div className="shimmer absolute inset-0" /> : null}
+              {/* Track — dark recessed "bezel" the fill grows inside of. */}
+              <div className="relative flex h-36 w-full items-end overflow-hidden rounded-lg border border-white/10 bg-black/40 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] min-[480px]:h-44">
+                <div
+                  className={`relative w-full overflow-hidden rounded-[6px] ${isCurrent ? 'kpi-bar-fill--active' : ''}`}
+                  style={
+                    {
+                      height: `${grown ? heightPct : 0}%`,
+                      transition: `height 0.85s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.1}s`,
+                      background: isCurrent
+                        ? `linear-gradient(to top, ${band.colorDark} 0%, ${band.color} 60%, ${band.colorLight} 100%)`
+                        : `linear-gradient(to top, rgba(${glowRgb},0.55) 0%, rgba(${glowRgb},0.75) 60%, rgba(${glowRgb},0.85) 100%)`,
+                      boxShadow: isCurrent ? undefined : `0 0 8px rgba(${glowRgb},0.25)`,
+                      // Drives the .kpi-bar-fill--active pulse (see globals.css) so the "live" glow matches this bar's band color.
+                      '--kpi-glow-color': `rgba(${glowRgb}, 0.45)`,
+                      '--kpi-glow-color-strong': `rgba(${glowRgb}, 0.8)`,
+                    } as CSSProperties
+                  }
+                >
+                  {/* Diagonal shimmer sweep — current month only, reads as "charging up". */}
+                  {isCurrent ? <div className="shimmer absolute inset-0" /> : null}
 
-                {/* Glowing white cap at the growing edge — the "health bar" highlight (thinned to half its original height). */}
-                {heightPct > 0 ? (
-                  <div
-                    className={`absolute inset-x-0 top-0 h-[2.5px] rounded-t-[6px] bg-white min-[480px]:h-[3px] ${
-                      isCurrent ? 'kpi-bar-cap--active' : ''
-                    }`}
-                    style={{
-                      boxShadow: isCurrent ? undefined : '0 0 5px 1px rgba(255,255,255,0.55)',
-                      opacity: grown ? 1 : 0,
-                      transition: `opacity 0.3s ease-out ${i * 0.1 + 0.55}s`,
-                    }}
-                  />
-                ) : null}
-
-                {/* Bright thin vertical glow streak — glossy accent running the height of the fill. */}
-                {heightPct > 0 ? (
-                  <div
-                    className={`absolute inset-y-0 w-[1.5px] bg-white ${isCurrent ? 'kpi-bar-vglow--active' : ''}`}
-                    style={{
-                      left: '38%',
-                      boxShadow: isCurrent ? undefined : '0 0 4px 1px rgba(255,255,255,0.55)',
-                      opacity: grown ? 1 : 0,
-                      transition: `opacity 0.3s ease-out ${i * 0.1 + 0.6}s`,
-                    }}
-                  />
-                ) : null}
+                  {/* Glowing white cap at the growing edge — the "health bar" highlight (thinned to half its original height). */}
+                  {heightPct > 0 ? (
+                    <div
+                      className={`absolute inset-x-0 top-0 h-[2.5px] rounded-t-[6px] bg-white min-[480px]:h-[3px] ${
+                        isCurrent ? 'kpi-bar-cap--active' : ''
+                      }`}
+                      style={{
+                        boxShadow: isCurrent ? undefined : '0 0 5px 1px rgba(255,255,255,0.55)',
+                        opacity: grown ? 1 : 0,
+                        transition: `opacity 0.3s ease-out ${i * 0.1 + 0.55}s`,
+                      }}
+                    />
+                  ) : null}
+                </div>
               </div>
-            </div>
 
-            <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
-              {month.label}
-            </span>
-          </div>
-        );
-      })}
+              <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
+                {month.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend — teaches the color code from the KPI Scoring Documentation at a glance. */}
+      <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 pt-4">
+        {SCORE_BANDS.map((band) => (
+          <span
+            key={band.key}
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono"
+          >
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: band.color, boxShadow: `0 0 5px 0.5px rgba(${hexToRgbTriple(band.color)},0.7)` }}
+            />
+            {band.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

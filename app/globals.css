@@ -1720,14 +1720,16 @@ html.careers-page-active {
   transform-origin: center;
 }
 
-/** Outer green glow around the current month's "health bar" — box-shadow (not filter) so it doesn't get clipped by the bar's own overflow-hidden. */
+/** Outer glow around the current month's "health bar" — box-shadow (not filter) so it doesn't get clipped by
+    the bar's own overflow-hidden. Color comes from a CSS var set inline per-bar so it can track the KPI score
+    band (green/yellow/orange/red) instead of always being green; falls back to the original lime green. */
 @keyframes kpi-bar-glow-pulse {
   0%,
   100% {
-    box-shadow: 0 0 14px 2px rgba(124, 193, 66, 0.45);
+    box-shadow: 0 0 14px 2px var(--kpi-glow-color, rgba(124, 193, 66, 0.45));
   }
   50% {
-    box-shadow: 0 0 26px 5px rgba(124, 193, 66, 0.75);
+    box-shadow: 0 0 26px 5px var(--kpi-glow-color-strong, rgba(124, 193, 66, 0.75));
   }
 }
 
@@ -1748,25 +1750,6 @@ html.careers-page-active {
 
 .kpi-bar-cap--active {
   animation: kpi-bar-cap-glow 2.4s ease-in-out infinite;
-}
-
-/** Thin bright vertical shine running up each "health bar" fill — a glossy accent
-    on top of the horizontal white cap, like the vertical highlight streak on a
-    game health/mana bar. Current month pulses; past months hold a static glow. */
-@keyframes kpi-bar-vglow-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-    box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.65);
-  }
-  50% {
-    opacity: 1;
-    box-shadow: 0 0 11px 3px rgba(255, 255, 255, 1);
-  }
-}
-
-.kpi-bar-vglow--active {
-  animation: kpi-bar-vglow-pulse 2.4s ease-in-out infinite;
 }
 
 /** Shared entrance animation for /crew dashboard cards — same easing curve as .portal-task-expand elsewhere on the site. Apply with an inline `animation-delay` for staggering. */
@@ -1791,7 +1774,6 @@ html.careers-page-active {
   .kpi-dot-pulse,
   .kpi-bar-fill--active,
   .kpi-bar-cap--active,
-  .kpi-bar-vglow--active,
   .crew-fade-in-up {
     animation: none;
   }

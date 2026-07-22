@@ -1,10 +1,20 @@
 import { unstable_cache } from 'next/cache';
 import 'server-only';
+import {
+  fteRatioForMember,
+  listCrewMembers,
+  type EmploymentType,
+} from './crew-directory';
 
 /**
  * Crew KPI dashboard — pulls scored tasks from the 🐸 Anim8 KPI Asana
  * project and rolls them up per-person (matched by Asana assignee email,
  * same email crew members use to sign in at /crew).
+ *
+ * Scoring follows Anim8 KPI Scoring Documentation 2026–2027 §2 + §5:
+ *   Total = ([Effort ÷ FTE] × Quality × Collaboration) + [Delivery ÷ FTE] + R&D
+ * where FTE = weekly contracted hours ÷ 40. Quality / Collaboration /
+ * R&D are not volume-scaled — only Effort and Delivery are.
  */
 
 // ---- Config -----------------------------------------------------------
@@ -42,10 +52,14 @@ type AsanaTask = {
   modified_at: string; // ISO timestamp
 };
 
+/** Performance bands from the KPI scoring doc §1 — same thresholds for everyone once FTE-normalized. */
+export type PerformanceBand = 'great' | 'good' | 'average' | 'bad' | 'poor';
+
 export type PersonMonthlyKPI = {
   month: string; // 'YYYY-MM'
   label: string; // 'Jul' or 'Jan 2026' when the year changes
   score: number;
+  band: PerformanceBand;
 };
 
 /** One rating bucket (Asana enum option, e.g. "5 - Excellent") + how many scored tasks landed in it. */
@@ -61,6 +75,12 @@ export type PersonKPISummary = {
   ytdTasks: number;
   currentMonthScore: number;
   previousMonthScore: number;
+  currentMonthBand: PerformanceBand;
+  previousMonthBand: PerformanceBand;
+  /** FTE Ratio used to normalize this person's volume (hours ÷ 40). */
+  fteRatio: number;
+  weeklyContractedHours: number;
+  employmentType: EmploymentType;
   /** Full history, oldest first — used for long-range trend views. */
   monthly: PersonMonthlyKPI[];
   /** Current month + the two before it, zero-filled — for the "past 3 months" bar chart. */
@@ -77,6 +97,29 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 /** Fixed display order for both rating fields — best to worst, matching the Asana enum options exactly. */
 const RATING_ORDER = ['5 - Excellent', '4 - Very Good', '3 - Good', '2 - Fair', '1 - Poor'];
 
+export function performanceBand(score: number): PerformanceBand {
+  if (score >= 100) return 'great';
+  if (score >= 80) return 'good';
+  if (score >= 60) return 'average';
+  if (score >= 40) return 'bad';
+  return 'poor';
+}
+
+export function performanceBandLabel(band: PerformanceBand): string {
+  switch (band) {
+    case 'great':
+      return 'Great';
+    case 'good':
+      return 'Good';
+    case 'average':
+      return 'Average';
+    case 'bad':
+      return 'Bad';
+    case 'poor':
+      return 'Poor';
+  }
+}
+
 function getField(task: AsanaTask, name: string) {
   return task.custom_fields.find((f) => f.name === name);
 }
@@ -89,6 +132,40 @@ function monthKeyOf(year: number, month1to12: number): string {
   return `${year}-${String(month1to12).padStart(2, '0')}`;
 }
 
+/**
+ * Per-task score with FTE normalization (doc §5).
+ * Effort + Delivery are volume-driven → ÷ FTE.
+ * Quality/Collaboration multipliers and R&D are schedule-independent → untouched.
+ */
+function scoreTask(task: AsanaTask, fteRatio: number): number | null {
+  const qualityPts = getField(task, 'Quality Points')?.number_value;
+  const collabPts = getField(task, 'Collaboration Points')?.number_value;
+  const effortPts = getField(task, 'Effort Points')?.number_value ?? 0;
+  const deliveryPts = getField(task, 'Delivery Bonus')?.number_value ?? 0;
+  const rndPts = getField(task, 'R&D Points')?.number_value ?? 0;
+  const asanaTotal = getField(task, 'Total KPI Score')?.number_value;
+
+  if (qualityPts != null && collabPts != null) {
+    const qualityMult = qualityPts / 10;
+    const collabMult = collabPts / 10;
+    return (
+      (effortPts / fteRatio) * qualityMult * collabMult + deliveryPts / fteRatio + rndPts
+    );
+  }
+
+  // Older / incomplete tasks sometimes only have the rolled-up Total KPI Score.
+  // At FTE 1.0 that's already correct; otherwise scale as a best-effort approximation.
+  if (asanaTotal) {
+    return fteRatio === 1 ? asanaTotal : asanaTotal / fteRatio;
+  }
+
+  return null;
+}
+
+function withBand(month: string, label: string, score: number): PersonMonthlyKPI {
+  return { month, label, score: round2(score), band: performanceBand(score) };
+}
+
 /** Jan of `now`'s year through `now`'s month, filling in 0 for months with no scored tasks. */
 function buildYtdMonthly(monthly: Map<string, number>, now: Date): PersonMonthlyKPI[] {
   const year = now.getFullYear();
@@ -97,7 +174,8 @@ function buildYtdMonthly(monthly: Map<string, number>, now: Date): PersonMonthly
   const result: PersonMonthlyKPI[] = [];
   for (let month = 1; month <= currentMonth; month++) {
     const key = monthKeyOf(year, month);
-    result.push({ month: key, label: MONTHS[month - 1], score: round2(monthly.get(key) ?? 0) });
+    const score = monthly.get(key) ?? 0;
+    result.push(withBand(key, MONTHS[month - 1], score));
   }
   return result;
 }
@@ -113,8 +191,11 @@ function buildLastNMonths(monthly: Map<string, number>, now: Date, count: number
   for (let i = count - 1; i >= 0; i--) {
     const ref = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = monthKeyOf(ref.getFullYear(), ref.getMonth() + 1);
-    const label = ref.getFullYear() === now.getFullYear() ? MONTHS[ref.getMonth()] : `${MONTHS[ref.getMonth()]} ${ref.getFullYear()}`;
-    result.push({ month: key, label, score: round2(monthly.get(key) ?? 0) });
+    const label =
+      ref.getFullYear() === now.getFullYear()
+        ? MONTHS[ref.getMonth()]
+        : `${MONTHS[ref.getMonth()]} ${ref.getFullYear()}`;
+    result.push(withBand(key, label, monthly.get(key) ?? 0));
   }
   return result;
 }
@@ -160,8 +241,17 @@ async function fetchAllKPITasks(): Promise<AsanaTask[]> {
   return tasks;
 }
 
+type FteLookup = {
+  fteRatio: number;
+  weeklyContractedHours: number;
+  employmentType: EmploymentType;
+};
+
 // ---- Aggregate into a per-person, per-month KPI map ------------------------
-function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary> {
+function aggregateByPerson(
+  tasks: AsanaTask[],
+  fteByEmail: Record<string, FteLookup>
+): Record<string, PersonKPISummary> {
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const prevRef = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -180,15 +270,23 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
     ytdScore: number;
     qualityRatings: Map<string, number>;
     collaborationRatings: Map<string, number>;
+    fte: FteLookup;
   };
   const byPerson = new Map<string, Draft>();
 
   for (const task of tasks) {
     if (!task.assignee?.email) continue;
 
-    const scoreField = getField(task, 'Total KPI Score');
-    const score = scoreField?.number_value ?? 0;
-    if (!score) continue; // not scored yet, nothing to bucket
+    const email = task.assignee.email;
+    const emailKey = email.toLowerCase();
+    const fte = fteByEmail[emailKey] ?? {
+      fteRatio: 1,
+      weeklyContractedHours: 40,
+      employmentType: 'full_time' as const,
+    };
+
+    const score = scoreTask(task, fte.fteRatio);
+    if (score == null || score === 0) continue; // not scored yet, nothing to bucket
 
     // Date fallback chain, most reliable first:
     // 1. Explicit "Completion Date" field, when someone's filled it in
@@ -212,7 +310,6 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
 
     const monthKey = dateStr.slice(0, 7);
     const year = Number(dateStr.slice(0, 4));
-    const email = task.assignee.email;
 
     if (!byPerson.has(email)) {
       byPerson.set(email, {
@@ -223,6 +320,7 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
         ytdScore: 0,
         qualityRatings: new Map(),
         collaborationRatings: new Map(),
+        fte,
       });
     }
 
@@ -257,16 +355,24 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
       const monthNum = Number(mStr);
       const label = lastYear === null || year !== lastYear ? `${MONTHS[monthNum - 1]} ${year}` : MONTHS[monthNum - 1];
       lastYear = year;
-      return { month: m, label, score: round2(person.monthly.get(m)!) };
+      return withBand(m, label, person.monthly.get(m)!);
     });
+
+    const currentMonthScore = person.monthly.get(currentMonthKey) ?? 0;
+    const previousMonthScore = person.monthly.get(prevMonthKey) ?? 0;
 
     result[email] = {
       name: person.name,
       email,
       ytdScore: round2(person.ytdScore),
       ytdTasks: person.ytdTasks,
-      currentMonthScore: round2(person.monthly.get(currentMonthKey) ?? 0),
-      previousMonthScore: round2(person.monthly.get(prevMonthKey) ?? 0),
+      currentMonthScore: round2(currentMonthScore),
+      previousMonthScore: round2(previousMonthScore),
+      currentMonthBand: performanceBand(currentMonthScore),
+      previousMonthBand: performanceBand(previousMonthScore),
+      fteRatio: round2(person.fte.fteRatio),
+      weeklyContractedHours: person.fte.weeklyContractedHours,
+      employmentType: person.fte.employmentType,
       monthly,
       lastThreeMonthly: buildLastNMonths(person.monthly, now, 3),
       ytdMonthly: buildYtdMonthly(person.monthly, now),
@@ -278,15 +384,28 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
   return result;
 }
 
+async function buildFteLookup(): Promise<Record<string, FteLookup>> {
+  const members = await listCrewMembers();
+  const lookup: Record<string, FteLookup> = {};
+  for (const member of members) {
+    lookup[member.email.toLowerCase()] = {
+      fteRatio: fteRatioForMember(member),
+      weeklyContractedHours: member.weeklyContractedHours,
+      employmentType: member.employmentType,
+    };
+  }
+  return lookup;
+}
+
 // ---- Public API -------------------------------------------------------
 // Cached across ALL visitors — Asana only gets hit once per revalidation
 // window no matter how many crew members load the page.
 export const getAllKPIData = unstable_cache(
   async () => {
-    const tasks = await fetchAllKPITasks();
-    return aggregateByPerson(tasks);
+    const [tasks, fteByEmail] = await Promise.all([fetchAllKPITasks(), buildFteLookup()]);
+    return aggregateByPerson(tasks, fteByEmail);
   },
-  ['crew-kpi-data'],
+  ['crew-kpi-data-v2-fte'],
   { revalidate: REVALIDATE_SECONDS, tags: ['kpi'] }
 );
 

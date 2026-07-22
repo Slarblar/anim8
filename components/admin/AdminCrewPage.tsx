@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   annualLeaveEntitlementDays,
+  defaultWeeklyHours,
   type CrewLocation,
   type CrewMember,
   type EmploymentType,
@@ -64,6 +65,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
   const [initialBalance, setInitialBalance] = useState('');
   const [location, setLocation] = useState<CrewLocation>('VN');
   const [employmentType, setEmploymentType] = useState<EmploymentType>('full_time');
+  const [weeklyHours, setWeeklyHours] = useState(String(defaultWeeklyHours('full_time')));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,6 +87,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
             initialPtoBalanceDays: initialBalance ? Number(initialBalance) : undefined,
             location,
             employmentType,
+            weeklyContractedHours: weeklyHours ? Number(weeklyHours) : undefined,
           }),
         });
         const data = (await res.json()) as ApiErrorBody;
@@ -99,6 +102,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
         setInitialBalance('');
         setLocation('VN');
         setEmploymentType('full_time');
+        setWeeklyHours(String(defaultWeeklyHours('full_time')));
         onCreated();
       } catch {
         setError('Could not add crew member. Please try again.');
@@ -106,7 +110,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
         setSubmitting(false);
       }
     },
-    [name, email, role, startDate, initialBalance, location, employmentType, onCreated]
+    [name, email, role, startDate, initialBalance, location, employmentType, weeklyHours, onCreated]
   );
 
   return (
@@ -200,7 +204,19 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
             id="crewEmploymentType"
             className={adminInput}
             value={employmentType}
-            onChange={(e) => setEmploymentType(e.target.value as EmploymentType)}
+            onChange={(e) => {
+              const next = e.target.value as EmploymentType;
+              setEmploymentType(next);
+              // Keep hours in sync with the type's default unless an admin already typed a custom value.
+              setWeeklyHours((current) => {
+                const asNumber = Number(current);
+                const stillDefault =
+                  !current ||
+                  asNumber === defaultWeeklyHours('full_time') ||
+                  asNumber === defaultWeeklyHours('part_time');
+                return stillDefault ? String(defaultWeeklyHours(next)) : current;
+              });
+            }}
           >
             {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -208,6 +224,22 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className={adminLabel} htmlFor="crewWeeklyHours">
+            Weekly contracted hours (KPI FTE = hours ÷ 40)
+          </label>
+          <input
+            id="crewWeeklyHours"
+            type="number"
+            min={1}
+            max={80}
+            step={1}
+            className={adminInput}
+            value={weeklyHours}
+            onChange={(e) => setWeeklyHours(e.target.value)}
+            required
+          />
         </div>
       </div>
 
@@ -465,6 +497,9 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
             {member.role ? <span className="text-text-muted">{member.role}</span> : null}
             <span className="text-text-muted">{EMPLOYMENT_TYPE_LABELS[member.employmentType ?? 'full_time']}</span>
+            <span className="font-mono text-text-muted">
+              {member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time')}h/wk
+            </span>
             <span className="font-mono text-brand-cyan">
               {balance} day{balance === 1 ? '' : 's'} PTO
             </span>
@@ -513,6 +548,36 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
               onChange={(next) => patch({ employmentType: next })}
               disabled={loading}
             />
+          </div>
+
+          <div>
+            <p className={adminLabel}>Weekly contracted hours (KPI FTE = hours ÷ 40)</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={80}
+                step={1}
+                className={`${adminInput} max-w-[8rem]`}
+                defaultValue={member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time')}
+                key={`${member.email}-${member.weeklyContractedHours}-${member.employmentType}`}
+                id={`hours-${member.email}`}
+                aria-label="Weekly contracted hours"
+              />
+              <button
+                type="button"
+                className={adminBtnGhost}
+                disabled={loading}
+                onClick={() => {
+                  const input = document.getElementById(`hours-${member.email}`) as HTMLInputElement | null;
+                  const hours = Number(input?.value);
+                  if (!(hours > 0)) return;
+                  patch({ weeklyContractedHours: hours });
+                }}
+              >
+                Save hours
+              </button>
+            </div>
           </div>
 
           <div>

@@ -8,6 +8,7 @@ import {
   setCrewMemberFixedWfh,
   setCrewMemberLocation,
   setCrewMemberStartDate,
+  setCrewMemberWeeklyHours,
   type CrewLocation,
   type EmploymentType,
   type WeekdayCode,
@@ -23,6 +24,7 @@ type PatchBody = {
   startDate?: string | null;
   location?: CrewLocation;
   employmentType?: EmploymentType;
+  weeklyContractedHours?: number;
   fixedWfhDays?: WeekdayCode[];
 };
 
@@ -42,11 +44,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
   const hasStartDate = body.startDate !== undefined;
   const hasLocation = body.location === 'US' || body.location === 'VN';
   const hasEmploymentType = !!body.employmentType && EMPLOYMENT_TYPES.includes(body.employmentType);
+  const hasWeeklyHours = typeof body.weeklyContractedHours === 'number' && body.weeklyContractedHours > 0;
   const hasFixedWfhDays =
     Array.isArray(body.fixedWfhDays) &&
     body.fixedWfhDays.every((day) => WEEKDAY_CODES.includes(day));
 
-  if (!hasActive && !hasAdjustment && !hasStartDate && !hasLocation && !hasEmploymentType && !hasFixedWfhDays) {
+  if (
+    !hasActive &&
+    !hasAdjustment &&
+    !hasStartDate &&
+    !hasLocation &&
+    !hasEmploymentType &&
+    !hasWeeklyHours &&
+    !hasFixedWfhDays
+  ) {
     return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
   }
 
@@ -67,6 +78,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     }
     if (hasEmploymentType) {
       member = await setCrewMemberEmploymentType(params.email, body.employmentType as EmploymentType);
+    }
+    if (hasWeeklyHours) {
+      member = await setCrewMemberWeeklyHours(params.email, body.weeklyContractedHours as number);
     }
     if (hasFixedWfhDays) {
       const existing = await getCrewMember(params.email);

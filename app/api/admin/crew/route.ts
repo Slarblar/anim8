@@ -25,6 +25,7 @@ type CreateCrewBody = {
   initialPtoBalanceDays?: number;
   location?: CrewLocation;
   employmentType?: EmploymentType;
+  weeklyContractedHours?: number;
 };
 
 export async function POST(req: NextRequest) {
@@ -52,6 +53,10 @@ export async function POST(req: NextRequest) {
         typeof body.initialPtoBalanceDays === 'number' ? body.initialPtoBalanceDays : undefined,
       location: body.location === 'US' || body.location === 'VN' ? body.location : undefined,
       employmentType: body.employmentType && EMPLOYMENT_TYPES.includes(body.employmentType) ? body.employmentType : undefined,
+      weeklyContractedHours:
+        typeof body.weeklyContractedHours === 'number' && body.weeklyContractedHours > 0
+          ? body.weeklyContractedHours
+          : undefined,
     });
     return NextResponse.json({ member });
   } catch (err) {

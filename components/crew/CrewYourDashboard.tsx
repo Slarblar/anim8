@@ -3,10 +3,20 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { PersonKPISummary } from '@/lib/kpi';
+import { performanceBandLabel } from '@/lib/kpi';
 import { adminAlertError, adminBtnPrimary, adminCard } from '@/components/admin/admin-ui';
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
-import { MonthlyBarChart, ScoreDelta, StatCard, crewBody, crewSectionTitle, stripRatingNumber, topRating } from './kpi-ui';
+import {
+  MonthlyBarChart,
+  ScoreDelta,
+  StatCard,
+  crewBody,
+  crewSectionTitle,
+  getScoreBand,
+  stripRatingNumber,
+  topRating,
+} from './kpi-ui';
 
 type PtoBalance = { balanceDays: number | null; entitlementDays: number | null };
 type KpiResponse = { summary: PersonKPISummary | null; error?: string };
@@ -119,7 +129,20 @@ export function CrewYourDashboard() {
               <StatCard
                 label={c.thisMonthKpi}
                 value={kpi.currentMonthScore.toFixed(2)}
-                sub={<ScoreDelta current={kpi.currentMonthScore} previous={kpi.previousMonthScore} />}
+                sub={
+                  <>
+                    {kpi.currentMonthScore > 0 ? (
+                      <span
+                        className="text-xs font-bold uppercase tracking-wider font-mono"
+                        style={{ color: getScoreBand(kpi.currentMonthScore).color }}
+                      >
+                        {performanceBandLabel(kpi.currentMonthBand)}
+                      </span>
+                    ) : null}
+                    {kpi.currentMonthScore > 0 ? ' · ' : null}
+                    <ScoreDelta current={kpi.currentMonthScore} previous={kpi.previousMonthScore} />
+                  </>
+                }
               />
             </div>
             <div className="crew-fade-in-up" style={{ animationDelay: '0.15s' }}>

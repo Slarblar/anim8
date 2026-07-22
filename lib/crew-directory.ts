@@ -8,6 +8,18 @@ export type CrewLocation = 'US' | 'VN';
 /** HR classification — drives things like PTO accrual assumptions and headcount reporting. */
 export type EmploymentType = 'full_time' | 'part_time' | 'contractor';
 
+/** Full-time week used as the FTE denominator in the KPI scoring doc (hrs ÷ 40). */
+export const FULL_TIME_WEEKLY_HOURS = 40;
+
+/**
+ * Default contracted hours when none are set yet — part-time/contractor default
+ * to a half week so KPI volume isn't judged against a full 40h bar by accident.
+ */
+export function defaultWeeklyHours(employmentType: EmploymentType): number {
+  if (employmentType === 'full_time') return FULL_TIME_WEEKLY_HOURS;
+  return 20;
+}
+
 export type CrewMember = {
   email: string;
   name: string;
@@ -23,6 +35,11 @@ export type CrewMember = {
   location: CrewLocation;
   /** Full-time / part-time / contractor. */
   employmentType: EmploymentType;
+  /**
+   * Contracted hours per week — drives KPI FTE Ratio (hours ÷ 40). Only change
+   * when someone's schedule changes; see Anim8 KPI Scoring doc §5.
+   */
+  weeklyContractedHours: number;
   /** Standing days-of-week this person works from home. Mirrored to recurring Google Calendar events. */
   fixedWfhDays: WeekdayCode[];
   /**
@@ -35,13 +52,32 @@ export type CrewMember = {
 
 /** Fills in fields that may be missing on records created before they existed. */
 function withDefaults(record: CrewMember): CrewMember {
+  const employmentType = record.employmentType ?? 'full_time';
   return {
     ...record,
     location: record.location ?? 'VN',
-    employmentType: record.employmentType ?? 'full_time',
+    employmentType,
+    weeklyContractedHours:
+      typeof record.weeklyContractedHours === 'number' && record.weeklyContractedHours > 0
+        ? record.weeklyContractedHours
+        : defaultWeeklyHours(employmentType),
     fixedWfhDays: record.fixedWfhDays ?? [],
     fixedWfhCalendarEventIds: record.fixedWfhCalendarEventIds ?? {},
   };
+}
+
+/**
+ * FTE Ratio from the KPI scoring doc: Weekly Contracted Hours ÷ 40.
+ * Floored slightly above 0 so a mis-entered 0 can't blow up score math.
+ */
+export function fteRatioForMember(
+  member: Pick<CrewMember, 'weeklyContractedHours' | 'employmentType'>
+): number {
+  const hours =
+    typeof member.weeklyContractedHours === 'number' && member.weeklyContractedHours > 0
+      ? member.weeklyContractedHours
+      : defaultWeeklyHours(member.employmentType ?? 'full_time');
+  return Math.max(hours / FULL_TIME_WEEKLY_HOURS, 0.05);
 }
 
 /**
@@ -109,6 +145,7 @@ export async function addOrUpdateCrewMember(input: {
   initialPtoBalanceDays?: number;
   location?: CrewLocation;
   employmentType?: EmploymentType;
+  weeklyContractedHours?: number;
 }): Promise<CrewMember> {
   const email = input.email.trim().toLowerCase();
   const name = input.name.trim();
@@ -117,6 +154,12 @@ export async function addOrUpdateCrewMember(input: {
   }
 
   const existing = await getCrewMember(email);
+  const employmentType = input.employmentType ?? existing?.employmentType ?? 'full_time';
+  const weeklyContractedHours =
+    typeof input.weeklyContractedHours === 'number' && input.weeklyContractedHours > 0
+      ? input.weeklyContractedHours
+      : existing?.weeklyContractedHours ?? defaultWeeklyHours(employmentType);
+
   const record: CrewMember = {
     email,
     name,
@@ -127,7 +170,8 @@ export async function addOrUpdateCrewMember(input: {
     ptoBalanceDays: existing?.ptoBalanceDays ?? input.initialPtoBalanceDays ?? 0,
     ptoBalanceUpdatedAt: existing?.ptoBalanceUpdatedAt ?? new Date().toISOString(),
     location: input.location ?? existing?.location ?? 'VN',
-    employmentType: input.employmentType ?? existing?.employmentType ?? 'full_time',
+    employmentType,
+    weeklyContractedHours,
     fixedWfhDays: existing?.fixedWfhDays ?? [],
     fixedWfhCalendarEventIds: existing?.fixedWfhCalendarEventIds ?? {},
   };
@@ -171,7 +215,32 @@ export async function setCrewMemberEmploymentType(
 ): Promise<CrewMember> {
   const existing = await getCrewMember(email);
   if (!existing) throw new Error(`No crew member found for email: ${email}`);
-  const updated = { ...existing, employmentType };
+
+  // If their hours still match the old type's default, flip to the new type's
+  // default — preserves intentionally custom schedules (e.g. 30h part-time).
+  const oldDefault = defaultWeeklyHours(existing.employmentType);
+  const hoursStillDefault = existing.weeklyContractedHours === oldDefault;
+  const updated: CrewMember = {
+    ...existing,
+    employmentType,
+    weeklyContractedHours: hoursStillDefault
+      ? defaultWeeklyHours(employmentType)
+      : existing.weeklyContractedHours,
+  };
+  await getKv().set(keyFor(email), updated);
+  return updated;
+}
+
+export async function setCrewMemberWeeklyHours(
+  email: string,
+  weeklyContractedHours: number
+): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  if (!(weeklyContractedHours > 0) || weeklyContractedHours > 80) {
+    throw new Error('Weekly contracted hours must be between 0 and 80.');
+  }
+  const updated = { ...existing, weeklyContractedHours };
   await getKv().set(keyFor(email), updated);
   return updated;
 }

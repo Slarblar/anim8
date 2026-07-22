@@ -2,10 +2,30 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { PersonKPISummary } from '@/lib/kpi';
+import { performanceBandLabel } from '@/lib/kpi';
 import { adminAlertError, adminBtnGhost, adminCard } from '@/components/admin/admin-ui';
-import { KpiLineChart, MonthlyBarChart, RatingDonut, ScoreDelta, StatCard, crewBody, crewSectionTitle } from './kpi-ui';
+import {
+  KpiLineChart,
+  MonthlyBarChart,
+  RatingDonut,
+  ScoreDelta,
+  StatCard,
+  crewBody,
+  crewSectionTitle,
+  getScoreBand,
+} from './kpi-ui';
 
 type KpiResponse = { summary: PersonKPISummary | null; email?: string; error?: string };
+
+function BandBadge({ score }: { score: number }) {
+  if (score <= 0) return null;
+  const band = getScoreBand(score);
+  return (
+    <span className="text-xs font-bold uppercase tracking-wider font-mono" style={{ color: band.color }}>
+      {performanceBandLabel(band.key)}
+    </span>
+  );
+}
 
 export function CrewKpiSummary() {
   const [summary, setSummary] = useState<PersonKPISummary | null | undefined>(undefined);
@@ -79,6 +99,14 @@ export function CrewKpiSummary() {
 
       {summary ? (
         <>
+          {summary.fteRatio !== 1 ? (
+            <p className={`${crewBody} crew-fade-in-up`}>
+              Scores are FTE-normalized for your {summary.weeklyContractedHours}h/week schedule (FTE{' '}
+              {summary.fteRatio.toFixed(2)}) — Effort &amp; Delivery are scaled to a 40h week so bands match
+              full-time peers. Quality, Collaboration, and R&amp;D are not scaled.
+            </p>
+          ) : null}
+
           <div className="grid gap-3 min-[480px]:grid-cols-2 min-[900px]:grid-cols-4">
             <div className="crew-fade-in-up" style={{ animationDelay: '0.05s' }}>
               <StatCard label="YTD KPI score" value={summary.ytdScore.toFixed(2)} />
@@ -90,11 +118,21 @@ export function CrewKpiSummary() {
               <StatCard
                 label="This month"
                 value={summary.currentMonthScore.toFixed(2)}
-                sub={<ScoreDelta current={summary.currentMonthScore} previous={summary.previousMonthScore} />}
+                sub={
+                  <>
+                    <BandBadge score={summary.currentMonthScore} />
+                    {summary.currentMonthScore > 0 ? ' · ' : null}
+                    <ScoreDelta current={summary.currentMonthScore} previous={summary.previousMonthScore} />
+                  </>
+                }
               />
             </div>
             <div className="crew-fade-in-up" style={{ animationDelay: '0.2s' }}>
-              <StatCard label="Last month" value={summary.previousMonthScore.toFixed(2)} />
+              <StatCard
+                label="Last month"
+                value={summary.previousMonthScore.toFixed(2)}
+                sub={<BandBadge score={summary.previousMonthScore} />}
+              />
             </div>
           </div>
 

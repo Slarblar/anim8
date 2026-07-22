@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { useCrewLanguage } from '@/lib/crew-language';
 
 type HoverTranslateProps = {
@@ -12,16 +13,16 @@ type HoverTranslateProps = {
 };
 
 /**
- * Shows the active-language string; on hover/focus crossfades in-place to the
- * other language. Dotted underline marks phrases that can flip — useful for a
- * bilingual EN/VN crew without needing a tooltip.
+ * Shows the active-language string; on hover/focus swaps in-place to the other
+ * language. Single text node (no stacked ghost layer) so layout width always
+ * matches what's on screen.
  */
 export function HoverTranslate({ en, vn, className, children }: HoverTranslateProps) {
   const { lang } = useCrewLanguage();
   const primary = lang === 'vn' ? vn : en;
   const other = lang === 'vn' ? en : vn;
+  const [showOther, setShowOther] = useState(false);
 
-  // Identical strings (e.g. "KPI", "WFH") — nothing useful to hover-reveal.
   if (primary === other) {
     return (
       <span className={className}>
@@ -32,14 +33,16 @@ export function HoverTranslate({ en, vn, className, children }: HoverTranslatePr
   }
 
   return (
-    <span className={`crew-hover-translate ${className ?? ''}`.trim()} tabIndex={0}>
+    <span
+      className={`crew-hover-translate ${className ?? ''}`.trim()}
+      tabIndex={0}
+      onMouseEnter={() => setShowOther(true)}
+      onMouseLeave={() => setShowOther(false)}
+      onFocus={() => setShowOther(true)}
+      onBlur={() => setShowOther(false)}
+    >
       {children}
-      <span className="crew-hover-translate__swap">
-        <span className="crew-hover-translate__primary">{primary}</span>
-        <span className="crew-hover-translate__other" aria-hidden="true">
-          {other}
-        </span>
-      </span>
+      {showOther ? other : primary}
     </span>
   );
 }

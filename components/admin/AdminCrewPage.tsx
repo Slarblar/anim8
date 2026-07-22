@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {
   annualLeaveEntitlementDays,
@@ -601,15 +602,13 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => patch({ active: !member.active })}
-              disabled={loading}
-              className="shrink-0 text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline disabled:opacity-50"
-            >
-              {member.active ? 'Deactivate' : 'Reactivate'}
-            </button>
             <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/admin/kpi/${encodeURIComponent(member.email)}`}
+                className={adminBtnGhost}
+              >
+                View KPI
+              </Link>
               <button type="button" className={adminBtnGhost} onClick={() => setShowAdjust((v) => !v)}>
                 Adjust PTO
               </button>
@@ -620,6 +619,14 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
                 {member.startDate ? 'Edit start date' : 'Set start date'}
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => patch({ active: !member.active })}
+              disabled={loading}
+              className="shrink-0 text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline disabled:opacity-50"
+            >
+              {member.active ? 'Deactivate' : 'Reactivate'}
+            </button>
           </div>
 
           {editingStart ? (

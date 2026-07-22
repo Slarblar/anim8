@@ -1760,10 +1760,10 @@ html.careers-page-active {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/** Hover swaps active language → other language in place (crossfade + slight lift). */
+/** Hover swaps active language → other language in place. */
 .crew-hover-translate {
   cursor: help;
-  border-bottom: 1px dotted rgba(255, 255, 255, 0.28);
+  border-bottom: none;
   text-decoration: none;
 }
 
@@ -1771,61 +1771,6 @@ html.careers-page-active {
   outline: 2px solid rgba(56, 194, 214, 0.55);
   outline-offset: 2px;
   border-radius: 2px;
-}
-
-.crew-hover-translate__swap {
-  display: inline-grid;
-  justify-items: start;
-  align-items: baseline;
-  vertical-align: baseline;
-}
-
-.crew-hover-translate__primary,
-.crew-hover-translate__other {
-  grid-area: 1 / 1;
-  transition:
-    opacity 0.22s ease,
-    transform 0.22s ease;
-}
-
-.crew-hover-translate__primary {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.crew-hover-translate__other {
-  opacity: 0;
-  transform: translateY(0.2em);
-  pointer-events: none;
-}
-
-.crew-hover-translate:hover .crew-hover-translate__primary,
-.crew-hover-translate:focus-visible .crew-hover-translate__primary {
-  opacity: 0;
-  transform: translateY(-0.2em);
-}
-
-.crew-hover-translate:hover .crew-hover-translate__other,
-.crew-hover-translate:focus-visible .crew-hover-translate__other {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .crew-hover-translate__primary,
-  .crew-hover-translate__other {
-    transition: none;
-  }
-
-  .crew-hover-translate:hover .crew-hover-translate__primary,
-  .crew-hover-translate:focus-visible .crew-hover-translate__primary {
-    transform: none;
-  }
-
-  .crew-hover-translate:hover .crew-hover-translate__other,
-  .crew-hover-translate:focus-visible .crew-hover-translate__other {
-    transform: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

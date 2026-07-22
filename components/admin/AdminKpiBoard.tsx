@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminKpiPerson } from '@/lib/kpi-shared';
 import { performanceBandLabel, type PerformanceBand } from '@/lib/kpi-shared';
@@ -146,6 +147,13 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
               <span className="font-mono text-white">{person.email}</span> in the 🐸 Anim8 KPI project.
             </p>
           )}
+          <Link
+            href={`/admin/kpi/${encodeURIComponent(person.email)}`}
+            className={`${adminBtnGhost} inline-flex`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            View full KPI profile
+          </Link>
         </div>
       </div>
     </li>

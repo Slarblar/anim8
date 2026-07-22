@@ -7,7 +7,7 @@ import { SignInButton } from '@/components/auth/SignInButton';
 
 function LoginCard() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/admin';
+  const callbackUrl = searchParams.get('callbackUrl') || '/post-login';
   const error = searchParams.get('error');
 
   return (

@@ -1661,6 +1661,8 @@ html.careers-page-active {
 }
 
 /* ---- Crew KPI dashboard — animated line chart + rating donuts ---- */
+
+/** Slow color breathing across the rating donuts' gradients — subtle, not distracting. */
 @keyframes kpi-hue-shift {
   0%,
   100% {
@@ -1671,9 +1673,23 @@ html.careers-page-active {
   }
 }
 
-/** Slow color breathing across a chart's gradients/strokes — subtle, not distracting. */
 .kpi-animate-hue {
   animation: kpi-hue-shift 7s ease-in-out infinite;
+}
+
+/** Solid anim8-green glow pulse for the YTD line — same rgba(124,193,66,…) glow used across the site (see .pulse-glow). */
+@keyframes kpi-line-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 3px rgba(124, 193, 66, 0.55)) drop-shadow(0 0 10px rgba(124, 193, 66, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 7px rgba(124, 193, 66, 0.85)) drop-shadow(0 0 22px rgba(124, 193, 66, 0.5));
+  }
+}
+
+.kpi-line-glow {
+  animation: kpi-line-glow 2.6s ease-in-out infinite;
 }
 
 @keyframes kpi-dot-pulse {
@@ -1696,6 +1712,7 @@ html.careers-page-active {
 
 @media (prefers-reduced-motion: reduce) {
   .kpi-animate-hue,
+  .kpi-line-glow,
   .kpi-dot-pulse {
     animation: none;
   }

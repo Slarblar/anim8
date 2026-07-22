@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncCrewStatusForDate } from '@/lib/crew-status-sync';
-
-function todayDateString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { studioTodayDateString } from '@/lib/studio-date';
 
 /**
  * Vercel Cron job (see vercel.json, every 15 min) — Vercel sends
@@ -20,7 +17,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const snapshot = await syncCrewStatusForDate(todayDateString());
+    const snapshot = await syncCrewStatusForDate(studioTodayDateString());
     return NextResponse.json({ ok: true, snapshot });
   } catch (err) {
     return NextResponse.json(

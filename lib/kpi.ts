@@ -63,6 +63,8 @@ export type PersonKPISummary = {
   previousMonthScore: number;
   /** Full history, oldest first — used for long-range trend views. */
   monthly: PersonMonthlyKPI[];
+  /** Current month + the two before it, zero-filled — for the "past 3 months" bar chart. */
+  lastThreeMonthly: PersonMonthlyKPI[];
   /** Jan 1 of the current year through the current month, zero-filled — for the YTD line chart. */
   ytdMonthly: PersonMonthlyKPI[];
   qualityRatingsLast3Months: RatingCount[];
@@ -103,6 +105,18 @@ function buildYtdMonthly(monthly: Map<string, number>, now: Date): PersonMonthly
 /** Fills in every rating bucket (even ones with zero tasks) so charts always show the full 5-point scale. */
 function buildRatingBreakdown(counts: Map<string, number>): RatingCount[] {
   return RATING_ORDER.map((rating) => ({ rating, count: counts.get(rating) ?? 0 }));
+}
+
+/** The current month + the `count - 1` before it, zero-filled — same window as the rating donuts. */
+function buildLastNMonths(monthly: Map<string, number>, now: Date, count: number): PersonMonthlyKPI[] {
+  const result: PersonMonthlyKPI[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const ref = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = monthKeyOf(ref.getFullYear(), ref.getMonth() + 1);
+    const label = ref.getFullYear() === now.getFullYear() ? MONTHS[ref.getMonth()] : `${MONTHS[ref.getMonth()]} ${ref.getFullYear()}`;
+    result.push({ month: key, label, score: round2(monthly.get(key) ?? 0) });
+  }
+  return result;
 }
 
 // ---- Fetch every task in the KPI project (paginated) ----------------------
@@ -254,6 +268,7 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
       currentMonthScore: round2(person.monthly.get(currentMonthKey) ?? 0),
       previousMonthScore: round2(person.monthly.get(prevMonthKey) ?? 0),
       monthly,
+      lastThreeMonthly: buildLastNMonths(person.monthly, now, 3),
       ytdMonthly: buildYtdMonthly(person.monthly, now),
       qualityRatingsLast3Months: buildRatingBreakdown(person.qualityRatings),
       collaborationRatingsLast3Months: buildRatingBreakdown(person.collaborationRatings),

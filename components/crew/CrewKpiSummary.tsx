@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { PersonKPISummary } from '@/lib/kpi';
-import { performanceBandLabel } from '@/lib/kpi';
+import type { PersonKPISummary } from '@/lib/kpi-shared';
+import { performanceBandLabel } from '@/lib/kpi-shared';
 import { adminAlertError, adminBtnGhost, adminCard } from '@/components/admin/admin-ui';
 import {
   KpiLineChart,

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { PersonMonthlyKPI, RatingCount } from '@/lib/kpi';
+import type { PersonMonthlyKPI, RatingCount } from '@/lib/kpi-shared';
 import { adminCard } from '@/components/admin/admin-ui';
 
 /**

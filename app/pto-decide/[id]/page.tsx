@@ -1,0 +1,132 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import { getPtoRequest } from '@/lib/pto-requests';
+
+/**
+ * Public, no-login-required page reached from the "New PTO/WFH request"
+ * admin email. Security comes entirely from the request's own
+ * `decisionToken` in the URL, not a session — this route is intentionally
+ * outside middleware's /admin and /api/admin matchers.
+ *
+ * Deliberately renders real Approve/Reject buttons instead of mutating
+ * on page load: email link-scanners/bots often "click" every link in a
+ * message, and a GET request that immediately decided the request would
+ * let a bot approve or reject PTO by accident.
+ */
+export default async function PtoDecidePage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { token?: string };
+}) {
+  const request = await getPtoRequest(params.id);
+  const token = searchParams.token ?? '';
+
+  const range = (start: string, end: string) => (start === end ? start : `${start} – ${end}`);
+
+  let content: React.ReactNode;
+
+  if (!request) {
+    content = (
+      <>
+        <h1 className="mb-2 text-lg font-black uppercase tracking-tight text-white">Request not found</h1>
+        <p className="text-sm text-text-muted">This PTO/WFH request no longer exists.</p>
+      </>
+    );
+  } else if (!token || token !== request.decisionToken) {
+    content = (
+      <>
+        <h1 className="mb-2 text-lg font-black uppercase tracking-tight text-white">Invalid or expired link</h1>
+        <p className="text-sm text-text-muted">
+          This link doesn&apos;t match a pending request. Review it from the{' '}
+          <Link href="/admin/pto-requests" className="text-brand-cyan hover:underline">
+            admin dashboard
+          </Link>{' '}
+          instead.
+        </p>
+      </>
+    );
+  } else if (request.status !== 'pending') {
+    const badge =
+      request.status === 'approved'
+        ? 'text-brand-lime border-brand-lime/30 bg-brand-lime/10'
+        : 'text-brand-pink border-brand-pink/30 bg-brand-pink/10';
+    content = (
+      <>
+        <span className={`mb-3 inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider font-mono ${badge}`}>
+          {request.status}
+        </span>
+        <h1 className="mb-2 text-lg font-black uppercase tracking-tight text-white">Already decided</h1>
+        <p className="text-sm text-text-muted">
+          {request.employeeName}&apos;s {request.type} request for {range(request.startDate, request.endDate)} was{' '}
+          {request.status}
+          {request.decidedAt ? ` on ${new Date(request.decidedAt).toLocaleString()}` : ''}. No further action
+          needed.
+        </p>
+      </>
+    );
+  } else {
+    content = (
+      <>
+        <h1 className="mb-1 text-lg font-black uppercase tracking-tight text-white">
+          {request.type} request — {request.employeeName}
+        </h1>
+        <p className="mb-4 text-sm text-text-muted">{range(request.startDate, request.endDate)}</p>
+        {request.note ? (
+          <p className="mb-5 rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-text-muted">
+            &quot;{request.note}&quot;
+          </p>
+        ) : null}
+
+        <form method="POST" action={`/api/pto-decide/${request.id}`} className="space-y-3">
+          <input type="hidden" name="token" value={token} />
+          <label htmlFor="note" className="block text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono mb-1.5">
+            Note (optional, sent to {request.employeeName.split(' ')[0]})
+          </label>
+          <textarea
+            id="note"
+            name="note"
+            rows={2}
+            className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-text-muted/50 outline-none transition focus:border-brand-cyan/40 focus:ring-2 focus:ring-brand-cyan/15"
+            placeholder="Optional context for the decision…"
+          />
+          <div className="flex gap-3 pt-1">
+            <button
+              type="submit"
+              name="decision"
+              value="approved"
+              className="inline-flex flex-1 items-center justify-center rounded-lg border border-brand-lime/50 bg-brand-lime px-4 py-2.5 text-sm font-bold text-brand-black shadow-[0_4px_20px_rgba(124,193,66,0.25)] transition hover:brightness-110"
+            >
+              Approve
+            </button>
+            <button
+              type="submit"
+              name="decision"
+              value="rejected"
+              className="inline-flex flex-1 items-center justify-center rounded-lg border border-brand-pink/40 bg-brand-pink/10 px-4 py-2.5 text-sm font-bold text-brand-pink transition hover:border-brand-pink/55 hover:bg-brand-pink/15"
+            >
+              Reject
+            </button>
+          </div>
+        </form>
+      </>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-brand-black px-4">
+      <div className="glass-card w-full max-w-sm p-8 text-center">
+        <Image
+          src="/images/logos/anim-8-completewordmark-white-01.svg"
+          alt="Anim-8"
+          width={160}
+          height={28}
+          className="mx-auto mb-6 h-6 w-auto"
+          priority
+        />
+        <div className="text-left">{content}</div>
+      </div>
+    </div>
+  );
+}

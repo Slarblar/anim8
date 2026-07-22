@@ -20,6 +20,14 @@ export type PtoRequest = {
   decidedAt?: string;
   decidedBy?: string;
   decisionNote?: string;
+  /**
+   * Secret bearer token that lets the "Approve" / "Reject" buttons in the
+   * new-request email work without an admin login session — whoever holds
+   * this exact string can decide this exact request, nothing else. Long
+   * and unguessable (nanoid default alphabet, 32 chars ~190 bits), never
+   * reused across requests, and only useful while status === 'pending'.
+   */
+  decisionToken: string;
 };
 
 const KEY_PREFIX = 'pto-request:';
@@ -27,6 +35,10 @@ const PENDING_INDEX_KEY = 'pto-request-index:pending';
 const ALL_INDEX_KEY = 'pto-request-index:all';
 
 const genId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 12);
+const genToken = customAlphabet(
+  'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  32
+);
 
 function keyFor(id: string): string {
   return `${KEY_PREFIX}${id}`;
@@ -70,6 +82,7 @@ export async function createPtoRequest(input: {
     note: input.note.trim(),
     status: 'pending',
     createdAt: new Date().toISOString(),
+    decisionToken: genToken(),
   };
 
   const kv = getKv();

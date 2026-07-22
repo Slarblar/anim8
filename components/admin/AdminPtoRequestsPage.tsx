@@ -59,6 +59,14 @@ function RequestRow({
         };
         if (!res.ok) {
           setError(data.error ?? 'Action failed.');
+          // Someone else (another admin, or the same admin via the email
+          // link) already decided this one — refetch so the row flips
+          // from stale Approve/Reject buttons to the real, current
+          // "Approved/Rejected by ..." state instead of leaving dead
+          // buttons up that will just 400 again.
+          if (res.status === 400 && data.error === 'Request has already been decided.') {
+            onChanged();
+          }
           return;
         }
         const issues = [data.calendarError, data.balanceError].filter(Boolean);

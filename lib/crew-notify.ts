@@ -1,6 +1,8 @@
 import 'server-only';
 import type { WeeklyDigest } from './weekly-digest';
-import type { PtoRequest } from './pto-requests';
+import { countBusinessDays, type PtoRequest } from './pto-requests';
+import { getCrewMember } from './crew-directory';
+import { emailButton, escapeHtml, noteBlock, renderEmailHtml, statLine, warningBanner } from './email-template';
 
 const RESEND_API = 'https://api.resend.com/emails';
 
@@ -30,6 +32,7 @@ async function sendResendEmail(payload: {
   to: string[];
   subject: string;
   text: string;
+  html: string;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return false;
@@ -53,41 +56,87 @@ async function sendResendEmail(payload: {
   return res.ok;
 }
 
+function formatRange(startDate: string, endDate: string): string {
+  return startDate === endDate ? startDate : `${startDate} – ${endDate}`;
+}
+
 /**
  * Optional — set RESEND_API_KEY + ADMIN_EMAILS. Fires the moment an
- * employee submits a new PTO/WFH request, with a link to a no-login-
- * required decision page (gated by the request's own decisionToken)
- * with Approve/Reject buttons, plus a fallback link into
- * /admin/pto-requests for anyone who'd rather review it there.
- *
- * The decision link deliberately lands on a page with real buttons
- * rather than mutating on GET directly — email security scanners /
- * link-preview bots often "click" every link in a message, and a GET
- * request that immediately approved or rejected would let a bot decide
- * PTO requests by accident.
+ * employee submits a new PTO/WFH request, with:
+ *  - direct one-click Approve/Reject links (mutate immediately on GET,
+ *    gated by the request's own single-use decisionToken — no login
+ *    required). Approving/rejecting is idempotent (first click wins,
+ *    later clicks/opens just show the already-decided state), which
+ *    caps the downside of an email security scanner "pre-clicking" a
+ *    link: worst case a decision lands a few minutes earlier than a
+ *    human would have made it, not a duplicated/broken action.
+ *  - a link to the same decision as a page with buttons, for anyone who
+ *    wants to add a note before deciding.
+ *  - the employee's current PTO balance and an overdraft warning if this
+ *    request (PTO only — WFH doesn't draw from the balance) would take
+ *    them negative.
  */
 export async function notifyAdminsNewPtoRequest(request: PtoRequest): Promise<boolean> {
   const recipients = adminRecipients();
   if (recipients.length === 0) return false;
 
   const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
-  const range =
-    request.startDate === request.endDate ? request.startDate : `${request.startDate} – ${request.endDate}`;
-  const decideUrl = `${baseUrl()}/pto-decide/${request.id}?token=${request.decisionToken}`;
-  const reviewUrl = `${baseUrl()}/admin/pto-requests`;
+  const range = formatRange(request.startDate, request.endDate);
+
+  let balanceDays: number | null = null;
+  let requestedDays: number | null = null;
+  if (request.type === 'PTO') {
+    requestedDays = countBusinessDays(request.startDate, request.endDate);
+    try {
+      const member = await getCrewMember(request.employeeEmail);
+      balanceDays = member?.ptoBalanceDays ?? null;
+    } catch {
+      // Balance is a nice-to-have here — never block the notification on it.
+    }
+  }
+  const overdraft = balanceDays !== null && requestedDays !== null && requestedDays > balanceDays;
+
+  const quickApproveUrl = `${baseUrl()}/api/pto-decide/${request.id}?token=${request.decisionToken}&decision=approved`;
+  const quickRejectUrl = `${baseUrl()}/api/pto-decide/${request.id}?token=${request.decisionToken}&decision=rejected`;
+  const reviewPageUrl = `${baseUrl()}/pto-decide/${request.id}?token=${request.decisionToken}`;
+  const dashboardUrl = `${baseUrl()}/admin/pto-requests`;
 
   const subject = `New ${request.type} request — ${request.employeeName}`;
-  const body = [
+
+  const textLines = [
     `${request.employeeName} requested ${request.type} for ${range}.`,
     request.note ? `\nNote: ${request.note}` : null,
+    balanceDays !== null ? `\nCurrent balance: ${balanceDays} days · Requesting: ${requestedDays} days` : null,
+    overdraft ? `\n⚠ This would take their balance negative.` : null,
     '',
-    `Approve or reject: ${decideUrl}`,
-    `Review all requests: ${reviewUrl}`,
-  ]
-    .filter((line) => line !== null)
-    .join('\n');
+    `Approve: ${quickApproveUrl}`,
+    `Reject: ${quickRejectUrl}`,
+    `Review (add a note first): ${reviewPageUrl}`,
+    `All requests: ${dashboardUrl}`,
+  ].filter((line) => line !== null);
 
-  return sendResendEmail({ from, to: recipients, subject, text: body });
+  const bodyHtml = [
+    `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> requested <strong style="color:#ffffff;">${escapeHtml(request.type)}</strong> for <strong style="color:#ffffff;">${escapeHtml(range)}</strong>.</p>`,
+    balanceDays !== null
+      ? `<div style="margin:16px 0;">${statLine('Current balance', `${balanceDays} day${balanceDays === 1 ? '' : 's'}`)}${statLine('Requesting', `${requestedDays} day${requestedDays === 1 ? '' : 's'}`)}</div>`
+      : '<div style="margin:16px 0 0 0;"></div>',
+    overdraft
+      ? warningBanner(
+          `This would take ${request.employeeName.split(' ')[0]}'s balance negative (${((balanceDays ?? 0) - (requestedDays ?? 0)).toFixed(1)} days). Approve only if that's expected.`
+        )
+      : '',
+    request.note ? noteBlock(request.note) : '',
+    `<div style="margin:8px 0 18px 0;">${emailButton(quickApproveUrl, 'Approve', 'approve')}${emailButton(quickRejectUrl, 'Reject', 'reject')}</div>`,
+    `<p style="margin:0;font-size:12px;color:#8b95a8;"><a href="${reviewPageUrl}" style="color:#38c2d6;text-decoration:none;">Review and add a note first</a> · <a href="${dashboardUrl}" style="color:#38c2d6;text-decoration:none;">See all requests</a></p>`,
+  ].join('\n');
+
+  return sendResendEmail({
+    from,
+    to: recipients,
+    subject,
+    text: textLines.join('\n'),
+    html: renderEmailHtml({ heading: subject, preheader: textLines[0], bodyHtml }),
+  });
 }
 
 /** Optional — set RESEND_API_KEY in Vercel for PTO/WFH decision emails. */
@@ -100,15 +149,11 @@ export async function notifyEmployeePtoDecision(input: {
   decision: 'approved' | 'rejected';
   decisionNote?: string;
 }): Promise<boolean> {
-  const from =
-    process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
+  const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
   const subject = `Your ${input.type} request was ${input.decision}`;
-  const range =
-    input.startDate === input.endDate
-      ? input.startDate
-      : `${input.startDate} – ${input.endDate}`;
+  const range = formatRange(input.startDate, input.endDate);
 
-  const body = [
+  const text = [
     `Hi ${input.employeeName},`,
     '',
     `Your ${input.type} request for ${range} was ${input.decision}.`,
@@ -117,7 +162,20 @@ export async function notifyEmployeePtoDecision(input: {
     .filter((line) => line !== null)
     .join('\n');
 
-  return sendResendEmail({ from, to: [input.to], subject, text: body });
+  const badgeColor = input.decision === 'approved' ? '#7cc142' : '#dd0b83';
+  const bodyHtml = [
+    `<p style="margin:0 0 12px 0;">Hi ${escapeHtml(input.employeeName.split(' ')[0])},</p>`,
+    `<p style="margin:0 0 16px 0;">Your <strong style="color:#ffffff;">${escapeHtml(input.type)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}</strong> was <strong style="color:${badgeColor};text-transform:uppercase;">${escapeHtml(input.decision)}</strong>.</p>`,
+    input.decisionNote ? noteBlock(input.decisionNote) : '',
+  ].join('\n');
+
+  return sendResendEmail({
+    from,
+    to: [input.to],
+    subject,
+    text,
+    html: renderEmailHtml({ heading: subject, preheader: text.split('\n')[2] ?? subject, bodyHtml }),
+  });
 }
 
 function formatDigestDate(date: string): string {
@@ -135,6 +193,7 @@ export async function sendWeeklyAdminDigest(digest: WeeklyDigest): Promise<boole
   if (recipients.length === 0) return false;
 
   const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
+  const dashboardUrl = `${baseUrl()}/admin/pto-requests`;
 
   const lines: string[] = ['This week\u2019s schedule:', ''];
   const hasAnyEntries = digest.scheduleByDate.some((day) => day.entries.length > 0);
@@ -155,20 +214,53 @@ export async function sendWeeklyAdminDigest(digest: WeeklyDigest): Promise<boole
     lines.push('None \u{1F389}');
   } else {
     for (const request of digest.pending) {
-      const range =
-        request.startDate === request.endDate
-          ? request.startDate
-          : `${request.startDate} \u2013 ${request.endDate}`;
+      const range = formatRange(request.startDate, request.endDate);
       lines.push(`  - ${request.employeeName}: ${request.type} ${range}`);
     }
   }
 
-  lines.push('', `Review at ${baseUrl()}/admin/pto-requests`);
+  lines.push('', `Review at ${dashboardUrl}`);
+
+  // --- HTML mirror of the same content ---
+  const scheduleRowsHtml = hasAnyEntries
+    ? digest.scheduleByDate
+        .filter((d) => d.entries.length > 0)
+        .map(
+          (day) =>
+            `<p style="margin:0 0 6px 0;"><strong style="color:#ffffff;">${escapeHtml(formatDigestDate(day.date))}</strong>: ${day.entries
+              .map((e) => `${escapeHtml(e.name)} (${e.type === 'PTO' ? 'Out' : 'WFH'})`)
+              .join(', ')}</p>`
+        )
+        .join('\n')
+    : '<p style="margin:0;color:#8b95a8;">Nobody scheduled out or WFH this week.</p>';
+
+  const pendingRowsHtml =
+    digest.pending.length === 0
+      ? '<p style="margin:0;color:#7cc142;">None 🎉</p>'
+      : digest.pending
+          .map(
+            (r) =>
+              `<p style="margin:0 0 4px 0;">${escapeHtml(r.employeeName)}: ${escapeHtml(r.type)} ${escapeHtml(formatRange(r.startDate, r.endDate))}</p>`
+          )
+          .join('\n');
+
+  const bodyHtml = `
+    <p style="margin:0 0 6px 0;font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#38c2d6;">This week's schedule</p>
+    <div style="margin:0 0 20px 0;">${scheduleRowsHtml}</div>
+    <p style="margin:0 0 6px 0;font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#38c2d6;">Pending requests</p>
+    <div style="margin:0 0 18px 0;">${pendingRowsHtml}</div>
+    <div>${emailButton(dashboardUrl, 'Review requests', 'neutral')}</div>
+  `;
 
   return sendResendEmail({
     from,
     to: recipients,
     subject: `Anim-8 crew digest \u2014 week of ${formatDigestDate(digest.weekStart)}`,
     text: lines.join('\n'),
+    html: renderEmailHtml({
+      heading: `Week of ${formatDigestDate(digest.weekStart)}`,
+      preheader: `${digest.pending.length} pending request${digest.pending.length === 1 ? '' : 's'}`,
+      bodyHtml,
+    }),
   });
 }

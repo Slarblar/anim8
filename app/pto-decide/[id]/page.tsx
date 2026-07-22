@@ -1,17 +1,20 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { getPtoRequest } from '@/lib/pto-requests';
+import { countBusinessDays, getPtoRequest } from '@/lib/pto-requests';
+import { getCrewMember } from '@/lib/crew-directory';
 
 /**
  * Public, no-login-required page reached from the "New PTO/WFH request"
- * admin email. Security comes entirely from the request's own
- * `decisionToken` in the URL, not a session — this route is intentionally
- * outside middleware's /admin and /api/admin matchers.
+ * admin email — either the "Review and add a note first" link, or as the
+ * landing/confirmation page after a direct Approve/Reject click. Security
+ * comes entirely from the request's own `decisionToken` in the URL, not a
+ * session — this route is intentionally outside middleware's /admin and
+ * /api/admin matchers.
  *
- * Deliberately renders real Approve/Reject buttons instead of mutating
- * on page load: email link-scanners/bots often "click" every link in a
- * message, and a GET request that immediately decided the request would
- * let a bot approve or reject PTO by accident.
+ * This page itself only mutates via its POST form (the one-click GET
+ * mutation lives in /api/pto-decide/[id] instead, used by the direct
+ * email links) — see that route for why mutating on GET is an accepted
+ * tradeoff there.
  */
 export default async function PtoDecidePage({
   params,
@@ -52,6 +55,12 @@ export default async function PtoDecidePage({
       request.status === 'approved'
         ? 'text-brand-lime border-brand-lime/30 bg-brand-lime/10'
         : 'text-brand-pink border-brand-pink/30 bg-brand-pink/10';
+    // The generic attribution used for the one-click email links (we can't
+    // tell which of the 3 admins clicked without requiring a login) isn't
+    // worth surfacing — only show a name when it was decided from the
+    // authenticated admin dashboard instead.
+    const decidedByName =
+      request.decidedBy && request.decidedBy !== 'admin (via email link)' ? request.decidedBy : null;
     content = (
       <>
         <span className={`mb-3 inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider font-mono ${badge}`}>
@@ -61,18 +70,45 @@ export default async function PtoDecidePage({
         <p className="text-sm text-text-muted">
           {request.employeeName}&apos;s {request.type} request for {range(request.startDate, request.endDate)} was{' '}
           {request.status}
+          {decidedByName ? ` by ${decidedByName}` : ''}
           {request.decidedAt ? ` on ${new Date(request.decidedAt).toLocaleString()}` : ''}. No further action
           needed.
         </p>
+        {request.decisionNote ? (
+          <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-text-muted">
+            &quot;{request.decisionNote}&quot;
+          </p>
+        ) : null}
       </>
     );
   } else {
+    let balanceDays: number | null = null;
+    let requestedDays: number | null = null;
+    if (request.type === 'PTO') {
+      requestedDays = countBusinessDays(request.startDate, request.endDate);
+      const member = await getCrewMember(request.employeeEmail);
+      balanceDays = member?.ptoBalanceDays ?? null;
+    }
+    const overdraft = balanceDays !== null && requestedDays !== null && requestedDays > balanceDays;
+
     content = (
       <>
         <h1 className="mb-1 text-lg font-black uppercase tracking-tight text-white">
           {request.type} request — {request.employeeName}
         </h1>
         <p className="mb-4 text-sm text-text-muted">{range(request.startDate, request.endDate)}</p>
+        {balanceDays !== null ? (
+          <p className="mb-3 text-xs text-text-muted">
+            Requesting {requestedDays} day{requestedDays === 1 ? '' : 's'} · Balance: {balanceDays} day
+            {balanceDays === 1 ? '' : 's'}
+          </p>
+        ) : null}
+        {overdraft ? (
+          <p className="mb-4 rounded-lg border border-brand-pink/30 bg-brand-pink/10 px-3.5 py-2.5 text-xs text-brand-pink">
+            ⚠ This would take {request.employeeName.split(' ')[0]}&apos;s balance negative (
+            {((balanceDays ?? 0) - (requestedDays ?? 0)).toFixed(1)} days) — approve only if that&apos;s expected.
+          </p>
+        ) : null}
         {request.note ? (
           <p className="mb-5 rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-text-muted">
             &quot;{request.note}&quot;

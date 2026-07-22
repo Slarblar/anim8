@@ -1762,7 +1762,12 @@ html.careers-page-active {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/** Hover swaps active language → other language in place (glitch + stable layout). */
+/**
+ * Hover/focus (and the page-wide EN/VN toggle) decrypt-scrambles this span's
+ * text to the other language — see HoverTranslate.tsx, which drives the
+ * character animation straight via textContent/rAF (no CSS animation needed
+ * here). This block just keeps the box a stable size and styles the trigger.
+ */
 .crew-hover-translate {
   cursor: help;
   border-bottom: none;
@@ -1792,59 +1797,10 @@ html.careers-page-active {
   white-space: inherit;
 }
 
-@keyframes crew-text-glitch {
-  0% {
-    opacity: 1;
-    transform: translate(0);
-    text-shadow: none;
-    clip-path: inset(0 0 0 0);
-  }
-  18% {
-    opacity: 0.75;
-    transform: translate(-2px, 0);
-    text-shadow: 2px 0 rgba(56, 194, 214, 0.85), -2px 0 rgba(221, 11, 131, 0.7);
-    clip-path: inset(12% 0 55% 0);
-  }
-  36% {
-    opacity: 1;
-    transform: translate(2px, -1px);
-    text-shadow: -2px 0 rgba(124, 193, 66, 0.75), 2px 0 rgba(56, 194, 214, 0.75);
-    clip-path: inset(45% 0 10% 0);
-  }
-  54% {
-    opacity: 0.88;
-    transform: translate(-1px, 1px);
-    text-shadow: 1px 0 rgba(221, 11, 131, 0.55), -1px 0 rgba(56, 194, 214, 0.55);
-    clip-path: inset(6% 0 68% 0);
-  }
-  72% {
-    opacity: 1;
-    transform: translate(1px, 0);
-    text-shadow: none;
-    clip-path: inset(0 0 0 0);
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-    text-shadow: none;
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-.crew-hover-translate__text--glitch {
-  animation: crew-text-glitch 0.38s steps(2, end);
-}
-
 .crew-hover-translate:focus-visible {
   outline: 2px solid rgba(56, 194, 214, 0.55);
   outline-offset: 2px;
   border-radius: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .crew-hover-translate__text--glitch {
-    animation: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

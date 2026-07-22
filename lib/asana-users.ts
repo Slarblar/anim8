@@ -100,6 +100,11 @@ export async function fetchAsanaAvatarBytes(
 
   return {
     bytes: await imageRes.arrayBuffer(),
-    contentType: imageRes.headers.get('content-type') ?? 'image/png',
+    // NOT `imageRes.headers.get('content-type')` — Asana's S3-backed photo
+    // URLs serve the object as `binary/octet-stream` regardless of actual
+    // format (a known Asana API quirk), which browsers refuse to render as
+    // an <img>. We only ever request `image_128x128`, and Asana's docs
+    // guarantee every size except 1024 is PNG, so this is always correct.
+    contentType: 'image/png',
   };
 }

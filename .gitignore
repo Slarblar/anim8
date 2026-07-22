@@ -58,3 +58,4 @@ next-env.d.ts
 *.avi
 *.mkv
 
+.env*

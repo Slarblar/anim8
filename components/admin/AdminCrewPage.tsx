@@ -15,6 +15,24 @@ import {
   adminSectionTitle,
 } from './admin-ui';
 
+type ApiErrorBody = { error?: string; reason?: string; email?: string | null };
+
+/** Turns a middleware/route error body (error + reason + email) into a message that explains what to fix. */
+function describeApiError(data: ApiErrorBody, fallback: string): string {
+  if (!data.error) return fallback;
+  const who = data.email ? data.email : 'This account';
+  switch (data.reason) {
+    case 'no-session':
+      return "Unauthorized (401): you're not signed in — refresh and sign in again.";
+    case 'not-in-admin-emails':
+      return `Forbidden (403): ${who} is signed in but not listed in ADMIN_EMAILS — an existing admin needs to add this email to that env var in Vercel.`;
+    case 'not-admin-and-not-in-crew-directory':
+      return `Forbidden (403): ${who} is not an admin and not in the crew directory yet.`;
+    default:
+      return data.error;
+  }
+}
+
 function AddCrewForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -42,9 +60,9 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
             initialPtoBalanceDays: initialBalance ? Number(initialBalance) : undefined,
           }),
         });
-        const data = (await res.json()) as { error?: string };
+        const data = (await res.json()) as ApiErrorBody;
         if (!res.ok) {
-          setError(data.error ?? 'Could not add crew member.');
+          setError(describeApiError(data, 'Could not add crew member.'));
           return;
         }
         setName('');
@@ -163,9 +181,9 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
-        const data = (await res.json()) as { error?: string };
+        const data = (await res.json()) as ApiErrorBody;
         if (!res.ok) {
-          setError(data.error ?? 'Action failed.');
+          setError(describeApiError(data, 'Action failed.'));
           return;
         }
         onChanged();
@@ -308,9 +326,9 @@ export function AdminCrewPage() {
     setError(null);
     try {
       const res = await fetch('/api/admin/crew');
-      const data = (await res.json()) as { members?: CrewMember[]; error?: string };
+      const data = (await res.json()) as ApiErrorBody & { members?: CrewMember[] };
       if (!res.ok) {
-        setError(data.error ?? 'Could not load crew directory.');
+        setError(describeApiError(data, 'Could not load crew directory.'));
         return;
       }
       setMembers(data.members ?? []);

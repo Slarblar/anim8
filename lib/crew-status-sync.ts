@@ -12,7 +12,10 @@ export async function syncCrewStatusForDate(date: string): Promise<CrewStatusSna
 
   const outByName = new Map<string, CrewStatusEntry>();
   for (const event of events) {
-    outByName.set(event.name.trim().toLowerCase(), {
+    const key = event.name.trim().toLowerCase();
+    // A one-off PTO request always wins over a standing fixed-WFH day if they land on the same date.
+    if (outByName.get(key)?.status === 'PTO' && event.type === 'WFH') continue;
+    outByName.set(key, {
       name: event.name,
       status: event.type,
       note: event.note,

@@ -1,7 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { annualLeaveEntitlementDays, type CrewMember } from '@/lib/crew-directory';
+import {
+  annualLeaveEntitlementDays,
+  type CrewLocation,
+  type CrewMember,
+  type WeekdayCode,
+} from '@/lib/crew-directory';
 import {
   adminAlertError,
   adminBadgeActive,
@@ -160,6 +165,87 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+const WEEKDAYS: { code: WeekdayCode; label: string; full: string }[] = [
+  { code: 'mon', label: 'M', full: 'Monday' },
+  { code: 'tue', label: 'T', full: 'Tuesday' },
+  { code: 'wed', label: 'W', full: 'Wednesday' },
+  { code: 'thu', label: 'Th', full: 'Thursday' },
+  { code: 'fri', label: 'F', full: 'Friday' },
+];
+
+/** Real sliding toggle switch, since the location field is intentionally binary (US/VN). */
+function LocationToggle({
+  location,
+  onToggle,
+  disabled,
+}: {
+  location: CrewLocation;
+  onToggle: () => void;
+  disabled: boolean;
+}) {
+  const isUs = location === 'US';
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isUs}
+      disabled={disabled}
+      onClick={onToggle}
+      title={isUs ? 'US-based — click to switch to VN' : 'VN-based — click to switch to US'}
+      className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-text-muted disabled:opacity-50"
+    >
+      <span className={!isUs ? 'text-white' : undefined}>VN</span>
+      <span
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition ${
+          isUs ? 'border-brand-cyan/50 bg-brand-cyan/40' : 'border-white/20 bg-white/10'
+        }`}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+            isUs ? 'translate-x-[1.15rem]' : 'translate-x-0.5'
+          }`}
+        />
+      </span>
+      <span className={isUs ? 'text-white' : undefined}>US</span>
+    </button>
+  );
+}
+
+/** Click-to-toggle day grid for a standing WFH schedule — each click flips that one day and re-syncs the calendar. */
+function FixedWfhDayPicker({
+  days,
+  onToggleDay,
+  disabled,
+}: {
+  days: WeekdayCode[];
+  onToggleDay: (day: WeekdayCode) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex gap-1.5">
+      {WEEKDAYS.map(({ code, label, full }) => {
+        const isWfh = days.includes(code);
+        return (
+          <button
+            key={code}
+            type="button"
+            disabled={disabled}
+            onClick={() => onToggleDay(code)}
+            title={`${full} — ${isWfh ? 'work from home' : 'in office'} (click to switch)`}
+            className={`h-8 w-8 rounded-md border text-xs font-bold transition disabled:opacity-50 ${
+              isWfh
+                ? 'border-brand-cyan/50 bg-brand-cyan/20 text-brand-cyan'
+                : 'border-white/15 text-text-muted hover:border-white/35'
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -208,7 +294,21 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
     setEditingStart(false);
   }, [startDateInput, patch]);
 
+  const toggleLocation = useCallback(() => {
+    patch({ location: (member.location ?? 'VN') === 'US' ? 'VN' : 'US' });
+  }, [member.location, patch]);
+
+  const toggleWfhDay = useCallback(
+    (day: WeekdayCode) => {
+      const current = member.fixedWfhDays ?? [];
+      const next = current.includes(day) ? current.filter((d) => d !== day) : [...current, day];
+      patch({ fixedWfhDays: next });
+    },
+    [member.fixedWfhDays, patch]
+  );
+
   const balance = member.ptoBalanceDays ?? 0;
+  const fixedWfhDays = member.fixedWfhDays ?? [];
 
   return (
     <li
@@ -233,6 +333,12 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
             <span className="font-mono text-brand-cyan">
               {balance} day{balance === 1 ? '' : 's'} PTO
             </span>
+            <span className="text-text-muted">{(member.location ?? 'VN') === 'US' ? '🇺🇸 US' : '🇻🇳 VN'}</span>
+            {fixedWfhDays.length > 0 ? (
+              <span className="text-brand-cyan">
+                WFH {fixedWfhDays.map((d) => WEEKDAYS.find((w) => w.code === d)?.label).join('/')}
+              </span>
+            ) : null}
             {!member.startDate ? <span className="text-brand-pink">No start date</span> : null}
           </p>
         </div>
@@ -259,6 +365,16 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           </p>
 
           {error ? <p className={adminAlertError}>{error}</p> : null}
+
+          <div>
+            <p className={adminLabel}>Location</p>
+            <LocationToggle location={member.location ?? 'VN'} onToggle={toggleLocation} disabled={loading} />
+          </div>
+
+          <div>
+            <p className={adminLabel}>Fixed WFH schedule (click a day to toggle — syncs to the shared calendar)</p>
+            <FixedWfhDayPicker days={fixedWfhDays} onToggleDay={toggleWfhDay} disabled={loading} />
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button

@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import 'server-only';
+import type { WeekdayCode } from './crew-directory';
 
 /**
  * Google Calendar sync for PTO/WFH — uses a service account (not domain-wide
@@ -72,6 +73,70 @@ export async function createPtoCalendarEvent(input: PtoCalendarEventInput): Prom
           anim8PortalRequestId: input.requestId,
           anim8PortalType: input.type,
           anim8PortalEmployeeName: input.employeeName,
+        },
+      },
+    },
+  });
+
+  if (!res.data.id) throw new Error('Google Calendar did not return an event id.');
+  return res.data.id;
+}
+
+const WEEKDAY_RRULE_CODE: Record<WeekdayCode, string> = {
+  mon: 'MO',
+  tue: 'TU',
+  wed: 'WE',
+  thu: 'TH',
+  fri: 'FR',
+};
+
+// JS Date#getUTCDay(): Sun=0, Mon=1, ... Sat=6.
+const WEEKDAY_NUMBER: Record<WeekdayCode, number> = {
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+};
+
+/** Next date (today included) that falls on the given weekday, as YYYY-MM-DD (UTC). */
+function nextOccurrenceOf(day: WeekdayCode): string {
+  const now = new Date();
+  const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const diff = (WEEKDAY_NUMBER[day] - date.getUTCDay() + 7) % 7;
+  date.setUTCDate(date.getUTCDate() + diff);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Creates a weekly-recurring all-day WFH event for a standing (fixed)
+ * schedule day — e.g. "every Monday". One event series per selected weekday
+ * (simpler and more predictable than a single multi-BYDAY series). Returns
+ * the master event ID, which also deletes the whole series via
+ * deleteCalendarEvent when the schedule changes.
+ */
+export async function createFixedWfhCalendarEvent(input: {
+  employeeName: string;
+  day: WeekdayCode;
+}): Promise<string> {
+  const calendar = getCalendarClient();
+  const startDate = nextOccurrenceOf(input.day);
+
+  const res = await calendar.events.insert({
+    calendarId: getCalendarId(),
+    requestBody: {
+      summary: `🏠 WFH — ${input.employeeName}`,
+      description: 'Standing work-from-home day (fixed schedule) — set in the Anim-8 admin portal.',
+      start: { date: startDate },
+      end: { date: nextDay(startDate) },
+      recurrence: [`RRULE:FREQ=WEEKLY;BYDAY=${WEEKDAY_RRULE_CODE[input.day]}`],
+      // 9 = blueberry, same colorId used for ad-hoc WFH requests.
+      colorId: '9',
+      extendedProperties: {
+        private: {
+          anim8PortalType: 'WFH',
+          anim8PortalEmployeeName: input.employeeName,
+          anim8PortalFixedSchedule: 'true',
         },
       },
     },

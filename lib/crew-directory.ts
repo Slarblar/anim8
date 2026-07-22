@@ -1,5 +1,10 @@
 import { getKv } from './kv';
 
+/** Mon–Fri only — the fixed WFH schedule doesn't cover weekends. */
+export type WeekdayCode = 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
+
+export type CrewLocation = 'US' | 'VN';
+
 export type CrewMember = {
   email: string;
   name: string;
@@ -11,7 +16,23 @@ export type CrewMember = {
   /** Available annual-leave (PTO) balance, in working days. Employee Handbook 3.7. */
   ptoBalanceDays: number;
   ptoBalanceUpdatedAt: string;
+  /** Which team/office this person is based in — mostly used for timezone-aware scheduling. */
+  location: CrewLocation;
+  /** Standing days-of-week this person works from home. Mirrored to recurring Google Calendar events. */
+  fixedWfhDays: WeekdayCode[];
+  /** Google Calendar event IDs for the current fixedWfhDays recurring series — used to clean up on change. */
+  fixedWfhCalendarEventIds: string[];
 };
+
+/** Fills in fields that may be missing on records created before they existed. */
+function withDefaults(record: CrewMember): CrewMember {
+  return {
+    ...record,
+    location: record.location ?? 'VN',
+    fixedWfhDays: record.fixedWfhDays ?? [],
+    fixedWfhCalendarEventIds: record.fixedWfhCalendarEventIds ?? [],
+  };
+}
 
 /**
  * Employee Handbook 3.7 (Nghỉ hằng năm) — 12 base working days/year once an
@@ -46,7 +67,8 @@ function keyFor(email: string): string {
 
 export async function getCrewMember(email: string): Promise<CrewMember | null> {
   if (!email) return null;
-  return getKv().get<CrewMember>(keyFor(email));
+  const record = await getKv().get<CrewMember>(keyFor(email));
+  return record ? withDefaults(record) : null;
 }
 
 /** Gate check for /crew access — safe to call from edge middleware. */
@@ -64,6 +86,7 @@ export async function listCrewMembers(): Promise<CrewMember[]> {
   const records = await Promise.all(keys.map((key) => getKv().get<CrewMember>(key)));
   return records
     .filter((record): record is CrewMember => !!record)
+    .map(withDefaults)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -91,6 +114,9 @@ export async function addOrUpdateCrewMember(input: {
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     ptoBalanceDays: existing?.ptoBalanceDays ?? input.initialPtoBalanceDays ?? 0,
     ptoBalanceUpdatedAt: existing?.ptoBalanceUpdatedAt ?? new Date().toISOString(),
+    location: existing?.location ?? 'VN',
+    fixedWfhDays: existing?.fixedWfhDays ?? [],
+    fixedWfhCalendarEventIds: existing?.fixedWfhCalendarEventIds ?? [],
   };
 
   await getKv().set(keyFor(email), record);
@@ -111,6 +137,35 @@ export async function setCrewMemberStartDate(
   const existing = await getCrewMember(email);
   if (!existing) throw new Error(`No crew member found for email: ${email}`);
   const updated = { ...existing, startDate };
+  await getKv().set(keyFor(email), updated);
+  return updated;
+}
+
+export async function setCrewMemberLocation(
+  email: string,
+  location: CrewLocation
+): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  const updated = { ...existing, location };
+  await getKv().set(keyFor(email), updated);
+  return updated;
+}
+
+/**
+ * Persists the standing WFH days + the calendar event IDs for the recurring
+ * series that now represents them. Calendar create/delete happens in the
+ * caller (route handler) via lib/google-calendar.ts — this just records the
+ * result, same split as the rest of PTO/WFH calendar sync in this codebase.
+ */
+export async function setCrewMemberFixedWfh(
+  email: string,
+  fixedWfhDays: WeekdayCode[],
+  fixedWfhCalendarEventIds: string[]
+): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  const updated = { ...existing, fixedWfhDays, fixedWfhCalendarEventIds };
   await getKv().set(keyFor(email), updated);
   return updated;
 }

@@ -4,6 +4,8 @@ export type CrewStatusEntry = {
   name: string;
   status: 'in' | 'PTO' | 'WFH';
   note?: string;
+  /** Crew directory email, when this entry came from a directory member — used to look up their Asana avatar. */
+  email?: string;
 };
 
 export type CrewStatusSnapshot = {

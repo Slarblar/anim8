@@ -6,6 +6,26 @@ import { adminAlertError, adminBody, adminBtnGhost, adminCard } from '@/componen
 import { useCrewLanguage, type CrewLang } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
 
+const AVATAR_PLACEHOLDER = '/images/avatars/avatar-placeholder.png';
+
+function CrewAvatar({ entry }: { entry: CrewStatusEntry }) {
+  const src = entry.email ? `/api/crew/avatar?email=${encodeURIComponent(entry.email)}` : AVATAR_PLACEHOLDER;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- proxied/local avatar, not worth the next/image loader overhead for a 28px circle
+    <img
+      src={src}
+      alt=""
+      width={28}
+      height={28}
+      className="h-7 w-7 flex-shrink-0 rounded-full border border-white/10 bg-white/5 object-cover"
+      onError={(e) => {
+        if (e.currentTarget.src.endsWith(AVATAR_PLACEHOLDER)) return;
+        e.currentTarget.src = AVATAR_PLACEHOLDER;
+      }}
+    />
+  );
+}
+
 function StatusPill({ status, lang }: { status: CrewStatusEntry['status']; lang: CrewLang }) {
   const c = crewT[lang].statusChart;
 
@@ -99,7 +119,10 @@ export function CrewStatusChart() {
         <ul className="grid gap-3 min-[480px]:grid-cols-2 min-[900px]:grid-cols-3">
           {snapshot.entries.map((entry) => (
             <li key={entry.name} className={`${adminCard} flex items-center justify-between gap-3`}>
-              <span className="min-w-0 truncate font-bold text-white">{entry.name}</span>
+              <span className="flex min-w-0 items-center gap-2.5">
+                <CrewAvatar entry={entry} />
+                <span className="min-w-0 truncate font-bold text-white">{entry.name}</span>
+              </span>
               <StatusPill status={entry.status} lang={lang} />
             </li>
           ))}

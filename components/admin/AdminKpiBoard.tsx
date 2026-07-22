@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminKpiPerson } from '@/lib/kpi-shared';
 import { performanceBandLabel, type PerformanceBand } from '@/lib/kpi-shared';
+import { CountUp } from '@/components/crew/CountUp';
 import {
   MonthlyBarChart,
   SCORE_BANDS,
@@ -80,12 +81,14 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
             {summary ? (
               <>
                 <span className="font-mono text-brand-cyan">
-                  {monthScore.toFixed(1)} this mo
+                  <CountUp value={monthScore} decimals={1} /> this mo
                 </span>
                 <span className="font-mono text-text-muted">
-                  YTD {summary.ytdScore.toFixed(1)}
+                  YTD <CountUp value={summary.ytdScore} decimals={1} />
                 </span>
-                <span className="font-mono text-text-muted">{summary.ytdTasks} tasks</span>
+                <span className="font-mono text-text-muted">
+                  <CountUp value={summary.ytdTasks} decimals={0} /> tasks
+                </span>
                 {monthScore > 0 ? (
                   <ScoreDelta current={monthScore} previous={summary.previousMonthScore} />
                 ) : null}
@@ -115,21 +118,25 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono">
                     This month
                   </p>
-                  <p className="mt-1 text-2xl font-black text-white">{monthScore.toFixed(2)}</p>
+                  <p className="mt-1 text-2xl font-black text-white">
+                    <CountUp value={monthScore} decimals={2} />
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono">
                     Last month
                   </p>
                   <p className="mt-1 text-2xl font-black text-white">
-                    {summary.previousMonthScore.toFixed(2)}
+                    <CountUp value={summary.previousMonthScore} decimals={2} />
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono">
                     YTD score
                   </p>
-                  <p className="mt-1 text-2xl font-black text-white">{summary.ytdScore.toFixed(2)}</p>
+                  <p className="mt-1 text-2xl font-black text-white">
+                    <CountUp value={summary.ytdScore} decimals={2} />
+                  </p>
                 </div>
               </div>
               <div>
@@ -229,8 +236,17 @@ export function AdminKpiBoard() {
             Crew progress from the 🐸 Anim8 KPI project — sorted by this month&apos;s score.
           </p>
         </div>
-        <button type="button" className={adminBtnGhost} onClick={refresh} disabled={refreshing}>
-          {refreshing ? 'Refreshing…' : 'Refresh now'}
+        <button
+          type="button"
+          className={adminBtnGhost}
+          onClick={refresh}
+          disabled={refreshing}
+          aria-label="Refresh now"
+          title="Refresh now"
+        >
+          <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
+            🔄
+          </span>
         </button>
       </div>
 

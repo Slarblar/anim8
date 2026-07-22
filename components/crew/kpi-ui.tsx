@@ -7,6 +7,7 @@ import { localizeAsanaRating, localizePerformanceBand } from '@/lib/crew-asana-i
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
 import { adminCard } from '@/components/admin/admin-ui';
+import { CountUp, CountUpTspan } from './CountUp';
 import { HoverTranslate } from './HoverTranslate';
 
 /**
@@ -217,7 +218,11 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
           const glowRgb = hexToRgbTriple(band.color);
           return (
             <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-2.5">
-              <span className="text-sm font-black text-white font-mono md:text-base">{month.score}</span>
+              <CountUp
+                value={month.score}
+                decimals={2}
+                className="text-sm font-black text-white font-mono md:text-base"
+              />
 
               {/* Track — dark recessed "bezel" the fill grows inside of. */}
               <div className="relative flex h-36 w-full items-end overflow-hidden rounded-lg border border-white/10 bg-black/40 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] min-[480px]:h-44">
@@ -366,7 +371,7 @@ export function KpiLineChart({ months }: { months: PersonMonthlyKPI[] }) {
                 ) : null}
                 <circle cx={p.x} cy={p.y} r={4.5} fill={fill} stroke={stroke} strokeWidth={1.5} />
                 <text x={p.x} y={p.y - 12} textAnchor="middle" className="fill-white text-[10px] font-bold font-mono">
-                  {p.month.score}
+                  <CountUpTspan value={p.month.score} decimals={2} />
                 </text>
                 <text
                   x={p.x}

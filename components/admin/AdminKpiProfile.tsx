@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminKpiPerson } from '@/lib/kpi-shared';
 import { performanceBandLabel } from '@/lib/kpi-shared';
+import { CountUp } from '@/components/crew/CountUp';
 import {
   KpiLineChart,
   MonthlyBarChart,
@@ -118,11 +119,11 @@ export function AdminKpiProfile({ email }: { email: string }) {
           ) : null}
 
           <div className="grid gap-3 min-[480px]:grid-cols-2 min-[900px]:grid-cols-4">
-            <StatCard label="YTD KPI score" value={summary.ytdScore.toFixed(2)} />
-            <StatCard label="YTD scored tasks" value={String(summary.ytdTasks)} />
+            <StatCard label="YTD KPI score" value={<CountUp value={summary.ytdScore} decimals={2} />} />
+            <StatCard label="YTD scored tasks" value={<CountUp value={summary.ytdTasks} decimals={0} />} />
             <StatCard
               label="This month"
-              value={summary.currentMonthScore.toFixed(2)}
+              value={<CountUp value={summary.currentMonthScore} decimals={2} />}
               sub={
                 <>
                   <BandBadge score={summary.currentMonthScore} />
@@ -133,7 +134,7 @@ export function AdminKpiProfile({ email }: { email: string }) {
             />
             <StatCard
               label="Last month"
-              value={summary.previousMonthScore.toFixed(2)}
+              value={<CountUp value={summary.previousMonthScore} decimals={2} />}
               sub={<BandBadge score={summary.previousMonthScore} />}
             />
           </div>

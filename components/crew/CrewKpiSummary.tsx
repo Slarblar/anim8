@@ -5,6 +5,7 @@ import type { PersonKPISummary } from '@/lib/kpi-shared';
 import { adminAlertError, adminBtnGhost, adminCard } from '@/components/admin/admin-ui';
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
+import { CountUp } from './CountUp';
 import { HoverTranslate } from './HoverTranslate';
 import {
   KpiLineChart,
@@ -83,12 +84,17 @@ export function CrewKpiSummary() {
         <p className={crewBody}>
           <HoverTranslate en={crewT.en.kpiPage.syncedFromAsana} vn={crewT.vn.kpiPage.syncedFromAsana} />
         </p>
-        <button type="button" className={adminBtnGhost} onClick={refresh} disabled={refreshing}>
-          {refreshing ? (
-            <HoverTranslate en={crewT.en.kpiPage.refreshing} vn={crewT.vn.kpiPage.refreshing} />
-          ) : (
-            <HoverTranslate en={crewT.en.kpiPage.refreshNow} vn={crewT.vn.kpiPage.refreshNow} />
-          )}
+        <button
+          type="button"
+          className={adminBtnGhost}
+          onClick={refresh}
+          disabled={refreshing}
+          aria-label={lang === 'vn' ? crewT.vn.kpiPage.refreshNow : crewT.en.kpiPage.refreshNow}
+          title={lang === 'vn' ? crewT.vn.kpiPage.refreshNow : crewT.en.kpiPage.refreshNow}
+        >
+          <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
+            🔄
+          </span>
         </button>
       </div>
 
@@ -129,19 +135,19 @@ export function CrewKpiSummary() {
             <div className="crew-fade-in-up" style={{ animationDelay: '0.05s' }}>
               <StatCard
                 label={<HoverTranslate en={crewT.en.kpiPage.ytdScore} vn={crewT.vn.kpiPage.ytdScore} />}
-                value={summary.ytdScore.toFixed(2)}
+                value={<CountUp value={summary.ytdScore} decimals={2} />}
               />
             </div>
             <div className="crew-fade-in-up" style={{ animationDelay: '0.1s' }}>
               <StatCard
                 label={<HoverTranslate en={crewT.en.kpiPage.ytdTasks} vn={crewT.vn.kpiPage.ytdTasks} />}
-                value={String(summary.ytdTasks)}
+                value={<CountUp value={summary.ytdTasks} decimals={0} />}
               />
             </div>
             <div className="crew-fade-in-up" style={{ animationDelay: '0.15s' }}>
               <StatCard
                 label={<HoverTranslate en={crewT.en.kpiPage.thisMonth} vn={crewT.vn.kpiPage.thisMonth} />}
-                value={summary.currentMonthScore.toFixed(2)}
+                value={<CountUp value={summary.currentMonthScore} decimals={2} />}
                 sub={
                   <>
                     <BandBadge score={summary.currentMonthScore} />
@@ -154,7 +160,7 @@ export function CrewKpiSummary() {
             <div className="crew-fade-in-up" style={{ animationDelay: '0.2s' }}>
               <StatCard
                 label={<HoverTranslate en={crewT.en.kpiPage.lastMonth} vn={crewT.vn.kpiPage.lastMonth} />}
-                value={summary.previousMonthScore.toFixed(2)}
+                value={<CountUp value={summary.previousMonthScore} decimals={2} />}
                 sub={<BandBadge score={summary.previousMonthScore} />}
               />
             </div>

@@ -126,12 +126,17 @@ export function CrewStatusChart() {
         ) : (
           <span />
         )}
-        <button type="button" className={adminBtnGhost} onClick={refresh} disabled={refreshing}>
-          {refreshing ? (
-            <HoverTranslate en={crewT.en.statusChart.refreshing} vn={crewT.vn.statusChart.refreshing} />
-          ) : (
-            <HoverTranslate en={crewT.en.statusChart.refreshNow} vn={crewT.vn.statusChart.refreshNow} />
-          )}
+        <button
+          type="button"
+          className={adminBtnGhost}
+          onClick={refresh}
+          disabled={refreshing}
+          aria-label={lang === 'vn' ? crewT.vn.statusChart.refreshNow : crewT.en.statusChart.refreshNow}
+          title={lang === 'vn' ? crewT.vn.statusChart.refreshNow : crewT.en.statusChart.refreshNow}
+        >
+          <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
+            🔄
+          </span>
         </button>
       </div>
 

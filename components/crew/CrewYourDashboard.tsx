@@ -7,6 +7,7 @@ import { adminAlertError, adminBtnPrimary, adminCard } from '@/components/admin/
 import { localizeAsanaRating } from '@/lib/crew-asana-i18n';
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
+import { CountUp } from './CountUp';
 import { HoverTranslate } from './HoverTranslate';
 import {
   AsanaRatingLabel,
@@ -128,15 +129,19 @@ export function CrewYourDashboard() {
               <HoverTranslate en={crewT.en.dashboard.ptoAvailable} vn={crewT.vn.dashboard.ptoAvailable} />
             </p>
             <p className="mt-2 text-3xl font-black text-brand-cyan md:text-4xl">
-              {balance?.balanceDays ?? '—'}
               {balance?.balanceDays !== null && balance?.balanceDays !== undefined ? (
-                <span className="ml-1 text-base font-bold text-text-muted">
-                  <HoverTranslate
-                    en={crewT.en.dashboard.dayUnit(balance.balanceDays)}
-                    vn={crewT.vn.dashboard.dayUnit(balance.balanceDays)}
-                  />
-                </span>
-              ) : null}
+                <>
+                  <CountUp value={balance.balanceDays} decimals={Number.isInteger(balance.balanceDays) ? 0 : 1} />
+                  <span className="ml-1 text-base font-bold text-text-muted">
+                    <HoverTranslate
+                      en={crewT.en.dashboard.dayUnit(balance.balanceDays)}
+                      vn={crewT.vn.dashboard.dayUnit(balance.balanceDays)}
+                    />
+                  </span>
+                </>
+              ) : (
+                '—'
+              )}
             </p>
           </div>
           {/* Glow removed here specifically — keeps this card calm next to the KPI stat cards. */}
@@ -150,7 +155,7 @@ export function CrewYourDashboard() {
             <div className="crew-fade-in-up" style={{ animationDelay: '0.1s' }}>
               <StatCard
                 label={<HoverTranslate en={crewT.en.dashboard.thisMonthKpi} vn={crewT.vn.dashboard.thisMonthKpi} />}
-                value={kpi.currentMonthScore.toFixed(2)}
+                value={<CountUp value={kpi.currentMonthScore} decimals={2} />}
                 sub={
                   <>
                     {kpi.currentMonthScore > 0 ? (

@@ -26,7 +26,12 @@ export async function syncCrewStatusForDate(date: string): Promise<CrewStatusSna
   const entries: CrewStatusEntry[] = activeMembers.map((member) => {
     const key = member.name.trim().toLowerCase();
     const base = outByName.get(key) ?? { name: member.name, status: 'in' as const };
-    return { ...base, email: member.email };
+    return {
+      ...base,
+      email: member.email,
+      location: member.location,
+      employmentType: member.employmentType,
+    };
   });
 
   // Anyone out/WFH on the calendar but not (yet) in the directory — surface them anyway.

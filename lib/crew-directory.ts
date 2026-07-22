@@ -5,6 +5,9 @@ export type WeekdayCode = 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
 
 export type CrewLocation = 'US' | 'VN';
 
+/** HR classification — drives things like PTO accrual assumptions and headcount reporting. */
+export type EmploymentType = 'full_time' | 'part_time' | 'contractor';
+
 export type CrewMember = {
   email: string;
   name: string;
@@ -18,6 +21,8 @@ export type CrewMember = {
   ptoBalanceUpdatedAt: string;
   /** Which team/office this person is based in — mostly used for timezone-aware scheduling. */
   location: CrewLocation;
+  /** Full-time / part-time / contractor. */
+  employmentType: EmploymentType;
   /** Standing days-of-week this person works from home. Mirrored to recurring Google Calendar events. */
   fixedWfhDays: WeekdayCode[];
   /**
@@ -33,6 +38,7 @@ function withDefaults(record: CrewMember): CrewMember {
   return {
     ...record,
     location: record.location ?? 'VN',
+    employmentType: record.employmentType ?? 'full_time',
     fixedWfhDays: record.fixedWfhDays ?? [],
     fixedWfhCalendarEventIds: record.fixedWfhCalendarEventIds ?? {},
   };
@@ -101,6 +107,8 @@ export async function addOrUpdateCrewMember(input: {
   startDate?: string | null;
   /** Only applied the first time this person is added — carries over any pre-launch balance. */
   initialPtoBalanceDays?: number;
+  location?: CrewLocation;
+  employmentType?: EmploymentType;
 }): Promise<CrewMember> {
   const email = input.email.trim().toLowerCase();
   const name = input.name.trim();
@@ -118,7 +126,8 @@ export async function addOrUpdateCrewMember(input: {
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     ptoBalanceDays: existing?.ptoBalanceDays ?? input.initialPtoBalanceDays ?? 0,
     ptoBalanceUpdatedAt: existing?.ptoBalanceUpdatedAt ?? new Date().toISOString(),
-    location: existing?.location ?? 'VN',
+    location: input.location ?? existing?.location ?? 'VN',
+    employmentType: input.employmentType ?? existing?.employmentType ?? 'full_time',
     fixedWfhDays: existing?.fixedWfhDays ?? [],
     fixedWfhCalendarEventIds: existing?.fixedWfhCalendarEventIds ?? {},
   };
@@ -152,6 +161,17 @@ export async function setCrewMemberLocation(
   const existing = await getCrewMember(email);
   if (!existing) throw new Error(`No crew member found for email: ${email}`);
   const updated = { ...existing, location };
+  await getKv().set(keyFor(email), updated);
+  return updated;
+}
+
+export async function setCrewMemberEmploymentType(
+  email: string,
+  employmentType: EmploymentType
+): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  const updated = { ...existing, employmentType };
   await getKv().set(keyFor(email), updated);
   return updated;
 }

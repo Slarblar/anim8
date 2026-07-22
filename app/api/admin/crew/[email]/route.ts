@@ -4,21 +4,25 @@ import {
   adjustCrewMemberPtoBalance,
   getCrewMember,
   setCrewMemberActive,
+  setCrewMemberEmploymentType,
   setCrewMemberFixedWfh,
   setCrewMemberLocation,
   setCrewMemberStartDate,
   type CrewLocation,
+  type EmploymentType,
   type WeekdayCode,
 } from '@/lib/crew-directory';
 import { createFixedWfhCalendarEvent, deleteCalendarEvent } from '@/lib/google-calendar';
 
 const WEEKDAY_CODES: WeekdayCode[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
+const EMPLOYMENT_TYPES: EmploymentType[] = ['full_time', 'part_time', 'contractor'];
 
 type PatchBody = {
   active?: boolean;
   adjustBalanceDays?: number;
   startDate?: string | null;
   location?: CrewLocation;
+  employmentType?: EmploymentType;
   fixedWfhDays?: WeekdayCode[];
 };
 
@@ -37,11 +41,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
   const hasAdjustment = typeof body.adjustBalanceDays === 'number' && body.adjustBalanceDays !== 0;
   const hasStartDate = body.startDate !== undefined;
   const hasLocation = body.location === 'US' || body.location === 'VN';
+  const hasEmploymentType = !!body.employmentType && EMPLOYMENT_TYPES.includes(body.employmentType);
   const hasFixedWfhDays =
     Array.isArray(body.fixedWfhDays) &&
     body.fixedWfhDays.every((day) => WEEKDAY_CODES.includes(day));
 
-  if (!hasActive && !hasAdjustment && !hasStartDate && !hasLocation && !hasFixedWfhDays) {
+  if (!hasActive && !hasAdjustment && !hasStartDate && !hasLocation && !hasEmploymentType && !hasFixedWfhDays) {
     return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
   }
 
@@ -59,6 +64,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     }
     if (hasLocation) {
       member = await setCrewMemberLocation(params.email, body.location as CrewLocation);
+    }
+    if (hasEmploymentType) {
+      member = await setCrewMemberEmploymentType(params.email, body.employmentType as EmploymentType);
     }
     if (hasFixedWfhDays) {
       const existing = await getCrewMember(params.email);

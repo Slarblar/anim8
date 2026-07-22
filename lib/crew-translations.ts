@@ -30,6 +30,9 @@ type StatusChartT = {
   statusOut: string;
   statusWfh: string;
   statusInStudio: string;
+  employmentFullTime: string;
+  employmentPartTime: string;
+  employmentContractor: string;
 };
 
 type DashboardT = {
@@ -80,6 +83,9 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       statusOut: 'Out',
       statusWfh: 'WFH',
       statusInStudio: 'In studio',
+      employmentFullTime: 'Full-time',
+      employmentPartTime: 'Part-time',
+      employmentContractor: 'Contractor',
     },
     dashboard: {
       title: 'Your dashboard',
@@ -121,6 +127,9 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       statusOut: 'Vắng mặt',
       statusWfh: 'Làm tại nhà',
       statusInStudio: 'Tại studio',
+      employmentFullTime: 'Toàn thời gian',
+      employmentPartTime: 'Bán thời gian',
+      employmentContractor: 'Cộng tác viên',
     },
     dashboard: {
       title: 'Bảng tin của bạn',

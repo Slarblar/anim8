@@ -5,6 +5,7 @@ import {
   annualLeaveEntitlementDays,
   type CrewLocation,
   type CrewMember,
+  type EmploymentType,
   type WeekdayCode,
 } from '@/lib/crew-directory';
 import {
@@ -21,6 +22,23 @@ import {
 } from './admin-ui';
 
 type ApiErrorBody = { error?: string; reason?: string; email?: string | null };
+
+const EMPLOYMENT_TYPE_OPTIONS: { value: EmploymentType; label: string }[] = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'contractor', label: 'Contractor' },
+];
+
+const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
+  full_time: 'Full-time',
+  part_time: 'Part-time',
+  contractor: 'Contractor',
+};
+
+/** 🇺🇸 / 🇻🇳 — kept as a plain flag + code so it reads at a glance in the collapsed row. */
+function locationFlag(location: CrewLocation): string {
+  return location === 'US' ? '🇺🇸 US' : '🇻🇳 VN';
+}
 
 /** Turns a middleware/route error body (error + reason + email) into a message that explains what to fix. */
 function describeApiError(data: ApiErrorBody, fallback: string): string {
@@ -44,6 +62,8 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
   const [role, setRole] = useState('');
   const [startDate, setStartDate] = useState('');
   const [initialBalance, setInitialBalance] = useState('');
+  const [location, setLocation] = useState<CrewLocation>('VN');
+  const [employmentType, setEmploymentType] = useState<EmploymentType>('full_time');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +83,8 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
             role,
             startDate: startDate || undefined,
             initialPtoBalanceDays: initialBalance ? Number(initialBalance) : undefined,
+            location,
+            employmentType,
           }),
         });
         const data = (await res.json()) as ApiErrorBody;
@@ -75,6 +97,8 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
         setRole('');
         setStartDate('');
         setInitialBalance('');
+        setLocation('VN');
+        setEmploymentType('full_time');
         onCreated();
       } catch {
         setError('Could not add crew member. Please try again.');
@@ -82,7 +106,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
         setSubmitting(false);
       }
     },
-    [name, email, role, startDate, initialBalance, onCreated]
+    [name, email, role, startDate, initialBalance, location, employmentType, onCreated]
   );
 
   return (
@@ -154,6 +178,37 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
             placeholder="0"
           />
         </div>
+        <div>
+          <label className={adminLabel} htmlFor="crewLocation">
+            Location
+          </label>
+          <select
+            id="crewLocation"
+            className={adminInput}
+            value={location}
+            onChange={(e) => setLocation(e.target.value as CrewLocation)}
+          >
+            <option value="VN">🇻🇳 VN — Vietnam</option>
+            <option value="US">🇺🇸 US — United States</option>
+          </select>
+        </div>
+        <div>
+          <label className={adminLabel} htmlFor="crewEmploymentType">
+            Employment type
+          </label>
+          <select
+            id="crewEmploymentType"
+            className={adminInput}
+            value={employmentType}
+            onChange={(e) => setEmploymentType(e.target.value as EmploymentType)}
+          >
+            {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
@@ -208,6 +263,38 @@ function LocationToggle({
       </span>
       <span className={isUs ? 'text-white' : undefined}>US</span>
     </button>
+  );
+}
+
+/** Three-way segmented control — employment type isn't binary like location, so no sliding switch here. */
+function EmploymentTypeToggle({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: EmploymentType;
+  onChange: (next: EmploymentType) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(opt.value)}
+          aria-pressed={value === opt.value}
+          className={`rounded-md border px-2.5 py-1 text-xs font-bold transition disabled:opacity-50 ${
+            value === opt.value
+              ? 'border-brand-cyan/50 bg-brand-cyan/20 text-brand-cyan'
+              : 'border-white/15 text-text-muted hover:border-white/35'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -377,10 +464,11 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           <p className={`${adminBody} truncate`}>{member.email}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
             {member.role ? <span className="text-text-muted">{member.role}</span> : null}
+            <span className="text-text-muted">{EMPLOYMENT_TYPE_LABELS[member.employmentType ?? 'full_time']}</span>
             <span className="font-mono text-brand-cyan">
               {balance} day{balance === 1 ? '' : 's'} PTO
             </span>
-            <span className="text-text-muted">{(member.location ?? 'VN') === 'US' ? '🇺🇸 US' : '🇻🇳 VN'}</span>
+            <span className="text-text-muted">{locationFlag(member.location ?? 'VN')}</span>
             {savedWfhDays.length > 0 ? (
               <span className="text-brand-cyan">
                 WFH {savedWfhDays.map((d) => WEEKDAYS.find((w) => w.code === d)?.label).join('/')}
@@ -416,6 +504,15 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           <div>
             <p className={adminLabel}>Location</p>
             <LocationToggle location={member.location ?? 'VN'} onToggle={toggleLocation} disabled={loading} />
+          </div>
+
+          <div>
+            <p className={adminLabel}>Employment type</p>
+            <EmploymentTypeToggle
+              value={member.employmentType ?? 'full_time'}
+              onChange={(next) => patch({ employmentType: next })}
+              disabled={loading}
+            />
           </div>
 
           <div>
@@ -557,7 +654,9 @@ export function AdminCrewPage() {
     return (
       member.name.toLowerCase().includes(q) ||
       member.email.toLowerCase().includes(q) ||
-      member.role.toLowerCase().includes(q)
+      member.role.toLowerCase().includes(q) ||
+      EMPLOYMENT_TYPE_LABELS[member.employmentType ?? 'full_time'].toLowerCase().includes(q) ||
+      (member.location ?? 'VN').toLowerCase().includes(q)
     );
   });
 
@@ -579,7 +678,7 @@ export function AdminCrewPage() {
           className={adminInput}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email, or role…"
+          placeholder="Search by name, email, role, location, or employment type…"
           aria-label="Search crew directory"
         />
       ) : null}

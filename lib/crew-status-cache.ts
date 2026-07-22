@@ -1,3 +1,4 @@
+import type { CrewLocation, EmploymentType } from './crew-directory';
 import { getKv } from './kv';
 
 export type CrewStatusEntry = {
@@ -6,6 +7,10 @@ export type CrewStatusEntry = {
   note?: string;
   /** Crew directory email, when this entry came from a directory member — used to look up their Asana avatar. */
   email?: string;
+  /** US / VN office — from the crew directory. Missing for calendar-only names not yet in the directory. */
+  location?: CrewLocation;
+  /** Full-time / part-time / contractor — from the crew directory. */
+  employmentType?: EmploymentType;
 };
 
 export type CrewStatusSnapshot = {

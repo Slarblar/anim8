@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { CrewStatusEntry, CrewStatusSnapshot } from '@/lib/crew-status-cache';
+import type { EmploymentType } from '@/lib/crew-directory';
 import { adminAlertError, adminBody, adminBtnGhost, adminCard } from '@/components/admin/admin-ui';
 import { useCrewLanguage, type CrewLang } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
@@ -48,6 +49,14 @@ function StatusPill({ status, lang }: { status: CrewStatusEntry['status']; lang:
       {c.statusInStudio}
     </span>
   );
+}
+
+function employmentLabel(type: EmploymentType | undefined, lang: CrewLang): string | null {
+  if (!type) return null;
+  const c = crewT[lang].statusChart;
+  if (type === 'part_time') return c.employmentPartTime;
+  if (type === 'contractor') return c.employmentContractor;
+  return c.employmentFullTime;
 }
 
 export function CrewStatusChart() {
@@ -117,15 +126,32 @@ export function CrewStatusChart() {
         <p className={adminBody}>{c.noCrewMembers}</p>
       ) : snapshot ? (
         <ul className="grid gap-3 min-[480px]:grid-cols-2 min-[900px]:grid-cols-3">
-          {snapshot.entries.map((entry) => (
-            <li key={entry.name} className={`${adminCard} flex items-center justify-between gap-3`}>
-              <span className="flex min-w-0 items-center gap-2.5">
-                <CrewAvatar entry={entry} />
-                <span className="min-w-0 truncate font-bold text-white">{entry.name}</span>
-              </span>
-              <StatusPill status={entry.status} lang={lang} />
-            </li>
-          ))}
+          {snapshot.entries.map((entry) => {
+            const employment = employmentLabel(entry.employmentType, lang);
+            return (
+              <li key={entry.name} className={`${adminCard} flex items-center justify-between gap-3`}>
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <CrewAvatar entry={entry} />
+                  <span className="min-w-0">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      {entry.location ? (
+                        <span className="shrink-0 text-sm leading-none" title={entry.location === 'US' ? 'US' : 'VN'}>
+                          {entry.location === 'US' ? '🇺🇸' : '🇻🇳'}
+                        </span>
+                      ) : null}
+                      <span className="min-w-0 truncate font-bold text-white">{entry.name}</span>
+                    </span>
+                    {employment ? (
+                      <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">
+                        {employment}
+                      </span>
+                    ) : null}
+                  </span>
+                </span>
+                <StatusPill status={entry.status} lang={lang} />
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </div>

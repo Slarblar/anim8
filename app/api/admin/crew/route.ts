@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth-guards';
-import { addOrUpdateCrewMember, listCrewMembers } from '@/lib/crew-directory';
+import {
+  addOrUpdateCrewMember,
+  listCrewMembers,
+  type CrewLocation,
+  type EmploymentType,
+} from '@/lib/crew-directory';
+
+const EMPLOYMENT_TYPES: EmploymentType[] = ['full_time', 'part_time', 'contractor'];
 
 export async function GET() {
   const admin = await requireAdminSession();
@@ -16,6 +23,8 @@ type CreateCrewBody = {
   role?: string;
   startDate?: string;
   initialPtoBalanceDays?: number;
+  location?: CrewLocation;
+  employmentType?: EmploymentType;
 };
 
 export async function POST(req: NextRequest) {
@@ -41,6 +50,8 @@ export async function POST(req: NextRequest) {
       startDate: body.startDate || null,
       initialPtoBalanceDays:
         typeof body.initialPtoBalanceDays === 'number' ? body.initialPtoBalanceDays : undefined,
+      location: body.location === 'US' || body.location === 'VN' ? body.location : undefined,
+      employmentType: body.employmentType && EMPLOYMENT_TYPES.includes(body.employmentType) ? body.employmentType : undefined,
     });
     return NextResponse.json({ member });
   } catch (err) {

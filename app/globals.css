@@ -79,7 +79,15 @@
     font-family: 'futura-pt-heavy', 'futura-pt', sans-serif;
   }
 
-  /* Vietnamese language overrides — Be Vietnam Pro has native diacritic support */
+  /* Vietnamese language overrides — Be Vietnam Pro has native diacritic support.
+     futura-pt (our default display font) renders Vietnamese combining diacritics
+     (ẫ, ệ, ữ, etc.) incorrectly/malformed, which is what looked "buggy". `:lang(vi)`
+     matches every descendant of <html lang="vi">, and font-family inherits, so this
+     one rule covers spans/divs/buttons/etc. too — not just headings/paragraphs. The
+     more specific rules below just keep heading/paragraph weights consistent. */
+  :lang(vi) {
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+  }
   :lang(vi) h1, :lang(vi) h2, :lang(vi) h3,
   :lang(vi) h4, :lang(vi) h5, :lang(vi) h6 {
     font-family: 'Be Vietnam Pro', system-ui, sans-serif;
@@ -1677,14 +1685,16 @@ html.careers-page-active {
   animation: kpi-hue-shift 7s ease-in-out infinite;
 }
 
-/** Solid anim8-green glow pulse for the YTD line — same rgba(124,193,66,…) glow used across the site (see .pulse-glow). */
+/** Solid anim8-green glow pulse for the YTD line — same rgba(124,193,66,…) glow used across the site (see .pulse-glow).
+    Boosted slightly vs. the bar chart's glow since the line itself is now thinner (~45% thinner stroke) and needs a
+    bit more glow spread to keep reading as "alive" at that weight. */
 @keyframes kpi-line-glow {
   0%,
   100% {
-    filter: drop-shadow(0 0 3px rgba(124, 193, 66, 0.55)) drop-shadow(0 0 10px rgba(124, 193, 66, 0.3));
+    filter: drop-shadow(0 0 3px rgba(124, 193, 66, 0.6)) drop-shadow(0 0 11px rgba(124, 193, 66, 0.35));
   }
   50% {
-    filter: drop-shadow(0 0 7px rgba(124, 193, 66, 0.85)) drop-shadow(0 0 22px rgba(124, 193, 66, 0.5));
+    filter: drop-shadow(0 0 9px rgba(124, 193, 66, 0.95)) drop-shadow(0 0 26px rgba(124, 193, 66, 0.6));
   }
 }
 
@@ -1740,6 +1750,25 @@ html.careers-page-active {
   animation: kpi-bar-cap-glow 2.4s ease-in-out infinite;
 }
 
+/** Thin bright vertical shine running up each "health bar" fill — a glossy accent
+    on top of the horizontal white cap, like the vertical highlight streak on a
+    game health/mana bar. Current month pulses; past months hold a static glow. */
+@keyframes kpi-bar-vglow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.65);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 11px 3px rgba(255, 255, 255, 1);
+  }
+}
+
+.kpi-bar-vglow--active {
+  animation: kpi-bar-vglow-pulse 2.4s ease-in-out infinite;
+}
+
 /** Shared entrance animation for /crew dashboard cards — same easing curve as .portal-task-expand elsewhere on the site. Apply with an inline `animation-delay` for staggering. */
 @keyframes crew-fade-in-up {
   from {
@@ -1762,6 +1791,7 @@ html.careers-page-active {
   .kpi-dot-pulse,
   .kpi-bar-fill--active,
   .kpi-bar-cap--active,
+  .kpi-bar-vglow--active,
   .crew-fade-in-up {
     animation: none;
   }

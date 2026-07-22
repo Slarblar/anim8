@@ -80,6 +80,23 @@ body.landing-active.hov #cursor-ring {
   border-color: var(--cursor);
 }
 
+/* While the cursor is over the (backdrop-blurred) nav, drop the difference
+   blend so it doesn't glitch/invert against the blurred section content
+   showing through the nav's frosted glass. See explanation in page.tsx. */
+body.landing-active.nav-hov #cursor-dot,
+body.landing-active.nav-hov #cursor-ring {
+  mix-blend-mode: normal;
+}
+body.landing-active.nav-hov #cursor-dot {
+  background: var(--cursor);
+}
+body.landing-active.nav-hov #cursor-ring {
+  border-color: rgba(56,194,214,0.6);
+}
+body.landing-active.nav-hov.hov #cursor-ring {
+  border-color: var(--cursor);
+}
+
 /* No custom cursor trail on touch-first / no-hover viewports */
 @media (hover: none), (pointer: coarse) {
   body.landing-active {

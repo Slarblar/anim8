@@ -120,6 +120,28 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  // The custom cursor's mix-blend-mode:difference blends against whatever is
+  // painted underneath it — including the nav's blurred backdrop-filter, which
+  // shows a live (blurred) glimpse of the section scrolled behind it. Blending
+  // "difference" against that constantly-shifting blur reads as a glitchy,
+  // inverted "overlay" flashing over the page while hovering the nav. Swap the
+  // cursor to a normal (non-blended) paint mode while it's within the nav so it
+  // stays a clean anim8-blue dot/ring instead of differencing against the blur.
+  useEffect(() => {
+    if (!landingUsesCustomCursor()) return
+    const nav = document.getElementById('lp-nav')
+    if (!nav) return
+    const addNavHov = () => document.body.classList.add('nav-hov')
+    const remNavHov = () => document.body.classList.remove('nav-hov')
+    nav.addEventListener('mouseenter', addNavHov)
+    nav.addEventListener('mouseleave', remNavHov)
+    return () => {
+      nav.removeEventListener('mouseenter', addNavHov)
+      nav.removeEventListener('mouseleave', remNavHov)
+      document.body.classList.remove('nav-hov')
+    }
+  }, [])
+
   // Scroll reveal
   useEffect(() => {
     const ro = new IntersectionObserver(entries => {

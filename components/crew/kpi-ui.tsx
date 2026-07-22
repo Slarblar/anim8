@@ -105,16 +105,29 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
                 {/* Diagonal shimmer sweep — current month only, reads as "charging up". */}
                 {isCurrent ? <div className="shimmer absolute inset-0" /> : null}
 
-                {/* Glowing white cap at the growing edge — the "health bar" highlight. */}
+                {/* Glowing white cap at the growing edge — the "health bar" highlight (thinned to half its original height). */}
                 {heightPct > 0 ? (
                   <div
-                    className={`absolute inset-x-0 top-0 h-[5px] rounded-t-[6px] bg-white min-[480px]:h-[6px] ${
+                    className={`absolute inset-x-0 top-0 h-[2.5px] rounded-t-[6px] bg-white min-[480px]:h-[3px] ${
                       isCurrent ? 'kpi-bar-cap--active' : ''
                     }`}
                     style={{
                       boxShadow: isCurrent ? undefined : '0 0 5px 1px rgba(255,255,255,0.55)',
                       opacity: grown ? 1 : 0,
                       transition: `opacity 0.3s ease-out ${i * 0.1 + 0.55}s`,
+                    }}
+                  />
+                ) : null}
+
+                {/* Bright thin vertical glow streak — glossy accent running the height of the fill. */}
+                {heightPct > 0 ? (
+                  <div
+                    className={`absolute inset-y-0 w-[1.5px] bg-white ${isCurrent ? 'kpi-bar-vglow--active' : ''}`}
+                    style={{
+                      left: '38%',
+                      boxShadow: isCurrent ? undefined : '0 0 4px 1px rgba(255,255,255,0.55)',
+                      opacity: grown ? 1 : 0,
+                      transition: `opacity 0.3s ease-out ${i * 0.1 + 0.6}s`,
                     }}
                   />
                 ) : null}
@@ -192,7 +205,7 @@ export function KpiLineChart({ months }: { months: PersonMonthlyKPI[] }) {
           d={linePath}
           fill="none"
           stroke="#7cc142"
-          strokeWidth={3}
+          strokeWidth={1.65}
           strokeLinecap="round"
           strokeLinejoin="round"
           pathLength={1}

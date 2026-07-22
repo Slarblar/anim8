@@ -262,14 +262,29 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={adminBtnGhost} onClick={loadLinks} disabled={linksLoading}>
-          {linksLoading ? 'Loading…' : links ? 'Hide Asana tasks' : 'View in Asana'}
-        </button>
-        {client.active ? (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={adminBtnGhost} onClick={loadLinks} disabled={linksLoading}>
+            {linksLoading ? 'Loading…' : links ? 'Hide Asana tasks' : 'View in Asana'}
+          </button>
+          <button type="button" className={adminBtnGhost} onClick={() => setRenaming((v) => !v)}>
+            Rename link
+          </button>
           <button
             type="button"
             className={adminBtnGhost}
+            onClick={() => {
+              setConfirmingDelete((v) => !v);
+              setDeleteConfirmText('');
+            }}
+          >
+            Delete permanently
+          </button>
+        </div>
+        {client.active ? (
+          <button
+            type="button"
+            className="shrink-0 text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline disabled:opacity-50"
             disabled={loading}
             onClick={() => runAction({ action: 'deactivate' })}
           >
@@ -278,26 +293,13 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
         ) : (
           <button
             type="button"
-            className={adminBtnGhost}
+            className="shrink-0 text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-cyan hover:underline disabled:opacity-50"
             disabled={loading}
             onClick={() => runAction({ action: 'reactivate' })}
           >
             Reactivate
           </button>
         )}
-        <button type="button" className={adminBtnGhost} onClick={() => setRenaming((v) => !v)}>
-          Rename link
-        </button>
-        <button
-          type="button"
-          className={adminBtnGhost}
-          onClick={() => {
-            setConfirmingDelete((v) => !v);
-            setDeleteConfirmText('');
-          }}
-        >
-          Delete permanently
-        </button>
       </div>
 
       {confirmingDelete ? (

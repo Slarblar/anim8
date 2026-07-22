@@ -19,15 +19,16 @@ type CrewLanguageContextValue = {
 const CrewLanguageContext = createContext<CrewLanguageContextValue | null>(null);
 
 /**
- * globals.css keys its Be Vietnam Pro font overrides off `:lang(vi)`, which
- * only fires when `<html lang="...">` is actually set to a Vietnamese tag —
- * this component never touched it, so VN mode silently kept rendering
- * Vietnamese diacritics in futura-pt (a display font with poor Vietnamese
- * glyph coverage), which is what looked "buggy". Keep `<html lang>` in sync
- * with the crew toggle so the existing CSS overrides actually kick in.
+ * Syncs `<html lang>` + `crew-lang-vn` so globals.css can lock Be Vietnam Pro.
+ * futura-pt mangling Vietnamese diacritics is what caused the mixed-glyph bounce.
  */
 function applyHtmlLang(lang: CrewLang) {
-  document.documentElement.lang = lang === 'vn' ? 'vi' : 'en';
+  const root = document.documentElement;
+  root.lang = lang === 'vn' ? 'vi' : 'en';
+  // Class drives the Be Vietnam Pro lock in globals.css — more reliable than
+  // :lang() alone, which lost to body/utility futura-pt rules and caused
+  // mixed-glyph "bouncing" on Vietnamese diacritics.
+  root.classList.toggle('crew-lang-vn', lang === 'vn');
 }
 
 export function CrewLanguageProvider({ children }: { children: ReactNode }) {
@@ -44,6 +45,7 @@ export function CrewLanguageProvider({ children }: { children: ReactNode }) {
     // (which default to English markup) don't inherit a stale "vi" tag.
     return () => {
       document.documentElement.lang = 'en';
+      document.documentElement.classList.remove('crew-lang-vn');
     };
   }, []);
 

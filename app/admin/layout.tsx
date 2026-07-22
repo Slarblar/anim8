@@ -23,6 +23,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               <Link href="/admin/crew" className="transition hover:text-brand-cyan">
                 Crew directory
               </Link>
+              <Link href="/admin/kpi" className="transition hover:text-brand-cyan">
+                KPI board
+              </Link>
               <Link href="/admin/pto-requests" className="inline-flex items-center transition hover:text-brand-cyan">
                 PTO requests
                 <PendingRequestsBadge />

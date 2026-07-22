@@ -79,26 +79,6 @@
     font-family: 'futura-pt-heavy', 'futura-pt', sans-serif;
   }
 
-  /* Vietnamese language overrides — Be Vietnam Pro has native diacritic support.
-     futura-pt (our default display font) renders Vietnamese combining diacritics
-     (ẫ, ệ, ữ, etc.) incorrectly/malformed, which is what looked "buggy". `:lang(vi)`
-     matches every descendant of <html lang="vi">, and font-family inherits, so this
-     one rule covers spans/divs/buttons/etc. too — not just headings/paragraphs. The
-     more specific rules below just keep heading/paragraph weights consistent. */
-  :lang(vi) {
-    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-  }
-  :lang(vi) h1, :lang(vi) h2, :lang(vi) h3,
-  :lang(vi) h4, :lang(vi) h5, :lang(vi) h6 {
-    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-  }
-  :lang(vi) p {
-    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-  }
-  :lang(vi) strong, :lang(vi) .font-bold {
-    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-  }
-
   h1 {
     @apply text-4xl md:text-6xl lg:text-7xl;
     font-weight: 900;
@@ -1858,3 +1838,27 @@ html.careers-page-active {
     animation: none;
   }
 }
+
+/*
+ * Vietnamese (crew EN/VN toggle) — lock Be Vietnam Pro on the whole tree.
+ * Kept OUTSIDE @tailwind layers so it beats utility font-sans / font-heading.
+ * futura-pt has broken/missing Vietnamese diacritics, so browsers otherwise
+ * "bounce" between futura for base letters and a fallback for accents.
+ * Triggered by html.crew-lang-vn (CrewLanguageProvider) and html[lang="vi"].
+ */
+html.crew-lang-vn body,
+html[lang='vi'] body {
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif !important;
+}
+
+html.crew-lang-vn body *,
+html[lang='vi'] body * {
+  font-family: inherit !important;
+}
+
+/* Keep true monospace only where we mean code-ish data (emails, scores). */
+html.crew-lang-vn body .font-mono,
+html[lang='vi'] body .font-mono {
+  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, monospace !important;
+}
+

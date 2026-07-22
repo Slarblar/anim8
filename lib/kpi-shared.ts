@@ -41,6 +41,18 @@ export type PersonKPISummary = {
   collaborationRatingsLast3Months: RatingCount[];
 };
 
+/** One crew member row on the admin KPI board (directory + optional Asana summary). */
+export type AdminKpiPerson = {
+  email: string;
+  name: string;
+  role: string;
+  active: boolean;
+  employmentType: 'full_time' | 'part_time' | 'contractor';
+  weeklyContractedHours: number;
+  /** Null when this person has no scored tasks in the Anim8 KPI project yet. */
+  summary: PersonKPISummary | null;
+};
+
 /** Performance bands from the KPI scoring doc §1 — same thresholds for everyone once FTE-normalized. */
 export function performanceBand(score: number): PerformanceBand {
   if (score >= 100) return 'great';

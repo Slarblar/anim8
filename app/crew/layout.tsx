@@ -24,6 +24,9 @@ export default async function CrewLayout({ children }: { children: ReactNode }) 
               <Link href="/crew/pto" className="transition hover:text-brand-cyan">
                 PTO / WFH
               </Link>
+              <Link href="/crew/kpi" className="transition hover:text-brand-cyan">
+                KPI
+              </Link>
               {admin ? (
                 <Link href="/admin" className="transition hover:text-brand-cyan">
                   Admin

@@ -8,9 +8,8 @@
     --font-futura-book: 'futura-pt-book', sans-serif;
     --font-futura-bold: 'futura-pt-bold', sans-serif;
     --font-futura-heavy: 'futura-pt-heavy', sans-serif;
-    /* Same family ecosystem as .font-mono (Segoe UI Mono) — reliable Vietnamese diacritics. */
-    --font-crew-vi-sans: ui-sans-serif, system-ui, 'Segoe UI', 'Segoe UI Variable', 'Helvetica Neue', Arial, sans-serif;
-    --font-crew-vi-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, monospace;
+    /* System mono — reliable Vietnamese diacritics (Segoe UI Mono on Windows). */
+    --font-crew-vi-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, Consolas, monospace;
   }
 
   html {
@@ -1788,19 +1787,30 @@ html.careers-page-active {
 }
 
 /*
- * Vietnamese (crew EN/VN toggle) — system UI sans, same reliability as .font-mono.
- * Do not use Futura or webfont stacks here; Typekit + partial glyph coverage
- * is what caused broken diacritics. html.crew-lang-vn is set in crew/layout
- * boot script + CrewLanguageProvider.
+ * Vietnamese crew UI — lock everything to the system mono stack (Segoe UI Mono
+ * on Windows). That is what renders diacritics reliably; Futura + font-heading
+ * / font-sans on h1·p were still winning without explicit resets below.
  */
 html.crew-lang-vn .crew-shell,
-html.crew-lang-vn .crew-shell *:not(.font-mono) {
-  font-family: var(--font-crew-vi-sans) !important;
+html.crew-lang-vn .crew-shell *,
+html.crew-lang-vn .crew-shell h1,
+html.crew-lang-vn .crew-shell h2,
+html.crew-lang-vn .crew-shell h3,
+html.crew-lang-vn .crew-shell h4,
+html.crew-lang-vn .crew-shell h5,
+html.crew-lang-vn .crew-shell h6,
+html.crew-lang-vn .crew-shell p,
+html.crew-lang-vn .crew-shell strong,
+html.crew-lang-vn .crew-shell .font-bold,
+html.crew-lang-vn .crew-shell .font-sans,
+html.crew-lang-vn .crew-shell .font-heading {
+  font-family: var(--font-crew-vi-mono) !important;
   font-synthesis: none;
 }
 
-html.crew-lang-vn .crew-shell .font-mono,
-html.crew-lang-vn .crew-shell .font-mono * {
+/* Bilingual / translated copy — always mono so VN glyphs never hit Futura. */
+.crew-vi-text {
   font-family: var(--font-crew-vi-mono) !important;
+  font-synthesis: none;
 }
 

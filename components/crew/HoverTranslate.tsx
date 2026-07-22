@@ -14,8 +14,8 @@ type HoverTranslateProps = {
 
 /**
  * Shows the active-language string; on hover/focus swaps in-place to the other
- * language. Single text node (no stacked ghost layer) so layout width always
- * matches what's on screen.
+ * language. Vietnamese copy uses the system mono stack so diacritics never
+ * fall through to Futura (see .crew-vi-text in globals.css).
  */
 export function HoverTranslate({ en, vn, className, children }: HoverTranslateProps) {
   const { lang } = useCrewLanguage();
@@ -32,9 +32,12 @@ export function HoverTranslate({ en, vn, className, children }: HoverTranslatePr
     );
   }
 
+  const visible = showOther ? other : primary;
+  const viClass = visible === vn ? 'crew-vi-text font-mono' : '';
+
   return (
     <span
-      className={`crew-hover-translate ${className ?? ''}`.trim()}
+      className={`crew-hover-translate ${viClass} ${className ?? ''}`.trim()}
       tabIndex={0}
       onMouseEnter={() => setShowOther(true)}
       onMouseLeave={() => setShowOther(false)}
@@ -42,7 +45,7 @@ export function HoverTranslate({ en, vn, className, children }: HoverTranslatePr
       onBlur={() => setShowOther(false)}
     >
       {children}
-      {showOther ? other : primary}
+      {visible}
     </span>
   );
 }

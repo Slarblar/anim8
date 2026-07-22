@@ -288,7 +288,7 @@ export default function CareersPage() {
                   key={role.id}
                   href={`#${role.id}`}
                   className="flex-shrink-0 px-5 py-4 text-xs font-bold uppercase tracking-[0.12em] text-text-muted hover:text-white border-b-2 border-transparent hover:border-brand-lime/50 transition-all duration-200 whitespace-nowrap"
-                  style={lang === 'vn' ? { fontFamily: 'var(--font-crew-vi-sans)' } : undefined}
+                  style={lang === 'vn' ? { fontFamily: 'var(--font-crew-vi-mono)' } : undefined}
                 >
                   {role.label}
                 </a>

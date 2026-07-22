@@ -252,6 +252,9 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
   const [error, setError] = useState<string | null>(null);
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustAmount, setAdjustAmount] = useState('');
+  const [showLogPto, setShowLogPto] = useState(false);
+  const [logPtoDate, setLogPtoDate] = useState('');
+  const [logPtoNote, setLogPtoNote] = useState('');
   const [editingStart, setEditingStart] = useState(false);
   const [startDateInput, setStartDateInput] = useState(member.startDate ?? '');
   // Staged locally — each Calendar sync is a real round trip, so day clicks only
@@ -295,6 +298,34 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
     patch({ adjustBalanceDays: amount });
     setAdjustAmount('');
   }, [adjustAmount, patch]);
+
+  const submitLogPto = useCallback(async () => {
+    if (!logPtoDate) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/crew/${encodeURIComponent(member.email)}/log-pto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: logPtoDate, note: logPtoNote || undefined }),
+      });
+      const data = (await res.json()) as ApiErrorBody & { calendarError?: string; balanceError?: string };
+      if (!res.ok) {
+        setError(describeApiError(data, 'Could not log PTO.'));
+        return;
+      }
+      if (data.calendarError) setError(`Logged, but calendar sync failed: ${data.calendarError}`);
+      else if (data.balanceError) setError(`Logged, but balance update failed: ${data.balanceError}`);
+      setLogPtoDate('');
+      setLogPtoNote('');
+      setShowLogPto(false);
+      onChanged();
+    } catch {
+      setError('Could not log PTO. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [logPtoDate, logPtoNote, member.email, onChanged]);
 
   const saveStartDate = useCallback(() => {
     patch({ startDate: startDateInput || null });
@@ -407,20 +438,25 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={adminBtnGhost} onClick={() => setShowAdjust((v) => !v)}>
+                Adjust PTO
+              </button>
+              <button type="button" className={adminBtnGhost} onClick={() => setShowLogPto((v) => !v)}>
+                Log PTO date
+              </button>
+              <button type="button" className={adminBtnGhost} onClick={() => setEditingStart((v) => !v)}>
+                {member.startDate ? 'Edit start date' : 'Set start date'}
+              </button>
+            </div>
             <button
               type="button"
-              className={adminBtnGhost}
               onClick={() => patch({ active: !member.active })}
               disabled={loading}
+              className="shrink-0 text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline disabled:opacity-50"
             >
               {member.active ? 'Deactivate' : 'Reactivate'}
-            </button>
-            <button type="button" className={adminBtnGhost} onClick={() => setShowAdjust((v) => !v)}>
-              Adjust balance
-            </button>
-            <button type="button" className={adminBtnGhost} onClick={() => setEditingStart((v) => !v)}>
-              {member.startDate ? 'Edit start date' : 'Set start date'}
             </button>
           </div>
 
@@ -455,6 +491,33 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
                 onClick={applyAdjustment}
               >
                 Apply
+              </button>
+            </div>
+          ) : null}
+
+          {showLogPto ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                className={`${adminInput} max-w-[12rem]`}
+                value={logPtoDate}
+                onChange={(e) => setLogPtoDate(e.target.value)}
+                aria-label="PTO date"
+              />
+              <input
+                type="text"
+                className={`${adminInput} max-w-[16rem]`}
+                placeholder="Note (optional)"
+                value={logPtoNote}
+                onChange={(e) => setLogPtoNote(e.target.value)}
+              />
+              <button
+                type="button"
+                className={adminBtnGhost}
+                disabled={loading || !logPtoDate}
+                onClick={submitLogPto}
+              >
+                {loading ? 'Logging…' : 'Log & deduct balance'}
               </button>
             </div>
           ) : null}

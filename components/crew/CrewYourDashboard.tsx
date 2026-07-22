@@ -4,13 +4,23 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { PersonKPISummary } from '@/lib/kpi';
 import { adminAlertError, adminBody, adminBtnPrimary, adminCard, adminSectionTitle } from '@/components/admin/admin-ui';
+import { useCrewLanguage } from '@/lib/crew-language';
+import { crewT } from '@/lib/crew-translations';
 import { MonthlyBarChart, ScoreDelta, StatCard, stripRatingNumber, topRating } from './kpi-ui';
 
 type PtoBalance = { balanceDays: number | null; entitlementDays: number | null };
 type KpiResponse = { summary: PersonKPISummary | null; error?: string };
 
 /** Compact rating badge for the condensed dashboard — top bucket over the last 3 months, plus the full split. */
-function RatingSummaryCard({ label, breakdown }: { label: string; breakdown: PersonKPISummary['qualityRatingsLast3Months'] }) {
+function RatingSummaryCard({
+  label,
+  noRatingsLabel,
+  breakdown,
+}: {
+  label: string;
+  noRatingsLabel: string;
+  breakdown: PersonKPISummary['qualityRatingsLast3Months'];
+}) {
   const top = topRating(breakdown);
   const total = breakdown.reduce((sum, b) => sum + b.count, 0);
 
@@ -27,7 +37,7 @@ function RatingSummaryCard({ label, breakdown }: { label: string; breakdown: Per
               .join(' · ')}
           </span>
         ) : (
-          <span className="text-[11px] font-bold text-text-muted">No ratings last 3 months</span>
+          <span className="text-[11px] font-bold text-text-muted">{noRatingsLabel}</span>
         )
       }
     />
@@ -35,6 +45,8 @@ function RatingSummaryCard({ label, breakdown }: { label: string; breakdown: Per
 }
 
 export function CrewYourDashboard() {
+  const { lang } = useCrewLanguage();
+  const c = crewT[lang].dashboard;
   const [balance, setBalance] = useState<PtoBalance | null>(null);
   const [kpi, setKpi] = useState<PersonKPISummary | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +64,9 @@ export function CrewYourDashboard() {
       const kpiData = (await kpiRes.json()) as KpiResponse;
       if (kpiRes.ok) setKpi(kpiData.summary);
     } catch {
-      setError('Could not load your dashboard.');
+      setError(c.couldNotLoad);
     }
-  }, []);
+  }, [c.couldNotLoad]);
 
   useEffect(() => {
     load();
@@ -63,9 +75,9 @@ export function CrewYourDashboard() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className={adminSectionTitle}>Your dashboard</h2>
+        <h2 className={adminSectionTitle}>{c.title}</h2>
         <Link href="/crew/kpi" className="text-xs font-bold text-brand-cyan transition hover:brightness-125">
-          Full KPI history →
+          {c.fullKpiHistory}
         </Link>
       </div>
 
@@ -75,45 +87,50 @@ export function CrewYourDashboard() {
         <div className={`${adminCard} flex flex-col justify-between gap-3`}>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono">
-              PTO available
+              {c.ptoAvailable}
             </p>
             <p className="mt-1.5 text-2xl font-black text-brand-cyan md:text-3xl">
               {balance?.balanceDays ?? '—'}
               {balance?.balanceDays !== null && balance?.balanceDays !== undefined ? (
-                <span className="ml-1 text-sm font-bold text-text-muted">
-                  day{balance.balanceDays === 1 ? '' : 's'}
-                </span>
+                <span className="ml-1 text-sm font-bold text-text-muted">{c.dayUnit(balance.balanceDays)}</span>
               ) : null}
             </p>
           </div>
-          <Link href="/crew/pto/new" className={`${adminBtnPrimary} text-center`}>
-            Request PTO / WFH
+          {/* Glow removed here specifically — keeps this card calm next to the KPI stat cards. */}
+          <Link href="/crew/pto/new" className={`${adminBtnPrimary} !shadow-none text-center`}>
+            {c.requestPto}
           </Link>
         </div>
 
         {kpi ? (
           <>
             <StatCard
-              label="This month KPI"
+              label={c.thisMonthKpi}
               value={kpi.currentMonthScore.toFixed(2)}
               sub={<ScoreDelta current={kpi.currentMonthScore} previous={kpi.previousMonthScore} />}
             />
-            <RatingSummaryCard label="Quality (3mo)" breakdown={kpi.qualityRatingsLast3Months} />
-            <RatingSummaryCard label="Collaboration (3mo)" breakdown={kpi.collaborationRatingsLast3Months} />
+            <RatingSummaryCard
+              label={c.quality3mo}
+              noRatingsLabel={c.noRatings3mo}
+              breakdown={kpi.qualityRatingsLast3Months}
+            />
+            <RatingSummaryCard
+              label={c.collaboration3mo}
+              noRatingsLabel={c.noRatings3mo}
+              breakdown={kpi.collaborationRatingsLast3Months}
+            />
           </>
         ) : kpi === null ? (
           <div className={`${adminCard} min-[480px]:col-span-1 min-[900px]:col-span-3 flex items-center`}>
-            <p className={adminBody}>
-              No KPI data yet — check back once scored tasks are assigned to you in Asana.
-            </p>
+            <p className={adminBody}>{c.noKpiDataYet}</p>
           </div>
         ) : null}
       </div>
 
       {kpi && kpi.lastThreeMonthly.some((m) => m.score > 0) ? (
         <div className={adminCard}>
-          <p className={adminSectionTitle}>Past 3 months performance</p>
-          <p className={`${adminBody} mt-1`}>Total KPI score by month.</p>
+          <p className={adminSectionTitle}>{c.past3MonthsPerformance}</p>
+          <p className={`${adminBody} mt-1`}>{c.totalKpiByMonth}</p>
           <div className="mt-5">
             <MonthlyBarChart months={kpi.lastThreeMonthly} />
           </div>

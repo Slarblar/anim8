@@ -37,7 +37,7 @@ const config: Config = {
         'futura-bold': ['futura-pt-bold', 'futura-pt', 'sans-serif'],
         'futura-heavy': ['futura-pt-heavy', 'futura-pt', 'sans-serif'],
         jost: ['Jost', 'system-ui', 'sans-serif'],
-        'be-vietnam': ['Be Vietnam Pro', 'system-ui', 'sans-serif'],
+        'be-vietnam': ['var(--font-be-vietnam)', 'var(--font-noto-sans)', 'Segoe UI', 'system-ui', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-in-out',

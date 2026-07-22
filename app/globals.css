@@ -1785,25 +1785,18 @@ html.careers-page-active {
 }
 
 /*
- * Vietnamese (crew EN/VN toggle) — lock Be Vietnam Pro on the whole tree.
- * Kept OUTSIDE @tailwind layers so it beats utility font-sans / font-heading.
- * futura-pt has broken/missing Vietnamese diacritics, so browsers otherwise
- * "bounce" between futura for base letters and a fallback for accents.
- * Triggered by html.crew-lang-vn (CrewLanguageProvider) and html[lang="vi"].
+ * Vietnamese (crew EN/VN toggle) — Be Vietnam Pro + Noto Sans, never Futura.
+ * Scoped to .crew-shell so Typekit display fonts can't steal partial glyphs.
+ * Self-hosted via next/font (see lib/vi-fonts.ts); boot script in crew/layout
+ * adds html.crew-lang-vn before paint when localStorage is vn.
  */
-html.crew-lang-vn body,
-html[lang='vi'] body {
-  font-family: 'Be Vietnam Pro', system-ui, sans-serif !important;
+html.crew-lang-vn .crew-shell,
+html.crew-lang-vn .crew-shell *:not(.font-mono) {
+  font-family: var(--font-be-vietnam), var(--font-noto-sans), 'Segoe UI', system-ui, sans-serif !important;
+  font-synthesis: none;
 }
 
-html.crew-lang-vn body *,
-html[lang='vi'] body * {
-  font-family: inherit !important;
-}
-
-/* Keep true monospace only where we mean code-ish data (emails, scores). */
-html.crew-lang-vn body .font-mono,
-html[lang='vi'] body .font-mono {
+html.crew-lang-vn .crew-shell .font-mono {
   font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, monospace !important;
 }
 

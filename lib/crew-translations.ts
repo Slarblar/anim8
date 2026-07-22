@@ -34,6 +34,7 @@ type StatusChartT = {
 
 type DashboardT = {
   title: string;
+  welcomeBack: (firstName: string) => string;
   fullKpiHistory: string;
   ptoAvailable: string;
   dayUnit: (n: number) => string;
@@ -82,6 +83,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
     },
     dashboard: {
       title: 'Your dashboard',
+      welcomeBack: (firstName) => `Welcome to your dashboard, ${firstName}`,
       fullKpiHistory: 'Full KPI history →',
       ptoAvailable: 'PTO available',
       dayUnit: (n) => (n === 1 ? 'day' : 'days'),
@@ -122,6 +124,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
     },
     dashboard: {
       title: 'Bảng tin của bạn',
+      welcomeBack: (firstName) => `Chào ${firstName}, đây là bảng tin của bạn`,
       fullKpiHistory: 'Xem đầy đủ lịch sử KPI →',
       ptoAvailable: 'Ngày nghỉ còn lại',
       dayUnit: () => 'ngày',

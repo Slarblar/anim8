@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { PersonKPISummary } from '@/lib/kpi';
-import { adminAlertError, adminBody, adminBtnGhost, adminCard, adminSectionTitle } from '@/components/admin/admin-ui';
-import { KpiLineChart, MonthlyBarChart, RatingDonut, ScoreDelta, StatCard } from './kpi-ui';
+import { adminAlertError, adminBtnGhost, adminCard } from '@/components/admin/admin-ui';
+import { KpiLineChart, MonthlyBarChart, RatingDonut, ScoreDelta, StatCard, crewBody, crewSectionTitle } from './kpi-ui';
 
 type KpiResponse = { summary: PersonKPISummary | null; email?: string; error?: string };
 
@@ -53,9 +53,9 @@ export function CrewKpiSummary() {
   }, [load]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className={adminBody}>Synced from the 🐸 Anim8 KPI project in Asana · refreshes every 6 hours.</p>
+    <div className="space-y-5">
+      <div className="crew-fade-in-up flex flex-wrap items-center justify-between gap-3">
+        <p className={crewBody}>Synced from the 🐸 Anim8 KPI project in Asana · refreshes every 6 hours.</p>
         <button type="button" className={adminBtnGhost} onClick={refresh} disabled={refreshing}>
           {refreshing ? 'Refreshing…' : 'Refresh now'}
         </button>
@@ -63,12 +63,12 @@ export function CrewKpiSummary() {
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
-      {summary === undefined && !error ? <p className={adminBody}>Loading your KPI data…</p> : null}
+      {summary === undefined && !error ? <p className={crewBody}>Loading your KPI data…</p> : null}
 
       {summary === null && !error ? (
-        <div className={adminCard}>
-          <p className={adminSectionTitle}>No KPI data found yet</p>
-          <p className={`${adminBody} mt-2`}>
+        <div className={`${adminCard} crew-fade-in-up`}>
+          <p className={crewSectionTitle}>No KPI data found yet</p>
+          <p className={`${crewBody} mt-2`}>
             We couldn&apos;t find any scored tasks assigned to{' '}
             {email ? <span className="font-mono text-white">{email}</span> : 'your account'} in the 🐸 Anim8 KPI
             project. Ask your producer to confirm tasks are assigned to that email in Asana, or check back once
@@ -80,36 +80,48 @@ export function CrewKpiSummary() {
       {summary ? (
         <>
           <div className="grid gap-3 min-[480px]:grid-cols-2 min-[900px]:grid-cols-4">
-            <StatCard label="YTD KPI score" value={summary.ytdScore.toFixed(2)} />
-            <StatCard label="YTD scored tasks" value={String(summary.ytdTasks)} />
-            <StatCard
-              label="This month"
-              value={summary.currentMonthScore.toFixed(2)}
-              sub={<ScoreDelta current={summary.currentMonthScore} previous={summary.previousMonthScore} />}
-            />
-            <StatCard label="Last month" value={summary.previousMonthScore.toFixed(2)} />
-          </div>
-
-          <div className={adminCard}>
-            <p className={adminSectionTitle}>Past 3 months performance</p>
-            <p className={`${adminBody} mt-1`}>Total KPI score by month.</p>
-            <div className="mt-5">
-              <MonthlyBarChart months={summary.lastThreeMonthly} />
+            <div className="crew-fade-in-up" style={{ animationDelay: '0.05s' }}>
+              <StatCard label="YTD KPI score" value={summary.ytdScore.toFixed(2)} />
+            </div>
+            <div className="crew-fade-in-up" style={{ animationDelay: '0.1s' }}>
+              <StatCard label="YTD scored tasks" value={String(summary.ytdTasks)} />
+            </div>
+            <div className="crew-fade-in-up" style={{ animationDelay: '0.15s' }}>
+              <StatCard
+                label="This month"
+                value={summary.currentMonthScore.toFixed(2)}
+                sub={<ScoreDelta current={summary.currentMonthScore} previous={summary.previousMonthScore} />}
+              />
+            </div>
+            <div className="crew-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              <StatCard label="Last month" value={summary.previousMonthScore.toFixed(2)} />
             </div>
           </div>
 
-          <div className={adminCard}>
-            <p className={adminSectionTitle}>Performance over time</p>
-            <p className={`${adminBody} mt-1`}>Total KPI score by month — year to date.</p>
-            <div className="mt-5">
-              <KpiLineChart months={summary.ytdMonthly} />
+          <div className="crew-fade-in-up" style={{ animationDelay: '0.25s' }}>
+            <div className={adminCard}>
+              <p className={crewSectionTitle}>Past 3 months performance</p>
+              <p className={`${crewBody} mt-1`}>Total KPI score by month.</p>
+              <div className="mt-6">
+                <MonthlyBarChart months={summary.lastThreeMonthly} />
+              </div>
             </div>
           </div>
 
-          <div>
-            <p className={adminSectionTitle}>Quality &amp; collaboration ratings</p>
-            <p className={`${adminBody} mt-1`}>How your scored tasks were rated over the last 3 months.</p>
-            <div className="mt-3 grid gap-4 min-[720px]:grid-cols-2">
+          <div className="crew-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <div className={adminCard}>
+              <p className={crewSectionTitle}>Performance over time</p>
+              <p className={`${crewBody} mt-1`}>Total KPI score by month — year to date.</p>
+              <div className="mt-6">
+                <KpiLineChart months={summary.ytdMonthly} />
+              </div>
+            </div>
+          </div>
+
+          <div className="crew-fade-in-up" style={{ animationDelay: '0.35s' }}>
+            <p className={crewSectionTitle}>Quality &amp; collaboration ratings</p>
+            <p className={`${crewBody} mt-1`}>How your scored tasks were rated over the last 3 months.</p>
+            <div className="mt-4 grid gap-4 min-[720px]:grid-cols-2">
               <RatingDonut
                 title="Quality rating"
                 subtitle="Last 3 months"

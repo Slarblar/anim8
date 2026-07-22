@@ -14,9 +14,9 @@ export default function CrewStatusPage() {
       <CrewYourDashboard />
 
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-white">{c.title}</h1>
-          <p className="mt-1 text-sm text-[#8b95a8]">{c.subtitle}</p>
+        <div className="crew-fade-in-up" style={{ animationDelay: '0.3s' }}>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-white md:text-3xl">{c.title}</h1>
+          <p className="mt-1.5 text-sm text-[#8b95a8] md:text-base">{c.subtitle}</p>
         </div>
         <CrewStatusChart />
       </div>

@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { PersonMonthlyKPI, RatingCount } from '@/lib/kpi';
-import { adminBody, adminCard, adminSectionTitle } from '@/components/admin/admin-ui';
+import { adminCard } from '@/components/admin/admin-ui';
+
+/**
+ * Bigger, more "premium" text scale for the /crew dashboard + KPI pages
+ * specifically — deliberately NOT touching admin-ui.ts's adminSectionTitle
+ * / adminBody, since those stay compact/functional across the rest of
+ * /admin. Use these two instead of the admin-ui equivalents anywhere on
+ * the crew-facing dashboard.
+ */
+export const crewSectionTitle = 'text-white text-xl md:text-2xl font-black uppercase tracking-tight';
+export const crewBody = 'text-[#8b95a8] text-sm md:text-[15px] leading-relaxed';
 
 /** Best -> worst, matching the Asana enum options on both rating fields. Bridges the site's lime→cyan→pink gradient. */
 export const RATING_COLORS: Record<string, string> = {
@@ -28,11 +38,11 @@ export function ScoreDelta({ current, previous }: { current: number; previous: n
   if (previous === 0) return null;
   const diff = current - previous;
   if (Math.abs(diff) < 0.005) {
-    return <span className="text-[11px] font-bold text-text-muted">— flat vs last month</span>;
+    return <span className="text-xs font-bold text-text-muted">— flat vs last month</span>;
   }
   const up = diff > 0;
   return (
-    <span className={`text-[11px] font-bold ${up ? 'text-brand-lime' : 'text-brand-pink'}`}>
+    <span className={`text-xs font-bold ${up ? 'text-brand-lime' : 'text-brand-pink'}`}>
       {up ? '▲' : '▼'} {Math.abs(diff).toFixed(2)} vs last month
     </span>
   );
@@ -41,14 +51,20 @@ export function ScoreDelta({ current, previous }: { current: number; previous: n
 export function StatCard({ label, value, sub }: { label: string; value: string; sub?: React.ReactNode }) {
   return (
     <div className={adminCard}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono">{label}</p>
-      <p className="mt-1.5 text-2xl font-black text-white md:text-3xl">{value}</p>
-      {sub ? <p className="mt-1">{sub}</p> : null}
+      <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted font-mono">{label}</p>
+      <p className="mt-2 text-3xl font-black text-white md:text-4xl">{value}</p>
+      {sub ? <p className="mt-1.5">{sub}</p> : null}
     </div>
   );
 }
 
-/** Animated bar chart — cyan→lime gradient bars (matches the portal progress-bar gradient elsewhere on the site). */
+/**
+ * Animated bar chart, styled like a video-game health/mana bar: a solid
+ * green glowing fill with a bright white glowing cap right at the top
+ * edge, growing up from the track on mount. The current month pulses
+ * (glow breathing + a diagonal shimmer sweep); past months hold a
+ * calmer, static glow so the current one reads as "live".
+ */
 export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
   const [grown, setGrown] = useState(false);
 
@@ -59,30 +75,53 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
   }, [months]);
 
   if (months.length === 0) {
-    return <p className={adminBody}>No scored tasks logged yet.</p>;
+    return <p className={crewBody}>No scored tasks logged yet.</p>;
   }
 
   const maxScore = Math.max(1, ...months.map((m) => m.score));
 
   return (
-    <div className="flex items-end gap-3 min-[480px]:gap-5">
+    <div className="flex items-end gap-4 min-[480px]:gap-6">
       {months.map((month, i) => {
         const heightPct = month.score > 0 ? Math.max(4, Math.round((month.score / maxScore) * 100)) : 0;
         const isCurrent = i === months.length - 1;
         return (
-          <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-            <span className="text-xs font-bold text-white font-mono">{month.score}</span>
-            <div className="flex h-32 w-full items-end rounded-md border border-white/5 bg-white/[0.03]">
+          <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-2.5">
+            <span className="text-sm font-black text-white font-mono md:text-base">{month.score}</span>
+
+            {/* Track — dark recessed "bezel" the fill grows inside of. */}
+            <div className="relative flex h-36 w-full items-end overflow-hidden rounded-lg border border-white/10 bg-black/40 shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] min-[480px]:h-44">
               <div
-                className={`w-full rounded-[4px] ${
-                  isCurrent
-                    ? 'bg-gradient-to-t from-brand-cyan to-brand-lime'
-                    : 'bg-gradient-to-t from-brand-cyan/40 to-brand-lime/40'
-                }`}
-                style={{ height: `${grown ? heightPct : 0}%`, transition: `height 0.7s ease-out ${i * 0.08}s` }}
-              />
+                className={`relative w-full overflow-hidden rounded-[6px] ${isCurrent ? 'kpi-bar-fill--active' : ''}`}
+                style={{
+                  height: `${grown ? heightPct : 0}%`,
+                  transition: `height 0.85s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.1}s`,
+                  background: isCurrent
+                    ? 'linear-gradient(to top, #34540f 0%, #7cc142 60%, #b6ec7a 100%)'
+                    : 'linear-gradient(to top, rgba(52,84,15,0.55) 0%, rgba(124,193,66,0.55) 60%, rgba(182,236,122,0.55) 100%)',
+                  boxShadow: isCurrent ? undefined : '0 0 8px rgba(124,193,66,0.2)',
+                }}
+              >
+                {/* Diagonal shimmer sweep — current month only, reads as "charging up". */}
+                {isCurrent ? <div className="shimmer absolute inset-0" /> : null}
+
+                {/* Glowing white cap at the growing edge — the "health bar" highlight. */}
+                {heightPct > 0 ? (
+                  <div
+                    className={`absolute inset-x-0 top-0 h-[5px] rounded-t-[6px] bg-white min-[480px]:h-[6px] ${
+                      isCurrent ? 'kpi-bar-cap--active' : ''
+                    }`}
+                    style={{
+                      boxShadow: isCurrent ? undefined : '0 0 5px 1px rgba(255,255,255,0.55)',
+                      opacity: grown ? 1 : 0,
+                      transition: `opacity 0.3s ease-out ${i * 0.1 + 0.55}s`,
+                    }}
+                  />
+                ) : null}
+              </div>
             </div>
-            <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">
+
+            <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
               {month.label}
             </span>
           </div>
@@ -127,7 +166,7 @@ export function KpiLineChart({ months }: { months: PersonMonthlyKPI[] }) {
   );
 
   if (months.length === 0) {
-    return <p className={adminBody}>No scored tasks logged yet this year.</p>;
+    return <p className={crewBody}>No scored tasks logged yet this year.</p>;
   }
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
@@ -230,11 +269,11 @@ export function RatingDonut({
 
   return (
     <div className={adminCard}>
-      <p className={adminSectionTitle}>{title}</p>
-      <p className={`${adminBody} mt-1`}>{subtitle}</p>
+      <p className={crewSectionTitle}>{title}</p>
+      <p className={`${crewBody} mt-1`}>{subtitle}</p>
 
       {total === 0 ? (
-        <p className={`${adminBody} mt-4`}>No ratings logged in this window yet.</p>
+        <p className={`${crewBody} mt-4`}>No ratings logged in this window yet.</p>
       ) : (
         <div className="mt-5 flex flex-wrap items-center gap-6">
           <div className="kpi-animate-hue relative shrink-0" style={{ width: size, height: size }}>
@@ -268,17 +307,17 @@ export function RatingDonut({
               </g>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-black text-white">{total}</span>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted font-mono">rated</span>
+              <span className="text-3xl font-black text-white">{total}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">rated</span>
             </div>
           </div>
 
-          <ul className="min-w-0 flex-1 space-y-1.5">
+          <ul className="min-w-0 flex-1 space-y-2">
             {breakdown.map((b) => (
-              <li key={b.rating} className="flex items-center justify-between gap-3 text-xs">
+              <li key={b.rating} className="flex items-center justify-between gap-3 text-sm">
                 <span className="flex min-w-0 items-center gap-2 text-text-muted">
                   <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    className="h-3 w-3 shrink-0 rounded-full"
                     style={{ backgroundColor: RATING_COLORS[b.rating] ?? '#8b95a8' }}
                   />
                   <span className="truncate">{stripRatingNumber(b.rating)}</span>

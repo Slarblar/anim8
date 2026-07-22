@@ -1710,10 +1710,59 @@ html.careers-page-active {
   transform-origin: center;
 }
 
+/** Outer green glow around the current month's "health bar" — box-shadow (not filter) so it doesn't get clipped by the bar's own overflow-hidden. */
+@keyframes kpi-bar-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 14px 2px rgba(124, 193, 66, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 26px 5px rgba(124, 193, 66, 0.75);
+  }
+}
+
+.kpi-bar-fill--active {
+  animation: kpi-bar-glow-pulse 2.4s ease-in-out infinite;
+}
+
+/** Bright white glowing cap at the top of the fill — the "game health bar" edge highlight. */
+@keyframes kpi-bar-cap-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.75);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(255, 255, 255, 1);
+  }
+}
+
+.kpi-bar-cap--active {
+  animation: kpi-bar-cap-glow 2.4s ease-in-out infinite;
+}
+
+/** Shared entrance animation for /crew dashboard cards — same easing curve as .portal-task-expand elsewhere on the site. Apply with an inline `animation-delay` for staggering. */
+@keyframes crew-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.crew-fade-in-up {
+  animation: crew-fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kpi-animate-hue,
   .kpi-line-glow,
-  .kpi-dot-pulse {
+  .kpi-dot-pulse,
+  .kpi-bar-fill--active,
+  .kpi-bar-cap--active,
+  .crew-fade-in-up {
     animation: none;
   }
 }

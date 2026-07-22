@@ -210,7 +210,20 @@ export const getAllKPIData = unstable_cache(
   { revalidate: REVALIDATE_SECONDS, tags: ['kpi'] }
 );
 
+/**
+ * Testing-only account -> real Asana email overrides. The `hello@` login is
+ * a shared test account (not a real crew member with tasks assigned in
+ * Asana), so it borrows a real person's KPI data to exercise the dashboard.
+ * Remove the relevant entry once the test account isn't needed anymore.
+ */
+const TEST_ACCOUNT_OVERRIDES: Record<string, string> = {
+  'hello@anim-8studios.com': 'thi.do@anim-8studios.com',
+};
+
 export async function getKPIDataForUser(email: string): Promise<PersonKPISummary | null> {
+  const normalized = email.toLowerCase();
+  const lookupEmail = TEST_ACCOUNT_OVERRIDES[normalized] ?? normalized;
+
   const all = await getAllKPIData();
-  return all[email.toLowerCase()] ?? all[email] ?? null;
+  return all[lookupEmail] ?? all[email] ?? null;
 }

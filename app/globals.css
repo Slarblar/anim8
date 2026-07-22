@@ -1659,3 +1659,44 @@ html.careers-page-active {
     background-size: 100% 100%;
   }
 }
+
+/* ---- Crew KPI dashboard — animated line chart + rating donuts ---- */
+@keyframes kpi-hue-shift {
+  0%,
+  100% {
+    filter: hue-rotate(0deg) saturate(1);
+  }
+  50% {
+    filter: hue-rotate(20deg) saturate(1.25);
+  }
+}
+
+/** Slow color breathing across a chart's gradients/strokes — subtle, not distracting. */
+.kpi-animate-hue {
+  animation: kpi-hue-shift 7s ease-in-out infinite;
+}
+
+@keyframes kpi-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(1.7);
+  }
+}
+
+/** "Live" pulse ring behind the most recent data point on the KPI line chart. */
+.kpi-dot-pulse {
+  animation: kpi-dot-pulse 2.2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-animate-hue,
+  .kpi-dot-pulse {
+    animation: none;
+  }
+}

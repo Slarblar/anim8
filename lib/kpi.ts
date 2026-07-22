@@ -29,6 +29,7 @@ type AsanaCustomField = {
   type: string;
   number_value: number | null;
   date_value: { date: string } | null;
+  enum_value: { name: string } | null;
 };
 
 type AsanaTask = {
@@ -47,6 +48,12 @@ export type PersonMonthlyKPI = {
   score: number;
 };
 
+/** One rating bucket (Asana enum option, e.g. "5 - Excellent") + how many scored tasks landed in it. */
+export type RatingCount = {
+  rating: string;
+  count: number;
+};
+
 export type PersonKPISummary = {
   name: string;
   email: string;
@@ -54,11 +61,19 @@ export type PersonKPISummary = {
   ytdTasks: number;
   currentMonthScore: number;
   previousMonthScore: number;
+  /** Full history, oldest first — used for long-range trend views. */
   monthly: PersonMonthlyKPI[];
+  /** Jan 1 of the current year through the current month, zero-filled — for the YTD line chart. */
+  ytdMonthly: PersonMonthlyKPI[];
+  qualityRatingsLast3Months: RatingCount[];
+  collaborationRatingsLast3Months: RatingCount[];
 };
 
 // ---- Helpers --------------------------------------------------------------
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Fixed display order for both rating fields — best to worst, matching the Asana enum options exactly. */
+const RATING_ORDER = ['5 - Excellent', '4 - Very Good', '3 - Good', '2 - Fair', '1 - Poor'];
 
 function getField(task: AsanaTask, name: string) {
   return task.custom_fields.find((f) => f.name === name);
@@ -66,6 +81,28 @@ function getField(task: AsanaTask, name: string) {
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
+}
+
+function monthKeyOf(year: number, month1to12: number): string {
+  return `${year}-${String(month1to12).padStart(2, '0')}`;
+}
+
+/** Jan of `now`'s year through `now`'s month, filling in 0 for months with no scored tasks. */
+function buildYtdMonthly(monthly: Map<string, number>, now: Date): PersonMonthlyKPI[] {
+  const year = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const result: PersonMonthlyKPI[] = [];
+  for (let month = 1; month <= currentMonth; month++) {
+    const key = monthKeyOf(year, month);
+    result.push({ month: key, label: MONTHS[month - 1], score: round2(monthly.get(key) ?? 0) });
+  }
+  return result;
+}
+
+/** Fills in every rating bucket (even ones with zero tasks) so charts always show the full 5-point scale. */
+function buildRatingBreakdown(counts: Map<string, number>): RatingCount[] {
+  return RATING_ORDER.map((rating) => ({ rating, count: counts.get(rating) ?? 0 }));
 }
 
 // ---- Fetch every task in the KPI project (paginated) ----------------------
@@ -81,6 +118,7 @@ async function fetchAllKPITasks(): Promise<AsanaTask[]> {
     'custom_fields.type',
     'custom_fields.number_value',
     'custom_fields.date_value',
+    'custom_fields.enum_value.name',
     'completed',
     'completed_at',
     'modified_at',
@@ -116,7 +154,19 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
   const prevMonthKey = `${prevRef.getFullYear()}-${String(prevRef.getMonth() + 1).padStart(2, '0')}`;
   const currentYear = now.getFullYear();
 
-  type Draft = { name: string; email: string; monthly: Map<string, number>; ytdTasks: number; ytdScore: number };
+  // "Last 3 months" for the rating donuts = current calendar month + the two before it.
+  const last3MonthsRef = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const last3MonthsCutoffKey = monthKeyOf(last3MonthsRef.getFullYear(), last3MonthsRef.getMonth() + 1);
+
+  type Draft = {
+    name: string;
+    email: string;
+    monthly: Map<string, number>;
+    ytdTasks: number;
+    ytdScore: number;
+    qualityRatings: Map<string, number>;
+    collaborationRatings: Map<string, number>;
+  };
   const byPerson = new Map<string, Draft>();
 
   for (const task of tasks) {
@@ -157,6 +207,8 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
         monthly: new Map(),
         ytdTasks: 0,
         ytdScore: 0,
+        qualityRatings: new Map(),
+        collaborationRatings: new Map(),
       });
     }
 
@@ -166,6 +218,16 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
     if (year === currentYear) {
       person.ytdScore += score;
       person.ytdTasks += 1;
+    }
+
+    if (monthKey >= last3MonthsCutoffKey) {
+      const quality = getField(task, 'Quality Rating')?.enum_value?.name;
+      if (quality) person.qualityRatings.set(quality, (person.qualityRatings.get(quality) ?? 0) + 1);
+
+      const collaboration = getField(task, 'Collaboration Rating')?.enum_value?.name;
+      if (collaboration) {
+        person.collaborationRatings.set(collaboration, (person.collaborationRatings.get(collaboration) ?? 0) + 1);
+      }
     }
   }
 
@@ -192,6 +254,9 @@ function aggregateByPerson(tasks: AsanaTask[]): Record<string, PersonKPISummary>
       currentMonthScore: round2(person.monthly.get(currentMonthKey) ?? 0),
       previousMonthScore: round2(person.monthly.get(prevMonthKey) ?? 0),
       monthly,
+      ytdMonthly: buildYtdMonthly(person.monthly, now),
+      qualityRatingsLast3Months: buildRatingBreakdown(person.qualityRatings),
+      collaborationRatingsLast3Months: buildRatingBreakdown(person.collaborationRatings),
     };
   }
 

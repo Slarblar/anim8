@@ -325,19 +325,10 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
       >
         <h2 className={adminSectionTitle}>Add crew member</h2>
         <span
-          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brand-cyan/35 bg-brand-cyan/10 text-brand-cyan transition duration-300 ease-out hover:border-brand-cyan/55 hover:bg-brand-cyan/15 ${
-            open ? 'rotate-45' : ''
-          }`}
+          className="shrink-0 select-none text-[1.75rem] font-light leading-none text-brand-cyan transition-colors hover:text-white"
           aria-hidden
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M8 3v10M3 8h10"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+          {open ? '−' : '+'}
         </span>
       </button>
 

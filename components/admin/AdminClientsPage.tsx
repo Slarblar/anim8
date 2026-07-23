@@ -23,6 +23,7 @@ import {
 type AsanaOption = { gid: string; name: string; enabled: boolean };
 
 function AddClientForm({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [slug, setSlug] = useState('');
@@ -51,6 +52,15 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
     };
   }, []);
 
+  const resetForm = useCallback(() => {
+    setDisplayName('');
+    setContactEmail('');
+    setSlug('');
+    setFieldOptionGid('');
+    setNewOptionName('');
+    setError(null);
+  }, []);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -75,11 +85,8 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
           return;
         }
 
-        setDisplayName('');
-        setContactEmail('');
-        setSlug('');
-        setFieldOptionGid('');
-        setNewOptionName('');
+        resetForm();
+        setOpen(false);
         onCreated();
       } catch {
         setError('Could not create client. Please try again.');
@@ -87,93 +94,117 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
         setSubmitting(false);
       }
     },
-    [displayName, contactEmail, slug, fieldOptionGid, newOptionName, onCreated]
+    [displayName, contactEmail, slug, fieldOptionGid, newOptionName, onCreated, resetForm]
   );
 
   return (
-    <form onSubmit={handleSubmit} className={`${adminCard} space-y-4`}>
-      <h2 className={adminSectionTitle}>Add client</h2>
-
-      <div className="grid gap-4 min-[640px]:grid-cols-2">
-        <div>
-          <label className={adminLabel} htmlFor="displayName">
-            Display name
-          </label>
-          <input
-            id="displayName"
-            className={adminInput}
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="TurnEmSideways"
-            required
-          />
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="contactEmail">
-            Contact email
-          </label>
-          <input
-            id="contactEmail"
-            type="email"
-            className={adminInput}
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            placeholder="support@client.com"
-            required
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className={adminLabel} htmlFor="slug">
-          Portal link slug (optional — auto-generated if blank)
-        </label>
-        <input
-          id="slug"
-          className={adminInput}
-          value={slug}
-          onChange={(e) => setSlug(e.target.value.toLowerCase())}
-          placeholder="turnemsideways2026"
-        />
-      </div>
-
-      <div>
-        <label className={adminLabel} htmlFor="fieldOption">
-          Asana &quot;Design Clients&quot; value
-        </label>
-        <select
-          id="fieldOption"
-          className={adminSelect}
-          style={adminSelectChevronStyle}
-          value={fieldOptionGid}
-          onChange={(e) => setFieldOptionGid(e.target.value)}
-          disabled={optionsLoading}
+    <div className={`${adminCard} admin-collapse-card ${open ? 'admin-collapse-card--expanded' : ''}`}>
+      <button
+        type="button"
+        className="admin-collapse-toggle flex w-full items-center justify-between gap-3 text-left"
+        aria-expanded={open}
+        aria-label={open ? 'Collapse add client form' : 'Expand to add a new client'}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <h2 className={adminSectionTitle}>Add client</h2>
+        <span
+          className="shrink-0 select-none text-[1.75rem] font-light leading-none text-brand-cyan transition-colors hover:text-white"
+          aria-hidden
         >
-          <option value="">
-            {optionsLoading ? 'Loading Asana clients…' : '— Create a new Asana client —'}
-          </option>
-          {options.map((option) => (
-            <option key={option.gid} value={option.gid}>
-              {option.name}
-            </option>
-          ))}
-        </select>
-        {!fieldOptionGid ? (
-          <input
-            className={`${adminInput} mt-2`}
-            value={newOptionName}
-            onChange={(e) => setNewOptionName(e.target.value)}
-            placeholder="New Asana client name (e.g. TurnEmSideways)"
-          />
-        ) : null}
-      </div>
-
-      {error ? <p className={adminAlertError}>{error}</p> : null}
-
-      <button type="submit" className={adminBtnPrimary} disabled={submitting}>
-        {submitting ? 'Creating…' : 'Create client'}
+          {open ? '−' : '+'}
+        </span>
       </button>
-    </form>
+
+      <div
+        className={`admin-collapse-expand ${open ? 'admin-collapse-expand--open' : ''}`}
+        aria-hidden={!open}
+      >
+        <form
+          onSubmit={handleSubmit}
+          className="admin-collapse-expand-inner space-y-4 border-t border-white/10 pt-4"
+        >
+          <div className="grid gap-4 min-[640px]:grid-cols-2">
+            <div>
+              <label className={adminLabel} htmlFor="displayName">
+                Display name
+              </label>
+              <input
+                id="displayName"
+                className={adminInput}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="TurnEmSideways"
+                required={open}
+              />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="contactEmail">
+                Contact email
+              </label>
+              <input
+                id="contactEmail"
+                type="email"
+                className={adminInput}
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="support@client.com"
+                required={open}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={adminLabel} htmlFor="slug">
+              Portal link slug (optional — auto-generated if blank)
+            </label>
+            <input
+              id="slug"
+              className={adminInput}
+              value={slug}
+              onChange={(e) => setSlug(e.target.value.toLowerCase())}
+              placeholder="turnemsideways2026"
+            />
+          </div>
+
+          <div>
+            <label className={adminLabel} htmlFor="fieldOption">
+              Asana &quot;Design Clients&quot; value
+            </label>
+            <select
+              id="fieldOption"
+              className={adminSelect}
+              style={adminSelectChevronStyle}
+              value={fieldOptionGid}
+              onChange={(e) => setFieldOptionGid(e.target.value)}
+              disabled={optionsLoading}
+            >
+              <option value="">
+                {optionsLoading ? 'Loading Asana clients…' : '— Create a new Asana client —'}
+              </option>
+              {options.map((option) => (
+                <option key={option.gid} value={option.gid}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+            {!fieldOptionGid ? (
+              <input
+                className={`${adminInput} mt-2`}
+                value={newOptionName}
+                onChange={(e) => setNewOptionName(e.target.value)}
+                placeholder="New Asana client name (e.g. TurnEmSideways)"
+              />
+            ) : null}
+          </div>
+
+          {error ? <p className={adminAlertError}>{error}</p> : null}
+
+          <button type="submit" className={adminBtnPrimary} disabled={submitting}>
+            {submitting ? 'Creating…' : 'Create client'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

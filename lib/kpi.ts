@@ -30,7 +30,7 @@ export { performanceBand, performanceBandLabel } from './kpi-shared';
  * their own score too — the parent assignee tracks supervisor / coordinator
  * ownership on that line item.
  *
- * Scoring follows Anim8 KPI Scoring Documentation 2026 v2 §2 + §5:
+ * Scoring follows Anim8 KPI Scoring Documentation 2026 v3 §2 + §5:
  *   Total = ([Effort ÷ FTE] × Quality × Collaboration) + [Delivery ÷ FTE] + R&D
  * where FTE = weekly contracted hours ÷ 40. Quality / Collaboration /
  * R&D are not volume-scaled — only Effort and Delivery are.
@@ -399,7 +399,7 @@ export const getAllKPIData = unstable_cache(
     const [tasks, fteByEmail] = await Promise.all([fetchAllKPITasks(), buildFteLookup()]);
     return aggregateByPerson(tasks, fteByEmail);
   },
-  ['crew-kpi-data-v5-bands-v2'],
+  ['crew-kpi-data-v6-bands-v3'],
   { revalidate: REVALIDATE_SECONDS, tags: ['kpi'] }
 );
 

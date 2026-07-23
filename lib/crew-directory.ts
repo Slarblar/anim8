@@ -198,6 +198,14 @@ export async function setCrewMemberStartDate(
   return updated;
 }
 
+export async function setCrewMemberRole(email: string, role: string): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  const updated = { ...existing, role: role.trim() };
+  await getKv().set(keyFor(email), updated);
+  return updated;
+}
+
 export async function setCrewMemberLocation(
   email: string,
   location: CrewLocation

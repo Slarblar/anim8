@@ -7,6 +7,7 @@ import {
   setCrewMemberEmploymentType,
   setCrewMemberFixedWfh,
   setCrewMemberLocation,
+  setCrewMemberRole,
   setCrewMemberStartDate,
   setCrewMemberWeeklyHours,
   type CrewLocation,
@@ -23,6 +24,7 @@ type PatchBody = {
   adjustBalanceDays?: number;
   startDate?: string | null;
   location?: CrewLocation;
+  role?: string;
   employmentType?: EmploymentType;
   weeklyContractedHours?: number;
   fixedWfhDays?: WeekdayCode[];
@@ -43,6 +45,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
   const hasAdjustment = typeof body.adjustBalanceDays === 'number' && body.adjustBalanceDays !== 0;
   const hasStartDate = body.startDate !== undefined;
   const hasLocation = body.location === 'US' || body.location === 'VN';
+  const hasRole = typeof body.role === 'string';
   const hasEmploymentType = !!body.employmentType && EMPLOYMENT_TYPES.includes(body.employmentType);
   const hasWeeklyHours = typeof body.weeklyContractedHours === 'number' && body.weeklyContractedHours > 0;
   const hasFixedWfhDays =
@@ -54,6 +57,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     !hasAdjustment &&
     !hasStartDate &&
     !hasLocation &&
+    !hasRole &&
     !hasEmploymentType &&
     !hasWeeklyHours &&
     !hasFixedWfhDays
@@ -75,6 +79,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     }
     if (hasLocation) {
       member = await setCrewMemberLocation(params.email, body.location as CrewLocation);
+    }
+    if (hasRole) {
+      member = await setCrewMemberRole(params.email, body.role as string);
     }
     if (hasEmploymentType) {
       member = await setCrewMemberEmploymentType(params.email, body.employmentType as EmploymentType);

@@ -110,13 +110,13 @@ export type ScoreBand = {
 };
 
 /**
- * Total KPI Score performance bands — Anim8 KPI Scoring Documentation 2026 v2
+ * Total KPI Score performance bands — Anim8 KPI Scoring Documentation 2026 v3
  * §1. Ordered best -> worst; `getScoreBand` returns the first match.
  */
 export const SCORE_BANDS: ScoreBand[] = [
   {
     key: 'great',
-    label: 'Great (70+)',
+    label: 'Great (85+)',
     min: PERFORMANCE_BAND_MIN.great,
     color: '#22c55e',
     colorDark: '#123a1f',
@@ -124,7 +124,7 @@ export const SCORE_BANDS: ScoreBand[] = [
   },
   {
     key: 'good',
-    label: 'Good (55–69.9)',
+    label: 'Good (55–84.9)',
     min: PERFORMANCE_BAND_MIN.good,
     color: '#7cc142',
     colorDark: '#34540f',
@@ -232,8 +232,8 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
     );
   }
 
-  // Fixed ceiling so a mid-Average month (~47) reads ~55% full, not "top of the chart"
-  // just because it was the highest of three similar months. 85 sits above Great (70+)
+  // Fixed ceiling so a mid-Average month (~47) reads ~45% full, not "top of the chart"
+  // just because it was the highest of three similar months. 105 sits above Great (85+)
   // with headroom for standout months (doc §4 example: 105).
   const BAR_SCALE_MAX = KPI_CHART_SCALE_MAX;
 

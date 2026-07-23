@@ -153,8 +153,11 @@ export function CrewStatusChart() {
                 <span className="min-w-0">
                   <span className="flex min-w-0 items-center gap-1.5">
                     {entry.location ? (
-                      <span className="shrink-0 text-sm leading-none" title={entry.location === 'US' ? 'US' : 'VN'}>
-                        {entry.location === 'US' ? '🇺🇸' : '🇻🇳'}
+                      <span
+                        className="shrink-0 rounded border border-white/15 px-1 py-px font-mono text-[9px] font-bold uppercase tracking-wide text-text-muted"
+                        title={entry.location === 'US' ? 'US-based' : 'VN-based'}
+                      >
+                        {entry.location}
                       </span>
                     ) : null}
                     <span className="min-w-0 truncate font-bold text-white">{entry.name}</span>

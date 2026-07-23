@@ -40,6 +40,108 @@ const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   contractor: 'Contractor',
 };
 
+// Sourced from the "Role" custom field on the studio's Asana staff roster
+// (🐸 Anim8 Staff MGMT project) so titles stay consistent with what's used
+// there. "Custom…" below covers anything not on this list (e.g. Content
+// Manager, Contributor) without blocking on us keeping two lists in sync.
+const ROLE_OPTIONS = [
+  'Animator',
+  'Concept / Storyboard',
+  'Modeler',
+  'Designer',
+  'Technical Artist',
+  'Director',
+  'Project Manager',
+  'Lighting Artist',
+  'Environment Artist',
+  'Editor',
+  'Audio',
+];
+const CUSTOM_ROLE_VALUE = '__custom__';
+
+/** Dropdown of standard studio role titles, falling back to a free-text field for anything else. */
+function RoleField({
+  value,
+  onChange,
+  disabled,
+  idPrefix,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  idPrefix: string;
+}) {
+  const [customMode, setCustomMode] = useState(value !== '' && !ROLE_OPTIONS.includes(value));
+
+  return (
+    <div className="space-y-2">
+      <select
+        id={`${idPrefix}-select`}
+        className={adminSelect}
+        style={adminSelectChevronStyle}
+        disabled={disabled}
+        value={customMode ? CUSTOM_ROLE_VALUE : value}
+        onChange={(e) => {
+          if (e.target.value === CUSTOM_ROLE_VALUE) {
+            setCustomMode(true);
+            onChange('');
+            return;
+          }
+          setCustomMode(false);
+          onChange(e.target.value);
+        }}
+      >
+        <option value="">— none —</option>
+        {ROLE_OPTIONS.map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+        <option value={CUSTOM_ROLE_VALUE}>Custom…</option>
+      </select>
+      {customMode ? (
+        <input
+          id={`${idPrefix}-custom`}
+          className={adminInput}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="e.g. Content Manager"
+          aria-label="Custom role"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Buffers edits locally and only PATCHes on "Save role" — matches the Weekly hours field's pattern. */
+function RoleEditor({
+  role,
+  onSave,
+  disabled,
+}: {
+  role: string;
+  onSave: (next: string) => void;
+  disabled: boolean;
+}) {
+  const [value, setValue] = useState(role);
+  return (
+    <div className="flex flex-wrap items-start gap-2">
+      <div className="max-w-xs flex-1">
+        <RoleField idPrefix="crewRoleEdit" value={value} onChange={setValue} disabled={disabled} />
+      </div>
+      <button
+        type="button"
+        className={adminBtnGhost}
+        disabled={disabled || value.trim() === role}
+        onClick={() => onSave(value.trim())}
+      >
+        Save role
+      </button>
+    </div>
+  );
+}
+
 /** Turns a middleware/route error body (error + reason + email) into a message that explains what to fix. */
 function describeApiError(data: ApiErrorBody, fallback: string): string {
   if (!data.error) return fallback;
@@ -144,16 +246,10 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
           />
         </div>
         <div>
-          <label className={adminLabel} htmlFor="crewRole">
+          <label className={adminLabel} htmlFor="crewRole-select">
             Role (optional)
           </label>
-          <input
-            id="crewRole"
-            className={adminInput}
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            placeholder="3D Artist"
-          />
+          <RoleField idPrefix="crewRole" value={role} onChange={setRole} />
         </div>
         <div>
           <label className={adminLabel} htmlFor="crewStart">
@@ -191,8 +287,8 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
             value={location}
             onChange={(e) => setLocation(e.target.value as CrewLocation)}
           >
-            <option value="VN">🇻🇳 VN — Vietnam</option>
-            <option value="US">🇺🇸 US — United States</option>
+            <option value="VN">VN — Vietnam</option>
+            <option value="US">US — United States</option>
           </select>
         </div>
         <div>
@@ -528,7 +624,12 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
               {balance} day{balance === 1 ? '' : 's'} PTO
             </span>
             <span className="px-1.5 text-white/20" aria-hidden>·</span>
-            <span className="font-mono">{location === 'US' ? '🇺🇸 US' : '🇻🇳 VN'}</span>
+            <span
+              className="rounded border border-white/15 px-1 py-px font-mono text-[10px] font-bold uppercase tracking-wide"
+              title={location === 'US' ? 'US-based' : 'VN-based'}
+            >
+              {location}
+            </span>
             {wfhLabel ? (
               <>
                 <span className="px-1.5 text-white/20" aria-hidden>·</span>
@@ -566,6 +667,16 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           </p>
 
           {error ? <p className={adminAlertError}>{error}</p> : null}
+
+          <div>
+            <p className={adminLabel}>Role</p>
+            <RoleEditor
+              key={`${member.email}-${member.role}`}
+              role={member.role ?? ''}
+              onSave={(next) => patch({ role: next })}
+              disabled={loading}
+            />
+          </div>
 
           <div>
             <p className={adminLabel}>Location</p>

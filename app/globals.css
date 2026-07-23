@@ -27,6 +27,30 @@
        everything color-scheme doesn't cover, like the select's own arrow. */
     color-scheme: dark;
   }
+
+  /*
+   * `color-scheme: dark` alone isn't enough for the <select> popup here: our
+   * inputs use a semi-transparent background (bg-white/[0.03]) so they blend
+   * with whatever page background sits behind them, but the native popup
+   * has no "page" to composite against — a ~3%-opacity white over nothing
+   * renders as flat white, not as our near-black theme. <option> is one of
+   * the few native-control pieces browsers DO let you paint with a literal,
+   * opaque color (unlike almost everything else about a <select> popup's
+   * internals), so we set that explicitly instead of relying on osmosis
+   * from the select's own (transparent) computed background.
+   * Overridden back to light for Invita's intentionally warm-white theme
+   * in invita.module.css (.invitaRoot option).
+   */
+  option {
+    background-color: #15161c;
+    color: #ffffff;
+  }
+
+  option:checked,
+  option:hover {
+    background-color: #1c3742;
+    color: #38c2d6;
+  }
   
   /* Custom scrollbar styling - always visible to prevent layout shift */
   html::-webkit-scrollbar {

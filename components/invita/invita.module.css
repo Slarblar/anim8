@@ -554,6 +554,18 @@
   cursor: pointer;
 }
 
+/* Overrides globals.css's site-wide dark <option> styling — Invita is intentionally light-themed. */
+.invitaRoot option {
+  background-color: var(--warm-white);
+  color: var(--deep);
+}
+
+.invitaRoot option:checked,
+.invitaRoot option:hover {
+  background-color: var(--teal-light);
+  color: var(--deep);
+}
+
 .invitaRoot textarea {
   resize: vertical;
   min-height: 100px;

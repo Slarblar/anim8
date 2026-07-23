@@ -24,7 +24,6 @@ import {
   adminBadgeInactive,
   adminBody,
   adminBtnGhost,
-  adminBtnFieldMatch,
   adminBtnPrimary,
   adminCard,
   adminInput,
@@ -227,65 +226,10 @@ function RoleField({
   );
 }
 
-/** Buffers edits locally and only PATCHes on "Save level" — matches the Role field pattern. */
-function LevelEditor({
-  level,
-  onSave,
-  disabled,
-}: {
-  level: string;
-  onSave: (next: string) => void;
-  disabled: boolean;
-}) {
-  const [value, setValue] = useState(level);
-  return (
-    <div className="flex max-w-md items-stretch gap-2">
-      <div className="min-w-0 flex-1">
-        <LevelField
-          id="crewLevelEdit"
-          value={value}
-          onChange={setValue}
-          disabled={disabled}
-        />
-      </div>
-      <button
-        type="button"
-        className={adminBtnFieldMatch}
-        disabled={disabled || value.trim() === level}
-        onClick={() => onSave(value.trim())}
-      >
-        Save level
-      </button>
-    </div>
-  );
-}
-
-/** Buffers edits locally and only PATCHes on "Save role" — matches the Weekly hours field's pattern. */
-function RoleEditor({
-  role,
-  onSave,
-  disabled,
-}: {
-  role: string;
-  onSave: (next: string) => void;
-  disabled: boolean;
-}) {
-  const [value, setValue] = useState(role);
-  return (
-    <div className="flex max-w-md items-stretch gap-2">
-      <div className="min-w-0 flex-1">
-        <RoleField idPrefix="crewRoleEdit" value={value} onChange={setValue} disabled={disabled} />
-      </div>
-      <button
-        type="button"
-        className={adminBtnFieldMatch}
-        disabled={disabled || value.trim() === role}
-        onClick={() => onSave(value.trim())}
-      >
-        Save role
-      </button>
-    </div>
-  );
+function sameWeekdays(a: WeekdayCode[], b: WeekdayCode[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(b);
+  return a.every((day) => set.has(day));
 }
 
 /** Turns a middleware/route error body (error + reason + email) into a message that explains what to fix. */
@@ -581,7 +525,7 @@ function EmploymentTypeToggle({
   );
 }
 
-/** Click-to-toggle day grid for a standing WFH schedule — each click flips that one day and re-syncs the calendar. */
+/** Click-to-toggle day grid for a standing WFH schedule — day clicks stage locally until Save. */
 function FixedWfhDayPicker({
   days,
   onToggleDay,
@@ -637,13 +581,37 @@ function CrewRow({
   const [logPtoNote, setLogPtoNote] = useState('');
   const [editingStart, setEditingStart] = useState(false);
   const [startDateInput, setStartDateInput] = useState(member.startDate ?? '');
-  // Staged locally — each Calendar sync is a real round trip, so day clicks only
-  // update this in-memory selection until "Apply schedule" is pressed.
+  const [pendingLevel, setPendingLevel] = useState(member.level ?? '');
+  const [pendingRole, setPendingRole] = useState(member.role ?? '');
+  const [pendingLocation, setPendingLocation] = useState<CrewLocation>(member.location ?? 'VN');
+  const [pendingEmploymentType, setPendingEmploymentType] = useState<EmploymentType>(
+    member.employmentType ?? 'full_time'
+  );
+  const [pendingHours, setPendingHours] = useState(
+    String(member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time'))
+  );
+  // Staged locally — Calendar sync only runs when Save is pressed.
   const [pendingWfhDays, setPendingWfhDays] = useState<WeekdayCode[]>(member.fixedWfhDays ?? []);
 
   useEffect(() => {
+    setPendingLevel(member.level ?? '');
+    setPendingRole(member.role ?? '');
+    setPendingLocation(member.location ?? 'VN');
+    setPendingEmploymentType(member.employmentType ?? 'full_time');
+    setPendingHours(
+      String(member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time'))
+    );
     setPendingWfhDays(member.fixedWfhDays ?? []);
-  }, [member.fixedWfhDays]);
+    setStartDateInput(member.startDate ?? '');
+  }, [
+    member.level,
+    member.role,
+    member.location,
+    member.employmentType,
+    member.weeklyContractedHours,
+    member.fixedWfhDays,
+    member.startDate,
+  ]);
 
   useEffect(() => {
     if (!expanded) {
@@ -652,6 +620,17 @@ function CrewRow({
       setEditingStart(false);
     }
   }, [expanded]);
+
+  const savedHours = member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time');
+  const hoursNumber = Number(pendingHours);
+  const hoursDirty = Number.isFinite(hoursNumber) && hoursNumber > 0 && hoursNumber !== savedHours;
+  const levelDirty = pendingLevel.trim() !== (member.level ?? '');
+  const roleDirty = pendingRole.trim() !== (member.role ?? '');
+  const locationDirty = pendingLocation !== (member.location ?? 'VN');
+  const employmentDirty = pendingEmploymentType !== (member.employmentType ?? 'full_time');
+  const wfhDaysChanged = !sameWeekdays(pendingWfhDays, member.fixedWfhDays ?? []);
+  const profileDirty =
+    levelDirty || roleDirty || locationDirty || employmentDirty || hoursDirty || wfhDaysChanged;
 
   const entitlement = annualLeaveEntitlementDays(member.startDate);
 
@@ -679,6 +658,37 @@ function CrewRow({
     },
     [member.email, onChanged]
   );
+
+  const saveProfile = useCallback(() => {
+    if (!profileDirty) return;
+    if (hoursDirty && !(hoursNumber > 0)) {
+      setError('Weekly hours must be a positive number.');
+      return;
+    }
+    const body: Record<string, unknown> = {};
+    if (levelDirty) body.level = pendingLevel.trim();
+    if (roleDirty) body.role = pendingRole.trim();
+    if (locationDirty) body.location = pendingLocation;
+    if (employmentDirty) body.employmentType = pendingEmploymentType;
+    if (hoursDirty) body.weeklyContractedHours = hoursNumber;
+    if (wfhDaysChanged) body.fixedWfhDays = pendingWfhDays;
+    patch(body);
+  }, [
+    profileDirty,
+    hoursDirty,
+    hoursNumber,
+    levelDirty,
+    roleDirty,
+    locationDirty,
+    employmentDirty,
+    wfhDaysChanged,
+    pendingLevel,
+    pendingRole,
+    pendingLocation,
+    pendingEmploymentType,
+    pendingWfhDays,
+    patch,
+  ]);
 
   const applyAdjustment = useCallback(() => {
     const amount = Number(adjustAmount);
@@ -720,28 +730,27 @@ function CrewRow({
     setEditingStart(false);
   }, [startDateInput, patch]);
 
-  const toggleLocation = useCallback(() => {
-    patch({ location: (member.location ?? 'VN') === 'US' ? 'VN' : 'US' });
-  }, [member.location, patch]);
+  const togglePendingLocation = useCallback(() => {
+    setPendingLocation((current) => (current === 'US' ? 'VN' : 'US'));
+  }, []);
+
+  const setEmploymentDraft = useCallback((next: EmploymentType) => {
+    setPendingEmploymentType(next);
+    setPendingHours((current) => {
+      const asNumber = Number(current);
+      const stillDefault =
+        !current ||
+        asNumber === defaultWeeklyHours('full_time') ||
+        asNumber === defaultWeeklyHours('part_time');
+      return stillDefault ? String(defaultWeeklyHours(next)) : current;
+    });
+  }, []);
 
   const toggleWfhDay = useCallback((day: WeekdayCode) => {
     setPendingWfhDays((current) =>
       current.includes(day) ? current.filter((d) => d !== day) : [...current, day]
     );
   }, []);
-
-  const savedWfhDays = member.fixedWfhDays ?? [];
-  const wfhDaysChanged =
-    pendingWfhDays.length !== savedWfhDays.length ||
-    pendingWfhDays.some((d) => !savedWfhDays.includes(d));
-
-  const applyWfhSchedule = useCallback(() => {
-    patch({ fixedWfhDays: pendingWfhDays });
-  }, [pendingWfhDays, patch]);
-
-  const resetWfhSchedule = useCallback(() => {
-    setPendingWfhDays(savedWfhDays);
-  }, [savedWfhDays]);
 
   const balance = member.ptoBalanceDays ?? 0;
   const weeklyHours = member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time');
@@ -804,7 +813,7 @@ function CrewRow({
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 sm:w-[8.75rem] sm:items-end sm:border-t-0 sm:pt-0">
+        <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 sm:mb-1 sm:w-[8.75rem] sm:items-end sm:border-t-0 sm:pt-0 sm:pb-2">
           <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
             {member.active ? 'Active' : 'Deactivated'}
           </span>
@@ -823,7 +832,7 @@ function CrewRow({
         className={`admin-collapse-expand ${expanded ? 'admin-collapse-expand--open' : ''}`}
         aria-hidden={!expanded}
       >
-        <div className="admin-collapse-expand-inner space-y-3 border-t border-white/10 pt-3">
+        <div className="admin-collapse-expand-inner space-y-3 border-t border-white/10 pt-5">
           <p className="text-xs text-text-muted">entitled {entitlement} day(s)/yr</p>
           <p className="text-xs text-text-muted">
             {member.startDate ? (
@@ -837,86 +846,65 @@ function CrewRow({
 
           <div>
             <p className={adminLabel}>Level</p>
-            <LevelEditor
-              key={`${member.email}-${member.level ?? ''}`}
-              level={member.level ?? ''}
-              onSave={(next) => patch({ level: next })}
-              disabled={loading}
-            />
+            <div className="max-w-md">
+              <LevelField
+                id={`crew-level-${member.email}`}
+                value={pendingLevel}
+                onChange={setPendingLevel}
+                disabled={loading}
+              />
+            </div>
           </div>
 
           <div>
             <p className={adminLabel}>Role</p>
-            <RoleEditor
-              key={`${member.email}-${member.role}`}
-              role={member.role ?? ''}
-              onSave={(next) => patch({ role: next })}
-              disabled={loading}
-            />
+            <div className="max-w-md">
+              <RoleField
+                key={`${member.email}-role-${member.role}`}
+                idPrefix={`crew-role-${member.email}`}
+                value={pendingRole}
+                onChange={setPendingRole}
+                disabled={loading}
+              />
+            </div>
           </div>
 
           <div>
             <p className={adminLabel}>Location</p>
-            <LocationToggle location={member.location ?? 'VN'} onToggle={toggleLocation} disabled={loading} />
+            <LocationToggle
+              location={pendingLocation}
+              onToggle={togglePendingLocation}
+              disabled={loading}
+            />
           </div>
 
           <div>
             <p className={adminLabel}>Employment type</p>
             <EmploymentTypeToggle
-              value={member.employmentType ?? 'full_time'}
-              onChange={(next) => patch({ employmentType: next })}
+              value={pendingEmploymentType}
+              onChange={setEmploymentDraft}
               disabled={loading}
             />
           </div>
 
           <div>
             <p className={adminLabel}>Weekly contracted hours (KPI FTE = hours ÷ 40)</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                max={80}
-                step={1}
-                className={`${adminInput} max-w-[8rem]`}
-                defaultValue={member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time')}
-                key={`${member.email}-${member.weeklyContractedHours}-${member.employmentType}`}
-                id={`hours-${member.email}`}
-                aria-label="Weekly contracted hours"
-              />
-              <button
-                type="button"
-                className={adminBtnGhost}
-                disabled={loading}
-                onClick={() => {
-                  const input = document.getElementById(`hours-${member.email}`) as HTMLInputElement | null;
-                  const hours = Number(input?.value);
-                  if (!(hours > 0)) return;
-                  patch({ weeklyContractedHours: hours });
-                }}
-              >
-                Save hours
-              </button>
-            </div>
+            <input
+              type="number"
+              min={1}
+              max={80}
+              step={1}
+              className={`${adminInput} max-w-[8rem]`}
+              value={pendingHours}
+              onChange={(e) => setPendingHours(e.target.value)}
+              disabled={loading}
+              aria-label="Weekly contracted hours"
+            />
           </div>
 
           <div>
-            <p className={adminLabel}>Fixed WFH schedule (click days, then apply — each apply syncs to the shared calendar)</p>
+            <p className={adminLabel}>Fixed WFH schedule (click days to toggle — Save syncs to the shared calendar)</p>
             <FixedWfhDayPicker days={pendingWfhDays} onToggleDay={toggleWfhDay} disabled={loading} />
-            {wfhDaysChanged ? (
-              <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  className={adminBtnGhost}
-                  disabled={loading}
-                  onClick={applyWfhSchedule}
-                >
-                  {loading ? 'Syncing…' : 'Apply schedule'}
-                </button>
-                <button type="button" className={adminBtnGhost} disabled={loading} onClick={resetWfhSchedule}>
-                  Reset
-                </button>
-              </div>
-            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -930,6 +918,16 @@ function CrewRow({
               <button type="button" className={adminBtnGhost} onClick={() => setEditingStart((v) => !v)}>
                 {member.startDate ? 'Edit start date' : 'Set start date'}
               </button>
+              {profileDirty ? (
+                <button
+                  type="button"
+                  className={adminBtnGhost}
+                  disabled={loading}
+                  onClick={saveProfile}
+                >
+                  {loading ? 'Saving…' : 'Save'}
+                </button>
+              ) : null}
             </div>
             <button
               type="button"
@@ -950,7 +948,7 @@ function CrewRow({
                 placeholder="Start date"
               />
               <button type="button" className={adminBtnGhost} disabled={loading} onClick={saveStartDate}>
-                Save
+                Save start date
               </button>
             </div>
           ) : null}

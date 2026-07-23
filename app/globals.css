@@ -1808,9 +1808,9 @@ html.careers-page-active {
 .crew-hover-translate__stack {
   display: inline-grid;
   vertical-align: baseline;
-  justify-items: start;
-  align-items: start;
-  text-align: inherit;
+  justify-items: center;
+  align-items: center;
+  text-align: center;
 }
 
 /* Hidden EN + VN layers size the box so hover / toggle never jumps layout. */

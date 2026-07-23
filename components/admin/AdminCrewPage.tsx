@@ -82,20 +82,22 @@ function formatLevelRole(level?: string, role?: string): string {
 function AdminPresencePill({ status }: { status: CrewStatusEntry['status'] }) {
   if (status === 'PTO') {
     return (
-      <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
-        🌴 Out
+      <span className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
+        <span aria-hidden>🌴</span>
+        Out
       </span>
     );
   }
   if (status === 'WFH') {
     return (
-      <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-cyan font-mono">
-        🏠 WFH
+      <span className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-cyan font-mono">
+        <span aria-hidden>🏠</span>
+        WFH
       </span>
     );
   }
   return (
-    <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono">
+    <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono">
       In studio
     </span>
   );
@@ -108,7 +110,7 @@ function CrewKpiBandBadge({ score, band }: { score: number; band?: PerformanceBa
   const styleBand = getScoreBand(score);
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider font-mono"
+      className="inline-flex shrink-0 items-center justify-center rounded-full border px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider font-mono"
       style={{
         color: styleBand.color,
         borderColor: `${styleBand.color}55`,
@@ -124,11 +126,11 @@ function CrewKpiIndicator({ summary }: { summary?: PersonKPISummary | null }) {
   const score = summary?.currentMonthScore ?? 0;
   const band = summary?.currentMonthBand;
   if (score <= 0 || !band) {
-    return <span className="text-[10px] font-mono text-text-muted">No KPI yet</span>;
+    return <span className="text-center text-[10px] font-mono text-text-muted">No KPI yet</span>;
   }
   const styleBand = getScoreBand(score);
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
+    <div className="flex flex-wrap items-center justify-center gap-1.5">
       <span
         className="font-mono text-sm font-bold tabular-nums leading-none"
         style={{ color: styleBand.color }}
@@ -844,7 +846,7 @@ function CrewRow({
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 sm:mb-1 sm:w-[8.75rem] sm:items-end sm:border-t-0 sm:pt-0 sm:pb-2">
+        <div className="flex flex-col items-center gap-2 border-t border-white/10 pt-2.5 sm:mb-1 sm:w-[8.75rem] sm:border-t-0 sm:pt-0 sm:pb-2">
           <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
             {member.active ? 'Active' : 'Deactivated'}
           </span>
@@ -852,7 +854,7 @@ function CrewRow({
           <CrewKpiIndicator summary={kpiSummary} />
           <Link
             href={`/admin/kpi/${encodeURIComponent(member.email)}`}
-            className="block w-full rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-cyan transition hover:border-brand-cyan/35 hover:bg-brand-cyan/[0.06]"
+            className="flex w-full items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-cyan transition hover:border-brand-cyan/35 hover:bg-brand-cyan/[0.06]"
           >
             View KPI
           </Link>

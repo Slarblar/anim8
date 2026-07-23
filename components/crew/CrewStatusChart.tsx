@@ -31,20 +31,22 @@ function CrewAvatar({ entry }: { entry: CrewStatusEntry }) {
 function StatusPill({ status }: { status: CrewStatusEntry['status'] }) {
   if (status === 'PTO') {
     return (
-      <span className="shrink-0 rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
-        🌴 <HoverTranslate en={crewT.en.statusChart.statusOut} vn={crewT.vn.statusChart.statusOut} />
+      <span className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
+        <span aria-hidden>🌴</span>
+        <HoverTranslate en={crewT.en.statusChart.statusOut} vn={crewT.vn.statusChart.statusOut} />
       </span>
     );
   }
   if (status === 'WFH') {
     return (
-      <span className="shrink-0 rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-cyan font-mono">
-        🏠 <HoverTranslate en={crewT.en.statusChart.statusWfh} vn={crewT.vn.statusChart.statusWfh} />
+      <span className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-cyan font-mono">
+        <span aria-hidden>🏠</span>
+        <HoverTranslate en={crewT.en.statusChart.statusWfh} vn={crewT.vn.statusChart.statusWfh} />
       </span>
     );
   }
   return (
-    <span className="shrink-0 rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono">
+    <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono">
       <HoverTranslate en={crewT.en.statusChart.statusInStudio} vn={crewT.vn.statusChart.statusInStudio} />
     </span>
   );

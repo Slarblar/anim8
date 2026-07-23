@@ -53,19 +53,19 @@ export const adminBtnFieldMatch =
   'inline-flex shrink-0 items-center justify-center self-stretch rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/35 disabled:opacity-50';
 
 export const adminBadgeActive =
-  'rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono';
+  'inline-flex items-center justify-center rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono';
 
 export const adminBadgeInactive =
-  'rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono';
+  'inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono';
 
 export const adminBadgePending =
-  'rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-cyan font-mono';
+  'inline-flex items-center justify-center rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-cyan font-mono';
 
 export const adminBadgeApproved =
-  'rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono';
+  'inline-flex items-center justify-center rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono';
 
 export const adminBadgeRejected =
-  'rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono';
+  'inline-flex items-center justify-center rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono';
 
 export const adminAlertError =
   'rounded-lg border border-brand-pink/30 bg-brand-pink/10 px-4 py-3 text-sm text-red-100';

@@ -37,7 +37,7 @@ function BandBadge({ score, band }: { score: number; band?: PerformanceBand }) {
   const styleBand = getScoreBand(score);
   return (
     <span
-      className="rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider font-mono"
+      className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider font-mono"
       style={{
         color: styleBand.color,
         borderColor: `${styleBand.color}55`,
@@ -65,7 +65,7 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <p className="min-w-0 truncate font-bold text-white">{person.name}</p>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5">
               {!person.active ? <span className={adminBadgeInactive}>Deactivated</span> : null}
               {summary ? (
                 <BandBadge score={monthScore} band={summary.currentMonthBand} />

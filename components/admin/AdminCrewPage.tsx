@@ -249,6 +249,7 @@ function describeApiError(data: ApiErrorBody, fallback: string): string {
 }
 
 function AddCrewForm({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('');
@@ -260,6 +261,19 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
   const [weeklyHours, setWeeklyHours] = useState(String(defaultWeeklyHours('full_time')));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const resetForm = useCallback(() => {
+    setName('');
+    setEmail('');
+    setRole('');
+    setLevel('');
+    setStartDate('');
+    setInitialBalance('');
+    setLocation('VN');
+    setEmploymentType('full_time');
+    setWeeklyHours(String(defaultWeeklyHours('full_time')));
+    setError(null);
+  }, []);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -288,15 +302,8 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
           setError(describeApiError(data, 'Could not add crew member.'));
           return;
         }
-        setName('');
-        setEmail('');
-        setRole('');
-        setLevel('');
-        setStartDate('');
-        setInitialBalance('');
-        setLocation('VN');
-        setEmploymentType('full_time');
-        setWeeklyHours(String(defaultWeeklyHours('full_time')));
+        resetForm();
+        setOpen(false);
         onCreated();
       } catch {
         setError('Could not add crew member. Please try again.');
@@ -304,146 +311,179 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
         setSubmitting(false);
       }
     },
-    [name, email, role, level, startDate, initialBalance, location, employmentType, weeklyHours, onCreated]
+    [name, email, role, level, startDate, initialBalance, location, employmentType, weeklyHours, onCreated, resetForm]
   );
 
   return (
-    <form onSubmit={handleSubmit} className={`${adminCard} space-y-4`}>
-      <h2 className={adminSectionTitle}>Add crew member</h2>
-      <div className="grid gap-4 min-[640px]:grid-cols-2">
-        <div>
-          <label className={adminLabel} htmlFor="crewName">
-            Name
-          </label>
-          <input
-            id="crewName"
-            className={adminInput}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Jordan Rivera"
-            required
-          />
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="crewEmail">
-            Google account email
-          </label>
-          <input
-            id="crewEmail"
-            type="email"
-            className={adminInput}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="jordan@anim-8.xyz"
-            required
-          />
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="crewLevel">
-            Level (optional)
-          </label>
-          <LevelField id="crewLevel" value={level} onChange={setLevel} />
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="crewRole-select">
-            Role (optional)
-          </label>
-          <RoleField idPrefix="crewRole" value={role} onChange={setRole} />
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="crewStart">
-            Start date (optional — used for PTO tenure bonus)
-          </label>
-          <AdminDatePicker
-            id="crewStart"
-            value={startDate}
-            onChange={setStartDate}
-            placeholder="Start date"
-          />
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="crewBalance">
-            Starting PTO balance, in days (optional — from Handbook/HR records)
-          </label>
-          <input
-            id="crewBalance"
-            type="number"
-            step="0.5"
-            className={adminInput}
-            value={initialBalance}
-            onChange={(e) => setInitialBalance(e.target.value)}
-            placeholder="0"
-          />
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="crewLocation">
-            Location
-          </label>
-          <select
-            id="crewLocation"
-            className={adminSelect}
-            style={adminSelectChevronStyle}
-            value={location}
-            onChange={(e) => setLocation(e.target.value as CrewLocation)}
-          >
-            <option value="VN">VN — Vietnam</option>
-            <option value="US">US — United States</option>
-          </select>
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="crewEmploymentType">
-            Employment type
-          </label>
-          <select
-            id="crewEmploymentType"
-            className={adminSelect}
-            style={adminSelectChevronStyle}
-            value={employmentType}
-            onChange={(e) => {
-              const next = e.target.value as EmploymentType;
-              setEmploymentType(next);
-              // Keep hours in sync with the type's default unless an admin already typed a custom value.
-              setWeeklyHours((current) => {
-                const asNumber = Number(current);
-                const stillDefault =
-                  !current ||
-                  asNumber === defaultWeeklyHours('full_time') ||
-                  asNumber === defaultWeeklyHours('part_time');
-                return stillDefault ? String(defaultWeeklyHours(next)) : current;
-              });
-            }}
-          >
-            {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={adminLabel} htmlFor="crewWeeklyHours">
-            Weekly contracted hours (KPI FTE = hours ÷ 40)
-          </label>
-          <input
-            id="crewWeeklyHours"
-            type="number"
-            min={1}
-            max={80}
-            step={1}
-            className={adminInput}
-            value={weeklyHours}
-            onChange={(e) => setWeeklyHours(e.target.value)}
-            required
-          />
-        </div>
-      </div>
-
-      {error ? <p className={adminAlertError}>{error}</p> : null}
-
-      <button type="submit" className={adminBtnPrimary} disabled={submitting}>
-        {submitting ? 'Adding…' : 'Add crew member'}
+    <div className={`${adminCard} admin-collapse-card ${open ? 'admin-collapse-card--expanded' : ''}`}>
+      <button
+        type="button"
+        className="admin-collapse-toggle flex w-full items-center justify-between gap-3 text-left"
+        aria-expanded={open}
+        aria-label={open ? 'Collapse add crew form' : 'Expand to add a new crew member'}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <h2 className={adminSectionTitle}>Add crew member</h2>
+        <span
+          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brand-cyan/35 bg-brand-cyan/10 text-brand-cyan transition duration-300 ease-out hover:border-brand-cyan/55 hover:bg-brand-cyan/15 ${
+            open ? 'rotate-45' : ''
+          }`}
+          aria-hidden
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M8 3v10M3 8h10"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
       </button>
-    </form>
+
+      <div
+        className={`admin-collapse-expand ${open ? 'admin-collapse-expand--open' : ''}`}
+        aria-hidden={!open}
+      >
+        <form
+          onSubmit={handleSubmit}
+          className="admin-collapse-expand-inner space-y-4 border-t border-white/10 pt-4"
+        >
+          <div className="grid gap-4 min-[640px]:grid-cols-2">
+            <div>
+              <label className={adminLabel} htmlFor="crewName">
+                Name
+              </label>
+              <input
+                id="crewName"
+                className={adminInput}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jordan Rivera"
+                required={open}
+              />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="crewEmail">
+                Google account email
+              </label>
+              <input
+                id="crewEmail"
+                type="email"
+                className={adminInput}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jordan@anim-8.xyz"
+                required={open}
+              />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="crewLevel">
+                Level (optional)
+              </label>
+              <LevelField id="crewLevel" value={level} onChange={setLevel} />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="crewRole-select">
+                Role (optional)
+              </label>
+              <RoleField idPrefix="crewRole" value={role} onChange={setRole} />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="crewStart">
+                Start date (optional — used for PTO tenure bonus)
+              </label>
+              <AdminDatePicker
+                id="crewStart"
+                value={startDate}
+                onChange={setStartDate}
+                placeholder="Start date"
+              />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="crewBalance">
+                Starting PTO balance, in days (optional — from Handbook/HR records)
+              </label>
+              <input
+                id="crewBalance"
+                type="number"
+                step="0.5"
+                className={adminInput}
+                value={initialBalance}
+                onChange={(e) => setInitialBalance(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="crewLocation">
+                Location
+              </label>
+              <select
+                id="crewLocation"
+                className={adminSelect}
+                style={adminSelectChevronStyle}
+                value={location}
+                onChange={(e) => setLocation(e.target.value as CrewLocation)}
+              >
+                <option value="VN">VN — Vietnam</option>
+                <option value="US">US — United States</option>
+              </select>
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="crewEmploymentType">
+                Employment type
+              </label>
+              <select
+                id="crewEmploymentType"
+                className={adminSelect}
+                style={adminSelectChevronStyle}
+                value={employmentType}
+                onChange={(e) => {
+                  const next = e.target.value as EmploymentType;
+                  setEmploymentType(next);
+                  setWeeklyHours((current) => {
+                    const asNumber = Number(current);
+                    const stillDefault =
+                      !current ||
+                      asNumber === defaultWeeklyHours('full_time') ||
+                      asNumber === defaultWeeklyHours('part_time');
+                    return stillDefault ? String(defaultWeeklyHours(next)) : current;
+                  });
+                }}
+              >
+                {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={adminLabel} htmlFor="crewWeeklyHours">
+                Weekly contracted hours (KPI FTE = hours ÷ 40)
+              </label>
+              <input
+                id="crewWeeklyHours"
+                type="number"
+                min={1}
+                max={80}
+                step={1}
+                className={adminInput}
+                value={weeklyHours}
+                onChange={(e) => setWeeklyHours(e.target.value)}
+                required={open}
+              />
+            </div>
+          </div>
+
+          {error ? <p className={adminAlertError}>{error}</p> : null}
+
+          <button type="submit" className={adminBtnPrimary} disabled={submitting}>
+            {submitting ? 'Adding…' : 'Add crew member'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -921,7 +961,7 @@ function CrewRow({
               {profileDirty ? (
                 <button
                   type="button"
-                  className={adminBtnGhost}
+                  className={`${adminBtnPrimary} !px-3 !py-1.5 !text-xs`}
                   disabled={loading}
                   onClick={saveProfile}
                 >

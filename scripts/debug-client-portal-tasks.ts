@@ -13,7 +13,7 @@ require.cache[serverOnlyPath] = {
   exports: {},
   children: [],
   paths: [],
-} as NodeModule;
+} as unknown as NodeModule;
 
 type ClientFieldFilter = { fieldGid: string; optionGid: string };
 type RawTask = { gid: string; name: string };

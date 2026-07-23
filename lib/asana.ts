@@ -94,6 +94,7 @@ type AsanaTaskRaw = {
   due_on: string | null;
   completed: boolean;
   permalink_url?: string;
+  num_subtasks?: number;
   custom_fields?: AsanaCustomFieldRaw[];
 };
 
@@ -102,6 +103,7 @@ const TASK_OPT_FIELDS = [
   'due_on',
   'completed',
   'permalink_url',
+  'num_subtasks',
   'custom_fields.gid',
   'custom_fields.number_value',
   'custom_fields.display_value',
@@ -182,6 +184,47 @@ async function searchProjectTasks(
   return sortTasksByDueDate(Array.from(seen.values()));
 }
 
+/** Cap concurrent Asana reads — unbounded Promise.all trips their simultaneous-request 429. */
+const ASANA_READ_CONCURRENCY = 5;
+const ASANA_RETRY_MAX = 4;
+
+const EMPTY_PROGRESS: TaskProgress = {
+  totalSubtasks: 0,
+  completedSubtasks: 0,
+  percent: null,
+};
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+): Promise<R[]> {
+  if (items.length === 0) return [];
+
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index]);
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => worker()
+  );
+  await Promise.all(workers);
+  return results;
+}
+
 async function listSubtasks(taskGid: string): Promise<Array<{ completed: boolean }>> {
   const items: Array<{ completed: boolean }> = [];
   let offset: string | undefined;
@@ -193,23 +236,46 @@ async function listSubtasks(taskGid: string): Promise<Array<{ completed: boolean
     });
     if (offset) params.set('offset', offset);
 
-    const res = await fetch(
-      `${ASANA_BASE}/tasks/${taskGid}/subtasks?${params.toString()}`,
-      {
-        headers: { Authorization: `Bearer ${getToken()}` },
-        cache: 'no-store',
-      }
-    );
+    let attempt = 0;
+    let json: {
+      data?: Array<{ completed: boolean }>;
+      next_page?: { offset?: string };
+    } | null = null;
 
-    if (!res.ok) {
+    while (attempt <= ASANA_RETRY_MAX) {
+      const res = await fetch(
+        `${ASANA_BASE}/tasks/${taskGid}/subtasks?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+          cache: 'no-store',
+        }
+      );
+
+      if (res.ok) {
+        json = (await res.json()) as {
+          data?: Array<{ completed: boolean }>;
+          next_page?: { offset?: string };
+        };
+        break;
+      }
+
       const body = await res.text().catch(() => '');
+      if (res.status === 429 && attempt < ASANA_RETRY_MAX) {
+        const retryAfterSec = Number(res.headers.get('Retry-After'));
+        const delayMs = Number.isFinite(retryAfterSec)
+          ? retryAfterSec * 1000
+          : 400 * 2 ** attempt;
+        await sleep(delayMs);
+        attempt += 1;
+        continue;
+      }
+
       throw new Error(`Asana subtasks ${taskGid} failed: ${res.status} ${body}`);
     }
 
-    const json = (await res.json()) as {
-      data?: Array<{ completed: boolean }>;
-      next_page?: { offset?: string };
-    };
+    if (!json) {
+      throw new Error(`Asana subtasks ${taskGid} failed: exhausted retries`);
+    }
 
     items.push(...(json.data ?? []));
     offset = json.next_page?.offset;
@@ -233,6 +299,16 @@ async function getSubtaskProgress(taskGid: string): Promise<TaskProgress> {
   };
 }
 
+/** Progress fetch that never fails the portal — one bad task stays empty. */
+async function getSubtaskProgressSafe(taskGid: string): Promise<TaskProgress> {
+  try {
+    return await getSubtaskProgress(taskGid);
+  } catch (err) {
+    console.error(`Subtask progress failed for ${taskGid}`, err);
+    return EMPTY_PROGRESS;
+  }
+}
+
 function displayTaskName(name: string): string {
   return name.replace(/^\[[^\]]+\]\s*/, '').trim() || name;
 }
@@ -249,13 +325,6 @@ function toPortalTask(task: AsanaTaskRaw, progress: TaskProgress): ClientPortalT
   };
 }
 
-async function enrichTasksWithProgress(
-  tasks: AsanaTaskRaw[]
-): Promise<ClientPortalTask[]> {
-  return Promise.all(
-    tasks.map(async (task) => toPortalTask(task, await getSubtaskProgress(task.gid)))
-  );
-}
 function sortTasksByDueDate<T extends { due_on: string | null }>(tasks: T[]): T[] {
   return [...tasks].sort((a, b) => {
     if (!a.due_on && !b.due_on) return 0;
@@ -268,6 +337,9 @@ function sortTasksByDueDate<T extends { due_on: string | null }>(tasks: T[]): T[
 /**
  * Pending = intake + New Submission. Approved = intake + client approved (pre-pipeline).
  * Active = production or design pipeline.
+ *
+ * Subtask progress is only fetched for active pipeline tasks (shown in the UI).
+ * Pending/approved use empty progress so large intake lists don't 429 Asana.
  */
 export async function getClientPortalTasks(
   filters: ClientFieldFilter[],
@@ -305,22 +377,28 @@ export async function getClientPortalTasks(
 
   const sortedActiveRaw = sortTasksByDueDate(Array.from(activeRaw.values()));
 
-  const [pending, approved, activeWithProgress] = await Promise.all([
-    enrichTasksWithProgress(pendingRaw),
-    Promise.all(
-      approvedRaw.map(async (task) => ({
-        ...toPortalTask(task, await getSubtaskProgress(task.gid)),
-        status: readEnumCustomFieldLabel(task.custom_fields, FIELD_CLIENT_STATUS),
-      }))
-    ),
-    Promise.all(
-      sortedActiveRaw.map(async (task) => ({
-        ...toPortalTask(task, await getSubtaskProgress(task.gid)),
+  const pending = pendingRaw.map((task) => toPortalTask(task, EMPTY_PROGRESS));
+  const approved = approvedRaw.map((task) => ({
+    ...toPortalTask(task, EMPTY_PROGRESS),
+    status: readEnumCustomFieldLabel(task.custom_fields, FIELD_CLIENT_STATUS),
+  }));
+  // Skip subtask fan-out when Asana already says there are none — otherwise
+  // large client boards (100+ tasks) burn the serverless timeout on empty GETs.
+  const activeWithProgress = await mapWithConcurrency(
+    sortedActiveRaw,
+    ASANA_READ_CONCURRENCY,
+    async (task) => {
+      const progress =
+        (task.num_subtasks ?? 0) > 0
+          ? await getSubtaskProgressSafe(task.gid)
+          : EMPTY_PROGRESS;
+      return {
+        ...toPortalTask(task, progress),
         pipeline: task.pipeline,
         status: readEnumCustomFieldLabel(task.custom_fields, FIELD_PIPELINE_STATUS),
-      }))
-    ),
-  ]);
+      };
+    }
+  );
 
   return { pending, approved, active: activeWithProgress };
 }

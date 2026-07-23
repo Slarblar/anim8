@@ -1,12 +1,17 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { useCrewLanguage } from '@/lib/crew-language';
 
 type HoverTranslateProps = {
   en: string;
   vn: string;
   className?: string;
+  /**
+   * `stable` (default) — reserve max(EN, VN) width so layout never shifts (buttons, headlines).
+   * `badge` — size to the active language and animate width on hover/toggle (pills only).
+   */
+  fit?: 'stable' | 'badge';
   /** Optional leading content (emoji, icons) that stays put while the text swaps. */
   children?: ReactNode;
 };
@@ -65,15 +70,23 @@ function scrambleTo(node: HTMLElement, from: string, to: string, totalFrames = 2
 
 /**
  * Shows the active-language string; on hover/focus (and on the page-wide
- * EN/VN toggle) decrypt-scrambles in place to the other language. Both
- * strings are pre-rendered in a hidden layer so the box never resizes.
+ * EN/VN toggle) decrypt-scrambles in place to the other language.
  * Always mono so EN↔VN never jumps font metrics.
  */
-export function HoverTranslate({ en, vn, className, children }: HoverTranslateProps) {
+export function HoverTranslate({
+  en,
+  vn,
+  className,
+  fit = 'stable',
+  children,
+}: HoverTranslateProps) {
   const { lang } = useCrewLanguage();
   const primary = lang === 'vn' ? vn : en;
   const other = lang === 'vn' ? en : vn;
+  const isBadge = fit === 'badge';
 
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const contentRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const cancelRef = useRef<(() => void) | null>(null);
   // Captured once — kept out of subsequent renders so React never resets the
@@ -87,10 +100,56 @@ export function HoverTranslate({ en, vn, className, children }: HoverTranslatePr
       typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }, []);
 
+  /** Measure content width for a target string without leaving scramble mid-state. */
+  const measureWidthFor = (target: string): number => {
+    const textNode = textRef.current;
+    const content = contentRef.current;
+    if (!textNode || !content) return 0;
+    const prev = textNode.textContent;
+    textNode.textContent = target;
+    const width = content.offsetWidth;
+    textNode.textContent = prev;
+    return width;
+  };
+
+  const setBadgeWidth = (width: number, animate: boolean) => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    if (!animate || reducedMotionRef.current) {
+      wrap.style.transition = 'none';
+      wrap.style.width = `${width}px`;
+      // Restore transition on next frame so later hovers still animate.
+      requestAnimationFrame(() => {
+        wrap.style.transition = '';
+      });
+      return;
+    }
+    wrap.style.width = `${width}px`;
+  };
+
   const animateTo = (target: string) => {
     const node = textRef.current;
+    const wrap = wrapRef.current;
     if (!node) return;
     cancelRef.current?.();
+
+    if (isBadge && wrap) {
+      const fromWidth = wrap.offsetWidth || measureWidthFor(node.textContent ?? target);
+      const toWidth = measureWidthFor(target);
+      // Lock current width, then ease to the target language's width while scrambling.
+      wrap.style.transition = 'none';
+      wrap.style.width = `${fromWidth}px`;
+      void wrap.offsetWidth;
+      if (reducedMotionRef.current) {
+        wrap.style.width = `${toWidth}px`;
+      } else {
+        wrap.style.transition = '';
+        requestAnimationFrame(() => {
+          wrap.style.width = `${toWidth}px`;
+        });
+      }
+    }
+
     if (reducedMotionRef.current) {
       node.textContent = target;
       return;
@@ -110,6 +169,14 @@ export function HoverTranslate({ en, vn, className, children }: HoverTranslatePr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
+  // Badge: snap initial width to the active language (no dual-string reservation).
+  useLayoutEffect(() => {
+    if (!isBadge) return;
+    const width = measureWidthFor(primary);
+    if (width > 0) setBadgeWidth(width, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBadge, en, vn, primary]);
+
   useEffect(() => () => cancelRef.current?.(), []);
 
   // Identical strings (e.g. "KPI", "WFH") — nothing to scramble.
@@ -118,6 +185,27 @@ export function HoverTranslate({ en, vn, className, children }: HoverTranslatePr
       <span className={className}>
         {children}
         {primary}
+      </span>
+    );
+  }
+
+  if (isBadge) {
+    return (
+      <span
+        ref={wrapRef}
+        className={`crew-hover-translate crew-hover-translate--badge inline-flex items-center justify-center font-mono ${className ?? ''}`.trim()}
+        tabIndex={0}
+        onMouseEnter={() => animateTo(other)}
+        onMouseLeave={() => animateTo(primary)}
+        onFocus={() => animateTo(other)}
+        onBlur={() => animateTo(primary)}
+      >
+        <span ref={contentRef} className="inline-flex items-center justify-center gap-1 whitespace-nowrap">
+          {children}
+          <span className="crew-hover-translate__text" ref={textRef}>
+            {initialTextRef.current}
+          </span>
+        </span>
       </span>
     );
   }

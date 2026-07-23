@@ -1813,6 +1813,15 @@ html.careers-page-active {
   text-align: center;
 }
 
+/* Badges — hug the active language; width eases when EN↔VN swaps. */
+.crew-hover-translate--badge {
+  overflow: hidden;
+  max-width: 100%;
+  vertical-align: middle;
+  transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: width;
+}
+
 /* Hidden EN + VN layers size the box so hover / toggle never jumps layout. */
 .crew-hover-translate__ghost {
   grid-area: 1 / 1;
@@ -1841,6 +1850,10 @@ html.careers-page-active {
   .kpi-bar-cap--active,
   .crew-fade-in-up {
     animation: none;
+  }
+
+  .crew-hover-translate--badge {
+    transition: none;
   }
 }
 

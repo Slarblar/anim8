@@ -1,7 +1,7 @@
 /**
  * Glossary for text that originates in Asana (or the KPI scoring doc) and
  * shows up on /crew. Asana itself is English-only — we translate at display
- * time so VN speakers aren't stuck reading "Excellent" / "Great (100+)".
+ * time so VN speakers aren't stuck reading "Excellent" / "Great (70+)".
  */
 
 export type LocalizedPair = { en: string; vn: string };
@@ -15,7 +15,7 @@ export const ASANA_RATING_LABELS: Record<string, LocalizedPair> = {
   '1 - Poor': { en: 'Poor', vn: 'Yếu' },
 };
 
-/** Performance bands from Anim8 KPI Scoring Documentation §1. */
+/** Performance bands from Anim8 KPI Scoring Documentation 2026 v2 §1. */
 export const PERFORMANCE_BAND_LABELS: Record<string, LocalizedPair> = {
   great: { en: 'Great', vn: 'Xuất sắc' },
   good: { en: 'Good', vn: 'Tốt' },
@@ -26,11 +26,11 @@ export const PERFORMANCE_BAND_LABELS: Record<string, LocalizedPair> = {
 
 /** Band legend lines (with score ranges) for the charts. */
 export const PERFORMANCE_BAND_LEGEND: Record<string, LocalizedPair> = {
-  great: { en: 'Great (100+)', vn: 'Xuất sắc (100+)' },
-  good: { en: 'Good (80–99.9)', vn: 'Tốt (80–99.9)' },
-  average: { en: 'Average (60–79.9)', vn: 'Trung bình (60–79.9)' },
-  bad: { en: 'Bad (40–59.9)', vn: 'Yếu (40–59.9)' },
-  poor: { en: 'Poor (<40)', vn: 'Kém (<40)' },
+  great: { en: 'Great (70+)', vn: 'Xuất sắc (70+)' },
+  good: { en: 'Good (55–69.9)', vn: 'Tốt (55–69.9)' },
+  average: { en: 'Average (40–54.9)', vn: 'Trung bình (40–54.9)' },
+  bad: { en: 'Bad (25–39.9)', vn: 'Yếu (25–39.9)' },
+  poor: { en: 'Poor (<25)', vn: 'Kém (<25)' },
 };
 
 export function localizeAsanaRating(

@@ -25,7 +25,12 @@ export { performanceBand, performanceBandLabel } from './kpi-shared';
  * project and rolls them up per-person (matched by Asana assignee email,
  * same email crew members use to sign in at /crew).
  *
- * Scoring follows Anim8 KPI Scoring Documentation 2026–2027 §2 + §5:
+ * Includes nested subtasks under project tasks so multi-assignee breakdowns
+ * (e.g. Phrogger shot lists) credit each subtask assignee. Parent tasks keep
+ * their own score too — the parent assignee tracks supervisor / coordinator
+ * ownership on that line item.
+ *
+ * Scoring follows Anim8 KPI Scoring Documentation 2026 v2 §2 + §5:
  *   Total = ([Effort ÷ FTE] × Quality × Collaboration) + [Delivery ÷ FTE] + R&D
  * where FTE = weekly contracted hours ÷ 40. Quality / Collaboration /
  * R&D are not volume-scaled — only Effort and Delivery are.
@@ -60,11 +65,32 @@ type AsanaTask = {
   gid: string;
   name: string;
   assignee: { gid: string; name: string; email: string } | null;
+  parent: { gid: string } | null;
+  num_subtasks?: number;
   custom_fields: AsanaCustomField[];
   completed: boolean;
   completed_at: string | null; // ISO timestamp
   modified_at: string; // ISO timestamp
 };
+
+const TASK_OPT_FIELDS = [
+  'name',
+  'assignee.name',
+  'assignee.email',
+  'parent.gid',
+  'num_subtasks',
+  'custom_fields.name',
+  'custom_fields.type',
+  'custom_fields.number_value',
+  'custom_fields.date_value',
+  'custom_fields.enum_value.name',
+  'completed',
+  'completed_at',
+  'modified_at',
+].join(',');
+
+/** Max parallel Asana subtask fetches per refresh — keeps us under rate limits. */
+const SUBTASK_FETCH_CONCURRENCY = 8;
 
 // ---- Helpers --------------------------------------------------------------
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -152,30 +178,21 @@ function buildLastNMonths(monthly: Map<string, number>, now: Date, count: number
   return result;
 }
 
-// ---- Fetch every task in the KPI project (paginated) ----------------------
-async function fetchAllKPITasks(): Promise<AsanaTask[]> {
+function taskCompletionDate(task: AsanaTask): string | undefined {
+  const explicitDate = getField(task, 'Completion Date')?.date_value?.date;
+  if (explicitDate) return explicitDate;
+  if (task.completed && task.completed_at) return task.completed_at.slice(0, 10);
+  if (task.modified_at) return task.modified_at.slice(0, 10);
+  return undefined;
+}
+
+async function fetchPaginatedAsanaTasks(url: URL): Promise<AsanaTask[]> {
   const tasks: AsanaTask[] = [];
   let offset: string | undefined;
 
-  const optFields = [
-    'name',
-    'assignee.name',
-    'assignee.email',
-    'custom_fields.name',
-    'custom_fields.type',
-    'custom_fields.number_value',
-    'custom_fields.date_value',
-    'custom_fields.enum_value.name',
-    'completed',
-    'completed_at',
-    'modified_at',
-  ].join(',');
-
   do {
-    const url = new URL(`https://app.asana.com/api/1.0/projects/${KPI_PROJECT_GID}/tasks`);
-    url.searchParams.set('opt_fields', optFields);
-    url.searchParams.set('limit', '100');
     if (offset) url.searchParams.set('offset', offset);
+    else url.searchParams.delete('offset');
 
     const res = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${getToken()}` },
@@ -185,12 +202,54 @@ async function fetchAllKPITasks(): Promise<AsanaTask[]> {
       throw new Error(`Asana API error ${res.status}: ${await res.text()}`);
     }
 
-    const json = await res.json();
+    const json = (await res.json()) as { data: AsanaTask[]; next_page?: { offset: string } };
     tasks.push(...json.data);
     offset = json.next_page?.offset;
   } while (offset);
 
   return tasks;
+}
+
+async function fetchSubtasksForTask(taskGid: string): Promise<AsanaTask[]> {
+  const url = new URL(`https://app.asana.com/api/1.0/tasks/${taskGid}/subtasks`);
+  url.searchParams.set('opt_fields', TASK_OPT_FIELDS);
+  url.searchParams.set('limit', '100');
+  return fetchPaginatedAsanaTasks(url);
+}
+
+/** Every task in the KPI project, plus all nested subtasks (deduped by gid). */
+async function fetchAllKPITasks(): Promise<AsanaTask[]> {
+  const projectUrl = new URL(`https://app.asana.com/api/1.0/projects/${KPI_PROJECT_GID}/tasks`);
+  projectUrl.searchParams.set('opt_fields', TASK_OPT_FIELDS);
+  projectUrl.searchParams.set('limit', '100');
+
+  const projectTasks = await fetchPaginatedAsanaTasks(projectUrl);
+  const byGid = new Map<string, AsanaTask>();
+  for (const task of projectTasks) byGid.set(task.gid, task);
+
+  const fetchedSubtasksFor = new Set<string>();
+  let queue = [...byGid.keys()];
+
+  while (queue.length > 0) {
+    const batch = queue.splice(0, SUBTASK_FETCH_CONCURRENCY);
+    const toFetch = batch.filter((gid) => {
+      if (fetchedSubtasksFor.has(gid)) return false;
+      fetchedSubtasksFor.add(gid);
+      return (byGid.get(gid)?.num_subtasks ?? 0) > 0;
+    });
+
+    const nested = await Promise.all(toFetch.map((gid) => fetchSubtasksForTask(gid)));
+    for (const subtasks of nested) {
+      for (const subtask of subtasks) {
+        if (!byGid.has(subtask.gid)) {
+          byGid.set(subtask.gid, subtask);
+          queue.push(subtask.gid);
+        }
+      }
+    }
+  }
+
+  return [...byGid.values()];
 }
 
 type FteLookup = {
@@ -240,24 +299,7 @@ function aggregateByPerson(
     const score = scoreTask(task, fte.fteRatio);
     if (score == null || score === 0) continue; // not scored yet, nothing to bucket
 
-    // Date fallback chain, most reliable first:
-    // 1. Explicit "Completion Date" field, when someone's filled it in
-    // 2. Asana's own completed_at timestamp (only moves when the task is
-    //    actually checked off, so it stays meaningful for older tasks)
-    // 3. modified_at as a last resort, for scored tasks never formally
-    //    marked complete in Asana
-    const dateField = getField(task, 'Completion Date');
-    const explicitDate = dateField?.date_value?.date;
-
-    let dateStr: string | undefined;
-    if (explicitDate) {
-      dateStr = explicitDate;
-    } else if (task.completed && task.completed_at) {
-      dateStr = task.completed_at.slice(0, 10);
-    } else if (task.modified_at) {
-      dateStr = task.modified_at.slice(0, 10);
-    }
-
+    const dateStr = taskCompletionDate(task);
     if (!dateStr) continue;
 
     const monthKey = dateStr.slice(0, 7);
@@ -357,7 +399,7 @@ export const getAllKPIData = unstable_cache(
     const [tasks, fteByEmail] = await Promise.all([fetchAllKPITasks(), buildFteLookup()]);
     return aggregateByPerson(tasks, fteByEmail);
   },
-  ['crew-kpi-data-v2-fte'],
+  ['crew-kpi-data-v5-bands-v2'],
   { revalidate: REVALIDATE_SECONDS, tags: ['kpi'] }
 );
 

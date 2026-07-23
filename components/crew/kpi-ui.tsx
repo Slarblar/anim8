@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import type { PersonMonthlyKPI, RatingCount } from '@/lib/kpi-shared';
+import {
+  KPI_CHART_SCALE_MAX,
+  PERFORMANCE_BAND_MIN,
+  type PersonMonthlyKPI,
+  type RatingCount,
+} from '@/lib/kpi-shared';
 import { localizeAsanaRating, localizePerformanceBand } from '@/lib/crew-asana-i18n';
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
@@ -105,25 +110,50 @@ export type ScoreBand = {
 };
 
 /**
- * Total KPI Score performance bands — straight from the Anim8 KPI Scoring
- * Documentation ("1. Performance Bands"), so the /crew KPI charts use the
- * exact same green -> yellow -> orange -> red read as the reference doc and
- * people can tell at a glance whether they're trending up or slipping.
- * Ordered best -> worst; `getScoreBand` returns the first match.
+ * Total KPI Score performance bands — Anim8 KPI Scoring Documentation 2026 v2
+ * §1. Ordered best -> worst; `getScoreBand` returns the first match.
  */
 export const SCORE_BANDS: ScoreBand[] = [
-  { key: 'great', label: 'Great (100+)', min: 100, color: '#22c55e', colorDark: '#123a1f', colorLight: '#86efac' },
-  { key: 'good', label: 'Good (80–99.9)', min: 80, color: '#7cc142', colorDark: '#34540f', colorLight: '#b6ec7a' },
+  {
+    key: 'great',
+    label: 'Great (70+)',
+    min: PERFORMANCE_BAND_MIN.great,
+    color: '#22c55e',
+    colorDark: '#123a1f',
+    colorLight: '#86efac',
+  },
+  {
+    key: 'good',
+    label: 'Good (55–69.9)',
+    min: PERFORMANCE_BAND_MIN.good,
+    color: '#7cc142',
+    colorDark: '#34540f',
+    colorLight: '#b6ec7a',
+  },
   {
     key: 'average',
-    label: 'Average (60–79.9)',
-    min: 60,
+    label: 'Average (40–54.9)',
+    min: PERFORMANCE_BAND_MIN.average,
     color: '#eab308',
     colorDark: '#4a3c08',
     colorLight: '#fde68a',
   },
-  { key: 'bad', label: 'Bad (40–59.9)', min: 40, color: '#f97316', colorDark: '#4a2408', colorLight: '#fdba74' },
-  { key: 'poor', label: 'Poor (<40)', min: 0, color: '#ef4444', colorDark: '#3f1414', colorLight: '#fca5a5' },
+  {
+    key: 'bad',
+    label: 'Bad (25–39.9)',
+    min: PERFORMANCE_BAND_MIN.bad,
+    color: '#f97316',
+    colorDark: '#4a2408',
+    colorLight: '#fdba74',
+  },
+  {
+    key: 'poor',
+    label: 'Poor (<25)',
+    min: PERFORMANCE_BAND_MIN.poor,
+    color: '#ef4444',
+    colorDark: '#3f1414',
+    colorLight: '#fca5a5',
+  },
 ];
 
 /** Which performance band a Total KPI Score falls into. A score of 0 (no data yet) reads as the lowest band, but the bar itself is hidden (height 0) so it never actually shows red for "no data". */
@@ -202,10 +232,10 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
     );
   }
 
-  // Fixed ceiling so a ~70 (Average) month reads as ~60% full, not "top of the chart"
-  // just because it was the highest of three similar months. 120 sits above Great (100+)
-  // with a little headroom for standout months.
-  const BAR_SCALE_MAX = 120;
+  // Fixed ceiling so a mid-Average month (~47) reads ~55% full, not "top of the chart"
+  // just because it was the highest of three similar months. 85 sits above Great (70+)
+  // with headroom for standout months (doc §4 example: 105).
+  const BAR_SCALE_MAX = KPI_CHART_SCALE_MAX;
 
   // Slow, deliberate "charging up" grow — cubic-bezier(0.16, 1, 0.3, 1) is a
   // true exponential ease-out (fast burst at the start, long slow tail at the
@@ -306,7 +336,7 @@ export function KpiLineChart({ months }: { months: PersonMonthlyKPI[] }) {
   const baselineY = padTop + chartH;
 
   // Same fixed ceiling as the bar chart — keeps YTD and 3-month views on one scale.
-  const LINE_SCALE_MAX = 120;
+  const LINE_SCALE_MAX = KPI_CHART_SCALE_MAX;
   const maxScore = LINE_SCALE_MAX;
 
   const points: ChartPoint[] = useMemo(

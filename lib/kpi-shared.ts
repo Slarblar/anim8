@@ -53,12 +53,29 @@ export type AdminKpiPerson = {
   summary: PersonKPISummary | null;
 };
 
-/** Performance bands from the KPI scoring doc §1 — same thresholds for everyone once FTE-normalized. */
+/**
+ * Minimum monthly Total KPI Score for each band — Anim8 KPI Scoring
+ * Documentation 2026 v2 §1. Same thresholds for everyone once FTE-normalized.
+ */
+export const PERFORMANCE_BAND_MIN: Record<PerformanceBand, number> = {
+  great: 70,
+  good: 55,
+  average: 40,
+  bad: 25,
+  poor: 0,
+};
+
+/** Monthly KPI bonus threshold — Good or Great tier (doc §1). */
+export const KPI_BONUS_MIN_SCORE = PERFORMANCE_BAND_MIN.good;
+
+/** Fixed chart ceiling (~1.2× Great threshold; doc §4 high-performer example: 105). */
+export const KPI_CHART_SCALE_MAX = 85;
+
 export function performanceBand(score: number): PerformanceBand {
-  if (score >= 100) return 'great';
-  if (score >= 80) return 'good';
-  if (score >= 60) return 'average';
-  if (score >= 40) return 'bad';
+  if (score >= PERFORMANCE_BAND_MIN.great) return 'great';
+  if (score >= PERFORMANCE_BAND_MIN.good) return 'good';
+  if (score >= PERFORMANCE_BAND_MIN.average) return 'average';
+  if (score >= PERFORMANCE_BAND_MIN.bad) return 'bad';
   return 'poor';
 }
 

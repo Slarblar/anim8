@@ -10,6 +10,7 @@ function toAdminKpiPerson(
     email: string;
     name: string;
     role: string;
+    level: string;
     active: boolean;
     employmentType: AdminKpiPerson['employmentType'];
     weeklyContractedHours: number;
@@ -20,6 +21,7 @@ function toAdminKpiPerson(
     email: member.email,
     name: member.name,
     role: member.role,
+    level: member.level,
     active: member.active,
     employmentType: member.employmentType,
     weeklyContractedHours: member.weeklyContractedHours,

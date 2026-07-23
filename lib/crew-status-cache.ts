@@ -11,6 +11,8 @@ export type CrewStatusEntry = {
   location?: CrewLocation;
   /** Full-time / part-time / contractor — from the crew directory. */
   employmentType?: EmploymentType;
+  /** Contracted hours — used to map contractors to full- vs part-time on /crew. */
+  weeklyContractedHours?: number;
 };
 
 export type CrewStatusSnapshot = {

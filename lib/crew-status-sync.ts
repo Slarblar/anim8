@@ -1,5 +1,5 @@
 import { getCrewEventsForDate } from './google-calendar';
-import { listCrewMembers } from './crew-directory';
+import { listCrewMembers, weekdayCodeFromDate } from './crew-directory';
 import {
   setCrewStatusSnapshot,
   type CrewStatusEntry,
@@ -23,14 +23,24 @@ export async function syncCrewStatusForDate(date: string): Promise<CrewStatusSna
   }
 
   const activeMembers = members.filter((member) => member.active);
+  const weekday = weekdayCodeFromDate(date);
   const entries: CrewStatusEntry[] = activeMembers.map((member) => {
     const key = member.name.trim().toLowerCase();
     const base = outByName.get(key) ?? { name: member.name, status: 'in' as const };
+    let status = base.status;
+    // Standing fixed-WFH days — show WFH even if the calendar sync missed the recurring event.
+    if (status === 'in' && weekday && member.fixedWfhDays.includes(weekday)) {
+      status = 'WFH';
+    }
     return {
       ...base,
+      name: member.name,
+      status,
+      note: base.note,
       email: member.email,
       location: member.location,
       employmentType: member.employmentType,
+      weeklyContractedHours: member.weeklyContractedHours,
     };
   });
 

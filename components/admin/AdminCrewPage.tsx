@@ -16,6 +16,7 @@ import {
   adminBadgeInactive,
   adminBody,
   adminBtnGhost,
+  adminBtnFieldMatch,
   adminBtnPrimary,
   adminCard,
   adminInput,
@@ -40,10 +41,18 @@ const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   contractor: 'Contractor',
 };
 
-// Sourced from the "Role" custom field on the studio's Asana staff roster
-// (🐸 Anim8 Staff MGMT project) so titles stay consistent with what's used
-// there. "Custom…" below covers anything not on this list (e.g. Content
+// Sourced from the "Role" and "Level" custom fields on the studio's Asana staff
+// roster (🐸 Anim8 Staff MGMT project) so titles stay consistent with what's used
+// there. "Custom…" on Role covers anything not on this list (e.g. Content
 // Manager, Contributor) without blocking on us keeping two lists in sync.
+const LEVEL_OPTIONS = [
+  'Director / Supervisor',
+  'Senior',
+  'Mid',
+  'Junior',
+  'Intern',
+] as const;
+
 const ROLE_OPTIONS = [
   'Animator',
   'Concept / Storyboard',
@@ -58,6 +67,41 @@ const ROLE_OPTIONS = [
   'Audio',
 ];
 const CUSTOM_ROLE_VALUE = '__custom__';
+
+function formatLevelRole(level?: string, role?: string): string {
+  return [level?.trim(), role?.trim()].filter(Boolean).join(' · ');
+}
+
+/** Dropdown of Asana Level enum options (optional). */
+function LevelField({
+  value,
+  onChange,
+  disabled,
+  id,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  id: string;
+}) {
+  return (
+    <select
+      id={id}
+      className={adminSelect}
+      style={adminSelectChevronStyle}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">—</option>
+      {LEVEL_OPTIONS.map((level) => (
+        <option key={level} value={level}>
+          {level}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 /** Dropdown of standard studio role titles, falling back to a free-text field for anything else. */
 function RoleField({
@@ -114,6 +158,39 @@ function RoleField({
   );
 }
 
+/** Buffers edits locally and only PATCHes on "Save level" — matches the Role field pattern. */
+function LevelEditor({
+  level,
+  onSave,
+  disabled,
+}: {
+  level: string;
+  onSave: (next: string) => void;
+  disabled: boolean;
+}) {
+  const [value, setValue] = useState(level);
+  return (
+    <div className="flex max-w-md items-stretch gap-2">
+      <div className="min-w-0 flex-1">
+        <LevelField
+          id="crewLevelEdit"
+          value={value}
+          onChange={setValue}
+          disabled={disabled}
+        />
+      </div>
+      <button
+        type="button"
+        className={adminBtnFieldMatch}
+        disabled={disabled || value.trim() === level}
+        onClick={() => onSave(value.trim())}
+      >
+        Save level
+      </button>
+    </div>
+  );
+}
+
 /** Buffers edits locally and only PATCHes on "Save role" — matches the Weekly hours field's pattern. */
 function RoleEditor({
   role,
@@ -126,13 +203,13 @@ function RoleEditor({
 }) {
   const [value, setValue] = useState(role);
   return (
-    <div className="flex flex-wrap items-start gap-2">
-      <div className="max-w-xs flex-1">
+    <div className="flex max-w-md items-stretch gap-2">
+      <div className="min-w-0 flex-1">
         <RoleField idPrefix="crewRoleEdit" value={value} onChange={setValue} disabled={disabled} />
       </div>
       <button
         type="button"
-        className={adminBtnGhost}
+        className={adminBtnFieldMatch}
         disabled={disabled || value.trim() === role}
         onClick={() => onSave(value.trim())}
       >
@@ -162,6 +239,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('');
+  const [level, setLevel] = useState('');
   const [startDate, setStartDate] = useState('');
   const [initialBalance, setInitialBalance] = useState('');
   const [location, setLocation] = useState<CrewLocation>('VN');
@@ -184,6 +262,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
             name,
             email,
             role,
+            level,
             startDate: startDate || undefined,
             initialPtoBalanceDays: initialBalance ? Number(initialBalance) : undefined,
             location,
@@ -199,6 +278,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
         setName('');
         setEmail('');
         setRole('');
+        setLevel('');
         setStartDate('');
         setInitialBalance('');
         setLocation('VN');
@@ -211,7 +291,7 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
         setSubmitting(false);
       }
     },
-    [name, email, role, startDate, initialBalance, location, employmentType, weeklyHours, onCreated]
+    [name, email, role, level, startDate, initialBalance, location, employmentType, weeklyHours, onCreated]
   );
 
   return (
@@ -244,6 +324,12 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
             placeholder="jordan@anim-8.xyz"
             required
           />
+        </div>
+        <div>
+          <label className={adminLabel} htmlFor="crewLevel">
+            Level (optional)
+          </label>
+          <LevelField id="crewLevel" value={level} onChange={setLevel} />
         </div>
         <div>
           <label className={adminLabel} htmlFor="crewRole-select">
@@ -614,8 +700,14 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
 
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
           <p className="min-w-0 flex-1 text-xs leading-relaxed text-text-muted">
-            {member.role ? <span>{member.role}</span> : null}
-            {member.role ? <span className="px-1.5 text-white/20" aria-hidden>·</span> : null}
+            {formatLevelRole(member.level, member.role) ? (
+              <span>{formatLevelRole(member.level, member.role)}</span>
+            ) : null}
+            {formatLevelRole(member.level, member.role) ? (
+              <span className="px-1.5 text-white/20" aria-hidden>
+                ·
+              </span>
+            ) : null}
             <span>{employmentLabel}</span>
             <span className="px-1.5 text-white/20" aria-hidden>·</span>
             <span className="font-mono">{weeklyHours}h/wk</span>
@@ -667,6 +759,16 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
           </p>
 
           {error ? <p className={adminAlertError}>{error}</p> : null}
+
+          <div>
+            <p className={adminLabel}>Level</p>
+            <LevelEditor
+              key={`${member.email}-${member.level ?? ''}`}
+              level={member.level ?? ''}
+              onSave={(next) => patch({ level: next })}
+              disabled={loading}
+            />
+          </div>
 
           <div>
             <p className={adminLabel}>Role</p>
@@ -862,6 +964,8 @@ export function AdminCrewPage() {
       member.name.toLowerCase().includes(q) ||
       member.email.toLowerCase().includes(q) ||
       member.role.toLowerCase().includes(q) ||
+      (member.level ?? '').toLowerCase().includes(q) ||
+      formatLevelRole(member.level, member.role).toLowerCase().includes(q) ||
       EMPLOYMENT_TYPE_LABELS[member.employmentType ?? 'full_time'].toLowerCase().includes(q) ||
       (member.location ?? 'VN').toLowerCase().includes(q)
     );
@@ -885,7 +989,7 @@ export function AdminCrewPage() {
           className={adminInput}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email, role, location, or employment type…"
+          placeholder="Search by name, email, level, role, location, or employment type…"
           aria-label="Search crew directory"
         />
       ) : null}

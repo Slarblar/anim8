@@ -48,6 +48,10 @@ export const adminBtnDanger =
 export const adminBtnGhost =
   'inline-flex shrink-0 items-center justify-center rounded-md border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:border-white/35 disabled:opacity-50';
 
+/** Pair with `adminInput` / `adminSelect` — same height + radius for inline Save buttons. */
+export const adminBtnFieldMatch =
+  'inline-flex shrink-0 items-center justify-center self-stretch rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/35 disabled:opacity-50';
+
 export const adminBadgeActive =
   'rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono';
 

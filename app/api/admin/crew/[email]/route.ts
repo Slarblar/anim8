@@ -6,6 +6,7 @@ import {
   setCrewMemberActive,
   setCrewMemberEmploymentType,
   setCrewMemberFixedWfh,
+  setCrewMemberLevel,
   setCrewMemberLocation,
   setCrewMemberRole,
   setCrewMemberStartDate,
@@ -25,6 +26,7 @@ type PatchBody = {
   startDate?: string | null;
   location?: CrewLocation;
   role?: string;
+  level?: string;
   employmentType?: EmploymentType;
   weeklyContractedHours?: number;
   fixedWfhDays?: WeekdayCode[];
@@ -46,6 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
   const hasStartDate = body.startDate !== undefined;
   const hasLocation = body.location === 'US' || body.location === 'VN';
   const hasRole = typeof body.role === 'string';
+  const hasLevel = typeof body.level === 'string';
   const hasEmploymentType = !!body.employmentType && EMPLOYMENT_TYPES.includes(body.employmentType);
   const hasWeeklyHours = typeof body.weeklyContractedHours === 'number' && body.weeklyContractedHours > 0;
   const hasFixedWfhDays =
@@ -58,6 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     !hasStartDate &&
     !hasLocation &&
     !hasRole &&
+    !hasLevel &&
     !hasEmploymentType &&
     !hasWeeklyHours &&
     !hasFixedWfhDays
@@ -82,6 +86,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     }
     if (hasRole) {
       member = await setCrewMemberRole(params.email, body.role as string);
+    }
+    if (hasLevel) {
+      member = await setCrewMemberLevel(params.email, body.level as string);
     }
     if (hasEmploymentType) {
       member = await setCrewMemberEmploymentType(params.email, body.employmentType as EmploymentType);

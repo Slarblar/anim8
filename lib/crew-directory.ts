@@ -20,11 +20,42 @@ export function defaultWeeklyHours(employmentType: EmploymentType): number {
   return 20;
 }
 
+export type CrewScheduleBand = 'full_time' | 'part_time';
+
+/** Map a calendar date (YYYY-MM-DD) to a standing WFH weekday code, or null on weekends. */
+export function weekdayCodeFromDate(date: string): WeekdayCode | null {
+  const day = new Date(`${date}T12:00:00`).getDay();
+  if (day === 1) return 'mon';
+  if (day === 2) return 'tue';
+  if (day === 3) return 'wed';
+  if (day === 4) return 'thu';
+  if (day === 5) return 'fri';
+  return null;
+}
+
+/**
+ * Crew-facing schedule band — never "contractor". Part-time staff stay part-time;
+ * contractors are inferred from contracted hours (40h+ = full-time, else part-time).
+ */
+export function crewScheduleBand(
+  member: Pick<CrewMember, 'employmentType' | 'weeklyContractedHours'>
+): CrewScheduleBand {
+  if (member.employmentType === 'part_time') return 'part_time';
+  if (member.employmentType === 'full_time') return 'full_time';
+  const hours =
+    typeof member.weeklyContractedHours === 'number' && member.weeklyContractedHours > 0
+      ? member.weeklyContractedHours
+      : defaultWeeklyHours('contractor');
+  return hours >= FULL_TIME_WEEKLY_HOURS ? 'full_time' : 'part_time';
+}
+
 export type CrewMember = {
   email: string;
   name: string;
   /** Free-text job title, e.g. "3D Artist", "Producer". */
   role: string;
+  /** Seniority band from Asana Staff MGMT — e.g. "Senior", "Mid". */
+  level: string;
   startDate: string | null;
   active: boolean;
   createdAt: string;
@@ -63,6 +94,7 @@ function withDefaults(record: CrewMember): CrewMember {
         : defaultWeeklyHours(employmentType),
     fixedWfhDays: record.fixedWfhDays ?? [],
     fixedWfhCalendarEventIds: record.fixedWfhCalendarEventIds ?? {},
+    level: record.level ?? '',
   };
 }
 
@@ -140,6 +172,7 @@ export async function addOrUpdateCrewMember(input: {
   email: string;
   name: string;
   role: string;
+  level?: string;
   startDate?: string | null;
   /** Only applied the first time this person is added — carries over any pre-launch balance. */
   initialPtoBalanceDays?: number;
@@ -164,6 +197,7 @@ export async function addOrUpdateCrewMember(input: {
     email,
     name,
     role: input.role.trim(),
+    level: (input.level ?? existing?.level ?? '').trim(),
     startDate: input.startDate ?? existing?.startDate ?? null,
     active: true,
     createdAt: existing?.createdAt ?? new Date().toISOString(),
@@ -202,6 +236,14 @@ export async function setCrewMemberRole(email: string, role: string): Promise<Cr
   const existing = await getCrewMember(email);
   if (!existing) throw new Error(`No crew member found for email: ${email}`);
   const updated = { ...existing, role: role.trim() };
+  await getKv().set(keyFor(email), updated);
+  return updated;
+}
+
+export async function setCrewMemberLevel(email: string, level: string): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  const updated = { ...existing, level: level.trim() };
   await getKv().set(keyFor(email), updated);
   return updated;
 }

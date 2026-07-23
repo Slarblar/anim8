@@ -46,6 +46,7 @@ export type AdminKpiPerson = {
   email: string;
   name: string;
   role: string;
+  level: string;
   active: boolean;
   employmentType: 'full_time' | 'part_time' | 'contractor';
   weeklyContractedHours: number;

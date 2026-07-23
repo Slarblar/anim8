@@ -81,7 +81,9 @@ export function AdminKpiProfile({ email }: { email: string }) {
               </div>
               <p className={`${adminBody} mt-1 font-mono`}>{person.email}</p>
               <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-text-muted">
-                {person.role ? <span>{person.role}</span> : null}
+                {[person.level, person.role].filter(Boolean).length > 0 ? (
+                  <span>{[person.level, person.role].filter(Boolean).join(' · ')}</span>
+                ) : null}
                 <span className="font-mono">{person.weeklyContractedHours}h/wk</span>
                 <span className="font-mono">FTE {(person.weeklyContractedHours / 40).toFixed(2)}</span>
               </p>

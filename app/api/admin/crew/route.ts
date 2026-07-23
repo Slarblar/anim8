@@ -21,6 +21,7 @@ type CreateCrewBody = {
   email?: string;
   name?: string;
   role?: string;
+  level?: string;
   startDate?: string;
   initialPtoBalanceDays?: number;
   location?: CrewLocation;
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
       email: body.email,
       name: body.name,
       role: body.role ?? '',
+      level: body.level ?? '',
       startDate: body.startDate || null,
       initialPtoBalanceDays:
         typeof body.initialPtoBalanceDays === 'number' ? body.initialPtoBalanceDays : undefined,

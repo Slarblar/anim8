@@ -76,7 +76,9 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
           </div>
           <p className={`${adminBody} truncate`}>{person.email}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
-            {person.role ? <span className="text-text-muted">{person.role}</span> : null}
+            {[person.level, person.role].filter(Boolean).length > 0 ? (
+              <span className="text-text-muted">{[person.level, person.role].filter(Boolean).join(' · ')}</span>
+            ) : null}
             <span className="text-text-muted">{EMPLOYMENT_LABELS[person.employmentType]}</span>
             <span className="font-mono text-text-muted">{person.weeklyContractedHours}h/wk</span>
             {summary ? (
@@ -221,7 +223,8 @@ export function AdminKpiBoard() {
       return (
         p.name.toLowerCase().includes(q) ||
         p.email.toLowerCase().includes(q) ||
-        p.role.toLowerCase().includes(q)
+        p.role.toLowerCase().includes(q) ||
+        p.level.toLowerCase().includes(q)
       );
     });
   }, [people, query, showInactive]);
@@ -249,7 +252,7 @@ export function AdminKpiBoard() {
         <input
           type="search"
           className={`${adminInput} max-w-sm`}
-          placeholder="Search name, email, role…"
+          placeholder="Search name, email, level, role…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

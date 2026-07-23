@@ -44,6 +44,7 @@ async function searchProjectTasks(projectGid: string, filters: ClientFieldFilter
     const params = new URLSearchParams({
       opt_fields: TASK_OPT_FIELDS,
       completed: 'false',
+      is_subtask: 'false',
       limit: '100',
     });
     params.set(`custom_fields.${filter.fieldGid}.value`, filter.optionGid);
@@ -138,3 +139,5 @@ main().catch((error) => {
   console.error('DEBUG_FATAL', error instanceof Error ? error.stack ?? error.message : String(error));
   process.exitCode = 1;
 });
+
+

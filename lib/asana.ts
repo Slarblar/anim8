@@ -169,6 +169,8 @@ async function searchProjectTasks(
     const params = new URLSearchParams({
       opt_fields: TASK_OPT_FIELDS,
       completed: 'false',
+      // Portal cards are parent tasks only — subtasks feed progress bars, not the list.
+      is_subtask: 'false',
       limit: '100',
     });
     params.set(`custom_fields.${filter.fieldGid}.value`, filter.optionGid);

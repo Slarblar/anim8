@@ -10,6 +10,14 @@ import {
   type EmploymentType,
   type WeekdayCode,
 } from '@/lib/crew-directory';
+import type { CrewStatusEntry } from '@/lib/crew-status-cache';
+import {
+  performanceBandLabel,
+  type AdminKpiPerson,
+  type PerformanceBand,
+  type PersonKPISummary,
+} from '@/lib/kpi-shared';
+import { getScoreBand } from '@/components/crew/kpi-ui';
 import {
   adminAlertError,
   adminBadgeActive,
@@ -70,6 +78,67 @@ const CUSTOM_ROLE_VALUE = '__custom__';
 
 function formatLevelRole(level?: string, role?: string): string {
   return [level?.trim(), role?.trim()].filter(Boolean).join(' · ');
+}
+
+function AdminPresencePill({ status }: { status: CrewStatusEntry['status'] }) {
+  if (status === 'PTO') {
+    return (
+      <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
+        🌴 Out
+      </span>
+    );
+  }
+  if (status === 'WFH') {
+    return (
+      <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-cyan font-mono">
+        🏠 WFH
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-lime/30 bg-brand-lime/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-lime font-mono">
+      In studio
+    </span>
+  );
+}
+
+function CrewKpiBandBadge({ score, band }: { score: number; band?: PerformanceBand }) {
+  if (score <= 0 || !band) {
+    return <span className={adminBadgeInactive}>No KPI</span>;
+  }
+  const styleBand = getScoreBand(score);
+  return (
+    <span
+      className="inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider font-mono"
+      style={{
+        color: styleBand.color,
+        borderColor: `${styleBand.color}55`,
+        backgroundColor: `${styleBand.color}18`,
+      }}
+    >
+      {performanceBandLabel(band)}
+    </span>
+  );
+}
+
+function CrewKpiIndicator({ summary }: { summary?: PersonKPISummary | null }) {
+  const score = summary?.currentMonthScore ?? 0;
+  const band = summary?.currentMonthBand;
+  if (score <= 0 || !band) {
+    return <span className="text-[10px] font-mono text-text-muted">No KPI yet</span>;
+  }
+  const styleBand = getScoreBand(score);
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      <span
+        className="font-mono text-sm font-bold tabular-nums leading-none"
+        style={{ color: styleBand.color }}
+      >
+        {score.toFixed(1)}
+      </span>
+      <CrewKpiBandBadge score={score} band={band} />
+    </div>
+  );
 }
 
 /** Dropdown of Asana Level enum options (optional). */
@@ -547,7 +616,17 @@ function FixedWfhDayPicker({
   );
 }
 
-function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => void }) {
+function CrewRow({
+  member,
+  onChanged,
+  todayStatus,
+  kpiSummary,
+}: {
+  member: CrewMember;
+  onChanged: () => void;
+  todayStatus?: CrewStatusEntry['status'];
+  kpiSummary?: PersonKPISummary | null;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -660,46 +739,22 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
   const weeklyHours = member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time');
   const employmentLabel = EMPLOYMENT_TYPE_LABELS[member.employmentType ?? 'full_time'];
   const location = member.location ?? 'VN';
-  const wfhLabel =
-    savedWfhDays.length > 0
-      ? `WFH ${savedWfhDays.map((d) => WEEKDAYS.find((w) => w.code === d)?.label).join('/')}`
-      : null;
-
   return (
     <li
       className={`${adminCard} admin-collapse-card ${expanded ? 'admin-collapse-card--expanded' : ''}`}
     >
-      <div className="space-y-2.5">
-        <div className="flex items-start gap-2">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="min-w-0 space-y-2">
           <button
             type="button"
-            className="admin-collapse-toggle min-w-0 flex-1 text-left"
+            className="admin-collapse-toggle w-full text-left"
             aria-expanded={expanded}
             onClick={() => setExpanded((v) => !v)}
           >
             <p className="truncate font-bold text-white">{member.name}</p>
             <p className={`${adminBody} truncate`}>{member.email}</p>
           </button>
-          <div className="flex shrink-0 items-center gap-2 pt-0.5">
-            <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
-              {member.active ? 'Active' : 'Deactivated'}
-            </span>
-            <button
-              type="button"
-              className={`admin-collapse-chevron shrink-0 text-brand-cyan transition hover:text-white ${
-                expanded ? 'admin-collapse-chevron--open' : ''
-              }`}
-              aria-expanded={expanded}
-              aria-label={expanded ? 'Collapse details' : 'Expand details'}
-              onClick={() => setExpanded((v) => !v)}
-            >
-              ▾
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-          <p className="min-w-0 flex-1 text-xs leading-relaxed text-text-muted">
+          <p className="text-xs leading-relaxed text-text-muted">
             {formatLevelRole(member.level, member.role) ? (
               <span>{formatLevelRole(member.level, member.role)}</span>
             ) : null}
@@ -722,12 +777,6 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
             >
               {location}
             </span>
-            {wfhLabel ? (
-              <>
-                <span className="px-1.5 text-white/20" aria-hidden>·</span>
-                <span className="text-brand-cyan">{wfhLabel}</span>
-              </>
-            ) : null}
             {!member.startDate ? (
               <>
                 <span className="px-1.5 text-white/20" aria-hidden>·</span>
@@ -735,9 +784,30 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
               </>
             ) : null}
           </p>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 sm:w-[8.75rem] sm:items-end sm:border-t-0 sm:pt-0">
+          <div className="flex items-center justify-end gap-2">
+            <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
+              {member.active ? 'Active' : 'Deactivated'}
+            </span>
+            <button
+              type="button"
+              className={`admin-collapse-chevron shrink-0 text-brand-cyan transition hover:text-white ${
+                expanded ? 'admin-collapse-chevron--open' : ''
+              }`}
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Collapse details' : 'Expand details'}
+              onClick={() => setExpanded((v) => !v)}
+            >
+              ▾
+            </button>
+          </div>
+          {todayStatus ? <AdminPresencePill status={todayStatus} /> : null}
+          <CrewKpiIndicator summary={kpiSummary} />
           <Link
             href={`/admin/kpi/${encodeURIComponent(member.email)}`}
-            className={`${adminBtnGhost} ml-auto shrink-0`}
+            className="block w-full rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-cyan transition hover:border-brand-cyan/35 hover:bg-brand-cyan/[0.06]"
           >
             View KPI
           </Link>
@@ -935,19 +1005,51 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
 
 export function AdminCrewPage() {
   const [members, setMembers] = useState<CrewMember[] | null>(null);
+  const [kpiByEmail, setKpiByEmail] = useState<Record<string, PersonKPISummary | null>>({});
+  const [statusByEmail, setStatusByEmail] = useState<Record<string, CrewStatusEntry['status']>>({});
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await fetch('/api/admin/crew');
-      const data = (await res.json()) as ApiErrorBody & { members?: CrewMember[] };
-      if (!res.ok) {
-        setError(describeApiError(data, 'Could not load crew directory.'));
+      const [crewRes, kpiRes, statusRes] = await Promise.all([
+        fetch('/api/admin/crew'),
+        fetch('/api/admin/kpi'),
+        fetch('/api/crew/status'),
+      ]);
+      const crewData = (await crewRes.json()) as ApiErrorBody & { members?: CrewMember[] };
+      if (!crewRes.ok) {
+        setError(describeApiError(crewData, 'Could not load crew directory.'));
         return;
       }
-      setMembers(data.members ?? []);
+      setMembers(crewData.members ?? []);
+
+      if (kpiRes.ok) {
+        const kpiData = (await kpiRes.json()) as { people?: AdminKpiPerson[] };
+        const nextKpi: Record<string, PersonKPISummary | null> = {};
+        for (const person of kpiData.people ?? []) {
+          nextKpi[person.email.toLowerCase()] = person.summary;
+        }
+        setKpiByEmail(nextKpi);
+      } else {
+        setKpiByEmail({});
+      }
+
+      if (statusRes.ok) {
+        const statusData = (await statusRes.json()) as {
+          snapshot?: { entries?: CrewStatusEntry[] };
+        };
+        const nextStatus: Record<string, CrewStatusEntry['status']> = {};
+        for (const entry of statusData.snapshot?.entries ?? []) {
+          if (entry.email) {
+            nextStatus[entry.email.toLowerCase()] = entry.status;
+          }
+        }
+        setStatusByEmail(nextStatus);
+      } else {
+        setStatusByEmail({});
+      }
     } catch {
       setError('Could not load crew directory.');
     }
@@ -1001,9 +1103,15 @@ export function AdminCrewPage() {
       ) : filtered.length === 0 ? (
         <p className={adminBody}>No crew members match &quot;{search}&quot;.</p>
       ) : (
-        <ul className="space-y-4">
+        <ul className="grid gap-4 lg:grid-cols-2">
           {filtered.map((member) => (
-            <CrewRow key={member.email} member={member} onChanged={load} />
+            <CrewRow
+              key={member.email}
+              member={member}
+              onChanged={load}
+              todayStatus={statusByEmail[member.email.toLowerCase()]}
+              kpiSummary={kpiByEmail[member.email.toLowerCase()]}
+            />
           ))}
         </ul>
       )}

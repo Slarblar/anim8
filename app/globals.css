@@ -1808,6 +1808,15 @@ html.careers-page-active {
 .crew-hover-translate__stack {
   display: inline-grid;
   vertical-align: baseline;
+  justify-items: start;
+  align-items: start;
+  text-align: inherit;
+}
+
+/* Buttons have room to grow — center EN/VN within the reserved dual-width box.
+   Titles and body copy stay start-aligned. */
+button .crew-hover-translate__stack,
+a.inline-flex .crew-hover-translate__stack {
   justify-items: center;
   align-items: center;
   text-align: center;

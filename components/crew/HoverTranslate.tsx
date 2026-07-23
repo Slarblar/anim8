@@ -212,7 +212,7 @@ export function HoverTranslate({
 
   return (
     <span
-      className={`crew-hover-translate inline-flex items-center justify-center font-mono ${className ?? ''}`.trim()}
+      className={`crew-hover-translate font-mono ${className ?? ''}`.trim()}
       tabIndex={0}
       onMouseEnter={() => animateTo(other)}
       onMouseLeave={() => animateTo(primary)}

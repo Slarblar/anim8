@@ -126,11 +126,11 @@ function CrewKpiIndicator({ summary }: { summary?: PersonKPISummary | null }) {
   const score = summary?.currentMonthScore ?? 0;
   const band = summary?.currentMonthBand;
   if (score <= 0 || !band) {
-    return <span className="text-center text-[10px] font-mono text-text-muted">No KPI yet</span>;
+    return <span className="text-right text-[10px] font-mono text-text-muted">No KPI yet</span>;
   }
   const styleBand = getScoreBand(score);
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1.5">
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
       <span
         className="font-mono text-sm font-bold tabular-nums leading-none"
         style={{ color: styleBand.color }}
@@ -846,7 +846,7 @@ function CrewRow({
           </p>
         </div>
 
-        <div className="flex flex-col items-center gap-2 border-t border-white/10 pt-2.5 sm:mb-1 sm:w-[8.75rem] sm:border-t-0 sm:pt-0 sm:pb-2">
+        <div className="flex flex-col items-end gap-2 border-t border-white/10 pt-2.5 sm:mb-1 sm:w-[8.75rem] sm:border-t-0 sm:pt-0 sm:pb-2">
           <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
             {member.active ? 'Active' : 'Deactivated'}
           </span>

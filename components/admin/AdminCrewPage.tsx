@@ -22,6 +22,7 @@ import {
   adminLabel,
   adminSectionTitle,
 } from './admin-ui';
+import { AdminDatePicker } from './AdminDatePicker';
 
 type ApiErrorBody = { error?: string; reason?: string; email?: string | null };
 
@@ -156,12 +157,11 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
           <label className={adminLabel} htmlFor="crewStart">
             Start date (optional — used for PTO tenure bonus)
           </label>
-          <input
+          <AdminDatePicker
             id="crewStart"
-            type="date"
-            className={adminInput}
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={setStartDate}
+            placeholder="Start date"
           />
         </div>
         <div>
@@ -651,11 +651,11 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
 
           {editingStart ? (
             <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="date"
-                className={`${adminInput} max-w-[12rem]`}
+              <AdminDatePicker
+                className="max-w-[12rem]"
                 value={startDateInput}
-                onChange={(e) => setStartDateInput(e.target.value)}
+                onChange={setStartDateInput}
+                placeholder="Start date"
               />
               <button type="button" className={adminBtnGhost} disabled={loading} onClick={saveStartDate}>
                 Save
@@ -686,11 +686,11 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
 
           {showLogPto ? (
             <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="date"
-                className={`${adminInput} max-w-[12rem]`}
+              <AdminDatePicker
+                className="max-w-[12rem]"
                 value={logPtoDate}
-                onChange={(e) => setLogPtoDate(e.target.value)}
+                onChange={setLogPtoDate}
+                placeholder="PTO date"
                 aria-label="PTO date"
               />
               <input

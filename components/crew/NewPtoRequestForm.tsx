@@ -9,6 +9,7 @@ import {
   adminInput,
   adminLabel,
 } from '@/components/admin/admin-ui';
+import { AdminDatePicker } from '@/components/admin/AdminDatePicker';
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
 import { HoverTranslate } from './HoverTranslate';
@@ -125,12 +126,11 @@ export function NewPtoRequestForm() {
           <label className={adminLabel} htmlFor="startDate">
             <HoverTranslate en={crewT.en.ptoPage.formStartDate} vn={crewT.vn.ptoPage.formStartDate} />
           </label>
-          <input
+          <AdminDatePicker
             id="startDate"
-            type="date"
-            className={adminInput}
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={setStartDate}
+            placeholder="Start date"
             required
           />
         </div>
@@ -138,13 +138,12 @@ export function NewPtoRequestForm() {
           <label className={adminLabel} htmlFor="endDate">
             <HoverTranslate en={crewT.en.ptoPage.formEndDate} vn={crewT.vn.ptoPage.formEndDate} />
           </label>
-          <input
+          <AdminDatePicker
             id="endDate"
-            type="date"
-            className={adminInput}
             value={endDate}
+            onChange={setEndDate}
             min={startDate || undefined}
-            onChange={(e) => setEndDate(e.target.value)}
+            placeholder="End date"
             required
           />
         </div>

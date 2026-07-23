@@ -37,11 +37,6 @@ const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   contractor: 'Contractor',
 };
 
-/** 🇺🇸 / 🇻🇳 — kept as a plain flag + code so it reads at a glance in the collapsed row. */
-function locationFlag(location: CrewLocation): string {
-  return location === 'US' ? '🇺🇸 US' : '🇻🇳 VN';
-}
-
 /** Turns a middleware/route error body (error + reason + email) into a message that explains what to fix. */
 function describeApiError(data: ApiErrorBody, fallback: string): string {
   if (!data.error) return fallback;
@@ -476,62 +471,79 @@ function CrewRow({ member, onChanged }: { member: CrewMember; onChanged: () => v
   }, [savedWfhDays]);
 
   const balance = member.ptoBalanceDays ?? 0;
+  const weeklyHours = member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time');
+  const employmentLabel = EMPLOYMENT_TYPE_LABELS[member.employmentType ?? 'full_time'];
+  const location = member.location ?? 'VN';
+  const wfhLabel =
+    savedWfhDays.length > 0
+      ? `WFH ${savedWfhDays.map((d) => WEEKDAYS.find((w) => w.code === d)?.label).join('/')}`
+      : null;
 
   return (
     <li
       className={`${adminCard} admin-collapse-card ${expanded ? 'admin-collapse-card--expanded' : ''}`}
     >
-      <div className="flex w-full items-start justify-between gap-3">
-        <button
-          type="button"
-          className="admin-collapse-toggle min-w-0 flex-1 text-left"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((v) => !v)}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <p className="min-w-0 truncate font-bold text-white">{member.name}</p>
+      <div className="space-y-2.5">
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            className="admin-collapse-toggle min-w-0 flex-1 text-left"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            <p className="truncate font-bold text-white">{member.name}</p>
+            <p className={`${adminBody} truncate`}>{member.email}</p>
+          </button>
+          <div className="flex shrink-0 items-center gap-2 pt-0.5">
             <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
               {member.active ? 'Active' : 'Deactivated'}
             </span>
+            <button
+              type="button"
+              className={`admin-collapse-chevron shrink-0 text-brand-cyan transition hover:text-white ${
+                expanded ? 'admin-collapse-chevron--open' : ''
+              }`}
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Collapse details' : 'Expand details'}
+              onClick={() => setExpanded((v) => !v)}
+            >
+              ▾
+            </button>
           </div>
-          <p className={`${adminBody} truncate`}>{member.email}</p>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
-            {member.role ? <span className="text-text-muted">{member.role}</span> : null}
-            <span className="text-text-muted">{EMPLOYMENT_TYPE_LABELS[member.employmentType ?? 'full_time']}</span>
-            <span className="font-mono text-text-muted">
-              {member.weeklyContractedHours ?? defaultWeeklyHours(member.employmentType ?? 'full_time')}h/wk
-            </span>
+        </div>
+
+        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+          <p className="min-w-0 flex-1 text-xs leading-relaxed text-text-muted">
+            {member.role ? <span>{member.role}</span> : null}
+            {member.role ? <span className="px-1.5 text-white/20" aria-hidden>·</span> : null}
+            <span>{employmentLabel}</span>
+            <span className="px-1.5 text-white/20" aria-hidden>·</span>
+            <span className="font-mono">{weeklyHours}h/wk</span>
+            <span className="px-1.5 text-white/20" aria-hidden>·</span>
             <span className="font-mono text-brand-cyan">
               {balance} day{balance === 1 ? '' : 's'} PTO
             </span>
-            <span className="text-text-muted">{locationFlag(member.location ?? 'VN')}</span>
-            {savedWfhDays.length > 0 ? (
-              <span className="text-brand-cyan">
-                WFH {savedWfhDays.map((d) => WEEKDAYS.find((w) => w.code === d)?.label).join('/')}
-              </span>
+            <span className="px-1.5 text-white/20" aria-hidden>·</span>
+            <span className="font-mono">{location === 'US' ? '🇺🇸 US' : '🇻🇳 VN'}</span>
+            {wfhLabel ? (
+              <>
+                <span className="px-1.5 text-white/20" aria-hidden>·</span>
+                <span className="text-brand-cyan">{wfhLabel}</span>
+              </>
             ) : null}
-            {!member.startDate ? <span className="text-brand-pink">No start date</span> : null}
+            {!member.startDate ? (
+              <>
+                <span className="px-1.5 text-white/20" aria-hidden>·</span>
+                <span className="text-brand-pink">No start date</span>
+              </>
+            ) : null}
           </p>
-        </button>
-        <div className="flex shrink-0 items-center gap-2 pt-0.5">
           <Link
             href={`/admin/kpi/${encodeURIComponent(member.email)}`}
-            className={`${adminBtnGhost} shrink-0`}
-            onClick={(e) => e.stopPropagation()}
+            className={`${adminBtnGhost} ml-auto shrink-0`}
           >
             View KPI
           </Link>
-          <button
-            type="button"
-            className={`admin-collapse-chevron shrink-0 text-brand-cyan transition hover:text-white ${
-              expanded ? 'admin-collapse-chevron--open' : ''
-            }`}
-            aria-expanded={expanded}
-            aria-label={expanded ? 'Collapse details' : 'Expand details'}
-            onClick={() => setExpanded((v) => !v)}
-          >
-            ▾
-          </button>
         </div>
       </div>
 

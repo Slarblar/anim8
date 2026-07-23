@@ -1442,6 +1442,84 @@ html.careers-page-active {
     transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
 }
 
+/* Crew directory — accordion grid reflow + staggered expand content */
+.admin-crew-grid {
+  align-items: start;
+}
+
+.admin-crew-grid-item {
+  transition:
+    grid-column 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 1024px) {
+  .admin-crew-grid-item--expanded {
+    grid-column: span 2 / span 2;
+  }
+}
+
+@keyframes admin-collapse-cascade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-collapse-cascade > * {
+  opacity: 0;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > * {
+  animation: admin-collapse-cascade-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(2) {
+  animation-delay: 0.07s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(4) {
+  animation-delay: 0.13s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(5) {
+  animation-delay: 0.16s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(6) {
+  animation-delay: 0.19s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(7) {
+  animation-delay: 0.22s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(8) {
+  animation-delay: 0.25s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(9) {
+  animation-delay: 0.28s;
+}
+
+.admin-collapse-expand--open .admin-collapse-cascade > *:nth-child(n + 10) {
+  animation-delay: 0.31s;
+}
+
 @keyframes portal-alert-in {
   from {
     opacity: 0;
@@ -1521,8 +1599,14 @@ html.careers-page-active {
   .admin-collapse-card,
   .admin-collapse-expand,
   .admin-collapse-expand-inner,
-  .admin-collapse-chevron {
+  .admin-collapse-chevron,
+  .admin-crew-grid-item {
     transition: none;
+  }
+
+  .admin-collapse-expand--open .admin-collapse-cascade > * {
+    animation: none;
+    opacity: 1;
   }
 }
 

@@ -621,13 +621,16 @@ function CrewRow({
   onChanged,
   todayStatus,
   kpiSummary,
+  expanded,
+  onToggleExpanded,
 }: {
   member: CrewMember;
   onChanged: () => void;
   todayStatus?: CrewStatusEntry['status'];
   kpiSummary?: PersonKPISummary | null;
+  expanded: boolean;
+  onToggleExpanded: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdjust, setShowAdjust] = useState(false);
@@ -644,6 +647,14 @@ function CrewRow({
   useEffect(() => {
     setPendingWfhDays(member.fixedWfhDays ?? []);
   }, [member.fixedWfhDays]);
+
+  useEffect(() => {
+    if (!expanded) {
+      setShowAdjust(false);
+      setShowLogPto(false);
+      setEditingStart(false);
+    }
+  }, [expanded]);
 
   const entitlement = annualLeaveEntitlementDays(member.startDate);
 
@@ -741,7 +752,9 @@ function CrewRow({
   const location = member.location ?? 'VN';
   return (
     <li
-      className={`${adminCard} admin-collapse-card ${expanded ? 'admin-collapse-card--expanded' : ''}`}
+      className={`${adminCard} admin-collapse-card admin-crew-grid-item ${
+        expanded ? 'admin-collapse-card--expanded admin-crew-grid-item--expanded' : ''
+      }`}
     >
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0 space-y-2">
@@ -749,10 +762,20 @@ function CrewRow({
             type="button"
             className="admin-collapse-toggle w-full text-left"
             aria-expanded={expanded}
-            onClick={() => setExpanded((v) => !v)}
+            onClick={onToggleExpanded}
           >
-            <p className="truncate font-bold text-white">{member.name}</p>
-            <p className={`${adminBody} truncate`}>{member.email}</p>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span
+                className={`admin-collapse-chevron shrink-0 text-brand-cyan ${
+                  expanded ? 'admin-collapse-chevron--open' : ''
+                }`}
+                aria-hidden
+              >
+                ▾
+              </span>
+              <p className="min-w-0 flex-1 truncate font-bold text-white">{member.name}</p>
+            </div>
+            <p className={`${adminBody} truncate pl-[1.625rem]`}>{member.email}</p>
           </button>
           <p className="text-xs leading-relaxed text-text-muted">
             {formatLevelRole(member.level, member.role) ? (
@@ -787,22 +810,9 @@ function CrewRow({
         </div>
 
         <div className="flex flex-col gap-2 border-t border-white/10 pt-2.5 sm:w-[8.75rem] sm:items-end sm:border-t-0 sm:pt-0">
-          <div className="flex items-center justify-end gap-2">
-            <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
-              {member.active ? 'Active' : 'Deactivated'}
-            </span>
-            <button
-              type="button"
-              className={`admin-collapse-chevron shrink-0 text-brand-cyan transition hover:text-white ${
-                expanded ? 'admin-collapse-chevron--open' : ''
-              }`}
-              aria-expanded={expanded}
-              aria-label={expanded ? 'Collapse details' : 'Expand details'}
-              onClick={() => setExpanded((v) => !v)}
-            >
-              ▾
-            </button>
-          </div>
+          <span className={member.active ? adminBadgeActive : adminBadgeInactive}>
+            {member.active ? 'Active' : 'Deactivated'}
+          </span>
           {todayStatus ? <AdminPresencePill status={todayStatus} /> : null}
           <CrewKpiIndicator summary={kpiSummary} />
           <Link
@@ -818,7 +828,7 @@ function CrewRow({
         className={`admin-collapse-expand ${expanded ? 'admin-collapse-expand--open' : ''}`}
         aria-hidden={!expanded}
       >
-        <div className="admin-collapse-expand-inner space-y-3 pt-3">
+        <div className="admin-collapse-expand-inner admin-collapse-cascade space-y-3 border-t border-white/10 pt-3">
           <p className="text-xs text-text-muted">entitled {entitlement} day(s)/yr</p>
           <p className="text-xs text-text-muted">
             {member.startDate ? (
@@ -1007,8 +1017,13 @@ export function AdminCrewPage() {
   const [members, setMembers] = useState<CrewMember[] | null>(null);
   const [kpiByEmail, setKpiByEmail] = useState<Record<string, PersonKPISummary | null>>({});
   const [statusByEmail, setStatusByEmail] = useState<Record<string, CrewStatusEntry['status']>>({});
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  const toggleExpanded = useCallback((email: string) => {
+    setExpandedEmail((current) => (current === email ? null : email));
+  }, []);
 
   const load = useCallback(async () => {
     setError(null);
@@ -1059,6 +1074,10 @@ export function AdminCrewPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    setExpandedEmail(null);
+  }, [search]);
+
   const filtered = (members ?? []).filter((member) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -1103,7 +1122,7 @@ export function AdminCrewPage() {
       ) : filtered.length === 0 ? (
         <p className={adminBody}>No crew members match &quot;{search}&quot;.</p>
       ) : (
-        <ul className="grid gap-4 lg:grid-cols-2">
+        <ul className="admin-crew-grid grid gap-4 lg:grid-cols-2">
           {filtered.map((member) => (
             <CrewRow
               key={member.email}
@@ -1111,6 +1130,8 @@ export function AdminCrewPage() {
               onChanged={load}
               todayStatus={statusByEmail[member.email.toLowerCase()]}
               kpiSummary={kpiByEmail[member.email.toLowerCase()]}
+              expanded={expandedEmail === member.email}
+              onToggleExpanded={() => toggleExpanded(member.email)}
             />
           ))}
         </ul>

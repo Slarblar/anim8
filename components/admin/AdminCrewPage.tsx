@@ -21,6 +21,8 @@ import {
   adminInput,
   adminLabel,
   adminSectionTitle,
+  adminSelect,
+  adminSelectChevronStyle,
 } from './admin-ui';
 import { AdminDatePicker } from './AdminDatePicker';
 
@@ -184,7 +186,8 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
           </label>
           <select
             id="crewLocation"
-            className={adminInput}
+            className={adminSelect}
+            style={adminSelectChevronStyle}
             value={location}
             onChange={(e) => setLocation(e.target.value as CrewLocation)}
           >
@@ -198,7 +201,8 @@ function AddCrewForm({ onCreated }: { onCreated: () => void }) {
           </label>
           <select
             id="crewEmploymentType"
-            className={adminInput}
+            className={adminSelect}
+            style={adminSelectChevronStyle}
             value={employmentType}
             onChange={(e) => {
               const next = e.target.value as EmploymentType;

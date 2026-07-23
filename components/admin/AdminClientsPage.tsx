@@ -16,6 +16,8 @@ import {
   adminInput,
   adminLabel,
   adminSectionTitle,
+  adminSelect,
+  adminSelectChevronStyle,
 } from './admin-ui';
 
 type AsanaOption = { gid: string; name: string; enabled: boolean };
@@ -141,7 +143,8 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
         </label>
         <select
           id="fieldOption"
-          className={adminInput}
+          className={adminSelect}
+          style={adminSelectChevronStyle}
           value={fieldOptionGid}
           onChange={(e) => setFieldOptionGid(e.target.value)}
           disabled={optionsLoading}

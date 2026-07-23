@@ -17,6 +17,7 @@ import {
   adminBody,
   adminBtnGhost,
   adminCard,
+  adminCheckbox,
   adminInput,
   adminSectionTitle,
 } from './admin-ui';
@@ -257,7 +258,7 @@ export function AdminKpiBoard() {
             type="checkbox"
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
-            className="rounded border-white/20 bg-white/5"
+            className={adminCheckbox}
           />
           Show deactivated
         </label>

@@ -18,6 +18,14 @@
     overflow-y: scroll;
     width: 100%;
     max-width: 100vw;
+    /* The whole site is permanently dark — no light mode. This one line is
+       what actually makes browser/OS-drawn native form chrome (an open
+       <select> option list, checkboxes, radios, date/time pickers) render
+       dark instead of the default white, since Tailwind classes can't
+       reach into that native-drawn UI at all. Custom classes on the
+       controls themselves (adminSelect/adminCheckbox in admin-ui.ts) handle
+       everything color-scheme doesn't cover, like the select's own arrow. */
+    color-scheme: dark;
   }
   
   /* Custom scrollbar styling - always visible to prevent layout shift */

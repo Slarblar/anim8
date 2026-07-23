@@ -10,6 +10,12 @@
 }
 
 .invitaRoot {
+  /* Overrides the site-wide `color-scheme: dark` (globals.css) back to
+     light for this subtree — Invita is intentionally a warm-white theme,
+     and color-scheme affects OS-drawn native chrome we can't reach with
+     CSS otherwise (e.g. the <input type="date"> calendar popup), which
+     would otherwise render dark and clash here. */
+  color-scheme: light;
   --cream: #faf7f2;
   --warm-white: #fdf9f4;
   --stone: #e8e2d9;

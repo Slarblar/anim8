@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientRecord } from '@/lib/client-registry';
+import type {
+  ClientPortalActiveTask,
+  ClientPortalApprovedTask,
+  ClientPortalTask,
+  ClientPortalTasks,
+} from '@/lib/asana';
 import {
   adminAlertError,
   adminAlertSuccess,
@@ -21,6 +27,214 @@ import {
 } from './admin-ui';
 
 type AsanaOption = { gid: string; name: string; enabled: boolean };
+
+type AdminProjectRow = (ClientPortalTask | ClientPortalApprovedTask | ClientPortalActiveTask) & {
+  stage: 'Pending' | 'Approved' | 'Production' | 'Design';
+};
+
+function formatDueDate(dueOn: string | null): string {
+  if (!dueOn) return 'No due date';
+  return new Date(`${dueOn}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/** Today's date as YYYY-MM-DD (local) — matches the dueOn string format from Asana. */
+function todayDateString(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function isOverdue(row: AdminProjectRow): boolean {
+  return !!row.dueOn && row.dueOn < todayDateString() && row.progress.percent !== 100;
+}
+
+function isDueSoon(row: AdminProjectRow): boolean {
+  if (!row.dueOn || isOverdue(row) || row.progress.percent === 100) return false;
+  const due = new Date(`${row.dueOn}T00:00:00`).getTime();
+  const in7Days = Date.now() + 7 * 24 * 60 * 60 * 1000;
+  return due <= in7Days;
+}
+
+function mergeProjectRows(tasks: ClientPortalTasks): AdminProjectRow[] {
+  const rows: AdminProjectRow[] = [
+    ...tasks.pending.map((t) => ({ ...t, stage: 'Pending' as const })),
+    ...tasks.approved.map((t) => ({ ...t, stage: 'Approved' as const })),
+    ...tasks.active.map((t) => ({ ...t, stage: t.pipeline })),
+  ];
+  return rows.sort((a, b) => {
+    if (!a.dueOn && !b.dueOn) return 0;
+    if (!a.dueOn) return 1;
+    if (!b.dueOn) return -1;
+    return a.dueOn.localeCompare(b.dueOn);
+  });
+}
+
+const STAGE_BADGE_CLASS: Record<AdminProjectRow['stage'], string> = {
+  Pending: 'border-white/20 text-text-muted',
+  Approved: 'border-brand-lime/30 bg-brand-lime/10 text-brand-lime',
+  Production: 'border-brand-cyan/30 bg-brand-cyan/10 text-brand-cyan',
+  Design: 'border-brand-pink/30 bg-brand-pink/10 text-brand-pink',
+};
+
+function ProjectProgressBar({ progress }: { progress: AdminProjectRow['progress'] }) {
+  if (progress.percent === null) return null;
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <div className="portal-progress-track h-1.5 min-w-0 flex-1 rounded-full border border-white/5 bg-black/20">
+        <div className="portal-progress-fill h-full rounded-full transition-[width] duration-500 ease-out" style={{ width: `${progress.percent}%` }} />
+      </div>
+      <span className="shrink-0 font-mono text-[10px] text-text-muted">{progress.percent}%</span>
+    </div>
+  );
+}
+
+function ProjectRow({ row }: { row: AdminProjectRow }) {
+  const [expanded, setExpanded] = useState(false);
+  const overdue = isOverdue(row);
+  const dueSoon = isDueSoon(row);
+
+  return (
+    <li className={`admin-collapse-card rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 ${expanded ? 'admin-collapse-card--expanded' : ''}`}>
+      <button
+        type="button"
+        className="admin-collapse-toggle flex w-full items-start justify-between gap-3 text-left"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{row.name}</p>
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={`font-mono text-xs ${overdue ? 'font-bold text-brand-pink' : dueSoon ? 'text-yellow-300' : 'text-text-muted'}`}
+          >
+            {overdue ? 'OVERDUE ' : ''}
+            {formatDueDate(row.dueOn)}
+          </span>
+          <span className={`admin-collapse-chevron text-brand-cyan ${expanded ? 'admin-collapse-chevron--open' : ''}`} aria-hidden>
+            ▾
+          </span>
+        </div>
+      </button>
+
+      <ProjectProgressBar progress={row.progress} />
+
+      <div className={`admin-collapse-expand ${expanded ? 'admin-collapse-expand--open' : ''}`} aria-hidden={!expanded}>
+        <div className="admin-collapse-expand-inner space-y-1.5 pt-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider font-mono ${STAGE_BADGE_CLASS[row.stage]}`}>
+              {row.stage}
+            </span>
+            {'status' in row && row.status ? (
+              <span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">
+                {row.status}
+              </span>
+            ) : null}
+            {'needsClientApproval' in row && row.needsClientApproval ? (
+              <span className="rounded-full border border-yellow-300/30 bg-yellow-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-yellow-300 font-mono">
+                Awaiting client approval
+              </span>
+            ) : null}
+          </div>
+          {row.progress.totalSubtasks > 0 ? (
+            <p className="text-xs text-text-muted">
+              {row.progress.completedSubtasks}/{row.progress.totalSubtasks} steps complete
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/** Collapsible per-client project list — progress + due dates at a glance, so admins know who to follow up with. */
+function AdminClientProjects({ slug }: { slug: string }) {
+  const [open, setOpen] = useState(false);
+  const [tasks, setTasks] = useState<ClientPortalTasks | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/clients/${slug}/projects`);
+      const data = (await res.json()) as ClientPortalTasks & { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not load projects.');
+        return;
+      }
+      setTasks(data);
+    } catch {
+      setError('Could not load projects.');
+    } finally {
+      setLoading(false);
+    }
+  }, [slug]);
+
+  const toggle = useCallback(() => {
+    setOpen((v) => !v);
+    if (!tasks && !loading) load();
+  }, [tasks, loading, load]);
+
+  const rows = tasks ? mergeProjectRows(tasks) : [];
+  const overdueCount = rows.filter(isOverdue).length;
+  const dueSoonCount = rows.filter(isDueSoon).length;
+
+  return (
+    <div className={`admin-collapse-card rounded-lg border border-white/10 ${open ? 'admin-collapse-card--expanded' : ''}`}>
+      <button
+        type="button"
+        className="admin-collapse-toggle flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+        aria-expanded={open}
+        onClick={toggle}
+      >
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold uppercase tracking-wide text-text-muted">
+          <span className="text-white">Projects</span>
+          {tasks ? (
+            <>
+              <span className="text-white/20" aria-hidden>·</span>
+              <span>{rows.length} total</span>
+              {overdueCount > 0 ? (
+                <>
+                  <span className="text-white/20" aria-hidden>·</span>
+                  <span className="text-brand-pink">{overdueCount} overdue</span>
+                </>
+              ) : null}
+              {dueSoonCount > 0 ? (
+                <>
+                  <span className="text-white/20" aria-hidden>·</span>
+                  <span className="text-yellow-300">{dueSoonCount} due this week</span>
+                </>
+              ) : null}
+            </>
+          ) : null}
+        </span>
+        <span className={`admin-collapse-chevron shrink-0 text-brand-cyan ${open ? 'admin-collapse-chevron--open' : ''}`} aria-hidden>
+          ▾
+        </span>
+      </button>
+
+      <div className={`admin-collapse-expand ${open ? 'admin-collapse-expand--open' : ''}`} aria-hidden={!open}>
+        <div className="admin-collapse-expand-inner space-y-2 border-t border-white/10 px-3 pb-3 pt-2.5">
+          {loading && !tasks ? (
+            <p className={adminBody}>Loading projects…</p>
+          ) : error ? (
+            <p className={adminAlertError}>{error}</p>
+          ) : tasks === null ? null : rows.length === 0 ? (
+            <p className={adminBody}>No projects found for this client.</p>
+          ) : (
+            <ul className="space-y-2">
+              {rows.map((row) => (
+                <ProjectRow key={row.gid} row={row} />
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddClientForm({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
@@ -295,6 +509,8 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
       </div>
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
+
+      <AdminClientProjects slug={client.slug} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2">

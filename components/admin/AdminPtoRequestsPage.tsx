@@ -24,6 +24,11 @@ function formatRange(startDate: string, endDate: string): string {
   return startDate === endDate ? startDate : `${startDate} – ${endDate}`;
 }
 
+/** Server re-validates against studio-local "today" — this just gates the button, so a plain local-date check is fine. */
+function hasPassed(endDate: string): boolean {
+  return endDate < new Date().toISOString().slice(0, 10);
+}
+
 function StatusBadge({ status }: { status: PtoRequest['status'] }) {
   if (status === 'approved') return <span className={adminBadgeApproved}>Approved</span>;
   if (status === 'rejected') return <span className={adminBadgeRejected}>Rejected</span>;
@@ -41,6 +46,25 @@ function RequestRow({
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [showNote, setShowNote] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const runDelete = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/pto-requests/${request.id}`, { method: 'DELETE' });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Delete failed.');
+        return;
+      }
+      onChanged();
+    } catch {
+      setError('Delete failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [request.id, onChanged]);
 
   const decide = useCallback(
     async (decision: 'approved' | 'rejected') => {
@@ -160,6 +184,35 @@ function RequestRow({
           {request.decisionNote ? ` — "${request.decisionNote}"` : ''}
         </p>
       )}
+
+      {hasPassed(request.endDate) ? (
+        <div className="flex items-center justify-end gap-2 border-t border-white/5 pt-2">
+          {confirmingDelete ? (
+            <>
+              <span className="text-[11px] text-text-muted">Delete this record? This cannot be undone.</span>
+              <button type="button" className={adminBtnDanger} disabled={loading} onClick={runDelete}>
+                {loading ? 'Deleting…' : 'Yes, delete'}
+              </button>
+              <button
+                type="button"
+                className={adminBtnGhost}
+                disabled={loading}
+                onClick={() => setConfirmingDelete(false)}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      ) : null}
     </li>
   );
 }

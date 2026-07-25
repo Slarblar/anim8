@@ -1894,3 +1894,18 @@ html.crew-lang-vn .crew-shell .font-heading {
   font-synthesis: none;
 }
 
+/*
+ * Printable crew/KPI reports (/crew/report, /admin/crew/[email]/report) —
+ * strip the inherited admin/crew nav + dark background so "Print / Save as
+ * PDF" produces a clean, ink-friendly page instead of white text on black.
+ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .crew-report {
+    color: #000000;
+  }
+}
+

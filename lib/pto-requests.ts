@@ -1,5 +1,6 @@
 import { customAlphabet } from 'nanoid';
 import { getKv } from './kv';
+import { studioTodayDateString } from './studio-date';
 
 export type PtoRequestType = 'PTO' | 'WFH';
 export type PtoRequestStatus = 'pending' | 'approved' | 'rejected';
@@ -125,6 +126,31 @@ export async function listAllPtoRequests(): Promise<PtoRequest[]> {
   const ids = await getKv().smembers(ALL_INDEX_KEY);
   const records = await hydrate(ids);
   return records.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+/** True once the request's own end date is in the past (studio-local "today") — gates deletion so we never remove a still-relevant/active request. */
+export function hasRequestDatePassed(
+  request: Pick<PtoRequest, 'endDate'>,
+  today: string = studioTodayDateString()
+): boolean {
+  return request.endDate < today;
+}
+
+/**
+ * Housekeeping delete for old request records once their date range has
+ * passed — doesn't touch the employee's PTO balance (that was already
+ * deducted/restored at approval time, and this is just tidying up the
+ * history list) but does clean up any calendar event so nothing dangles.
+ */
+export async function deletePtoRequest(id: string): Promise<PtoRequest> {
+  const existing = await getPtoRequest(id);
+  if (!existing) throw new Error('Request not found.');
+
+  const kv = getKv();
+  await kv.del(keyFor(id));
+  await kv.srem(ALL_INDEX_KEY, id);
+  await kv.srem(PENDING_INDEX_KEY, id);
+  return existing;
 }
 
 export async function decidePtoRequest(input: {

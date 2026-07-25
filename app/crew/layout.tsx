@@ -16,8 +16,8 @@ export default async function CrewLayout({ children }: { children: ReactNode }) 
     <>
       <script dangerouslySetInnerHTML={{ __html: CREW_LANG_BOOT }} />
       <CrewLanguageProvider>
-        <div className="crew-shell min-h-screen bg-brand-black text-white">
-        <header className="border-b border-white/10 bg-brand-black/95">
+        <div className="crew-shell min-h-screen bg-brand-black text-white print:bg-white print:text-black">
+        <header className="no-print border-b border-white/10 bg-brand-black/95">
           <CrewNav admin={admin} email={session?.user?.email} />
         </header>
         <main className="container-custom py-8">{children}</main>

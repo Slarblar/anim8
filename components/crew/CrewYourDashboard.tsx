@@ -112,9 +112,18 @@ export function CrewYourDashboard() {
             <HoverTranslate en={crewT.en.dashboard.title} vn={crewT.vn.dashboard.title} />
           )}
         </h2>
-        <Link href="/crew/kpi" className="text-sm font-bold text-brand-cyan transition hover:brightness-125">
-          <HoverTranslate en={crewT.en.dashboard.fullKpiHistory} vn={crewT.vn.dashboard.fullKpiHistory} />
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/crew/report"
+            target="_blank"
+            className="text-sm font-bold text-text-muted transition hover:text-white"
+          >
+            <HoverTranslate en={crewT.en.dashboard.generateReport} vn={crewT.vn.dashboard.generateReport} />
+          </Link>
+          <Link href="/crew/kpi" className="text-sm font-bold text-brand-cyan transition hover:brightness-125">
+            <HoverTranslate en={crewT.en.dashboard.fullKpiHistory} vn={crewT.vn.dashboard.fullKpiHistory} />
+          </Link>
+        </div>
       </div>
 
       {error ? <p className={adminAlertError}>{error}</p> : null}

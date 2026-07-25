@@ -9,8 +9,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const session = await getServerSession(authOptions);
 
   return (
-    <div className="min-h-screen bg-brand-black text-white">
-      <header className="border-b border-white/10 bg-brand-black/95">
+    <div className="min-h-screen bg-brand-black text-white print:bg-white print:text-black">
+      <header className="no-print border-b border-white/10 bg-brand-black/95">
         <div className="container-custom flex flex-col gap-3 py-4 min-[640px]:flex-row min-[640px]:items-center min-[640px]:justify-between">
           <div className="flex flex-wrap items-center gap-6">
             <span className="text-sm font-black uppercase tracking-tight text-white">

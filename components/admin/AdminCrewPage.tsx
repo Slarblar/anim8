@@ -951,6 +951,14 @@ function CrewRow({
               <button type="button" className={adminBtnGhost} onClick={() => setEditingStart((v) => !v)}>
                 {member.startDate ? 'Edit start date' : 'Set start date'}
               </button>
+              <a
+                href={`/admin/crew/${encodeURIComponent(member.email)}/report`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={adminBtnGhost}
+              >
+                Generate report
+              </a>
               {profileDirty ? (
                 <button
                   type="button"

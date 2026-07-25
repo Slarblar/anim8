@@ -39,6 +39,7 @@ type DashboardT = {
   title: string;
   welcomeBack: (firstName: string) => string;
   fullKpiHistory: string;
+  generateReport: string;
   ptoAvailable: string;
   dayUnit: (n: number) => string;
   requestPto: string;
@@ -116,6 +117,11 @@ type PtoPageT = {
   formSubmitting: string;
   formSubmitError: string;
   formSubmitErrorRetry: string;
+  deleteButton: string;
+  deleteConfirm: string;
+  deleteConfirmYes: string;
+  deleteConfirmCancel: string;
+  deleteError: string;
 };
 
 type CrewTranslations = {
@@ -159,6 +165,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       title: 'Your dashboard',
       welcomeBack: (firstName) => `Welcome to your dashboard, ${firstName}`,
       fullKpiHistory: 'Full KPI history →',
+      generateReport: 'Generate report',
       ptoAvailable: 'PTO available',
       dayUnit: (n) => (n === 1 ? 'day' : 'days'),
       requestPto: 'Request PTO / WFH',
@@ -241,6 +248,11 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       formSubmitting: 'Submitting…',
       formSubmitError: 'Could not submit request.',
       formSubmitErrorRetry: 'Could not submit request. Please try again.',
+      deleteButton: 'Delete',
+      deleteConfirm: 'Delete this record? This cannot be undone.',
+      deleteConfirmYes: 'Yes, delete',
+      deleteConfirmCancel: 'Cancel',
+      deleteError: 'Could not delete this request.',
     },
   },
   vn: {
@@ -274,6 +286,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       title: 'Bảng tin của bạn',
       welcomeBack: (firstName) => `Chào ${firstName}, đây là bảng tin của bạn`,
       fullKpiHistory: 'Xem đầy đủ lịch sử KPI →',
+      generateReport: 'Tạo báo cáo',
       ptoAvailable: 'Ngày nghỉ còn lại',
       dayUnit: () => 'ngày',
       requestPto: 'Yêu cầu nghỉ phép / WFH',
@@ -354,6 +367,11 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       formSubmitting: 'Đang gửi…',
       formSubmitError: 'Không thể gửi yêu cầu.',
       formSubmitErrorRetry: 'Không thể gửi yêu cầu. Vui lòng thử lại.',
+      deleteButton: 'Xóa',
+      deleteConfirm: 'Xóa bản ghi này? Không thể hoàn tác.',
+      deleteConfirmYes: 'Có, xóa',
+      deleteConfirmCancel: 'Hủy',
+      deleteError: 'Không thể xóa yêu cầu này.',
     },
   },
 };

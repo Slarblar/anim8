@@ -39,7 +39,6 @@ type DashboardT = {
   title: string;
   welcomeBack: (firstName: string) => string;
   fullKpiHistory: string;
-  generateReport: string;
   ptoAvailable: string;
   dayUnit: (n: number) => string;
   requestPto: string;
@@ -165,7 +164,6 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       title: 'Your dashboard',
       welcomeBack: (firstName) => `Welcome to your dashboard, ${firstName}`,
       fullKpiHistory: 'Full KPI history →',
-      generateReport: 'Generate report',
       ptoAvailable: 'PTO available',
       dayUnit: (n) => (n === 1 ? 'day' : 'days'),
       requestPto: 'Request PTO / WFH',
@@ -286,7 +284,6 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       title: 'Bảng tin của bạn',
       welcomeBack: (firstName) => `Chào ${firstName}, đây là bảng tin của bạn`,
       fullKpiHistory: 'Xem đầy đủ lịch sử KPI →',
-      generateReport: 'Tạo báo cáo',
       ptoAvailable: 'Ngày nghỉ còn lại',
       dayUnit: () => 'ngày',
       requestPto: 'Yêu cầu nghỉ phép / WFH',

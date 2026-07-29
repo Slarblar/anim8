@@ -20,6 +20,7 @@ import {
 import { getScoreBand } from '@/components/crew/kpi-ui';
 import {
   adminAlertError,
+  adminAlertSuccess,
   adminBadgeActive,
   adminBadgeInactive,
   adminBody,
@@ -34,7 +35,12 @@ import {
 } from './admin-ui';
 import { AdminDatePicker } from './AdminDatePicker';
 
-type ApiErrorBody = { error?: string; reason?: string; email?: string | null };
+type ApiErrorBody = {
+  error?: string;
+  reason?: string;
+  email?: string | null;
+  accrualBackfill?: { monthsGranted: number; daysGranted: number } | null;
+};
 
 const EMPLOYMENT_TYPE_OPTIONS: { value: EmploymentType; label: string }[] = [
   { value: 'full_time', label: 'Full-time' },
@@ -607,6 +613,7 @@ function CrewRow({
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustAmount, setAdjustAmount] = useState('');
   const [showLogPto, setShowLogPto] = useState(false);
@@ -671,6 +678,7 @@ function CrewRow({
     async (body: Record<string, unknown>) => {
       setLoading(true);
       setError(null);
+      setSuccess(null);
       try {
         const res = await fetch(`/api/admin/crew/${encodeURIComponent(member.email)}`, {
           method: 'PATCH',
@@ -681,6 +689,13 @@ function CrewRow({
         if (!res.ok) {
           setError(describeApiError(data, 'Action failed.'));
           return;
+        }
+        if (data.accrualBackfill && data.accrualBackfill.monthsGranted > 0) {
+          setSuccess(
+            `Accrued ${data.accrualBackfill.daysGranted} day(s) across ${data.accrualBackfill.monthsGranted} month(s) since start date.`
+          );
+        } else if (body.backfillAccrual) {
+          setSuccess('PTO is already caught up through this month — nothing new to grant.');
         }
         onChanged();
       } catch {
@@ -866,7 +881,11 @@ function CrewRow({
         aria-hidden={!expanded}
       >
         <div className="admin-collapse-expand-inner space-y-3 border-t border-white/10 pt-5">
-          <p className="text-xs text-text-muted">entitled {entitlement} day(s)/yr</p>
+          <p className="text-xs text-text-muted">
+            entitled {entitlement} day(s)/yr · Handbook 3.7 (1 day/month at 12 days/yr)
+          </p>
+          {error ? <p className={adminAlertError}>{error}</p> : null}
+          {success ? <p className={adminAlertSuccess}>{success}</p> : null}
           <p className="text-xs text-text-muted">
             {member.startDate ? (
               <>Start date: {member.startDate}</>
@@ -874,8 +893,6 @@ function CrewRow({
               <span className="text-brand-pink">No start date set — won&apos;t accrue PTO yet</span>
             )}
           </p>
-
-          {error ? <p className={adminAlertError}>{error}</p> : null}
 
           <div>
             <p className={adminLabel}>Level</p>
@@ -945,6 +962,16 @@ function CrewRow({
               <button type="button" className={adminBtnGhost} onClick={() => setShowAdjust((v) => !v)}>
                 Adjust PTO
               </button>
+              {member.startDate ? (
+                <button
+                  type="button"
+                  className={adminBtnGhost}
+                  disabled={loading}
+                  onClick={() => patch({ backfillAccrual: true })}
+                >
+                  Accrue from start date
+                </button>
+              ) : null}
               <button type="button" className={adminBtnGhost} onClick={() => setShowLogPto((v) => !v)}>
                 Log PTO date
               </button>

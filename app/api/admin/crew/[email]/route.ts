@@ -16,6 +16,7 @@ import {
   type WeekdayCode,
 } from '@/lib/crew-directory';
 import { createFixedWfhCalendarEvent, deleteCalendarEvent } from '@/lib/google-calendar';
+import { backfillPtoAccrualForMember } from '@/lib/pto-accrual';
 
 const WEEKDAY_CODES: WeekdayCode[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
 const EMPLOYMENT_TYPES: EmploymentType[] = ['full_time', 'part_time', 'contractor'];
@@ -24,6 +25,8 @@ type PatchBody = {
   active?: boolean;
   adjustBalanceDays?: number;
   startDate?: string | null;
+  /** Grant any missing monthly accruals from startDate through this month (idempotent). */
+  backfillAccrual?: boolean;
   location?: CrewLocation;
   role?: string;
   level?: string;
@@ -46,6 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
   const hasActive = typeof body.active === 'boolean';
   const hasAdjustment = typeof body.adjustBalanceDays === 'number' && body.adjustBalanceDays !== 0;
   const hasStartDate = body.startDate !== undefined;
+  const hasBackfill = body.backfillAccrual === true;
   const hasLocation = body.location === 'US' || body.location === 'VN';
   const hasRole = typeof body.role === 'string';
   const hasLevel = typeof body.level === 'string';
@@ -59,6 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     !hasActive &&
     !hasAdjustment &&
     !hasStartDate &&
+    !hasBackfill &&
     !hasLocation &&
     !hasRole &&
     !hasLevel &&
@@ -75,9 +80,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
       await setCrewMemberActive(params.email, body.active as boolean);
     }
     let member = null;
+    let accrualBackfill: { monthsGranted: number; daysGranted: number } | null = null;
+
     if (hasStartDate) {
       member = await setCrewMemberStartDate(params.email, body.startDate ?? null);
+      // Setting a hire date should catch the balance up — not wait for next month's cron.
+      if (body.startDate) {
+        accrualBackfill = await backfillPtoAccrualForMember(params.email);
+        member = await getCrewMember(params.email);
+      }
+    } else if (hasBackfill) {
+      accrualBackfill = await backfillPtoAccrualForMember(params.email);
+      member = await getCrewMember(params.email);
     }
+
     if (hasAdjustment) {
       member = await adjustCrewMemberPtoBalance(params.email, body.adjustBalanceDays as number);
     }
@@ -115,7 +131,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
         })
       );
       const addedEventIds = await Promise.all(
-        daysToAdd.map(async (day) => [day, await createFixedWfhCalendarEvent({ employeeName: existing.name, day })] as const)
+        daysToAdd.map(
+          async (day) =>
+            [day, await createFixedWfhCalendarEvent({ employeeName: existing.name, day })] as const
+        )
       );
 
       const nextEventIds: Partial<Record<WeekdayCode, string>> = {};
@@ -130,7 +149,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
 
       member = await setCrewMemberFixedWfh(params.email, newDays, nextEventIds);
     }
-    return NextResponse.json({ ok: true, member });
+
+    if (!member) member = await getCrewMember(params.email);
+    return NextResponse.json({ ok: true, member, accrualBackfill });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Action failed.' },

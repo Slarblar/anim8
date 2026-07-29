@@ -210,8 +210,13 @@ function AdminClientProjects({ slug }: { slug: string }) {
             </>
           ) : null}
         </span>
-        <span className={`admin-collapse-chevron shrink-0 text-brand-cyan ${open ? 'admin-collapse-chevron--open' : ''}`} aria-hidden>
-          ▾
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-brand-cyan">
+            {open ? 'Hide' : 'View'}
+          </span>
+          <span className={`admin-collapse-chevron text-brand-cyan ${open ? 'admin-collapse-chevron--open' : ''}`} aria-hidden>
+            ▾
+          </span>
         </span>
       </button>
 

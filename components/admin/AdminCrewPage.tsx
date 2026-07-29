@@ -10,6 +10,7 @@ import {
   type EmploymentType,
   type WeekdayCode,
 } from '@/lib/crew-directory';
+import { computeAccruedPtoDays, monthKeyInTimeZone } from '@/lib/pto-accrual-shared';
 import type { CrewStatusEntry } from '@/lib/crew-status-cache';
 import {
   performanceBandLabel,
@@ -39,7 +40,13 @@ type ApiErrorBody = {
   error?: string;
   reason?: string;
   email?: string | null;
-  accrualBackfill?: { monthsGranted: number; daysGranted: number } | null;
+  accrualBackfill?: {
+    monthsGranted?: number;
+    daysGranted?: number;
+    accruedDays?: number;
+    takenDays?: number;
+    balanceDays?: number;
+  } | null;
 };
 
 const EMPLOYMENT_TYPE_OPTIONS: { value: EmploymentType; label: string }[] = [
@@ -673,6 +680,7 @@ function CrewRow({
     levelDirty || roleDirty || locationDirty || employmentDirty || hoursDirty || wfhDaysChanged;
 
   const entitlement = annualLeaveEntitlementDays(member.startDate);
+  const accruedToDate = computeAccruedPtoDays(member.startDate, monthKeyInTimeZone());
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
@@ -690,10 +698,19 @@ function CrewRow({
           setError(describeApiError(data, 'Action failed.'));
           return;
         }
-        if (data.accrualBackfill && data.accrualBackfill.monthsGranted > 0) {
-          setSuccess(
-            `Accrued ${data.accrualBackfill.daysGranted} day(s) across ${data.accrualBackfill.monthsGranted} month(s) since start date.`
-          );
+        if (data.accrualBackfill) {
+          const { accruedDays, takenDays, balanceDays } = data.accrualBackfill;
+          if (typeof accruedDays === 'number' && typeof balanceDays === 'number') {
+            setSuccess(
+              `PTO balance updated to ${balanceDays} day(s) (${accruedDays} accrued since start − ${takenDays ?? 0} taken).`
+            );
+          } else if ((data.accrualBackfill.monthsGranted ?? 0) > 0) {
+            setSuccess(
+              `Accrued ${data.accrualBackfill.daysGranted} day(s) across ${data.accrualBackfill.monthsGranted} month(s) since start date.`
+            );
+          } else if (body.backfillAccrual) {
+            setSuccess('PTO is already caught up through this month — nothing new to grant.');
+          }
         } else if (body.backfillAccrual) {
           setSuccess('PTO is already caught up through this month — nothing new to grant.');
         }
@@ -882,7 +899,8 @@ function CrewRow({
       >
         <div className="admin-collapse-expand-inner space-y-3 border-t border-white/10 pt-5">
           <p className="text-xs text-text-muted">
-            entitled {entitlement} day(s)/yr · Handbook 3.7 (1 day/month at 12 days/yr)
+            entitled {entitlement} day(s)/yr · accrued {accruedToDate} day(s) since start
+            {member.startDate ? '' : ' (set a start date to accrue)'}
           </p>
           {error ? <p className={adminAlertError}>{error}</p> : null}
           {success ? <p className={adminAlertSuccess}>{success}</p> : null}
@@ -968,8 +986,9 @@ function CrewRow({
                   className={adminBtnGhost}
                   disabled={loading}
                   onClick={() => patch({ backfillAccrual: true })}
+                  title="Recalculate available PTO from start date minus approved time off (Handbook 3.7)"
                 >
-                  Accrue from start date
+                  Sync PTO from start date
                 </button>
               ) : null}
               <button type="button" className={adminBtnGhost} onClick={() => setShowLogPto((v) => !v)}>

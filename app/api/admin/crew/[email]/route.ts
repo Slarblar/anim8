@@ -16,7 +16,7 @@ import {
   type WeekdayCode,
 } from '@/lib/crew-directory';
 import { createFixedWfhCalendarEvent, deleteCalendarEvent } from '@/lib/google-calendar';
-import { backfillPtoAccrualForMember } from '@/lib/pto-accrual';
+import { recomputePtoBalanceForMember } from '@/lib/pto-accrual';
 
 const WEEKDAY_CODES: WeekdayCode[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
 const EMPLOYMENT_TYPES: EmploymentType[] = ['full_time', 'part_time', 'contractor'];
@@ -25,7 +25,7 @@ type PatchBody = {
   active?: boolean;
   adjustBalanceDays?: number;
   startDate?: string | null;
-  /** Grant any missing monthly accruals from startDate through this month (idempotent). */
+  /** Recalculate balance from handbook (accrued since start date − approved PTO taken). */
   backfillAccrual?: boolean;
   location?: CrewLocation;
   role?: string;
@@ -80,18 +80,38 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
       await setCrewMemberActive(params.email, body.active as boolean);
     }
     let member = null;
-    let accrualBackfill: { monthsGranted: number; daysGranted: number } | null = null;
+    let accrualBackfill: {
+      monthsGranted?: number;
+      daysGranted?: number;
+      accruedDays?: number;
+      takenDays?: number;
+      balanceDays?: number;
+    } | null = null;
 
     if (hasStartDate) {
       member = await setCrewMemberStartDate(params.email, body.startDate ?? null);
-      // Setting a hire date should catch the balance up — not wait for next month's cron.
+      // Setting a hire date should catch the balance up to Handbook 3.7 immediately.
       if (body.startDate) {
-        accrualBackfill = await backfillPtoAccrualForMember(params.email);
-        member = await getCrewMember(params.email);
+        const result = await recomputePtoBalanceForMember(params.email);
+        member = result.member;
+        accrualBackfill = {
+          accruedDays: result.accruedDays,
+          takenDays: result.takenDays,
+          balanceDays: result.balanceDays,
+          daysGranted: result.accruedDays,
+          monthsGranted: result.accruedDays > 0 ? 1 : 0,
+        };
       }
     } else if (hasBackfill) {
-      accrualBackfill = await backfillPtoAccrualForMember(params.email);
-      member = await getCrewMember(params.email);
+      const result = await recomputePtoBalanceForMember(params.email);
+      member = result.member;
+      accrualBackfill = {
+        accruedDays: result.accruedDays,
+        takenDays: result.takenDays,
+        balanceDays: result.balanceDays,
+        daysGranted: result.balanceDays,
+        monthsGranted: result.accruedDays > 0 ? 1 : 0,
+      };
     }
 
     if (hasAdjustment) {

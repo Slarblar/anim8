@@ -4,43 +4,54 @@ import {
   annualLeaveEntitlementDays,
   getCrewMember,
   listCrewMembers,
+  type CrewMember,
 } from './crew-directory';
+import { countBusinessDays, listPtoRequestsForEmployee } from './pto-requests';
 import { studioTodayDateString } from './studio-date';
+import {
+  computeAccruedPtoDays as computeAccruedPtoDaysShared,
+  monthsFromTo,
+} from './pto-accrual-shared';
+
+export { monthsFromTo } from './pto-accrual-shared';
 
 const ACCRUAL_LOG_PREFIX = 'pto-accrual-log:';
 
 function currentMonthKey(asOf: Date = new Date()): string {
-  // Prefer studio-local month so we don't flip a day early/late vs Vietnam.
   return studioTodayDateString(asOf).slice(0, 7); // YYYY-MM
 }
 
 function keyFor(email: string, monthKey: string): string {
-  return `${ACCRUAL_LOG_PREFIX}${email}:${monthKey}`;
+  return `${ACCRUAL_LOG_PREFIX}${email.trim().toLowerCase()}:${monthKey}`;
 }
 
-/** Inclusive month range from hire YYYY-MM through throughMonth YYYY-MM. */
-function monthsFromTo(fromMonth: string, throughMonth: string): string[] {
-  const months: string[] = [];
-  let [y, m] = fromMonth.split('-').map(Number);
-  const [endY, endM] = throughMonth.split('-').map(Number);
-  while (y < endY || (y === endY && m <= endM)) {
-    months.push(`${y}-${String(m).padStart(2, '0')}`);
-    m += 1;
-    if (m > 12) {
-      m = 1;
-      y += 1;
-    }
-  }
-  return months;
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 /**
- * Handbook 3.7 — grants entitlement/12 days per completed month, so someone
- * hired mid-year (or with 12 + tenure-bonus days) accrues at the same
- * prorated rate the handbook describes for anyone under 12 months.
- *
- * Idempotent per employee per month (logged in KV) so re-running the cron —
- * or a manual retry — never double-accrues.
+ * Handbook 3.7 — total days earned from hire through the current studio month.
+ * Pure wrapper around the shared helper (server uses studio timezone).
+ */
+export function computeAccruedPtoDays(
+  startDate: string | null,
+  asOf: Date = new Date()
+): number {
+  return computeAccruedPtoDaysShared(startDate, currentMonthKey(asOf), asOf);
+}
+
+/** Approved PTO working days for an employee (WFH does not consume the balance). */
+export async function computePtoDaysTaken(email: string): Promise<number> {
+  const requests = await listPtoRequestsForEmployee(email);
+  const taken = requests
+    .filter((r) => r.type === 'PTO' && r.status === 'approved')
+    .reduce((sum, r) => sum + countBusinessDays(r.startDate, r.endDate), 0);
+  return round2(taken);
+}
+
+/**
+ * Handbook 3.7 — grants entitlement/12 days per month. Idempotent per employee
+ * per month (logged in KV) so re-running the cron never double-accrues.
  */
 export async function runMonthlyPtoAccrual(
   monthKey: string = currentMonthKey()
@@ -63,17 +74,15 @@ export async function runMonthlyPtoAccrual(
     }
 
     const logKey = keyFor(member.email, monthKey);
-    const alreadyAccrued = await kv.get(logKey);
-    if (alreadyAccrued) {
+    if (await kv.get(logKey)) {
       skipped++;
       continue;
     }
 
     const entitlement = annualLeaveEntitlementDays(member.startDate);
-    const monthlyAccrual = Math.round((entitlement / 12) * 100) / 100;
+    const monthlyAccrual = round2(entitlement / 12);
 
     await adjustCrewMemberPtoBalance(member.email, monthlyAccrual);
-    // ~13 months TTL — plenty to prevent double-accrual, tidy after that.
     await kv.set(logKey, true, { ex: 60 * 60 * 24 * 400 });
     accrued++;
   }
@@ -82,9 +91,8 @@ export async function runMonthlyPtoAccrual(
 }
 
 /**
- * Catch-up when a hire date is set (or corrected) after the fact — grants
- * every missing month from startDate through the current studio month using
- * the same per-month log as the cron, so future monthly runs won't double-count.
+ * Catch-up: grant any months since hire that the cron hasn't logged yet.
+ * Safe to call on page load — never double-counts thanks to the per-month log.
  */
 export async function backfillPtoAccrualForMember(
   email: string,
@@ -108,10 +116,9 @@ export async function backfillPtoAccrualForMember(
     const logKey = keyFor(member.email, monthKey);
     if (await kv.get(logKey)) continue;
 
-    // Tenure bonus can grow over years — compute entitlement as of that month.
     const asOf = new Date(`${monthKey}-01T00:00:00Z`);
     const entitlement = annualLeaveEntitlementDays(member.startDate, asOf);
-    const monthlyAccrual = Math.round((entitlement / 12) * 100) / 100;
+    const monthlyAccrual = round2(entitlement / 12);
 
     await adjustCrewMemberPtoBalance(member.email, monthlyAccrual);
     await kv.set(logKey, true, { ex: 60 * 60 * 24 * 400 });
@@ -121,6 +128,69 @@ export async function backfillPtoAccrualForMember(
 
   return {
     monthsGranted,
-    daysGranted: Math.round(daysGranted * 100) / 100,
+    daysGranted: round2(daysGranted),
   };
+}
+
+/**
+ * Authoritative reset from the handbook: available = accrued − approved PTO taken.
+ * Stamps every month through now as logged so the cron won't double-grant.
+ */
+export async function recomputePtoBalanceForMember(email: string): Promise<{
+  member: CrewMember;
+  accruedDays: number;
+  takenDays: number;
+  balanceDays: number;
+}> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  if (!existing.startDate) throw new Error('Start date is required before accruing PTO.');
+
+  const accruedDays = computeAccruedPtoDays(existing.startDate);
+  const takenDays = await computePtoDaysTaken(email);
+  const balanceDays = round2(accruedDays - takenDays);
+  const delta = round2(balanceDays - (existing.ptoBalanceDays ?? 0));
+
+  let member = existing;
+  if (delta !== 0) {
+    member = await adjustCrewMemberPtoBalance(email, delta);
+  }
+
+  const kv = getKv();
+  const hireMonthKey = existing.startDate.slice(0, 7);
+  for (const monthKey of monthsFromTo(hireMonthKey, currentMonthKey())) {
+    await kv.set(keyFor(email, monthKey), true, { ex: 60 * 60 * 24 * 400 });
+  }
+
+  return { member, accruedDays, takenDays, balanceDays };
+}
+
+/**
+ * Bring every active crew member with a start date up to date. Used when
+ * the admin crew directory loads so balances aren't waiting on the monthly cron.
+ *
+ * If someone is under-accrued vs handbook (common after setting a start date
+ * with a 0 balance), recomputes available = accrued − taken. Otherwise only
+ * grants missing months so intentional Adjust PTO grants aren't wiped.
+ */
+export async function ensureAllCrewPtoAccrualCaughtUp(): Promise<void> {
+  const members = await listCrewMembers();
+  await Promise.all(
+    members
+      .filter((m) => m.active && m.startDate)
+      .map(async (m) => {
+        try {
+          const accrued = computeAccruedPtoDays(m.startDate);
+          const taken = await computePtoDaysTaken(m.email);
+          const expected = round2(accrued - taken);
+          if ((m.ptoBalanceDays ?? 0) + 0.01 < expected) {
+            await recomputePtoBalanceForMember(m.email);
+          } else {
+            await backfillPtoAccrualForMember(m.email);
+          }
+        } catch {
+          // Don't block the directory if one member's accrual fails.
+        }
+      })
+  );
 }

@@ -6,12 +6,17 @@ import {
   type CrewLocation,
   type EmploymentType,
 } from '@/lib/crew-directory';
+import { ensureAllCrewPtoAccrualCaughtUp } from '@/lib/pto-accrual';
 
 const EMPLOYMENT_TYPES: EmploymentType[] = ['full_time', 'part_time', 'contractor'];
 
 export async function GET() {
   const admin = await requireAdminSession();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Catch up any months the monthly cron hasn't granted yet so the directory
+  // always shows handbook-accurate balances (not stuck at 0 after a start date).
+  await ensureAllCrewPtoAccrualCaughtUp();
 
   const members = await listCrewMembers();
   return NextResponse.json({ members });
@@ -60,6 +65,14 @@ export async function POST(req: NextRequest) {
           ? body.weeklyContractedHours
           : undefined,
     });
+
+    // If they set a hire date (and didn't manually seed a balance), catch accrual up now.
+    if (body.startDate && typeof body.initialPtoBalanceDays !== 'number') {
+      const { recomputePtoBalanceForMember } = await import('@/lib/pto-accrual');
+      const result = await recomputePtoBalanceForMember(member.email);
+      return NextResponse.json({ member: result.member });
+    }
+
     return NextResponse.json({ member });
   } catch (err) {
     return NextResponse.json(

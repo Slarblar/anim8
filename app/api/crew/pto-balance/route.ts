@@ -5,7 +5,6 @@ import {
   backfillPtoAccrualForMember,
   computeAccruedPtoDays,
   computePtoDaysTaken,
-  recomputePtoBalanceForMember,
 } from '@/lib/pto-accrual';
 
 export async function GET() {
@@ -20,21 +19,16 @@ export async function GET() {
       entitlementDays: null,
       accruedDays: null,
       takenDays: null,
+      adjustmentDays: null,
       updatedAt: null,
     });
   }
 
-  // Lazy catch-up so the crew dashboard stays accurate without waiting on cron.
+  // Lazy catch-up for missing months only — never force-recompute, so admin
+  // Adjust PTO corrections aren't wiped when the crew page loads.
   if (member.startDate) {
     try {
-      const accrued = computeAccruedPtoDays(member.startDate);
-      const taken = await computePtoDaysTaken(member.email);
-      const expected = Math.round((accrued - taken) * 100) / 100;
-      if ((member.ptoBalanceDays ?? 0) + 0.01 < expected) {
-        await recomputePtoBalanceForMember(member.email);
-      } else {
-        await backfillPtoAccrualForMember(member.email);
-      }
+      await backfillPtoAccrualForMember(member.email);
       member = (await getCrewMember(session.email)) ?? member;
     } catch {
       // Still return whatever we have — don't block the UI on accrual.
@@ -49,6 +43,7 @@ export async function GET() {
     entitlementDays: annualLeaveEntitlementDays(member.startDate),
     accruedDays,
     takenDays,
+    adjustmentDays: member.ptoAdjustmentDays ?? 0,
     updatedAt: member.ptoBalanceUpdatedAt,
   });
 }

@@ -133,13 +133,15 @@ export async function backfillPtoAccrualForMember(
 }
 
 /**
- * Authoritative reset from the handbook: available = accrued − approved PTO taken.
+ * Authoritative sync from the handbook:
+ *   available = accrued − approved PTO taken + admin Adjust PTO corrections
  * Stamps every month through now as logged so the cron won't double-grant.
  */
 export async function recomputePtoBalanceForMember(email: string): Promise<{
   member: CrewMember;
   accruedDays: number;
   takenDays: number;
+  adjustmentDays: number;
   balanceDays: number;
 }> {
   const existing = await getCrewMember(email);
@@ -148,11 +150,13 @@ export async function recomputePtoBalanceForMember(email: string): Promise<{
 
   const accruedDays = computeAccruedPtoDays(existing.startDate);
   const takenDays = await computePtoDaysTaken(email);
-  const balanceDays = round2(accruedDays - takenDays);
+  const adjustmentDays = existing.ptoAdjustmentDays ?? 0;
+  const balanceDays = round2(accruedDays - takenDays + adjustmentDays);
   const delta = round2(balanceDays - (existing.ptoBalanceDays ?? 0));
 
   let member = existing;
   if (delta !== 0) {
+    // Not manual — don't change ptoAdjustmentDays; we're only aligning the balance field.
     member = await adjustCrewMemberPtoBalance(email, delta);
   }
 
@@ -162,35 +166,21 @@ export async function recomputePtoBalanceForMember(email: string): Promise<{
     await kv.set(keyFor(email, monthKey), true, { ex: 60 * 60 * 24 * 400 });
   }
 
-  return { member, accruedDays, takenDays, balanceDays };
+  return { member, accruedDays, takenDays, adjustmentDays, balanceDays };
 }
 
 /**
  * Bring every active crew member with a start date up to date. Used when
  * the admin crew directory loads so balances aren't waiting on the monthly cron.
  *
- * If someone is under-accrued vs handbook (common after setting a start date
- * with a 0 balance), recomputes available = accrued − taken. Otherwise only
- * grants missing months so intentional Adjust PTO grants aren't wiped.
+ * Only grants missing months (idempotent log) — never force-recomputes, so an
+ * admin "Adjust PTO −4" is not wiped on the next directory refresh.
  */
 export async function ensureAllCrewPtoAccrualCaughtUp(): Promise<void> {
   const members = await listCrewMembers();
   await Promise.all(
     members
       .filter((m) => m.active && m.startDate)
-      .map(async (m) => {
-        try {
-          const accrued = computeAccruedPtoDays(m.startDate);
-          const taken = await computePtoDaysTaken(m.email);
-          const expected = round2(accrued - taken);
-          if ((m.ptoBalanceDays ?? 0) + 0.01 < expected) {
-            await recomputePtoBalanceForMember(m.email);
-          } else {
-            await backfillPtoAccrualForMember(m.email);
-          }
-        } catch {
-          // Don't block the directory if one member's accrual fails.
-        }
-      })
+      .map((m) => backfillPtoAccrualForMember(m.email).catch(() => null))
   );
 }

@@ -115,7 +115,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     }
 
     if (hasAdjustment) {
-      member = await adjustCrewMemberPtoBalance(params.email, body.adjustBalanceDays as number);
+      member = await adjustCrewMemberPtoBalance(params.email, body.adjustBalanceDays as number, {
+        manual: true,
+      });
     }
     if (hasLocation) {
       member = await setCrewMemberLocation(params.email, body.location as CrewLocation);

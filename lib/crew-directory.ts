@@ -62,6 +62,12 @@ export type CrewMember = {
   /** Available annual-leave (PTO) balance, in working days. Employee Handbook 3.7. */
   ptoBalanceDays: number;
   ptoBalanceUpdatedAt: string;
+  /**
+   * Running sum of admin "Adjust PTO" corrections only — preserved across
+   * handbook sync/recompute so a manual −4 isn't wiped when the directory reloads.
+   * Accrual and approved-PTO deductions do not change this field.
+   */
+  ptoAdjustmentDays: number;
   /** Which team/office this person is based in — mostly used for timezone-aware scheduling. */
   location: CrewLocation;
   /** Full-time / part-time / contractor. */
@@ -95,6 +101,8 @@ function withDefaults(record: CrewMember): CrewMember {
     fixedWfhDays: record.fixedWfhDays ?? [],
     fixedWfhCalendarEventIds: record.fixedWfhCalendarEventIds ?? {},
     level: record.level ?? '',
+    ptoAdjustmentDays:
+      typeof record.ptoAdjustmentDays === 'number' ? record.ptoAdjustmentDays : 0,
   };
 }
 
@@ -203,6 +211,7 @@ export async function addOrUpdateCrewMember(input: {
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     ptoBalanceDays: existing?.ptoBalanceDays ?? input.initialPtoBalanceDays ?? 0,
     ptoBalanceUpdatedAt: existing?.ptoBalanceUpdatedAt ?? new Date().toISOString(),
+    ptoAdjustmentDays: existing?.ptoAdjustmentDays ?? 0,
     location: input.location ?? existing?.location ?? 'VN',
     employmentType,
     weeklyContractedHours,
@@ -313,19 +322,28 @@ export async function setCrewMemberFixedWfh(
   return updated;
 }
 
-/** Positive to grant days (accrual, corrections), negative to deduct (approved PTO). */
+/**
+ * Positive to grant days (accrual, corrections), negative to deduct (approved PTO).
+ * Pass `{ manual: true }` for admin "Adjust PTO" so the delta survives handbook sync.
+ */
 export async function adjustCrewMemberPtoBalance(
   email: string,
-  deltaDays: number
+  deltaDays: number,
+  options?: { manual?: boolean }
 ): Promise<CrewMember> {
   const existing = await getCrewMember(email);
   if (!existing) throw new Error(`No crew member found for email: ${email}`);
+
+  const nextAdjustment = options?.manual
+    ? Math.round(((existing.ptoAdjustmentDays ?? 0) + deltaDays) * 100) / 100
+    : existing.ptoAdjustmentDays ?? 0;
 
   const updated: CrewMember = {
     ...existing,
     // Fallback for directory records created before balance tracking existed.
     ptoBalanceDays: Math.round(((existing.ptoBalanceDays ?? 0) + deltaDays) * 100) / 100,
     ptoBalanceUpdatedAt: new Date().toISOString(),
+    ptoAdjustmentDays: nextAdjustment,
   };
   await getKv().set(keyFor(email), updated);
   return updated;

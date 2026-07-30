@@ -705,8 +705,11 @@ function CrewRow({
         if (data.accrualBackfill) {
           const { accruedDays, takenDays, balanceDays } = data.accrualBackfill;
           if (typeof accruedDays === 'number' && typeof balanceDays === 'number') {
+            const adj = member.ptoAdjustmentDays ?? 0;
             setSuccess(
-              `PTO balance updated to ${balanceDays} day(s) (${accruedDays} accrued since start − ${takenDays ?? 0} taken).`
+              adj !== 0
+                ? `PTO balance updated to ${balanceDays} day(s) (${accruedDays} accrued − ${takenDays ?? 0} taken ${adj > 0 ? '+' : ''}${adj} adjustment).`
+                : `PTO balance updated to ${balanceDays} day(s) (${accruedDays} accrued − ${takenDays ?? 0} taken).`
             );
           } else if ((data.accrualBackfill.monthsGranted ?? 0) > 0) {
             setSuccess(
@@ -717,6 +720,10 @@ function CrewRow({
           }
         } else if (body.backfillAccrual) {
           setSuccess('PTO is already caught up through this month — nothing new to grant.');
+        } else if (typeof body.adjustBalanceDays === 'number') {
+          setSuccess(
+            `PTO adjusted by ${body.adjustBalanceDays > 0 ? '+' : ''}${body.adjustBalanceDays} day(s).`
+          );
         }
         onChanged();
       } catch {
@@ -725,7 +732,7 @@ function CrewRow({
         setLoading(false);
       }
     },
-    [member.email, onChanged]
+    [member.email, member.ptoAdjustmentDays, onChanged]
   );
 
   const saveProfile = useCallback(() => {
@@ -933,6 +940,9 @@ function CrewRow({
         <div className="admin-collapse-expand-inner space-y-3 border-t border-white/10 pt-5">
           <p className="text-xs text-text-muted">
             entitled {entitlement} day(s)/yr · accrued {accruedToDate} day(s) since start
+            {(member.ptoAdjustmentDays ?? 0) !== 0
+              ? ` · manual adj. ${member.ptoAdjustmentDays > 0 ? '+' : ''}${member.ptoAdjustmentDays}`
+              : ''}
             {member.startDate ? '' : ' (set a start date to accrue)'}
           </p>
           {error ? <p className={adminAlertError}>{error}</p> : null}

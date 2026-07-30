@@ -626,6 +626,9 @@ function CrewRow({
   const [showLogPto, setShowLogPto] = useState(false);
   const [logPtoDate, setLogPtoDate] = useState('');
   const [logPtoNote, setLogPtoNote] = useState('');
+  const [showLogWfh, setShowLogWfh] = useState(false);
+  const [logWfhDate, setLogWfhDate] = useState('');
+  const [logWfhNote, setLogWfhNote] = useState('');
   const [editingStart, setEditingStart] = useState(false);
   const [startDateInput, setStartDateInput] = useState(member.startDate ?? '');
   const [pendingLevel, setPendingLevel] = useState(member.level ?? '');
@@ -664,6 +667,7 @@ function CrewRow({
     if (!expanded) {
       setShowAdjust(false);
       setShowLogPto(false);
+      setShowLogWfh(false);
       setEditingStart(false);
     }
   }, [expanded]);
@@ -789,6 +793,35 @@ function CrewRow({
       setLoading(false);
     }
   }, [logPtoDate, logPtoNote, member.email, onChanged]);
+
+  const submitLogWfh = useCallback(async () => {
+    if (!logWfhDate) return;
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/admin/crew/${encodeURIComponent(member.email)}/log-wfh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: logWfhDate, note: logWfhNote || undefined }),
+      });
+      const data = (await res.json()) as ApiErrorBody & { calendarError?: string };
+      if (!res.ok) {
+        setError(describeApiError(data, 'Could not log WFH.'));
+        return;
+      }
+      if (data.calendarError) setError(`Logged, but calendar sync failed: ${data.calendarError}`);
+      else setSuccess('WFH logged — calendar updated (no PTO deducted).');
+      setLogWfhDate('');
+      setLogWfhNote('');
+      setShowLogWfh(false);
+      onChanged();
+    } catch {
+      setError('Could not log WFH. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [logWfhDate, logWfhNote, member.email, onChanged]);
 
   const saveStartDate = useCallback(() => {
     patch({ startDate: startDateInput || null });
@@ -980,6 +1013,16 @@ function CrewRow({
               <button type="button" className={adminBtnGhost} onClick={() => setShowAdjust((v) => !v)}>
                 Adjust PTO
               </button>
+              <button
+                type="button"
+                className={adminBtnGhost}
+                onClick={() => {
+                  setShowLogWfh((v) => !v);
+                  setShowLogPto(false);
+                }}
+              >
+                Log WFH date
+              </button>
               {member.startDate ? (
                 <button
                   type="button"
@@ -991,7 +1034,14 @@ function CrewRow({
                   Sync PTO from start date
                 </button>
               ) : null}
-              <button type="button" className={adminBtnGhost} onClick={() => setShowLogPto((v) => !v)}>
+              <button
+                type="button"
+                className={adminBtnGhost}
+                onClick={() => {
+                  setShowLogPto((v) => !v);
+                  setShowLogWfh(false);
+                }}
+              >
                 Log PTO date
               </button>
               <button type="button" className={adminBtnGhost} onClick={() => setEditingStart((v) => !v)}>
@@ -1084,6 +1134,33 @@ function CrewRow({
                 onClick={submitLogPto}
               >
                 {loading ? 'Logging…' : 'Log & deduct balance'}
+              </button>
+            </div>
+          ) : null}
+
+          {showLogWfh ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminDatePicker
+                className="max-w-[12rem]"
+                value={logWfhDate}
+                onChange={setLogWfhDate}
+                placeholder="WFH date"
+                aria-label="WFH date"
+              />
+              <input
+                type="text"
+                className={`${adminInput} max-w-[16rem]`}
+                placeholder="Reason (optional) — e.g. sick, appointment"
+                value={logWfhNote}
+                onChange={(e) => setLogWfhNote(e.target.value)}
+              />
+              <button
+                type="button"
+                className={adminBtnGhost}
+                disabled={loading || !logWfhDate}
+                onClick={submitLogWfh}
+              >
+                {loading ? 'Logging…' : 'Log WFH'}
               </button>
             </div>
           ) : null}

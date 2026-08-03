@@ -1,5 +1,5 @@
 import { getCrewEventsForDate } from './google-calendar';
-import { listCrewMembers, weekdayCodeFromDate } from './crew-directory';
+import { isManuallyOutToday, listCrewMembers, weekdayCodeFromDate } from './crew-directory';
 import {
   setCrewStatusSnapshot,
   type CrewStatusEntry,
@@ -28,15 +28,21 @@ export async function syncCrewStatusForDate(date: string): Promise<CrewStatusSna
     const key = member.name.trim().toLowerCase();
     const base = outByName.get(key) ?? { name: member.name, status: 'in' as const };
     let status = base.status;
-    // Standing fixed-WFH days — show WFH even if the calendar sync missed the recurring event.
-    if (status === 'in' && weekday && member.fixedWfhDays.includes(weekday)) {
+    let note = base.note;
+
+    // Priority: approved PTO → admin marked out today → fixed/calendar WFH → in studio.
+    if (status !== 'PTO' && isManuallyOutToday(member, date)) {
+      status = 'out';
+      note = note || 'Marked out of studio';
+    } else if (status === 'in' && weekday && member.fixedWfhDays.includes(weekday)) {
       status = 'WFH';
     }
+
     return {
       ...base,
       name: member.name,
       status,
-      note: base.note,
+      note,
       email: member.email,
       location: member.location,
       employmentType: member.employmentType,

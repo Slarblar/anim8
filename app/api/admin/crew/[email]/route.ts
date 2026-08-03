@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth-guards';
 import {
   adjustCrewMemberPtoBalance,
+  adjustMeetingAttendance,
   getCrewMember,
-  incrementMeetingAttendance,
   setCrewMemberActive,
   setCrewMemberEmploymentType,
   setCrewMemberFixedWfh,
   setCrewMemberLevel,
   setCrewMemberLocation,
+  setCrewMemberManualOut,
   setCrewMemberRole,
   setCrewMemberStartDate,
   setCrewMemberWeeklyHours,
@@ -19,6 +20,8 @@ import {
 } from '@/lib/crew-directory';
 import { createFixedWfhCalendarEvent, deleteCalendarEvent } from '@/lib/google-calendar';
 import { recomputePtoBalanceForMember } from '@/lib/pto-accrual';
+import { syncCrewStatusForDate } from '@/lib/crew-status-sync';
+import { studioTodayDateString } from '@/lib/studio-date';
 
 const WEEKDAY_CODES: WeekdayCode[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
 const EMPLOYMENT_TYPES: EmploymentType[] = ['full_time', 'part_time', 'contractor'];
@@ -29,8 +32,12 @@ type PatchBody = {
   startDate?: string | null;
   /** Recalculate balance from handbook (accrued since start date − approved PTO taken). */
   backfillAccrual?: boolean;
-  /** +1 meeting late or absent for the current studio month. */
+  /** Adjust meeting late/absent for the current studio month. */
   meetingAttendance?: MeetingAttendanceKind;
+  /** Usually ±1; defaults to +1 when omitted. */
+  meetingAttendanceDelta?: number;
+  /** Mark out of / back in the studio for today only. */
+  manualOut?: boolean;
   location?: CrewLocation;
   role?: string;
   level?: string;
@@ -54,7 +61,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
   const hasAdjustment = typeof body.adjustBalanceDays === 'number' && body.adjustBalanceDays !== 0;
   const hasStartDate = body.startDate !== undefined;
   const hasBackfill = body.backfillAccrual === true;
-  const hasMeetingAttendance = body.meetingAttendance === 'late' || body.meetingAttendance === 'absent';
+  const meetingAttendanceDelta =
+    typeof body.meetingAttendanceDelta === 'number' && body.meetingAttendanceDelta !== 0
+      ? body.meetingAttendanceDelta
+      : 1;
+  const hasMeetingAttendance =
+    (body.meetingAttendance === 'late' || body.meetingAttendance === 'absent') &&
+    Number.isFinite(meetingAttendanceDelta);
+  const hasManualOut = typeof body.manualOut === 'boolean';
   const hasLocation = body.location === 'US' || body.location === 'VN';
   const hasRole = typeof body.role === 'string';
   const hasLevel = typeof body.level === 'string';
@@ -70,6 +84,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     !hasStartDate &&
     !hasBackfill &&
     !hasMeetingAttendance &&
+    !hasManualOut &&
     !hasLocation &&
     !hasRole &&
     !hasLevel &&
@@ -126,7 +141,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
       });
     }
     if (hasMeetingAttendance) {
-      member = await incrementMeetingAttendance(params.email, body.meetingAttendance as MeetingAttendanceKind);
+      member = await adjustMeetingAttendance(
+        params.email,
+        body.meetingAttendance as MeetingAttendanceKind,
+        meetingAttendanceDelta
+      );
+    }
+    if (hasManualOut) {
+      member = await setCrewMemberManualOut(params.email, body.manualOut as boolean);
+      // Refresh Today's board immediately so crew see the change without waiting on cron.
+      try {
+        await syncCrewStatusForDate(studioTodayDateString());
+      } catch {
+        // Presence was saved — status board will catch up on next sync.
+      }
     }
     if (hasLocation) {
       member = await setCrewMemberLocation(params.email, body.location as CrewLocation);

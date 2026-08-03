@@ -6,6 +6,7 @@ import {
   annualLeaveEntitlementDays,
   currentMeetingAttendance,
   defaultWeeklyHours,
+  isManuallyOutToday,
   type CrewLocation,
   type CrewMember,
   type EmploymentType,
@@ -94,10 +95,10 @@ function formatLevelRole(level?: string, role?: string): string {
 }
 
 function AdminPresencePill({ status }: { status: CrewStatusEntry['status'] }) {
-  if (status === 'PTO') {
+  if (status === 'PTO' || status === 'out') {
     return (
       <span className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
-        <span aria-hidden>🌴</span>
+        <span aria-hidden>{status === 'PTO' ? '🌴' : '🚫'}</span>
         Out
       </span>
     );
@@ -540,6 +541,94 @@ function LocationToggle({
   );
 }
 
+/** Day-only presence: mark someone out of / back in the studio for today's board. */
+function StudioPresenceToggle({
+  isOut,
+  onToggle,
+  disabled,
+}: {
+  isOut: boolean;
+  onToggle: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={!isOut}
+      disabled={disabled}
+      onClick={onToggle}
+      title={
+        isOut
+          ? 'Marked out of studio today — click to mark in'
+          : 'In studio today — click to mark out'
+      }
+      className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-text-muted disabled:opacity-50"
+    >
+      <span className={isOut ? 'text-brand-pink' : undefined}>Out</span>
+      <span
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition ${
+          !isOut ? 'border-brand-lime/50 bg-brand-lime/40' : 'border-brand-pink/40 bg-brand-pink/25'
+        }`}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+            !isOut ? 'translate-x-[1.15rem]' : 'translate-x-0.5'
+          }`}
+        />
+      </span>
+      <span className={!isOut ? 'text-brand-lime' : undefined}>In</span>
+    </button>
+  );
+}
+
+/** Late / Absent control with stacked +/- steppers on the right (brand pink). */
+function MeetingAttendanceControl({
+  label,
+  count,
+  onIncrement,
+  onDecrement,
+  disabled,
+}: {
+  label: string;
+  count: number;
+  onIncrement: () => void;
+  onDecrement: () => void;
+  disabled: boolean;
+}) {
+  const stepClass =
+    'flex flex-1 w-6 items-center justify-center text-[11px] font-bold leading-none text-brand-pink transition hover:bg-brand-pink/20 disabled:opacity-40 disabled:hover:bg-transparent';
+  return (
+    <div className="inline-flex h-8 overflow-hidden rounded-md border border-brand-pink/40 bg-brand-pink/10">
+      <span className="inline-flex items-center px-2.5 text-xs font-semibold text-brand-pink">
+        {label} ({count})
+      </span>
+      <div className="flex h-full w-6 flex-col border-l border-brand-pink/35">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onIncrement}
+          title={`Add ${label.toLowerCase()}`}
+          aria-label={`Add ${label.toLowerCase()}`}
+          className={`${stepClass} border-b border-brand-pink/35`}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          disabled={disabled || count <= 0}
+          onClick={onDecrement}
+          title={`Remove ${label.toLowerCase()}`}
+          aria-label={`Remove ${label.toLowerCase()}`}
+          className={stepClass}
+        >
+          −
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Three-way segmented control — employment type isn't binary like location, so no sliding switch here. */
 function EmploymentTypeToggle({
   value,
@@ -726,6 +815,12 @@ function CrewRow({
           setSuccess(
             `PTO adjusted by ${body.adjustBalanceDays > 0 ? '+' : ''}${body.adjustBalanceDays} day(s).`
           );
+        } else if (typeof body.manualOut === 'boolean') {
+          setSuccess(
+            body.manualOut
+              ? 'Marked out of studio for today — shows on the crew Today board.'
+              : 'Marked in studio for today.'
+          );
         }
         onChanged();
       } catch {
@@ -840,6 +935,10 @@ function CrewRow({
   const togglePendingLocation = useCallback(() => {
     setPendingLocation((current) => (current === 'US' ? 'VN' : 'US'));
   }, []);
+
+  const toggleStudioPresence = useCallback(() => {
+    patch({ manualOut: !isManuallyOutToday(member) });
+  }, [member, patch]);
 
   const setEmploymentDraft = useCallback((next: EmploymentType) => {
     setPendingEmploymentType(next);
@@ -1001,6 +1100,20 @@ function CrewRow({
           </div>
 
           <div>
+            <p className={adminLabel}>Studio today (Out / In — clears overnight)</p>
+            <StudioPresenceToggle
+              isOut={isManuallyOutToday(member)}
+              onToggle={toggleStudioPresence}
+              disabled={loading}
+            />
+            {todayStatus === 'PTO' ? (
+              <p className="mt-1 text-xs text-text-muted">
+                On approved PTO today — board already shows Out regardless of this toggle.
+              </p>
+            ) : null}
+          </div>
+
+          <div>
             <p className={adminLabel}>Employment type</p>
             <EmploymentTypeToggle
               value={pendingEmploymentType}
@@ -1034,24 +1147,20 @@ function CrewRow({
               <button type="button" className={adminBtnGhost} onClick={() => setShowAdjust((v) => !v)}>
                 Adjust PTO
               </button>
-              <button
-                type="button"
-                className={adminBtnGhost}
+              <MeetingAttendanceControl
+                label="Late"
+                count={attendance.late}
                 disabled={loading}
-                onClick={() => patch({ meetingAttendance: 'late' })}
-                title="Mark late to a meeting this month"
-              >
-                + Late ({attendance.late})
-              </button>
-              <button
-                type="button"
-                className={adminBtnGhost}
+                onIncrement={() => patch({ meetingAttendance: 'late', meetingAttendanceDelta: 1 })}
+                onDecrement={() => patch({ meetingAttendance: 'late', meetingAttendanceDelta: -1 })}
+              />
+              <MeetingAttendanceControl
+                label="Absent"
+                count={attendance.absent}
                 disabled={loading}
-                onClick={() => patch({ meetingAttendance: 'absent' })}
-                title="Mark absent from a meeting this month"
-              >
-                + Absent ({attendance.absent})
-              </button>
+                onIncrement={() => patch({ meetingAttendance: 'absent', meetingAttendanceDelta: 1 })}
+                onDecrement={() => patch({ meetingAttendance: 'absent', meetingAttendanceDelta: -1 })}
+              />
               <button
                 type="button"
                 className={adminBtnGhost}

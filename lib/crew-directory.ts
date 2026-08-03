@@ -1,5 +1,6 @@
 import { getKv } from './kv';
 import { monthKeyInTimeZone } from './pto-accrual-shared';
+import { studioTodayDateString } from './studio-date';
 
 /** Mon–Fri only — the fixed WFH schedule doesn't cover weekends. */
 export type WeekdayCode = 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
@@ -98,6 +99,12 @@ export type CrewMember = {
   meetingAttendanceLastMonthKey: string | null;
   meetingLateCountLastMonth: number;
   meetingAbsentCountLastMonth: number;
+  /**
+   * Studio date (YYYY-MM-DD) this person was manually marked "out" for.
+   * Only applies when it equals today's studio date — clears overnight so
+   * presence doesn't stick across days.
+   */
+  manualOutDate: string | null;
 };
 
 /** Fills in fields that may be missing on records created before they existed. */
@@ -124,6 +131,7 @@ function withDefaults(record: CrewMember): CrewMember {
       typeof record.meetingLateCountLastMonth === 'number' ? record.meetingLateCountLastMonth : 0,
     meetingAbsentCountLastMonth:
       typeof record.meetingAbsentCountLastMonth === 'number' ? record.meetingAbsentCountLastMonth : 0,
+    manualOutDate: record.manualOutDate ?? null,
   };
 }
 
@@ -244,6 +252,7 @@ export async function addOrUpdateCrewMember(input: {
     meetingAttendanceLastMonthKey: existing?.meetingAttendanceLastMonthKey ?? null,
     meetingLateCountLastMonth: existing?.meetingLateCountLastMonth ?? 0,
     meetingAbsentCountLastMonth: existing?.meetingAbsentCountLastMonth ?? 0,
+    manualOutDate: existing?.manualOutDate ?? null,
   };
 
   await getKv().set(keyFor(email), record);
@@ -425,15 +434,35 @@ export async function incrementMeetingAttendance(
   email: string,
   kind: MeetingAttendanceKind
 ): Promise<CrewMember> {
+  return adjustMeetingAttendance(email, kind, 1);
+}
+
+/**
+ * Adjust late/absent for the current studio month by `delta` (usually ±1).
+ * Floors at 0 — never goes negative.
+ */
+export async function adjustMeetingAttendance(
+  email: string,
+  kind: MeetingAttendanceKind,
+  delta: number
+): Promise<CrewMember> {
+  if (!Number.isFinite(delta) || delta === 0) {
+    throw new Error('Attendance delta must be a non-zero number.');
+  }
   const existing = await getCrewMember(email);
   if (!existing) throw new Error(`No crew member found for email: ${email}`);
 
   const rolled = withAttendanceRollover(existing);
+  const nextLate =
+    kind === 'late' ? Math.max(0, (rolled.meetingLateCount ?? 0) + delta) : rolled.meetingLateCount ?? 0;
+  const nextAbsent =
+    kind === 'absent'
+      ? Math.max(0, (rolled.meetingAbsentCount ?? 0) + delta)
+      : rolled.meetingAbsentCount ?? 0;
   const updated: CrewMember = {
     ...rolled,
-    meetingLateCount: kind === 'late' ? (rolled.meetingLateCount ?? 0) + 1 : rolled.meetingLateCount ?? 0,
-    meetingAbsentCount:
-      kind === 'absent' ? (rolled.meetingAbsentCount ?? 0) + 1 : rolled.meetingAbsentCount ?? 0,
+    meetingLateCount: nextLate,
+    meetingAbsentCount: nextAbsent,
   };
   await getKv().set(keyFor(email), updated);
   return updated;
@@ -484,4 +513,27 @@ export async function listCurrentMeetingAttendance(
     })
     .filter((row) => row.late > 0 || row.absent > 0)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** True when admin marked this person out for the studio's "today". */
+export function isManuallyOutToday(
+  member: Pick<CrewMember, 'manualOutDate'>,
+  today: string = studioTodayDateString()
+): boolean {
+  return !!member.manualOutDate && member.manualOutDate === today;
+}
+
+/**
+ * Mark someone out of / back in the studio for today only.
+ * `out: true` stamps today's studio date; `out: false` clears the mark.
+ */
+export async function setCrewMemberManualOut(email: string, out: boolean): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  const updated: CrewMember = {
+    ...existing,
+    manualOutDate: out ? studioTodayDateString() : null,
+  };
+  await getKv().set(keyFor(email), updated);
+  return updated;
 }

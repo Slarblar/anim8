@@ -3,7 +3,8 @@ import { getKv } from './kv';
 
 export type CrewStatusEntry = {
   name: string;
-  status: 'in' | 'PTO' | 'WFH';
+  /** in = in studio · WFH = work from home · PTO = approved time off · out = admin-marked not in studio today */
+  status: 'in' | 'PTO' | 'WFH' | 'out';
   note?: string;
   /** Crew directory email, when this entry came from a directory member — used to look up their Asana avatar. */
   email?: string;

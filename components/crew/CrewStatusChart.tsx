@@ -29,11 +29,11 @@ function CrewAvatar({ entry }: { entry: CrewStatusEntry }) {
 }
 
 function StatusPill({ status }: { status: CrewStatusEntry['status'] }) {
-  if (status === 'PTO') {
+  if (status === 'PTO' || status === 'out') {
     return (
       <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
         <HoverTranslate fit="badge" en={crewT.en.statusChart.statusOut} vn={crewT.vn.statusChart.statusOut}>
-          <span aria-hidden>🌴</span>
+          <span aria-hidden>{status === 'PTO' ? '🌴' : '🚫'}</span>
         </HoverTranslate>
       </span>
     );

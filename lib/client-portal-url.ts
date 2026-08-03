@@ -1,8 +1,8 @@
 /** Public origins that serve this app (same Vercel deployment). */
 export const CLIENT_PORTAL_ORIGINS = [
-  'https://anim-8.xyz',
   'https://anim-8studios.com',
   'https://www.anim-8studios.com',
+  'https://anim-8.xyz',
 ] as const;
 
 export function clientPortalPath(slug: string): string {

@@ -14,9 +14,26 @@ function adminRecipients(): string[] {
     .filter(Boolean);
 }
 
+/** Canonical host for crew email CTAs — more globally recognizable than .xyz. */
+const EMAIL_APP_BASE_URL = 'https://anim-8studios.com';
+
 /** Base URL for links inside emails — see APP_BASE_URL in .env.local.example. */
 function baseUrl(): string {
-  return (process.env.APP_BASE_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+  const configured = process.env.APP_BASE_URL?.replace(/\/+$/, '');
+  if (!configured) {
+    return process.env.VERCEL || process.env.NODE_ENV === 'production'
+      ? EMAIL_APP_BASE_URL
+      : 'http://localhost:3000';
+  }
+  // Legacy deployments may still have APP_BASE_URL pointed at anim-8.xyz —
+  // rewrite those email links to .com without breaking custom/local values.
+  try {
+    const host = new URL(configured).hostname.replace(/^www\./, '').toLowerCase();
+    if (host === 'anim-8.xyz') return EMAIL_APP_BASE_URL;
+  } catch {
+    /* keep configured */
+  }
+  return configured;
 }
 
 /**

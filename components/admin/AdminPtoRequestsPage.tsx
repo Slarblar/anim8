@@ -122,7 +122,8 @@ function RequestRow({
             <span className="ml-2 text-xs font-normal text-text-muted">{request.employeeEmail}</span>
           </p>
           <p className={adminBody}>
-            {request.type === 'PTO' ? 'Time off' : 'Work from home'} ·{' '}
+            {request.type === 'PTO' ? 'Time off' : 'Work from home'}
+            {request.dayPortion === 'half' ? ' · Half day' : ''} ·{' '}
             {formatRange(request.startDate, request.endDate)}
           </p>
           {request.type === 'PTO' && request.employeeBalanceDays !== null ? (

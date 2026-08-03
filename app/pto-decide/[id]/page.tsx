@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { countBusinessDays, getPtoRequest } from '@/lib/pto-requests';
+import { getPtoRequest, ptoDaysForRequest } from '@/lib/pto-requests';
 import { getCrewMember } from '@/lib/crew-directory';
 import { formatBothTimeZones } from '@/lib/timezone-format';
 
@@ -85,7 +85,7 @@ export default async function PtoDecidePage({
     let balanceDays: number | null = null;
     let requestedDays: number | null = null;
     if (request.type === 'PTO') {
-      requestedDays = countBusinessDays(request.startDate, request.endDate);
+      requestedDays = ptoDaysForRequest(request);
       const member = await getCrewMember(request.employeeEmail);
       balanceDays = member?.ptoBalanceDays ?? null;
     }
@@ -96,7 +96,10 @@ export default async function PtoDecidePage({
         <h1 className="mb-1 text-lg font-black uppercase tracking-tight text-white">
           {request.type} request — {request.employeeName}
         </h1>
-        <p className="mb-4 text-sm text-text-muted">{range(request.startDate, request.endDate)}</p>
+        <p className="mb-4 text-sm text-text-muted">
+          {range(request.startDate, request.endDate)}
+          {request.dayPortion === 'half' ? ' · Half day' : ''}
+        </p>
         {balanceDays !== null ? (
           <p className="mb-3 text-xs text-text-muted">
             Requesting {requestedDays} day{requestedDays === 1 ? '' : 's'} · Balance: {balanceDays} day

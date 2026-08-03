@@ -1,6 +1,6 @@
 import 'server-only';
 import type { WeeklyDigest } from './weekly-digest';
-import { countBusinessDays, type PtoRequest } from './pto-requests';
+import { ptoDaysForRequest, type PtoRequest } from './pto-requests';
 import { getCrewMember } from './crew-directory';
 import { emailButton, escapeHtml, noteBlock, renderEmailHtml, statLine, warningBanner } from './email-template';
 import { formatBothTimeZones } from './timezone-format';
@@ -77,17 +77,22 @@ function formatRange(startDate: string, endDate: string): string {
  *    request (PTO only — WFH doesn't draw from the balance) would take
  *    them negative.
  */
-export async function notifyAdminsNewPtoRequest(request: PtoRequest): Promise<boolean> {
+export async function notifyAdminsNewPtoRequest(
+  request: PtoRequest,
+  options?: { isEdit?: boolean }
+): Promise<boolean> {
   const recipients = adminRecipients();
   if (recipients.length === 0) return false;
 
   const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
   const range = formatRange(request.startDate, request.endDate);
+  const halfSuffix = request.dayPortion === 'half' ? ' (half day)' : '';
+  const isEdit = options?.isEdit === true;
 
   let balanceDays: number | null = null;
   let requestedDays: number | null = null;
   if (request.type === 'PTO') {
-    requestedDays = countBusinessDays(request.startDate, request.endDate);
+    requestedDays = ptoDaysForRequest(request);
     try {
       const member = await getCrewMember(request.employeeEmail);
       balanceDays = member?.ptoBalanceDays ?? null;
@@ -102,13 +107,19 @@ export async function notifyAdminsNewPtoRequest(request: PtoRequest): Promise<bo
   const reviewPageUrl = `${baseUrl()}/pto-decide/${request.id}?token=${request.decisionToken}`;
   const dashboardUrl = `${baseUrl()}/admin/pto-requests`;
 
-  const subject = `New ${request.type} request — ${request.employeeName}`;
+  const subject = isEdit
+    ? `Updated ${request.type} request — ${request.employeeName}`
+    : `New ${request.type} request — ${request.employeeName}`;
 
-  const submittedBoth = formatBothTimeZones(request.createdAt);
+  const stamp = request.updatedAt ?? request.createdAt;
+  const submittedBoth = formatBothTimeZones(stamp);
+  const stampLabel = isEdit ? 'Updated' : 'Submitted';
 
   const textLines = [
-    `${request.employeeName} requested ${request.type} for ${range}.`,
-    `Submitted: ${submittedBoth}`,
+    isEdit
+      ? `${request.employeeName} updated their ${request.type} request for ${range}${halfSuffix}. It needs approval again.`
+      : `${request.employeeName} requested ${request.type} for ${range}${halfSuffix}.`,
+    `${stampLabel}: ${submittedBoth}`,
     request.note ? `\nNote: ${request.note}` : null,
     balanceDays !== null ? `\nCurrent balance: ${balanceDays} days · Requesting: ${requestedDays} days` : null,
     overdraft ? `\n⚠ This would take their balance negative.` : null,
@@ -120,10 +131,12 @@ export async function notifyAdminsNewPtoRequest(request: PtoRequest): Promise<bo
   ].filter((line) => line !== null);
 
   const bodyHtml = [
-    `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> requested <strong style="color:#ffffff;">${escapeHtml(request.type)}</strong> for <strong style="color:#ffffff;">${escapeHtml(range)}</strong>.</p>`,
+    isEdit
+      ? `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> updated their <strong style="color:#ffffff;">${escapeHtml(request.type)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}${escapeHtml(halfSuffix)}</strong>. It needs approval again.</p>`
+      : `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> requested <strong style="color:#ffffff;">${escapeHtml(request.type)}</strong> for <strong style="color:#ffffff;">${escapeHtml(range)}${escapeHtml(halfSuffix)}</strong>.</p>`,
     // Shown in both Vietnam (studio) and admin-team timezones — this is a static
     // email, so it can't detect the reader's own zone the way the web app can.
-    `<p style="margin:0 0 12px 0;font-size:12px;color:#8b95a8;">Submitted ${escapeHtml(submittedBoth)}</p>`,
+    `<p style="margin:0 0 12px 0;font-size:12px;color:#8b95a8;">${stampLabel} ${escapeHtml(submittedBoth)}</p>`,
     balanceDays !== null
       ? `<div style="margin:16px 0;">${statLine('Current balance', `${balanceDays} day${balanceDays === 1 ? '' : 's'}`)}${statLine('Requesting', `${requestedDays} day${requestedDays === 1 ? '' : 's'}`)}</div>`
       : '<div style="margin:16px 0 0 0;"></div>',

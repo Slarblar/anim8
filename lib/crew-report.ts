@@ -6,7 +6,7 @@ import {
   type CrewLocation,
   type EmploymentType,
 } from './crew-directory';
-import { countBusinessDays, listPtoRequestsForEmployee, type PtoRequest } from './pto-requests';
+import { listPtoRequestsForEmployee, ptoDaysForRequest, type PtoRequest } from './pto-requests';
 import { getKPIDataForUser, type PersonKPISummary } from './kpi';
 import { studioTodayDateString } from './studio-date';
 
@@ -58,7 +58,7 @@ export async function buildCrewReport(email: string): Promise<CrewReportData | n
     .filter(
       (r) => r.type === 'PTO' && r.status === 'approved' && Number(r.startDate.slice(0, 4)) === currentYear
     )
-    .reduce((sum, r) => sum + countBusinessDays(r.startDate, r.endDate), 0);
+    .reduce((sum, r) => sum + ptoDaysForRequest(r), 0);
 
   return {
     member: {

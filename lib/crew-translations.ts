@@ -104,8 +104,13 @@ type PtoPageT = {
   newRequestTitle: string;
   newRequestSubtitle: string;
   formTypeLabel: string;
+  formDurationLabel: string;
+  formFullDay: string;
+  formHalfDay: string;
+  formHalfDayHint: string;
   formHaveAvailable: (n: number) => string;
   formLoadingBalance: string;
+  formDate: string;
   formStartDate: string;
   formEndDate: string;
   formNoteOptional: string;
@@ -114,8 +119,17 @@ type PtoPageT = {
   formOverdraftWarning: (requested: number, balance: number) => string;
   formSubmit: string;
   formSubmitting: string;
+  formUpdate: string;
+  formUpdating: string;
+  formEditResubmitNote: string;
   formSubmitError: string;
   formSubmitErrorRetry: string;
+  formEditError: string;
+  formEditErrorRetry: string;
+  editRequestTitle: string;
+  editRequestSubtitle: string;
+  editButton: string;
+  halfDayLabel: string;
   deleteButton: string;
   deleteConfirm: string;
   deleteConfirmYes: string;
@@ -231,21 +245,37 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       newRequestSubtitle:
         "Submit a request — an admin will approve or reject it, and it'll sync to the team calendar.",
       formTypeLabel: 'Type',
+      formDurationLabel: 'Duration',
+      formFullDay: 'Full day',
+      formHalfDay: 'Half day',
+      formHalfDayHint: 'Half-day requests are for a single date and use 0.5 of a PTO day.',
       formHaveAvailable: (n) => `You have ${n} day${n === 1 ? '' : 's'} available`,
       formLoadingBalance: 'Loading your available balance…',
+      formDate: 'Date',
       formStartDate: 'Start date',
       formEndDate: 'End date',
       formNoteOptional: 'Note (optional)',
       formNotePlaceholder: 'Anything your admin should know…',
-      formRequestingDays: (n) => `Requesting ${n} working day${n === 1 ? '' : 's'}`,
+      formRequestingDays: (n) =>
+        n === 0.5 ? 'Requesting ½ working day' : `Requesting ${n} working day${n === 1 ? '' : 's'}`,
       formOverdraftWarning: (requested, balance) =>
         `⚠ This request is for ${requested} days, more than your ${balance} day${
           balance === 1 ? '' : 's'
         } available. You can still submit it — your admin will review it — but it will take your balance negative if approved as-is.`,
       formSubmit: 'Submit request',
       formSubmitting: 'Submitting…',
+      formUpdate: 'Update request',
+      formUpdating: 'Updating…',
+      formEditResubmitNote:
+        'Saving will send this back to admins for approval. If it was already approved, the old calendar entry and PTO deduction are reversed until it is approved again.',
       formSubmitError: 'Could not submit request.',
       formSubmitErrorRetry: 'Could not submit request. Please try again.',
+      formEditError: 'Could not update request.',
+      formEditErrorRetry: 'Could not update request. Please try again.',
+      editRequestTitle: 'Edit PTO / WFH request',
+      editRequestSubtitle: 'Changes go back through admin approval before they sync to the calendar.',
+      editButton: 'Edit',
+      halfDayLabel: 'Half day',
       deleteButton: 'Delete',
       deleteConfirm: 'Delete this record? This cannot be undone.',
       deleteConfirmYes: 'Yes, delete',
@@ -351,19 +381,35 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       newRequestSubtitle:
         'Gửi yêu cầu — admin sẽ duyệt hoặc từ chối, và yêu cầu sẽ được đồng bộ vào lịch của nhóm.',
       formTypeLabel: 'Loại',
+      formDurationLabel: 'Thời lượng',
+      formFullDay: 'Cả ngày',
+      formHalfDay: 'Nửa ngày',
+      formHalfDayHint: 'Yêu cầu nửa ngày chỉ áp dụng cho một ngày và trừ 0.5 ngày PTO.',
       formHaveAvailable: (n) => `Bạn còn ${n} ngày nghỉ`,
       formLoadingBalance: 'Đang tải số ngày nghỉ khả dụng…',
+      formDate: 'Ngày',
       formStartDate: 'Ngày bắt đầu',
       formEndDate: 'Ngày kết thúc',
       formNoteOptional: 'Ghi chú (không bắt buộc)',
       formNotePlaceholder: 'Điều gì admin cần biết…',
-      formRequestingDays: (n) => `Yêu cầu ${n} ngày làm việc`,
+      formRequestingDays: (n) =>
+        n === 0.5 ? 'Yêu cầu ½ ngày làm việc' : `Yêu cầu ${n} ngày làm việc`,
       formOverdraftWarning: (requested, balance) =>
         `⚠ Yêu cầu này là ${requested} ngày, nhiều hơn ${balance} ngày còn lại của bạn. Bạn vẫn có thể gửi — admin sẽ xem xét — nhưng nếu được duyệt, số ngày nghỉ của bạn sẽ bị âm.`,
       formSubmit: 'Gửi yêu cầu',
       formSubmitting: 'Đang gửi…',
+      formUpdate: 'Cập nhật yêu cầu',
+      formUpdating: 'Đang cập nhật…',
+      formEditResubmitNote:
+        'Lưu sẽ gửi lại cho admin duyệt. Nếu đã được duyệt trước đó, lịch và số ngày PTO đã trừ sẽ được hoàn lại cho đến khi được duyệt lại.',
       formSubmitError: 'Không thể gửi yêu cầu.',
       formSubmitErrorRetry: 'Không thể gửi yêu cầu. Vui lòng thử lại.',
+      formEditError: 'Không thể cập nhật yêu cầu.',
+      formEditErrorRetry: 'Không thể cập nhật yêu cầu. Vui lòng thử lại.',
+      editRequestTitle: 'Sửa yêu cầu nghỉ phép / WFH',
+      editRequestSubtitle: 'Mọi thay đổi cần admin duyệt lại trước khi đồng bộ vào lịch.',
+      editButton: 'Sửa',
+      halfDayLabel: 'Nửa ngày',
       deleteButton: 'Xóa',
       deleteConfirm: 'Xóa bản ghi này? Không thể hoàn tác.',
       deleteConfirmYes: 'Có, xóa',

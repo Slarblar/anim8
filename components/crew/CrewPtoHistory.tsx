@@ -1,7 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { canEditPtoRequest } from '@/lib/pto-days';
 import type { PtoRequest } from '@/lib/pto-requests';
+import { studioTodayDateString } from '@/lib/studio-date';
 import {
   adminAlertError,
   adminBadgeApproved,
@@ -39,6 +42,7 @@ function HistoryRow({ request, onDeleted }: { request: PtoRequest; onDeleted: ()
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const editable = canEditPtoRequest(request, studioTodayDateString());
 
   const runDelete = useCallback(async () => {
     setDeleting(true);
@@ -66,6 +70,12 @@ function HistoryRow({ request, onDeleted }: { request: PtoRequest; onDeleted: ()
             en={request.type === 'PTO' ? crewT.en.ptoPage.typePto : crewT.en.ptoPage.typeWfh}
             vn={request.type === 'PTO' ? crewT.vn.ptoPage.typePto : crewT.vn.ptoPage.typeWfh}
           />
+          {request.dayPortion === 'half' ? (
+            <span className="ml-2 text-xs font-normal text-text-muted">
+              ·{' '}
+              <HoverTranslate en={crewT.en.ptoPage.halfDayLabel} vn={crewT.vn.ptoPage.halfDayLabel} />
+            </span>
+          ) : null}
         </p>
         <p className={adminBody}>{formatRange(request.startDate, request.endDate)}</p>
         {request.note ? <p className="mt-1 text-xs text-text-muted">{request.note}</p> : null}
@@ -79,32 +89,42 @@ function HistoryRow({ request, onDeleted }: { request: PtoRequest; onDeleted: ()
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
         <StatusBadge status={request.status} />
-        {hasPassed(request.endDate) ? (
-          confirming ? (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-text-muted">{c.deleteConfirm}</span>
+        <div className="flex items-center gap-2">
+          {editable ? (
+            <Link
+              href={`/crew/pto/${encodeURIComponent(request.id)}/edit`}
+              className="text-[11px] font-medium text-brand-cyan underline-offset-2 transition hover:underline"
+            >
+              {c.editButton}
+            </Link>
+          ) : null}
+          {hasPassed(request.endDate) ? (
+            confirming ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-text-muted">{c.deleteConfirm}</span>
+                <button
+                  type="button"
+                  className={adminBtnDanger}
+                  disabled={deleting}
+                  onClick={runDelete}
+                >
+                  {c.deleteConfirmYes}
+                </button>
+                <button type="button" className={adminBtnGhost} disabled={deleting} onClick={() => setConfirming(false)}>
+                  {c.deleteConfirmCancel}
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
-                className={adminBtnDanger}
-                disabled={deleting}
-                onClick={runDelete}
+                className="text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline"
+                onClick={() => setConfirming(true)}
               >
-                {c.deleteConfirmYes}
+                {c.deleteButton}
               </button>
-              <button type="button" className={adminBtnGhost} disabled={deleting} onClick={() => setConfirming(false)}>
-                {c.deleteConfirmCancel}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline"
-              onClick={() => setConfirming(true)}
-            >
-              {c.deleteButton}
-            </button>
-          )
-        ) : null}
+            )
+          ) : null}
+        </div>
       </div>
     </li>
   );

@@ -54,19 +54,26 @@ export type PtoCalendarEventInput = {
   endDate: string;
   requestId: string;
   note?: string;
+  /** Half-day shows in the event title; still an all-day marker on that date. */
+  dayPortion?: 'full' | 'half';
 };
 
 export async function createPtoCalendarEvent(input: PtoCalendarEventInput): Promise<string> {
   const calendar = getCalendarClient();
   const emoji = input.type === 'PTO' ? '🌴' : '🏠';
+  const halfLabel = input.dayPortion === 'half' ? ' (Half day)' : '';
+  const noteParts = [
+    input.dayPortion === 'half' ? 'Half day' : null,
+    input.note?.trim() || null,
+  ].filter(Boolean);
 
   const res = await calendar.events.insert({
     calendarId: getCalendarId(),
     requestBody: {
-      summary: `${emoji} ${input.type} — ${input.employeeName}`,
-      description: input.note || undefined,
+      summary: `${emoji} ${input.type}${halfLabel} — ${input.employeeName}`,
+      description: noteParts.length > 0 ? noteParts.join('\n') : undefined,
       start: { date: input.startDate },
-      end: { date: nextDay(input.endDate) },
+      end: { date: nextDay(input.dayPortion === 'half' ? input.startDate : input.endDate) },
       // 11 = tomato (red) for PTO, 9 = blueberry for WFH — Google's fixed colorId palette.
       colorId: input.type === 'PTO' ? '11' : '9',
       extendedProperties: {
@@ -74,6 +81,7 @@ export async function createPtoCalendarEvent(input: PtoCalendarEventInput): Prom
           anim8PortalRequestId: input.requestId,
           anim8PortalType: input.type,
           anim8PortalEmployeeName: input.employeeName,
+          anim8PortalDayPortion: input.dayPortion === 'half' ? 'half' : 'full',
         },
       },
     },

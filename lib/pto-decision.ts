@@ -2,7 +2,12 @@ import 'server-only';
 import { adjustCrewMemberPtoBalance } from './crew-directory';
 import { createPtoCalendarEvent } from './google-calendar';
 import { notifyEmployeePtoDecision } from './crew-notify';
-import { countBusinessDays, decidePtoRequest, getPtoRequest, type PtoRequest } from './pto-requests';
+import {
+  decidePtoRequest,
+  getPtoRequest,
+  ptoDaysForRequest,
+  type PtoRequest,
+} from './pto-requests';
 
 export class PtoDecisionError extends Error {}
 
@@ -35,6 +40,7 @@ export async function applyPtoDecision(input: {
         endDate: existing.endDate,
         requestId: existing.id,
         note: existing.note,
+        dayPortion: existing.dayPortion,
       });
     } catch (err) {
       // Still record the approval — don't lose the decision if Calendar
@@ -45,7 +51,7 @@ export async function applyPtoDecision(input: {
     // Only PTO draws down the balance — WFH is unlimited (Handbook 3.1/3.7).
     if (existing.type === 'PTO') {
       try {
-        const days = countBusinessDays(existing.startDate, existing.endDate);
+        const days = ptoDaysForRequest(existing);
         await adjustCrewMemberPtoBalance(existing.employeeEmail, -days);
       } catch (err) {
         balanceError = err instanceof Error ? err.message : 'Failed to update the PTO balance.';

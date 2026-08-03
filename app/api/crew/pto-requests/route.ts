@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCrewSession } from '@/lib/auth-guards';
 import { getDemoPtoRequests, isCrewDemoUser } from '@/lib/crew-demo';
-import { createPtoRequest, listPtoRequestsForEmployee } from '@/lib/pto-requests';
+import { createPtoRequest, listPtoRequestsForEmployee, type DayPortion } from '@/lib/pto-requests';
 import { notifyAdminsNewPtoRequest } from '@/lib/crew-notify';
+import { normalizeDayPortion } from '@/lib/pto-days';
 
 export async function GET() {
   const session = await requireCrewSession();
@@ -21,6 +22,7 @@ type CreateBody = {
   startDate?: string;
   endDate?: string;
   note?: string;
+  dayPortion?: DayPortion;
 };
 
 export async function POST(req: NextRequest) {
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest) {
       startDate: body.startDate,
       endDate: body.endDate,
       note: body.note ?? '',
+      dayPortion: normalizeDayPortion(body.dayPortion),
     });
 
     // Best-effort — a missing/misconfigured Resend key shouldn't block the

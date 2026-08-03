@@ -1,6 +1,15 @@
 import { customAlphabet } from 'nanoid';
 import { getKv } from './kv';
+import {
+  canEditPtoRequest as canEditPtoRequestShared,
+  normalizeDayPortion,
+  requestedWorkingDays,
+  type DayPortion,
+} from './pto-days';
 import { studioTodayDateString } from './studio-date';
+
+export type { DayPortion } from './pto-days';
+export { countBusinessDays, requestedWorkingDays } from './pto-days';
 
 export type PtoRequestType = 'PTO' | 'WFH';
 export type PtoRequestStatus = 'pending' | 'approved' | 'rejected';
@@ -14,10 +23,17 @@ export type PtoRequest = {
   startDate: string;
   /** YYYY-MM-DD, inclusive. */
   endDate: string;
+  /**
+   * Full working day(s) vs a single half day.
+   * Half-day requires startDate === endDate; older records default to full.
+   */
+  dayPortion: DayPortion;
   note: string;
   status: PtoRequestStatus;
   calendarEventId?: string;
   createdAt: string;
+  /** Set when the employee last edited and re-submitted for approval. */
+  updatedAt?: string;
   decidedAt?: string;
   decidedBy?: string;
   decisionNote?: string;
@@ -45,17 +61,31 @@ function keyFor(id: string): string {
   return `${KEY_PREFIX}${id}`;
 }
 
-/** Mon–Fri only, inclusive — matches the Handbook's "working days" definition. */
-export function countBusinessDays(startDate: string, endDate: string): number {
-  let count = 0;
-  const cur = new Date(`${startDate}T00:00:00Z`);
-  const end = new Date(`${endDate}T00:00:00Z`);
-  while (cur <= end) {
-    const day = cur.getUTCDay();
-    if (day !== 0 && day !== 6) count++;
-    cur.setUTCDate(cur.getUTCDate() + 1);
+function withDefaults(record: PtoRequest): PtoRequest {
+  return {
+    ...record,
+    dayPortion: normalizeDayPortion(record.dayPortion),
+  };
+}
+
+function assertValidDates(startDate: string, endDate: string, dayPortion: DayPortion): void {
+  if (!startDate || !endDate) {
+    throw new Error('Start and end dates are required.');
   }
-  return count;
+  if (endDate < startDate) {
+    throw new Error('End date must be on or after the start date.');
+  }
+  if (dayPortion === 'half' && startDate !== endDate) {
+    throw new Error('Half-day requests must be for a single date.');
+  }
+}
+
+/** True when the employee may still edit and re-submit this request. */
+export function canEditPtoRequest(
+  request: Pick<PtoRequest, 'status' | 'startDate' | 'endDate'>,
+  today: string = studioTodayDateString()
+): boolean {
+  return canEditPtoRequestShared(request, today);
 }
 
 export async function createPtoRequest(input: {
@@ -65,13 +95,10 @@ export async function createPtoRequest(input: {
   startDate: string;
   endDate: string;
   note: string;
+  dayPortion?: DayPortion;
 }): Promise<PtoRequest> {
-  if (!input.startDate || !input.endDate) {
-    throw new Error('Start and end dates are required.');
-  }
-  if (input.endDate < input.startDate) {
-    throw new Error('End date must be on or after the start date.');
-  }
+  const dayPortion = normalizeDayPortion(input.dayPortion);
+  assertValidDates(input.startDate, input.endDate, dayPortion);
 
   const record: PtoRequest = {
     id: genId(),
@@ -79,7 +106,8 @@ export async function createPtoRequest(input: {
     employeeName: input.employeeName.trim(),
     type: input.type,
     startDate: input.startDate,
-    endDate: input.endDate,
+    endDate: dayPortion === 'half' ? input.startDate : input.endDate,
+    dayPortion,
     note: input.note.trim(),
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -93,8 +121,54 @@ export async function createPtoRequest(input: {
   return record;
 }
 
+/**
+ * Edit an existing request and put it back into the pending queue.
+ * Caller is responsible for restoring balance / deleting calendar when the
+ * previous status was approved (see PATCH route).
+ */
+export async function updateAndResubmitPtoRequest(input: {
+  id: string;
+  type: PtoRequestType;
+  startDate: string;
+  endDate: string;
+  note: string;
+  dayPortion?: DayPortion;
+}): Promise<{ previous: PtoRequest; request: PtoRequest }> {
+  const existing = await getPtoRequest(input.id);
+  if (!existing) throw new Error('Request not found.');
+  if (!canEditPtoRequest(existing)) {
+    throw new Error('This request can no longer be edited.');
+  }
+
+  const dayPortion = normalizeDayPortion(input.dayPortion);
+  assertValidDates(input.startDate, input.endDate, dayPortion);
+
+  const record: PtoRequest = {
+    ...existing,
+    type: input.type,
+    startDate: input.startDate,
+    endDate: dayPortion === 'half' ? input.startDate : input.endDate,
+    dayPortion,
+    note: input.note.trim(),
+    status: 'pending',
+    updatedAt: new Date().toISOString(),
+    decidedAt: undefined,
+    decidedBy: undefined,
+    decisionNote: undefined,
+    calendarEventId: undefined,
+    // New token so old approve/reject email links stop working.
+    decisionToken: genToken(),
+  };
+
+  const kv = getKv();
+  await kv.set(keyFor(record.id), record);
+  await kv.sadd(PENDING_INDEX_KEY, record.id);
+  return { previous: existing, request: record };
+}
+
 export async function getPtoRequest(id: string): Promise<PtoRequest | null> {
-  return getKv().get<PtoRequest>(keyFor(id));
+  const record = await getKv().get<PtoRequest>(keyFor(id));
+  return record ? withDefaults(record) : null;
 }
 
 async function hydrate(ids: string[]): Promise<PtoRequest[]> {
@@ -177,4 +251,12 @@ export async function decidePtoRequest(input: {
   await kv.set(keyFor(input.id), record);
   await kv.srem(PENDING_INDEX_KEY, input.id);
   return record;
+}
+
+/** Convenience for callers that already have a request-shaped object. */
+export function ptoDaysForRequest(
+  request: Pick<PtoRequest, 'startDate' | 'endDate' | 'dayPortion' | 'type'>
+): number {
+  if (request.type !== 'PTO') return 0;
+  return requestedWorkingDays(request.startDate, request.endDate, request.dayPortion);
 }

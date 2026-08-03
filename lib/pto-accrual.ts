@@ -6,7 +6,7 @@ import {
   listCrewMembers,
   type CrewMember,
 } from './crew-directory';
-import { countBusinessDays, listPtoRequestsForEmployee } from './pto-requests';
+import { listPtoRequestsForEmployee, ptoDaysForRequest } from './pto-requests';
 import { studioTodayDateString } from './studio-date';
 import {
   computeAccruedPtoDays as computeAccruedPtoDaysShared,
@@ -45,7 +45,7 @@ export async function computePtoDaysTaken(email: string): Promise<number> {
   const requests = await listPtoRequestsForEmployee(email);
   const taken = requests
     .filter((r) => r.type === 'PTO' && r.status === 'approved')
-    .reduce((sum, r) => sum + countBusinessDays(r.startDate, r.endDate), 0);
+    .reduce((sum, r) => sum + ptoDaysForRequest(r), 0);
   return round2(taken);
 }
 

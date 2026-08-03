@@ -106,7 +106,12 @@ export function AdminDatePicker({
   const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [panelStyle, setPanelStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight?: number;
+  } | null>(null);
 
   const selected = parseIsoDate(value);
   const minDate = min ? parseIsoDate(min) : null;
@@ -133,11 +138,35 @@ export function AdminDatePicker({
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
     const panelWidth = Math.max(rect.width, 288);
+    const estimatedPanelHeight = 340;
+    const gap = 8;
+    const viewportPad = 12;
+
     let left = rect.left;
-    if (left + panelWidth > window.innerWidth - 12) {
-      left = Math.max(12, window.innerWidth - panelWidth - 12);
+    if (left + panelWidth > window.innerWidth - viewportPad) {
+      left = Math.max(viewportPad, window.innerWidth - panelWidth - viewportPad);
     }
-    setPanelStyle({ top: rect.bottom + 8, left, width: panelWidth });
+
+    const spaceBelow = window.innerHeight - rect.bottom - gap - viewportPad;
+    const spaceAbove = rect.top - gap - viewportPad;
+    const openUpward = spaceBelow < estimatedPanelHeight && spaceAbove > spaceBelow;
+
+    if (openUpward) {
+      const top = Math.max(viewportPad, rect.top - gap - Math.min(estimatedPanelHeight, spaceAbove));
+      setPanelStyle({
+        top,
+        left,
+        width: panelWidth,
+        maxHeight: Math.min(estimatedPanelHeight, spaceAbove),
+      });
+    } else {
+      setPanelStyle({
+        top: rect.bottom + gap,
+        left,
+        width: panelWidth,
+        maxHeight: Math.max(220, spaceBelow),
+      });
+    }
   }, []);
 
   useLayoutEffect(() => {
@@ -194,8 +223,13 @@ export function AdminDatePicker({
         role="dialog"
         aria-modal="false"
         aria-label="Choose date"
-        className="fixed z-[200] rounded-xl border border-white/10 bg-[#161820] p-3 shadow-[0_16px_48px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.04)_inset]"
-        style={{ top: panelStyle.top, left: panelStyle.left, width: panelStyle.width }}
+        className="fixed z-[200] overflow-y-auto rounded-xl border border-white/10 bg-[#161820] p-3 shadow-[0_16px_48px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.04)_inset]"
+        style={{
+          top: panelStyle.top,
+          left: panelStyle.left,
+          width: panelStyle.width,
+          maxHeight: panelStyle.maxHeight,
+        }}
       >
         <div className="mb-3 flex items-center justify-between gap-2">
           <button

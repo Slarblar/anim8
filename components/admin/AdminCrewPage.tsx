@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {
   annualLeaveEntitlementDays,
+  currentMeetingAttendance,
   defaultWeeklyHours,
   type CrewLocation,
   type CrewMember,
@@ -685,6 +686,7 @@ function CrewRow({
 
   const entitlement = annualLeaveEntitlementDays(member.startDate);
   const accruedToDate = computeAccruedPtoDays(member.startDate, monthKeyInTimeZone());
+  const attendance = currentMeetingAttendance(member);
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
@@ -902,6 +904,14 @@ function CrewRow({
             <span className="font-mono text-brand-cyan">
               {balance} day{balance === 1 ? '' : 's'} PTO
             </span>
+            {(attendance.late > 0 || attendance.absent > 0) && (
+              <>
+                <span className="px-1.5 text-white/20" aria-hidden>·</span>
+                <span className="font-mono text-yellow-300" title={`Meeting attendance ${attendance.monthKey}`}>
+                  {attendance.late} late · {attendance.absent} absent
+                </span>
+              </>
+            )}
             <span className="px-1.5 text-white/20" aria-hidden>·</span>
             <span
               className="rounded border border-white/15 px-1 py-px font-mono text-[10px] font-bold uppercase tracking-wide"
@@ -944,6 +954,7 @@ function CrewRow({
               ? ` · manual adj. ${member.ptoAdjustmentDays > 0 ? '+' : ''}${member.ptoAdjustmentDays}`
               : ''}
             {member.startDate ? '' : ' (set a start date to accrue)'}
+            {` · meetings ${attendance.monthKey}: ${attendance.late} late / ${attendance.absent} absent`}
           </p>
           {error ? <p className={adminAlertError}>{error}</p> : null}
           {success ? <p className={adminAlertSuccess}>{success}</p> : null}
@@ -1022,6 +1033,24 @@ function CrewRow({
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" className={adminBtnGhost} onClick={() => setShowAdjust((v) => !v)}>
                 Adjust PTO
+              </button>
+              <button
+                type="button"
+                className={adminBtnGhost}
+                disabled={loading}
+                onClick={() => patch({ meetingAttendance: 'late' })}
+                title="Mark late to a meeting this month"
+              >
+                + Late ({attendance.late})
+              </button>
+              <button
+                type="button"
+                className={adminBtnGhost}
+                disabled={loading}
+                onClick={() => patch({ meetingAttendance: 'absent' })}
+                title="Mark absent from a meeting this month"
+              >
+                + Absent ({attendance.absent})
               </button>
               <button
                 type="button"

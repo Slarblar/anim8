@@ -19,6 +19,10 @@
       "schedule": "0 1 1 * *"
     },
     {
+      "path": "/api/cron/monthly-attendance-digest",
+      "schedule": "0 2 1 * *"
+    },
+    {
       "path": "/api/cron/weekly-digest",
       "schedule": "0 1 * * 1"
     }

@@ -1,6 +1,7 @@
 import 'server-only';
 import {
   annualLeaveEntitlementDays,
+  currentMeetingAttendance,
   getCrewMember,
   type CrewLocation,
   type EmploymentType,
@@ -25,6 +26,11 @@ export type CrewReportData = {
     daysTakenYtd: number;
     /** Most recent first, capped so the report stays a page or two. */
     requests: PtoRequest[];
+  };
+  attendance: {
+    monthKey: string;
+    late: number;
+    absent: number;
   };
   kpi: PersonKPISummary | null;
   generatedAt: string;
@@ -70,6 +76,7 @@ export async function buildCrewReport(email: string): Promise<CrewReportData | n
       daysTakenYtd,
       requests: requests.slice(0, MAX_REQUESTS_IN_REPORT),
     },
+    attendance: currentMeetingAttendance(member),
     kpi,
     generatedAt: new Date().toISOString(),
   };

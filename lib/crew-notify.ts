@@ -232,6 +232,21 @@ export async function sendWeeklyAdminDigest(digest: WeeklyDigest): Promise<boole
     }
   }
 
+  const attendanceMonth = digest.meetingAttendance[0]?.monthKey;
+  lines.push(
+    '',
+    attendanceMonth
+      ? `Meeting attendance this month (${attendanceMonth}):`
+      : 'Meeting attendance this month:'
+  );
+  if (digest.meetingAttendance.length === 0) {
+    lines.push('No late or absent marks yet.');
+  } else {
+    for (const row of digest.meetingAttendance) {
+      lines.push(`  - ${row.name}: ${row.late} late, ${row.absent} absent`);
+    }
+  }
+
   lines.push('', `Review at ${dashboardUrl}`);
 
   // --- HTML mirror of the same content ---
@@ -257,11 +272,27 @@ export async function sendWeeklyAdminDigest(digest: WeeklyDigest): Promise<boole
           )
           .join('\n');
 
+  const attendanceRowsHtml =
+    digest.meetingAttendance.length === 0
+      ? '<p style="margin:0;color:#8b95a8;">No late or absent marks yet.</p>'
+      : digest.meetingAttendance
+          .map(
+            (row) =>
+              `<p style="margin:0 0 4px 0;">${escapeHtml(row.name)}: <strong style="color:#ffffff;">${row.late}</strong> late · <strong style="color:#ffffff;">${row.absent}</strong> absent</p>`
+          )
+          .join('\n');
+
+  const attendanceHeading = attendanceMonth
+    ? `Meeting attendance (${escapeHtml(attendanceMonth)})`
+    : 'Meeting attendance';
+
   const bodyHtml = `
     <p style="margin:0 0 6px 0;font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#38c2d6;">This week's schedule</p>
     <div style="margin:0 0 20px 0;">${scheduleRowsHtml}</div>
     <p style="margin:0 0 6px 0;font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#38c2d6;">Pending requests</p>
     <div style="margin:0 0 18px 0;">${pendingRowsHtml}</div>
+    <p style="margin:0 0 6px 0;font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#38c2d6;">${attendanceHeading}</p>
+    <div style="margin:0 0 18px 0;">${attendanceRowsHtml}</div>
     <div>${emailButton(dashboardUrl, 'Review requests', 'neutral')}</div>
   `;
 
@@ -273,6 +304,68 @@ export async function sendWeeklyAdminDigest(digest: WeeklyDigest): Promise<boole
     html: renderEmailHtml({
       heading: `Week of ${formatDigestDate(digest.weekStart)}`,
       preheader: `${digest.pending.length} pending request${digest.pending.length === 1 ? '' : 's'}`,
+      bodyHtml,
+    }),
+  });
+}
+
+export type MonthlyAttendanceRow = {
+  email: string;
+  name: string;
+  monthKey: string;
+  late: number;
+  absent: number;
+};
+
+/** 1st-of-month email — previous month's late/absent totals after counters roll. */
+export async function sendMonthlyAttendanceDigest(
+  rows: MonthlyAttendanceRow[],
+  monthKey: string
+): Promise<boolean> {
+  const recipients = adminRecipients();
+  if (recipients.length === 0) return false;
+
+  const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
+  const dashboardUrl = `${baseUrl()}/admin/crew`;
+
+  const lines: string[] = [
+    `Meeting attendance summary for ${monthKey}:`,
+    '',
+  ];
+  if (rows.length === 0) {
+    lines.push('No late or absent marks last month.');
+  } else {
+    for (const row of rows) {
+      lines.push(`  - ${row.name}: ${row.late} late, ${row.absent} absent`);
+    }
+  }
+  lines.push('', `Crew directory: ${dashboardUrl}`);
+
+  const rowsHtml =
+    rows.length === 0
+      ? '<p style="margin:0;color:#8b95a8;">No late or absent marks last month.</p>'
+      : rows
+          .map(
+            (row) =>
+              `<p style="margin:0 0 4px 0;">${escapeHtml(row.name)}: <strong style="color:#ffffff;">${row.late}</strong> late · <strong style="color:#ffffff;">${row.absent}</strong> absent</p>`
+          )
+          .join('\n');
+
+  const bodyHtml = `
+    <p style="margin:0 0 6px 0;font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#38c2d6;">Closed month ${escapeHtml(monthKey)}</p>
+    <div style="margin:0 0 18px 0;">${rowsHtml}</div>
+    <p style="margin:0 0 18px 0;color:#8b95a8;font-size:13px;">Counters have reset for the new month.</p>
+    <div>${emailButton(dashboardUrl, 'Open crew directory', 'neutral')}</div>
+  `;
+
+  return sendResendEmail({
+    from,
+    to: recipients,
+    subject: `Anim-8 meeting attendance \u2014 ${monthKey}`,
+    text: lines.join('\n'),
+    html: renderEmailHtml({
+      heading: `Attendance — ${monthKey}`,
+      preheader: `${rows.length} crew member${rows.length === 1 ? '' : 's'} with marks`,
       bodyHtml,
     }),
   });

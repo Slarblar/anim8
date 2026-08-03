@@ -44,7 +44,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 }
 
 export function CrewReportView({ data }: { data: CrewReportData }) {
-  const { member, pto, kpi, generatedAt } = data;
+  const { member, pto, attendance, kpi, generatedAt } = data;
 
   return (
     <div className="crew-report mx-auto max-w-3xl space-y-8 print:max-w-none">
@@ -119,6 +119,19 @@ export function CrewReportView({ data }: { data: CrewReportData }) {
             </tbody>
           </table>
         )}
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-black uppercase tracking-tight text-white print:text-black">
+          Meeting attendance
+        </h2>
+        <p className="text-xs text-text-muted print:text-black/60">
+          Month {attendance.monthKey} · resets on the 1st (studio month)
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="Late" value={String(attendance.late)} />
+          <StatCard label="Absent" value={String(attendance.absent)} />
+        </div>
       </section>
 
       <section className="space-y-4">

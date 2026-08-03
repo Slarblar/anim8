@@ -1,11 +1,22 @@
 import { getCrewEventsForDate, type CalendarStatusEntry } from './google-calendar';
 import { listPendingPtoRequests, type PtoRequest } from './pto-requests';
+import { listCurrentMeetingAttendance } from './crew-directory';
 import { studioTodayDateString } from './studio-date';
+
+export type WeeklyDigestAttendanceRow = {
+  email: string;
+  name: string;
+  monthKey: string;
+  late: number;
+  absent: number;
+};
 
 export type WeeklyDigest = {
   weekStart: string;
   scheduleByDate: Array<{ date: string; entries: CalendarStatusEntry[] }>;
   pending: PtoRequest[];
+  /** Current studio-month meeting late/absent counts (anyone with > 0). */
+  meetingAttendance: WeeklyDigestAttendanceRow[];
 };
 
 /**
@@ -32,14 +43,16 @@ export async function buildWeeklyDigest(asOf: Date = new Date()): Promise<Weekly
     return date.toISOString().slice(0, 10);
   });
 
-  const [entriesByDate, pending] = await Promise.all([
+  const [entriesByDate, pending, meetingAttendance] = await Promise.all([
     Promise.all(weekdays.map((date) => getCrewEventsForDate(date))),
     listPendingPtoRequests(),
+    listCurrentMeetingAttendance(),
   ]);
 
   return {
     weekStart: weekdays[0],
     scheduleByDate: weekdays.map((date, i) => ({ date, entries: entriesByDate[i] })),
     pending,
+    meetingAttendance,
   };
 }

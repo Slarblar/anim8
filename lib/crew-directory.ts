@@ -1,4 +1,5 @@
 import { getKv } from './kv';
+import { monthKeyInTimeZone } from './pto-accrual-shared';
 
 /** Mon–Fri only — the fixed WFH schedule doesn't cover weekends. */
 export type WeekdayCode = 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
@@ -85,6 +86,18 @@ export type CrewMember = {
    * instead of tearing down and recreating the whole schedule every time.
    */
   fixedWfhCalendarEventIds: Partial<Record<WeekdayCode, string>>;
+  /**
+   * Meeting late/absent counters for the current studio month (YYYY-MM).
+   * Reset when the month rolls — either lazily on the next mark, or via the
+   * monthly attendance digest cron (which snapshots into last-month fields).
+   */
+  meetingAttendanceMonthKey: string;
+  meetingLateCount: number;
+  meetingAbsentCount: number;
+  /** Snapshot of the previous month after rollover — used by the monthly admin email. */
+  meetingAttendanceLastMonthKey: string | null;
+  meetingLateCountLastMonth: number;
+  meetingAbsentCountLastMonth: number;
 };
 
 /** Fills in fields that may be missing on records created before they existed. */
@@ -103,6 +116,14 @@ function withDefaults(record: CrewMember): CrewMember {
     level: record.level ?? '',
     ptoAdjustmentDays:
       typeof record.ptoAdjustmentDays === 'number' ? record.ptoAdjustmentDays : 0,
+    meetingAttendanceMonthKey: record.meetingAttendanceMonthKey || monthKeyInTimeZone(),
+    meetingLateCount: typeof record.meetingLateCount === 'number' ? record.meetingLateCount : 0,
+    meetingAbsentCount: typeof record.meetingAbsentCount === 'number' ? record.meetingAbsentCount : 0,
+    meetingAttendanceLastMonthKey: record.meetingAttendanceLastMonthKey ?? null,
+    meetingLateCountLastMonth:
+      typeof record.meetingLateCountLastMonth === 'number' ? record.meetingLateCountLastMonth : 0,
+    meetingAbsentCountLastMonth:
+      typeof record.meetingAbsentCountLastMonth === 'number' ? record.meetingAbsentCountLastMonth : 0,
   };
 }
 
@@ -217,6 +238,12 @@ export async function addOrUpdateCrewMember(input: {
     weeklyContractedHours,
     fixedWfhDays: existing?.fixedWfhDays ?? [],
     fixedWfhCalendarEventIds: existing?.fixedWfhCalendarEventIds ?? {},
+    meetingAttendanceMonthKey: existing?.meetingAttendanceMonthKey || monthKeyInTimeZone(),
+    meetingLateCount: existing?.meetingLateCount ?? 0,
+    meetingAbsentCount: existing?.meetingAbsentCount ?? 0,
+    meetingAttendanceLastMonthKey: existing?.meetingAttendanceLastMonthKey ?? null,
+    meetingLateCountLastMonth: existing?.meetingLateCountLastMonth ?? 0,
+    meetingAbsentCountLastMonth: existing?.meetingAbsentCountLastMonth ?? 0,
   };
 
   await getKv().set(keyFor(email), record);
@@ -347,4 +374,114 @@ export async function adjustCrewMemberPtoBalance(
   };
   await getKv().set(keyFor(email), updated);
   return updated;
+}
+
+export type MeetingAttendanceKind = 'late' | 'absent';
+
+export type MeetingAttendanceCounts = {
+  monthKey: string;
+  late: number;
+  absent: number;
+};
+
+/** Current-month late/absent counts — zeros if the stored month has rolled. Pure / safe for UI. */
+export function currentMeetingAttendance(
+  member: Pick<
+    CrewMember,
+    'meetingAttendanceMonthKey' | 'meetingLateCount' | 'meetingAbsentCount'
+  >,
+  monthKey: string = monthKeyInTimeZone()
+): MeetingAttendanceCounts {
+  if (member.meetingAttendanceMonthKey !== monthKey) {
+    return { monthKey, late: 0, absent: 0 };
+  }
+  return {
+    monthKey,
+    late: member.meetingLateCount ?? 0,
+    absent: member.meetingAbsentCount ?? 0,
+  };
+}
+
+/**
+ * If the stored counter month is behind the current studio month, snapshot it
+ * into last-month fields and zero the current counters for the new month.
+ */
+function withAttendanceRollover(member: CrewMember, monthKey: string = monthKeyInTimeZone()): CrewMember {
+  const storedMonth = member.meetingAttendanceMonthKey || monthKey;
+  if (storedMonth === monthKey) return member;
+  return {
+    ...member,
+    meetingAttendanceLastMonthKey: storedMonth,
+    meetingLateCountLastMonth: member.meetingLateCount ?? 0,
+    meetingAbsentCountLastMonth: member.meetingAbsentCount ?? 0,
+    meetingAttendanceMonthKey: monthKey,
+    meetingLateCount: 0,
+    meetingAbsentCount: 0,
+  };
+}
+
+/** +1 late or absent for the current studio month (rolls the month first if needed). */
+export async function incrementMeetingAttendance(
+  email: string,
+  kind: MeetingAttendanceKind
+): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+
+  const rolled = withAttendanceRollover(existing);
+  const updated: CrewMember = {
+    ...rolled,
+    meetingLateCount: kind === 'late' ? (rolled.meetingLateCount ?? 0) + 1 : rolled.meetingLateCount ?? 0,
+    meetingAbsentCount:
+      kind === 'absent' ? (rolled.meetingAbsentCount ?? 0) + 1 : rolled.meetingAbsentCount ?? 0,
+  };
+  await getKv().set(keyFor(email), updated);
+  return updated;
+}
+
+/**
+ * Roll every active member into the new month (snapshot → last-month fields).
+ * Returns people who had any late/absent in the month that just closed — for
+ * the monthly admin summary email.
+ */
+export async function rolloverAllMeetingAttendance(
+  monthKey: string = monthKeyInTimeZone()
+): Promise<
+  Array<{ email: string; name: string; monthKey: string; late: number; absent: number }>
+> {
+  const members = await listCrewMembers();
+  const closed: Array<{ email: string; name: string; monthKey: string; late: number; absent: number }> =
+    [];
+
+  for (const member of members) {
+    if (!member.active) continue;
+    const storedMonth = member.meetingAttendanceMonthKey || monthKey;
+    if (storedMonth === monthKey) continue;
+
+    const late = member.meetingLateCount ?? 0;
+    const absent = member.meetingAbsentCount ?? 0;
+    if (late > 0 || absent > 0) {
+      closed.push({ email: member.email, name: member.name, monthKey: storedMonth, late, absent });
+    }
+
+    const updated = withAttendanceRollover(member, monthKey);
+    await getKv().set(keyFor(member.email), updated);
+  }
+
+  return closed.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Current-month rollup for weekly digests / live admin views. */
+export async function listCurrentMeetingAttendance(
+  monthKey: string = monthKeyInTimeZone()
+): Promise<Array<{ email: string; name: string; monthKey: string; late: number; absent: number }>> {
+  const members = await listCrewMembers();
+  return members
+    .filter((m) => m.active)
+    .map((m) => {
+      const counts = currentMeetingAttendance(m, monthKey);
+      return { email: m.email, name: m.name, ...counts };
+    })
+    .filter((row) => row.late > 0 || row.absent > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }

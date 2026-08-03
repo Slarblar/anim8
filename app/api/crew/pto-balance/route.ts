@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireCrewSession } from '@/lib/auth-guards';
+import { getDemoPtoBalance, isCrewDemoUser } from '@/lib/crew-demo';
 import { annualLeaveEntitlementDays, getCrewMember } from '@/lib/crew-directory';
 import {
   backfillPtoAccrualForMember,
@@ -10,6 +11,10 @@ import {
 export async function GET() {
   const session = await requireCrewSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  if (isCrewDemoUser(session.email)) {
+    return NextResponse.json(getDemoPtoBalance());
+  }
 
   let member = await getCrewMember(session.email);
   if (!member) {

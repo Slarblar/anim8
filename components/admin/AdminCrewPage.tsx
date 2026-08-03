@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   annualLeaveEntitlementDays,
   currentMeetingAttendance,
@@ -10,10 +10,12 @@ import {
   type CrewLocation,
   type CrewMember,
   type EmploymentType,
+  type MeetingAttendanceKind,
   type WeekdayCode,
 } from '@/lib/crew-directory';
 import { computeAccruedPtoDays, monthKeyInTimeZone } from '@/lib/pto-accrual-shared';
 import type { CrewStatusEntry } from '@/lib/crew-status-cache';
+import { studioTodayDateString } from '@/lib/studio-date';
 import {
   performanceBandLabel,
   type AdminKpiPerson,
@@ -42,6 +44,7 @@ type ApiErrorBody = {
   error?: string;
   reason?: string;
   email?: string | null;
+  member?: CrewMember;
   accrualBackfill?: {
     monthsGranted?: number;
     daysGranted?: number;
@@ -526,12 +529,12 @@ function LocationToggle({
     >
       <span className={!isUs ? 'text-white' : undefined}>VN</span>
       <span
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition ${
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-200 ease-out ${
           isUs ? 'border-brand-cyan/50 bg-brand-cyan/40' : 'border-white/20 bg-white/10'
         }`}
       >
         <span
-          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-200 ease-out ${
             isUs ? 'translate-x-[1.15rem]' : 'translate-x-0.5'
           }`}
         />
@@ -565,19 +568,19 @@ function StudioPresenceToggle({
       }
       className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-text-muted disabled:opacity-50"
     >
-      <span className={isOut ? 'text-brand-pink' : undefined}>Out</span>
+      <span className={`transition-colors duration-200 ${isOut ? 'text-brand-pink' : ''}`}>Out</span>
       <span
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition ${
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-200 ease-out ${
           !isOut ? 'border-brand-lime/50 bg-brand-lime/40' : 'border-brand-pink/40 bg-brand-pink/25'
         }`}
       >
         <span
-          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-200 ease-out ${
             !isOut ? 'translate-x-[1.15rem]' : 'translate-x-0.5'
           }`}
         />
       </span>
-      <span className={!isOut ? 'text-brand-lime' : undefined}>In</span>
+      <span className={`transition-colors duration-200 ${!isOut ? 'text-brand-lime' : ''}`}>In</span>
     </button>
   );
 }
@@ -597,10 +600,10 @@ function MeetingAttendanceControl({
   disabled: boolean;
 }) {
   const stepClass =
-    'flex flex-1 w-6 items-center justify-center text-[11px] font-bold leading-none text-brand-pink transition hover:bg-brand-pink/20 disabled:opacity-40 disabled:hover:bg-transparent';
+    'flex flex-1 w-6 items-center justify-center text-[11px] font-bold leading-none text-brand-pink transition-colors duration-150 hover:bg-brand-pink/20 disabled:opacity-40 disabled:hover:bg-transparent';
   return (
     <div className="inline-flex h-8 overflow-hidden rounded-md border border-brand-pink/40 bg-brand-pink/10">
-      <span className="inline-flex items-center px-2.5 text-xs font-semibold text-brand-pink">
+      <span className="inline-flex items-center px-2.5 text-xs font-semibold tabular-nums text-brand-pink">
         {label} ({count})
       </span>
       <div className="flex h-full w-6 flex-col border-l border-brand-pink/35">
@@ -698,12 +701,16 @@ function FixedWfhDayPicker({
 
 function CrewRow({
   member,
-  onChanged,
+  onMemberUpdated,
+  onTodayStatusUpdated,
+  onReload,
   todayStatus,
   kpiSummary,
 }: {
   member: CrewMember;
-  onChanged: () => void;
+  onMemberUpdated: (member: CrewMember) => void;
+  onTodayStatusUpdated: (email: string, status: CrewStatusEntry['status']) => void;
+  onReload: () => void;
   todayStatus?: CrewStatusEntry['status'];
   kpiSummary?: PersonKPISummary | null;
 }) {
@@ -711,6 +718,12 @@ function CrewRow({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  /** Serializes quick toggles so optimistic counts stay consistent under rapid clicks. */
+  const quickActionQueue = useRef(Promise.resolve());
+  const memberRef = useRef(member);
+  memberRef.current = member;
+  const todayStatusRef = useRef(todayStatus);
+  todayStatusRef.current = todayStatus;
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustAmount, setAdjustAmount] = useState('');
   const [showLogPto, setShowLogPto] = useState(false);
@@ -815,22 +828,125 @@ function CrewRow({
           setSuccess(
             `PTO adjusted by ${body.adjustBalanceDays > 0 ? '+' : ''}${body.adjustBalanceDays} day(s).`
           );
-        } else if (typeof body.manualOut === 'boolean') {
-          setSuccess(
-            body.manualOut
-              ? 'Marked out of studio for today — shows on the crew Today board.'
-              : 'Marked in studio for today.'
-          );
         }
-        onChanged();
+        if (data.member) onMemberUpdated(data.member);
+        else onReload();
       } catch {
         setError('Action failed. Please try again.');
       } finally {
         setLoading(false);
       }
     },
-    [member.email, member.ptoAdjustmentDays, onChanged]
+    [member.email, member.ptoAdjustmentDays, onMemberUpdated, onReload]
   );
+
+  /** Instant UI for presence / late / absent — queue keeps rapid clicks consistent. */
+  const enqueueQuickPatch = useCallback(
+    (run: () => Promise<void>) => {
+      quickActionQueue.current = quickActionQueue.current.then(run).catch(() => {
+        /* errors handled inside run */
+      });
+    },
+    []
+  );
+
+  const adjustMeetingAttendance = useCallback(
+    (kind: MeetingAttendanceKind, delta: number) => {
+      enqueueQuickPatch(async () => {
+        const current = memberRef.current;
+        const counts = currentMeetingAttendance(current);
+        const nextLate =
+          kind === 'late' ? Math.max(0, counts.late + delta) : counts.late;
+        const nextAbsent =
+          kind === 'absent' ? Math.max(0, counts.absent + delta) : counts.absent;
+        if (kind === 'late' && nextLate === counts.late && delta < 0) return;
+        if (kind === 'absent' && nextAbsent === counts.absent && delta < 0) return;
+
+        const optimistic: CrewMember = {
+          ...current,
+          meetingAttendanceMonthKey: counts.monthKey,
+          meetingLateCount: nextLate,
+          meetingAbsentCount: nextAbsent,
+        };
+        onMemberUpdated(optimistic);
+        setError(null);
+
+        try {
+          const res = await fetch(`/api/admin/crew/${encodeURIComponent(current.email)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ meetingAttendance: kind, meetingAttendanceDelta: delta }),
+          });
+          const data = (await res.json()) as ApiErrorBody;
+          if (!res.ok) {
+            onMemberUpdated(current);
+            setError(describeApiError(data, 'Could not update attendance.'));
+            return;
+          }
+          if (data.member) onMemberUpdated(data.member);
+        } catch {
+          onMemberUpdated(current);
+          setError('Could not update attendance. Please try again.');
+        }
+      });
+    },
+    [enqueueQuickPatch, onMemberUpdated]
+  );
+
+  const toggleStudioPresence = useCallback(() => {
+    enqueueQuickPatch(async () => {
+      const current = memberRef.current;
+      const nextOut = !isManuallyOutToday(current);
+      const optimistic: CrewMember = {
+        ...current,
+        manualOutDate: nextOut ? studioTodayDateString() : null,
+      };
+      onMemberUpdated(optimistic);
+
+      const statusNow = todayStatusRef.current;
+      if (statusNow !== 'PTO') {
+        // Instant badge; soft-refresh below corrects WFH after marking back in.
+        onTodayStatusUpdated(current.email, nextOut ? 'out' : 'in');
+      }
+      setError(null);
+
+      try {
+        const res = await fetch(`/api/admin/crew/${encodeURIComponent(current.email)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ manualOut: nextOut }),
+        });
+        const data = (await res.json()) as ApiErrorBody;
+        if (!res.ok) {
+          onMemberUpdated(current);
+          if (statusNow) onTodayStatusUpdated(current.email, statusNow);
+          setError(describeApiError(data, 'Could not update studio presence.'));
+          return;
+        }
+        if (data.member) onMemberUpdated(data.member);
+
+        // Soft-refresh this person's Today badge (WFH/PTO may apply after marking in).
+        try {
+          const statusRes = await fetch('/api/crew/status');
+          if (statusRes.ok) {
+            const statusData = (await statusRes.json()) as {
+              snapshot?: { entries?: CrewStatusEntry[] };
+            };
+            const entry = statusData.snapshot?.entries?.find(
+              (e) => e.email?.toLowerCase() === current.email.toLowerCase()
+            );
+            if (entry) onTodayStatusUpdated(current.email, entry.status);
+          }
+        } catch {
+          /* optimistic badge already applied */
+        }
+      } catch {
+        onMemberUpdated(current);
+        if (statusNow) onTodayStatusUpdated(current.email, statusNow);
+        setError('Could not update studio presence. Please try again.');
+      }
+    });
+  }, [enqueueQuickPatch, onMemberUpdated, onTodayStatusUpdated]);
 
   const saveProfile = useCallback(() => {
     if (!profileDirty) return;
@@ -890,13 +1006,13 @@ function CrewRow({
       setLogPtoDate('');
       setLogPtoNote('');
       setShowLogPto(false);
-      onChanged();
+      onReload();
     } catch {
       setError('Could not log PTO. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [logPtoDate, logPtoNote, member.email, onChanged]);
+  }, [logPtoDate, logPtoNote, member.email, onReload]);
 
   const submitLogWfh = useCallback(async () => {
     if (!logWfhDate) return;
@@ -919,13 +1035,13 @@ function CrewRow({
       setLogWfhDate('');
       setLogWfhNote('');
       setShowLogWfh(false);
-      onChanged();
+      onReload();
     } catch {
       setError('Could not log WFH. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [logWfhDate, logWfhNote, member.email, onChanged]);
+  }, [logWfhDate, logWfhNote, member.email, onReload]);
 
   const saveStartDate = useCallback(() => {
     patch({ startDate: startDateInput || null });
@@ -935,10 +1051,6 @@ function CrewRow({
   const togglePendingLocation = useCallback(() => {
     setPendingLocation((current) => (current === 'US' ? 'VN' : 'US'));
   }, []);
-
-  const toggleStudioPresence = useCallback(() => {
-    patch({ manualOut: !isManuallyOutToday(member) });
-  }, [member, patch]);
 
   const setEmploymentDraft = useCallback((next: EmploymentType) => {
     setPendingEmploymentType(next);
@@ -1104,7 +1216,7 @@ function CrewRow({
             <StudioPresenceToggle
               isOut={isManuallyOutToday(member)}
               onToggle={toggleStudioPresence}
-              disabled={loading}
+              disabled={false}
             />
             {todayStatus === 'PTO' ? (
               <p className="mt-1 text-xs text-text-muted">
@@ -1150,16 +1262,16 @@ function CrewRow({
               <MeetingAttendanceControl
                 label="Late"
                 count={attendance.late}
-                disabled={loading}
-                onIncrement={() => patch({ meetingAttendance: 'late', meetingAttendanceDelta: 1 })}
-                onDecrement={() => patch({ meetingAttendance: 'late', meetingAttendanceDelta: -1 })}
+                disabled={false}
+                onIncrement={() => adjustMeetingAttendance('late', 1)}
+                onDecrement={() => adjustMeetingAttendance('late', -1)}
               />
               <MeetingAttendanceControl
                 label="Absent"
                 count={attendance.absent}
-                disabled={loading}
-                onIncrement={() => patch({ meetingAttendance: 'absent', meetingAttendanceDelta: 1 })}
-                onDecrement={() => patch({ meetingAttendance: 'absent', meetingAttendanceDelta: -1 })}
+                disabled={false}
+                onIncrement={() => adjustMeetingAttendance('absent', 1)}
+                onDecrement={() => adjustMeetingAttendance('absent', -1)}
               />
               <button
                 type="button"
@@ -1370,6 +1482,18 @@ export function AdminCrewPage() {
     }
   }, []);
 
+  const onMemberUpdated = useCallback((updated: CrewMember) => {
+    setMembers((list) => {
+      if (!list) return list;
+      const key = updated.email.toLowerCase();
+      return list.map((m) => (m.email.toLowerCase() === key ? updated : m));
+    });
+  }, []);
+
+  const onTodayStatusUpdated = useCallback((email: string, status: CrewStatusEntry['status']) => {
+    setStatusByEmail((prev) => ({ ...prev, [email.toLowerCase()]: status }));
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -1423,7 +1547,9 @@ export function AdminCrewPage() {
             <CrewRow
               key={member.email}
               member={member}
-              onChanged={load}
+              onMemberUpdated={onMemberUpdated}
+              onTodayStatusUpdated={onTodayStatusUpdated}
+              onReload={load}
               todayStatus={statusByEmail[member.email.toLowerCase()]}
               kpiSummary={kpiByEmail[member.email.toLowerCase()]}
             />

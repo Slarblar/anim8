@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCrewSession } from '@/lib/auth-guards';
+import { getDemoPtoRequests, isCrewDemoUser } from '@/lib/crew-demo';
 import { createPtoRequest, listPtoRequestsForEmployee } from '@/lib/pto-requests';
 import { notifyAdminsNewPtoRequest } from '@/lib/crew-notify';
 
 export async function GET() {
   const session = await requireCrewSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  if (isCrewDemoUser(session.email)) {
+    return NextResponse.json({ requests: getDemoPtoRequests(session.email) });
+  }
 
   const requests = await listPtoRequestsForEmployee(session.email);
   return NextResponse.json({ requests });
@@ -21,6 +26,13 @@ type CreateBody = {
 export async function POST(req: NextRequest) {
   const session = await requireCrewSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  if (isCrewDemoUser(session.email)) {
+    return NextResponse.json(
+      { error: 'Demo preview — new PTO/WFH requests are not saved for this account.' },
+      { status: 400 }
+    );
+  }
 
   let body: CreateBody;
   try {

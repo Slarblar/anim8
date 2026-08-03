@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireCrewSession } from '@/lib/auth-guards';
+import { getDemoStatusSnapshot, isCrewDemoUser } from '@/lib/crew-demo';
 import { getCrewStatusSnapshot } from '@/lib/crew-status-cache';
 import { syncCrewStatusForDate } from '@/lib/crew-status-sync';
 import { studioTodayDateString } from '@/lib/studio-date';
@@ -7,6 +8,10 @@ import { studioTodayDateString } from '@/lib/studio-date';
 export async function GET() {
   const session = await requireCrewSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  if (isCrewDemoUser(session.email)) {
+    return NextResponse.json({ snapshot: getDemoStatusSnapshot() });
+  }
 
   const date = studioTodayDateString();
   let snapshot = await getCrewStatusSnapshot(date);

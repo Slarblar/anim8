@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireCrewSession } from '@/lib/auth-guards';
+import { isCrewDemoUser, isDemoPtoRequestId } from '@/lib/crew-demo';
 import { deletePtoRequest, getPtoRequest, hasRequestDatePassed } from '@/lib/pto-requests';
 import { deleteCalendarEvent } from '@/lib/google-calendar';
 
@@ -7,6 +8,13 @@ import { deleteCalendarEvent } from '@/lib/google-calendar';
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await requireCrewSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  if (isCrewDemoUser(session.email) || isDemoPtoRequestId(params.id)) {
+    return NextResponse.json(
+      { error: 'Demo preview — sample requests cannot be deleted.' },
+      { status: 400 }
+    );
+  }
 
   const existing = await getPtoRequest(params.id);
   if (!existing) return NextResponse.json({ error: 'Request not found.' }, { status: 404 });

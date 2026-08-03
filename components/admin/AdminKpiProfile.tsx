@@ -142,7 +142,7 @@ export function AdminKpiProfile({ email }: { email: string }) {
           </div>
 
           <div className={adminCard}>
-            <p className={crewSectionTitle}>Past 3 months performance</p>
+            <p className={crewSectionTitle}>Past 3 months + current</p>
             <p className={`${crewBody} mt-1`}>Total KPI score by month.</p>
             <div className="mt-6">
               <MonthlyBarChart months={summary.lastThreeMonthly} />

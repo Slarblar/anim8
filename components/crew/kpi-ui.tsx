@@ -300,7 +300,11 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
                 </div>
               </div>
 
-              <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
+              <span
+                className={`whitespace-nowrap text-[11px] font-bold uppercase tracking-wider font-mono ${
+                  isCurrent ? 'text-brand-cyan' : 'text-text-muted'
+                }`}
+              >
                 {month.label}
               </span>
             </div>

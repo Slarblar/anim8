@@ -157,7 +157,7 @@ export function CrewReportView({ data }: { data: CrewReportData }) {
 
             <div>
               <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-text-muted print:text-black/50">
-                Last 3 months
+                Past 3 months + current
               </p>
               <table className="w-full border-collapse text-left text-sm">
                 <thead>

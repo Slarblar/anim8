@@ -163,14 +163,16 @@ function buildRatingBreakdown(counts: Map<string, number>): RatingCount[] {
   return RATING_ORDER.map((rating) => ({ rating, count: counts.get(rating) ?? 0 }));
 }
 
-/** The current month + the `count - 1` before it, zero-filled — same window as the rating donuts. */
+/** The current month + the `count - 1` before it, zero-filled. Last entry is labeled "Current". */
 function buildLastNMonths(monthly: Map<string, number>, now: Date, count: number): PersonMonthlyKPI[] {
   const result: PersonMonthlyKPI[] = [];
   for (let i = count - 1; i >= 0; i--) {
     const ref = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = monthKeyOf(ref.getFullYear(), ref.getMonth() + 1);
-    const label =
-      ref.getFullYear() === now.getFullYear()
+    const isCurrent = i === 0;
+    const label = isCurrent
+      ? 'Current'
+      : ref.getFullYear() === now.getFullYear()
         ? MONTHS[ref.getMonth()]
         : `${MONTHS[ref.getMonth()]} ${ref.getFullYear()}`;
     result.push(withBand(key, label, monthly.get(key) ?? 0));
@@ -368,7 +370,7 @@ function aggregateByPerson(
       weeklyContractedHours: person.fte.weeklyContractedHours,
       employmentType: person.fte.employmentType,
       monthly,
-      lastThreeMonthly: buildLastNMonths(person.monthly, now, 3),
+      lastThreeMonthly: buildLastNMonths(person.monthly, now, 4),
       ytdMonthly: buildYtdMonthly(person.monthly, now),
       qualityRatingsLast3Months: buildRatingBreakdown(person.qualityRatings),
       collaborationRatingsLast3Months: buildRatingBreakdown(person.collaborationRatings),
@@ -399,7 +401,7 @@ export const getAllKPIData = unstable_cache(
     const [tasks, fteByEmail] = await Promise.all([fetchAllKPITasks(), buildFteLookup()]);
     return aggregateByPerson(tasks, fteByEmail);
   },
-  ['crew-kpi-data-v6-bands-v3'],
+  ['crew-kpi-data-v7-4mo-current'],
   { revalidate: REVALIDATE_SECONDS, tags: ['kpi'] }
 );
 

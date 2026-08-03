@@ -33,7 +33,7 @@ export type PersonKPISummary = {
   employmentType: 'full_time' | 'part_time' | 'contractor';
   /** Full history, oldest first — used for long-range trend views. */
   monthly: PersonMonthlyKPI[];
-  /** Current month + the two before it, zero-filled — for the "past 3 months" bar chart. */
+  /** Past 3 calendar months + current month (last entry labeled "Current"), zero-filled. */
   lastThreeMonthly: PersonMonthlyKPI[];
   /** Jan 1 of the current year through the current month, zero-filled — for the YTD line chart. */
   ytdMonthly: PersonMonthlyKPI[];

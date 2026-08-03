@@ -144,7 +144,7 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono">
-                  Past 3 months
+                  Past 3 months + current
                 </p>
                 <div className="mt-3">
                   <MonthlyBarChart months={summary.lastThreeMonthly} />

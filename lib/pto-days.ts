@@ -43,9 +43,7 @@ export function canEditPtoRequest(
   request: { status: string; startDate: string; endDate: string },
   today: string
 ): boolean {
-  if (request.endDate < today) return false;
-  if (request.status === 'pending' || request.status === 'rejected') return true;
-  // Approved: only before the leave has started (so we can unwind calendar + balance).
-  if (request.status === 'approved') return request.startDate >= today;
-  return false;
+  // Editable until the request's date range is fully in the past.
+  // Approved ones re-submit for approval (calendar + balance are unwound first).
+  return request.endDate >= today;
 }

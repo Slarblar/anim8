@@ -166,6 +166,60 @@ export async function updateAndResubmitPtoRequest(input: {
   return { previous: existing, request: record };
 }
 
+/**
+ * Admin direct field update — keeps status (pending stays pending, approved stays
+ * approved). Caller re-syncs calendar / balance when the previous status was approved.
+ */
+export async function adminUpdatePtoRequestFields(input: {
+  id: string;
+  type: PtoRequestType;
+  startDate: string;
+  endDate: string;
+  note: string;
+  dayPortion?: DayPortion;
+  /** When re-syncing an approved request after calendar recreate. */
+  calendarEventId?: string | null;
+}): Promise<{ previous: PtoRequest; request: PtoRequest }> {
+  const existing = await getPtoRequest(input.id);
+  if (!existing) throw new Error('Request not found.');
+
+  const dayPortion = normalizeDayPortion(input.dayPortion);
+  assertValidDates(input.startDate, input.endDate, dayPortion);
+
+  const record: PtoRequest = {
+    ...existing,
+    type: input.type,
+    startDate: input.startDate,
+    endDate: dayPortion === 'half' ? input.startDate : input.endDate,
+    dayPortion,
+    note: input.note.trim(),
+    updatedAt: new Date().toISOString(),
+    calendarEventId:
+      input.calendarEventId === null
+        ? undefined
+        : input.calendarEventId !== undefined
+          ? input.calendarEventId
+          : existing.calendarEventId,
+  };
+
+  // Rejected → pending so the admin can approve the corrected request.
+  if (existing.status === 'rejected') {
+    record.status = 'pending';
+    record.decidedAt = undefined;
+    record.decidedBy = undefined;
+    record.decisionNote = undefined;
+    record.decisionToken = genToken();
+    record.calendarEventId = undefined;
+  }
+
+  const kv = getKv();
+  await kv.set(keyFor(record.id), record);
+  if (record.status === 'pending') {
+    await kv.sadd(PENDING_INDEX_KEY, record.id);
+  }
+  return { previous: existing, request: record };
+}
+
 export async function getPtoRequest(id: string): Promise<PtoRequest | null> {
   const record = await getKv().get<PtoRequest>(keyFor(id));
   return record ? withDefaults(record) : null;

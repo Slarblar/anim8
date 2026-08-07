@@ -93,7 +93,7 @@ function HistoryRow({ request, onDeleted }: { request: PtoRequest; onDeleted: ()
           {editable ? (
             <Link
               href={`/crew/pto/${encodeURIComponent(request.id)}/edit`}
-              className="text-[11px] font-medium text-brand-cyan underline-offset-2 transition hover:underline"
+              className={`${adminBtnGhost} !px-2.5 !py-1 !text-[11px]`}
             >
               {c.editButton}
             </Link>

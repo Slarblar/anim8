@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { PtoRequest } from '@/lib/pto-requests';
+import type { DayPortion, PtoRequest } from '@/lib/pto-requests';
+import { requestedWorkingDays } from '@/lib/pto-days';
 import {
   adminAlertError,
   adminBadgeApproved,
@@ -13,7 +14,9 @@ import {
   adminBtnPrimary,
   adminCard,
   adminInput,
+  adminLabel,
 } from './admin-ui';
+import { AdminDatePicker } from './AdminDatePicker';
 
 type EnrichedPtoRequest = PtoRequest & {
   employeeBalanceDays: number | null;
@@ -22,11 +25,6 @@ type EnrichedPtoRequest = PtoRequest & {
 
 function formatRange(startDate: string, endDate: string): string {
   return startDate === endDate ? startDate : `${startDate} – ${endDate}`;
-}
-
-/** Server re-validates against studio-local "today" — this just gates the button, so a plain local-date check is fine. */
-function hasPassed(endDate: string): boolean {
-  return endDate < new Date().toISOString().slice(0, 10);
 }
 
 function StatusBadge({ status }: { status: PtoRequest['status'] }) {
@@ -47,6 +45,24 @@ function RequestRow({
   const [note, setNote] = useState('');
   const [showNote, setShowNote] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const [editType, setEditType] = useState<'PTO' | 'WFH'>(request.type);
+  const [editPortion, setEditPortion] = useState<DayPortion>(request.dayPortion ?? 'full');
+  const [editStart, setEditStart] = useState(request.startDate);
+  const [editEnd, setEditEnd] = useState(request.endDate);
+  const [editNote, setEditNote] = useState(request.note);
+
+  const openEdit = useCallback(() => {
+    setEditType(request.type);
+    setEditPortion(request.dayPortion ?? 'full');
+    setEditStart(request.startDate);
+    setEditEnd(request.endDate);
+    setEditNote(request.note);
+    setEditing(true);
+    setError(null);
+    setConfirmingDelete(false);
+  }, [request]);
 
   const runDelete = useCallback(async () => {
     setLoading(true);
@@ -66,6 +82,44 @@ function RequestRow({
     }
   }, [request.id, onChanged]);
 
+  const saveEdit = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/pto-requests/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          edit: true,
+          type: editType,
+          dayPortion: editPortion,
+          startDate: editStart,
+          endDate: editPortion === 'half' ? editStart : editEnd,
+          note: editNote,
+        }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        calendarError?: string | null;
+        balanceError?: string | null;
+      };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not update request.');
+        return;
+      }
+      const issues = [data.calendarError, data.balanceError].filter(Boolean);
+      if (issues.length > 0) {
+        setError(`Saved, but: ${issues.join(' ')}`);
+      }
+      setEditing(false);
+      onChanged();
+    } catch {
+      setError('Could not update request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [request.id, editType, editPortion, editStart, editEnd, editNote, onChanged]);
+
   const decide = useCallback(
     async (decision: 'approved' | 'rejected') => {
       setLoading(true);
@@ -83,11 +137,6 @@ function RequestRow({
         };
         if (!res.ok) {
           setError(data.error ?? 'Action failed.');
-          // Someone else (another admin, or the same admin via the email
-          // link) already decided this one — refetch so the row flips
-          // from stale Approve/Reject buttons to the real, current
-          // "Approved/Rejected by ..." state instead of leaving dead
-          // buttons up that will just 400 again.
           if (res.status === 400 && data.error === 'Request has already been decided.') {
             onChanged();
           }
@@ -106,6 +155,11 @@ function RequestRow({
     },
     [request.id, note, onChanged]
   );
+
+  const editRequestedDays =
+    editType === 'PTO' && editStart
+      ? requestedWorkingDays(editStart, editPortion === 'half' ? editStart : editEnd, editPortion)
+      : null;
 
   const overdraft =
     request.status === 'pending' &&
@@ -147,73 +201,202 @@ function RequestRow({
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
-      {request.status === 'pending' ? (
-        <div className="space-y-2">
-          {showNote ? (
+      {editing ? (
+        <div className="space-y-3 border-t border-white/10 pt-3">
+          <div>
+            <p className={adminLabel}>Type</p>
+            <div className="flex gap-2">
+              {(['PTO', 'WFH'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setEditType(option)}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold transition ${
+                    editType === option
+                      ? 'border-brand-cyan/50 bg-brand-cyan/15 text-brand-cyan'
+                      : 'border-white/10 text-text-muted hover:border-white/25'
+                  }`}
+                >
+                  {option === 'PTO' ? 'Time off' : 'Work from home'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className={adminLabel}>Duration</p>
+            <div className="flex gap-2">
+              {(['full', 'half'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    setEditPortion(option);
+                    if (option === 'half') setEditEnd(editStart);
+                  }}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold transition ${
+                    editPortion === option
+                      ? 'border-brand-cyan/50 bg-brand-cyan/15 text-brand-cyan'
+                      : 'border-white/10 text-text-muted hover:border-white/25'
+                  }`}
+                >
+                  {option === 'full' ? 'Full day' : 'Half day'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={`grid gap-3 ${editPortion === 'half' ? '' : 'min-[480px]:grid-cols-2'}`}>
+            <div>
+              <p className={adminLabel}>{editPortion === 'half' ? 'Date' : 'Start date'}</p>
+              <AdminDatePicker
+                value={editStart}
+                onChange={(next) => {
+                  setEditStart(next);
+                  if (editPortion === 'half' || !editEnd || editEnd < next) setEditEnd(next);
+                }}
+                required
+              />
+            </div>
+            {editPortion === 'full' ? (
+              <div>
+                <p className={adminLabel}>End date</p>
+                <AdminDatePicker
+                  value={editEnd}
+                  onChange={setEditEnd}
+                  min={editStart || undefined}
+                  required
+                />
+              </div>
+            ) : null}
+          </div>
+
+          <div>
+            <p className={adminLabel}>Note</p>
             <input
               className={adminInput}
-              placeholder="Optional note to the employee"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              value={editNote}
+              onChange={(e) => setEditNote(e.target.value)}
+              placeholder="Optional note"
+              disabled={loading}
             />
+          </div>
+
+          {editRequestedDays !== null ? (
+            <p className="text-xs text-text-muted">
+              {editRequestedDays === 0.5
+                ? 'Will use ½ working day of PTO if approved'
+                : `Will use ${editRequestedDays} working day${editRequestedDays === 1 ? '' : 's'} of PTO if approved`}
+            </p>
           ) : null}
+
+          {request.status === 'approved' ? (
+            <p className="text-xs text-text-muted">
+              Saving updates the calendar event and PTO balance to match these dates.
+            </p>
+          ) : null}
+          {request.status === 'rejected' ? (
+            <p className="text-xs text-brand-cyan">
+              Saving moves this back to pending so you can approve the corrected request.
+            </p>
+          ) : null}
+
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={adminBtnPrimary}
-              disabled={loading}
-              onClick={() => decide('approved')}
-            >
-              Approve
+            <button type="button" className={adminBtnPrimary} disabled={loading} onClick={saveEdit}>
+              {loading ? 'Saving…' : 'Save changes'}
             </button>
             <button
               type="button"
-              className={adminBtnDanger}
+              className={adminBtnGhost}
               disabled={loading}
-              onClick={() => decide('rejected')}
+              onClick={() => setEditing(false)}
             >
-              Reject
-            </button>
-            <button type="button" className={adminBtnGhost} onClick={() => setShowNote((v) => !v)}>
-              {showNote ? 'Hide note' : 'Add note'}
+              Cancel
             </button>
           </div>
         </div>
       ) : (
-        <p className="text-xs text-text-muted">
-          {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.decidedBy}
-          {request.decisionNote ? ` — "${request.decisionNote}"` : ''}
-        </p>
-      )}
-
-      {hasPassed(request.endDate) ? (
-        <div className="flex items-center justify-end gap-2 border-t border-white/5 pt-2">
-          {confirmingDelete ? (
-            <>
-              <span className="text-[11px] text-text-muted">Delete this record? This cannot be undone.</span>
-              <button type="button" className={adminBtnDanger} disabled={loading} onClick={runDelete}>
-                {loading ? 'Deleting…' : 'Yes, delete'}
-              </button>
-              <button
-                type="button"
-                className={adminBtnGhost}
-                disabled={loading}
-                onClick={() => setConfirmingDelete(false)}
-              >
-                Cancel
-              </button>
-            </>
+        <>
+          {request.status === 'pending' ? (
+            <div className="space-y-2">
+              {showNote ? (
+                <input
+                  className={adminInput}
+                  placeholder="Optional note to the employee"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={adminBtnPrimary}
+                  disabled={loading}
+                  onClick={() => decide('approved')}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className={adminBtnDanger}
+                  disabled={loading}
+                  onClick={() => decide('rejected')}
+                >
+                  Reject
+                </button>
+                <button type="button" className={adminBtnGhost} onClick={() => setShowNote((v) => !v)}>
+                  {showNote ? 'Hide note' : 'Add note'}
+                </button>
+              </div>
+            </div>
           ) : (
+            <p className="text-xs text-text-muted">
+              {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.decidedBy}
+              {request.decisionNote ? ` — "${request.decisionNote}"` : ''}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-white/5 pt-2">
             <button
               type="button"
-              className="text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline"
-              onClick={() => setConfirmingDelete(true)}
+              className="text-[11px] font-medium text-brand-cyan underline-offset-2 transition hover:underline"
+              onClick={openEdit}
+              disabled={loading}
             >
-              Delete
+              Edit
             </button>
-          )}
-        </div>
-      ) : null}
+            {confirmingDelete ? (
+              <>
+                <span className="text-[11px] text-text-muted">
+                  Delete request + calendar event? Crew will need to re-submit.
+                </span>
+                <button type="button" className={adminBtnDanger} disabled={loading} onClick={runDelete}>
+                  {loading ? 'Deleting…' : 'Yes, delete'}
+                </button>
+                <button
+                  type="button"
+                  className={adminBtnGhost}
+                  disabled={loading}
+                  onClick={() => setConfirmingDelete(false)}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="text-[11px] font-medium text-text-muted/60 underline-offset-2 transition hover:text-brand-pink hover:underline"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={loading}
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </li>
   );
 }
@@ -247,7 +430,10 @@ export function AdminPtoRequestsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tight text-white">PTO requests</h1>
-          <p className={`${adminBody} mt-1`}>Approving creates the calendar event automatically.</p>
+          <p className={`${adminBody} mt-1`}>
+            Approving creates the calendar event automatically. Edit or delete anytime — delete removes
+            the calendar entry too.
+          </p>
         </div>
         <div className="flex gap-2">
           <button

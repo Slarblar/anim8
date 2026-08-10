@@ -107,7 +107,7 @@ export async function notifyAdminsNewPtoRequest(
   const range = formatRange(request.startDate, request.endDate);
   const halfSuffix = request.dayPortion === 'half' ? ' (half day)' : '';
   const makeupSuffix =
-    request.type === 'MAKEUP' && request.lostDate ? ` (making up ${request.lostDate})` : '';
+    request.type === 'MAKEUP' && request.lostDate ? ` (PTO day ${request.lostDate})` : '';
   const isEdit = options?.isEdit === true;
   const isLate = requestIsMakeupLate(request);
 

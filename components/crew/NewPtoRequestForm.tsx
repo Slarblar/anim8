@@ -262,7 +262,7 @@ export function NewPtoRequestForm({
               id="lostDate"
               value={lostDate}
               onChange={setLostDate}
-              placeholder="Day lost"
+              placeholder="PTO day"
               required
             />
           </div>

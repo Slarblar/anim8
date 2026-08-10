@@ -103,7 +103,7 @@ export default async function PtoDecidePage({
         <p className="mb-4 text-sm text-text-muted">
           {range(request.startDate, request.endDate)}
           {request.dayPortion === 'half' ? ' · Half day' : ''}
-          {request.type === 'MAKEUP' && request.lostDate ? ` · Making up for ${request.lostDate}` : ''}
+          {request.type === 'MAKEUP' && request.lostDate ? ` · PTO day ${request.lostDate}` : ''}
         </p>
         {isLate ? (
           <p className="mb-4 rounded-lg border border-brand-pink/30 bg-brand-pink/10 px-3.5 py-2.5 text-xs text-brand-pink">

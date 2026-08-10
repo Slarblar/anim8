@@ -67,7 +67,7 @@ export async function createPtoCalendarEvent(input: PtoCalendarEventInput): Prom
     input.type === 'PTO' ? 'PTO' : input.type === 'WFH' ? 'WFH' : 'Make-up';
   const halfLabel = input.dayPortion === 'half' ? ' (Half day)' : '';
   const noteParts = [
-    input.type === 'MAKEUP' && input.lostDate ? `Making up for: ${input.lostDate}` : null,
+    input.type === 'MAKEUP' && input.lostDate ? `PTO day: ${input.lostDate}` : null,
     input.type === 'MAKEUP' ? 'Strongly advised to work in-office' : null,
     input.dayPortion === 'half' ? 'Half day' : null,
     input.note?.trim() || null,

@@ -191,7 +191,7 @@ function RequestRow({
             {formatRange(request.startDate, request.endDate)}
           </p>
           {request.type === 'MAKEUP' && request.lostDate ? (
-            <p className="mt-1 text-xs text-text-muted">Making up for {request.lostDate}</p>
+            <p className="mt-1 text-xs text-text-muted">PTO day: {request.lostDate}</p>
           ) : null}
           {request.type === 'PTO' && request.employeeBalanceDays !== null ? (
             <p className="mt-1 text-xs text-text-muted">
@@ -279,7 +279,7 @@ function RequestRow({
           {editType === 'MAKEUP' ? (
             <div className="grid gap-3 min-[480px]:grid-cols-2">
               <div>
-                <p className={adminLabel}>Day lost</p>
+                <p className={adminLabel}>PTO day</p>
                 <AdminDatePicker value={editLostDate} onChange={setEditLostDate} required />
               </div>
               <div>

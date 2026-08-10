@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { getPtoRequest, ptoDaysForRequest } from '@/lib/pto-requests';
+import { getPtoRequest, ptoDaysForRequest, requestIsMakeupLate } from '@/lib/pto-requests';
 import { getCrewMember } from '@/lib/crew-directory';
 import { formatBothTimeZones } from '@/lib/timezone-format';
 
@@ -69,8 +69,9 @@ export default async function PtoDecidePage({
         </span>
         <h1 className="mb-2 text-lg font-black uppercase tracking-tight text-white">Already decided</h1>
         <p className="text-sm text-text-muted">
-          {request.employeeName}&apos;s {request.type} request for {range(request.startDate, request.endDate)} was{' '}
-          {request.status}
+          {request.employeeName}&apos;s{' '}
+          {request.type === 'PTO' ? 'PTO' : request.type === 'WFH' ? 'WFH' : 'make-up'} request for{' '}
+          {range(request.startDate, request.endDate)} was {request.status}
           {decidedByName ? ` by ${decidedByName}` : ''}
           {request.decidedAt ? ` on ${formatBothTimeZones(request.decidedAt)}` : ''}. No further action needed.
         </p>
@@ -90,16 +91,25 @@ export default async function PtoDecidePage({
       balanceDays = member?.ptoBalanceDays ?? null;
     }
     const overdraft = balanceDays !== null && requestedDays !== null && requestedDays > balanceDays;
+    const typeLabel =
+      request.type === 'PTO' ? 'PTO' : request.type === 'WFH' ? 'WFH' : 'Make-up';
+    const isLate = requestIsMakeupLate(request);
 
     content = (
       <>
         <h1 className="mb-1 text-lg font-black uppercase tracking-tight text-white">
-          {request.type} request — {request.employeeName}
+          {typeLabel} request — {request.employeeName}
         </h1>
         <p className="mb-4 text-sm text-text-muted">
           {range(request.startDate, request.endDate)}
           {request.dayPortion === 'half' ? ' · Half day' : ''}
+          {request.type === 'MAKEUP' && request.lostDate ? ` · Making up for ${request.lostDate}` : ''}
         </p>
+        {isLate ? (
+          <p className="mb-4 rounded-lg border border-brand-pink/30 bg-brand-pink/10 px-3.5 py-2.5 text-xs text-brand-pink">
+            Late — submitted with less than 14 days notice before the make-up day.
+          </p>
+        ) : null}
         {balanceDays !== null ? (
           <p className="mb-3 text-xs text-text-muted">
             Requesting {requestedDays} day{requestedDays === 1 ? '' : 's'} · Balance: {balanceDays} day

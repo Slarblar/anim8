@@ -2,6 +2,7 @@ import { customAlphabet } from 'nanoid';
 import { getKv } from './kv';
 import {
   canEditPtoRequest as canEditPtoRequestShared,
+  isMakeupRequestLate,
   normalizeDayPortion,
   requestedWorkingDays,
   type DayPortion,
@@ -9,9 +10,9 @@ import {
 import { studioTodayDateString } from './studio-date';
 
 export type { DayPortion } from './pto-days';
-export { countBusinessDays, requestedWorkingDays } from './pto-days';
+export { countBusinessDays, isMakeupRequestLate, requestedWorkingDays } from './pto-days';
 
-export type PtoRequestType = 'PTO' | 'WFH';
+export type PtoRequestType = 'PTO' | 'WFH' | 'MAKEUP';
 export type PtoRequestStatus = 'pending' | 'approved' | 'rejected';
 
 export type PtoRequest = {
@@ -19,15 +20,21 @@ export type PtoRequest = {
   employeeEmail: string;
   employeeName: string;
   type: PtoRequestType;
-  /** YYYY-MM-DD, inclusive. */
+  /** YYYY-MM-DD, inclusive. For MAKEUP this is the make-up work day. */
   startDate: string;
-  /** YYYY-MM-DD, inclusive. */
+  /** YYYY-MM-DD, inclusive. For MAKEUP this matches startDate (single day). */
   endDate: string;
   /**
    * Full working day(s) vs a single half day.
    * Half-day requires startDate === endDate; older records default to full.
+   * Make-up days are always a full single day.
    */
   dayPortion: DayPortion;
+  /**
+   * Day being supplemented (YYYY-MM-DD) — required for MAKEUP, null otherwise.
+   * Documented on the request; does not affect PTO balance.
+   */
+  lostDate: string | null;
   note: string;
   status: PtoRequestStatus;
   calendarEventId?: string;
@@ -65,10 +72,17 @@ function withDefaults(record: PtoRequest): PtoRequest {
   return {
     ...record,
     dayPortion: normalizeDayPortion(record.dayPortion),
+    lostDate: record.lostDate ?? null,
   };
 }
 
-function assertValidDates(startDate: string, endDate: string, dayPortion: DayPortion): void {
+function assertValidDates(
+  startDate: string,
+  endDate: string,
+  dayPortion: DayPortion,
+  type: PtoRequestType,
+  lostDate: string | null
+): void {
   if (!startDate || !endDate) {
     throw new Error('Start and end dates are required.');
   }
@@ -78,6 +92,37 @@ function assertValidDates(startDate: string, endDate: string, dayPortion: DayPor
   if (dayPortion === 'half' && startDate !== endDate) {
     throw new Error('Half-day requests must be for a single date.');
   }
+  if (type === 'MAKEUP') {
+    if (!lostDate) {
+      throw new Error('Make-up day requests must include the day being made up.');
+    }
+    if (startDate !== endDate) {
+      throw new Error('Make-up day requests must be for a single make-up date.');
+    }
+  }
+}
+
+function normalizeRequestFields(input: {
+  type: PtoRequestType;
+  startDate: string;
+  endDate: string;
+  dayPortion?: DayPortion;
+  lostDate?: string | null;
+}): { dayPortion: DayPortion; startDate: string; endDate: string; lostDate: string | null } {
+  if (input.type === 'MAKEUP') {
+    const day = input.startDate;
+    const lostDate = input.lostDate?.trim() || null;
+    assertValidDates(day, day, 'full', 'MAKEUP', lostDate);
+    return { dayPortion: 'full', startDate: day, endDate: day, lostDate };
+  }
+  const dayPortion = normalizeDayPortion(input.dayPortion);
+  assertValidDates(input.startDate, input.endDate, dayPortion, input.type, null);
+  return {
+    dayPortion,
+    startDate: input.startDate,
+    endDate: dayPortion === 'half' ? input.startDate : input.endDate,
+    lostDate: null,
+  };
 }
 
 /** True when the employee may still edit and re-submit this request. */
@@ -88,6 +133,15 @@ export function canEditPtoRequest(
   return canEditPtoRequestShared(request, today);
 }
 
+/** Late make-up notice — uses last edit time when present. */
+export function requestIsMakeupLate(request: PtoRequest): boolean {
+  return isMakeupRequestLate({
+    type: request.type,
+    makeupDate: request.startDate,
+    submittedAt: request.updatedAt ?? request.createdAt,
+  });
+}
+
 export async function createPtoRequest(input: {
   employeeEmail: string;
   employeeName: string;
@@ -96,18 +150,19 @@ export async function createPtoRequest(input: {
   endDate: string;
   note: string;
   dayPortion?: DayPortion;
+  lostDate?: string | null;
 }): Promise<PtoRequest> {
-  const dayPortion = normalizeDayPortion(input.dayPortion);
-  assertValidDates(input.startDate, input.endDate, dayPortion);
+  const fields = normalizeRequestFields(input);
 
   const record: PtoRequest = {
     id: genId(),
     employeeEmail: input.employeeEmail.trim().toLowerCase(),
     employeeName: input.employeeName.trim(),
     type: input.type,
-    startDate: input.startDate,
-    endDate: dayPortion === 'half' ? input.startDate : input.endDate,
-    dayPortion,
+    startDate: fields.startDate,
+    endDate: fields.endDate,
+    dayPortion: fields.dayPortion,
+    lostDate: fields.lostDate,
     note: input.note.trim(),
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -133,6 +188,7 @@ export async function updateAndResubmitPtoRequest(input: {
   endDate: string;
   note: string;
   dayPortion?: DayPortion;
+  lostDate?: string | null;
 }): Promise<{ previous: PtoRequest; request: PtoRequest }> {
   const existing = await getPtoRequest(input.id);
   if (!existing) throw new Error('Request not found.');
@@ -140,15 +196,15 @@ export async function updateAndResubmitPtoRequest(input: {
     throw new Error('This request can no longer be edited.');
   }
 
-  const dayPortion = normalizeDayPortion(input.dayPortion);
-  assertValidDates(input.startDate, input.endDate, dayPortion);
+  const fields = normalizeRequestFields(input);
 
   const record: PtoRequest = {
     ...existing,
     type: input.type,
-    startDate: input.startDate,
-    endDate: dayPortion === 'half' ? input.startDate : input.endDate,
-    dayPortion,
+    startDate: fields.startDate,
+    endDate: fields.endDate,
+    dayPortion: fields.dayPortion,
+    lostDate: fields.lostDate,
     note: input.note.trim(),
     status: 'pending',
     updatedAt: new Date().toISOString(),
@@ -177,21 +233,28 @@ export async function adminUpdatePtoRequestFields(input: {
   endDate: string;
   note: string;
   dayPortion?: DayPortion;
+  lostDate?: string | null;
   /** When re-syncing an approved request after calendar recreate. */
   calendarEventId?: string | null;
 }): Promise<{ previous: PtoRequest; request: PtoRequest }> {
   const existing = await getPtoRequest(input.id);
   if (!existing) throw new Error('Request not found.');
 
-  const dayPortion = normalizeDayPortion(input.dayPortion);
-  assertValidDates(input.startDate, input.endDate, dayPortion);
+  const fields = normalizeRequestFields({
+    type: input.type,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    dayPortion: input.dayPortion,
+    lostDate: input.lostDate !== undefined ? input.lostDate : existing.lostDate,
+  });
 
   const record: PtoRequest = {
     ...existing,
     type: input.type,
-    startDate: input.startDate,
-    endDate: dayPortion === 'half' ? input.startDate : input.endDate,
-    dayPortion,
+    startDate: fields.startDate,
+    endDate: fields.endDate,
+    dayPortion: fields.dayPortion,
+    lostDate: fields.lostDate,
     note: input.note.trim(),
     updatedAt: new Date().toISOString(),
     calendarEventId:

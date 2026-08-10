@@ -21,10 +21,17 @@ import { AdminDatePicker } from './AdminDatePicker';
 type EnrichedPtoRequest = PtoRequest & {
   employeeBalanceDays: number | null;
   requestedDays: number | null;
+  isLate?: boolean;
 };
 
 function formatRange(startDate: string, endDate: string): string {
   return startDate === endDate ? startDate : `${startDate} – ${endDate}`;
+}
+
+function typeLabel(type: PtoRequest['type']): string {
+  if (type === 'PTO') return 'Time off';
+  if (type === 'WFH') return 'Work from home';
+  return 'Make-up day';
 }
 
 function StatusBadge({ status }: { status: PtoRequest['status'] }) {
@@ -47,10 +54,11 @@ function RequestRow({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
 
-  const [editType, setEditType] = useState<'PTO' | 'WFH'>(request.type);
+  const [editType, setEditType] = useState<PtoRequest['type']>(request.type);
   const [editPortion, setEditPortion] = useState<DayPortion>(request.dayPortion ?? 'full');
   const [editStart, setEditStart] = useState(request.startDate);
   const [editEnd, setEditEnd] = useState(request.endDate);
+  const [editLostDate, setEditLostDate] = useState(request.lostDate ?? '');
   const [editNote, setEditNote] = useState(request.note);
 
   const openEdit = useCallback(() => {
@@ -58,6 +66,7 @@ function RequestRow({
     setEditPortion(request.dayPortion ?? 'full');
     setEditStart(request.startDate);
     setEditEnd(request.endDate);
+    setEditLostDate(request.lostDate ?? '');
     setEditNote(request.note);
     setEditing(true);
     setError(null);
@@ -92,10 +101,11 @@ function RequestRow({
         body: JSON.stringify({
           edit: true,
           type: editType,
-          dayPortion: editPortion,
+          dayPortion: editType === 'MAKEUP' ? 'full' : editPortion,
           startDate: editStart,
-          endDate: editPortion === 'half' ? editStart : editEnd,
+          endDate: editType === 'MAKEUP' || editPortion === 'half' ? editStart : editEnd,
           note: editNote,
+          lostDate: editType === 'MAKEUP' ? editLostDate || null : null,
         }),
       });
       const data = (await res.json()) as {
@@ -118,7 +128,7 @@ function RequestRow({
     } finally {
       setLoading(false);
     }
-  }, [request.id, editType, editPortion, editStart, editEnd, editNote, onChanged]);
+  }, [request.id, editType, editPortion, editStart, editEnd, editLostDate, editNote, onChanged]);
 
   const decide = useCallback(
     async (decision: 'approved' | 'rejected') => {
@@ -176,10 +186,13 @@ function RequestRow({
             <span className="ml-2 text-xs font-normal text-text-muted">{request.employeeEmail}</span>
           </p>
           <p className={adminBody}>
-            {request.type === 'PTO' ? 'Time off' : 'Work from home'}
+            {typeLabel(request.type)}
             {request.dayPortion === 'half' ? ' · Half day' : ''} ·{' '}
             {formatRange(request.startDate, request.endDate)}
           </p>
+          {request.type === 'MAKEUP' && request.lostDate ? (
+            <p className="mt-1 text-xs text-text-muted">Making up for {request.lostDate}</p>
+          ) : null}
           {request.type === 'PTO' && request.employeeBalanceDays !== null ? (
             <p className="mt-1 text-xs text-text-muted">
               Requesting {request.requestedDays} working day{request.requestedDays === 1 ? '' : 's'} ·
@@ -188,7 +201,14 @@ function RequestRow({
           ) : null}
           {request.note ? <p className="mt-1 text-xs text-text-muted">{request.note}</p> : null}
         </div>
-        <StatusBadge status={request.status} />
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <StatusBadge status={request.status} />
+          {request.isLate ? (
+            <span className="inline-flex items-center justify-center rounded-full border border-brand-pink/40 bg-brand-pink/15 px-2.5 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-brand-pink font-mono">
+              Late
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {overdraft ? (
@@ -205,25 +225,32 @@ function RequestRow({
         <div className="space-y-3 border-t border-white/10 pt-3">
           <div>
             <p className={adminLabel}>Type</p>
-            <div className="flex gap-2">
-              {(['PTO', 'WFH'] as const).map((option) => (
+            <div className="flex flex-wrap gap-2">
+              {(['PTO', 'WFH', 'MAKEUP'] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
                   disabled={loading}
-                  onClick={() => setEditType(option)}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold transition ${
+                  onClick={() => {
+                    setEditType(option);
+                    if (option === 'MAKEUP') {
+                      setEditPortion('full');
+                      setEditEnd(editStart);
+                    }
+                  }}
+                  className={`min-w-[6.5rem] flex-1 rounded-lg border px-3 py-2 text-xs font-bold transition ${
                     editType === option
                       ? 'border-brand-cyan/50 bg-brand-cyan/15 text-brand-cyan'
                       : 'border-white/10 text-text-muted hover:border-white/25'
                   }`}
                 >
-                  {option === 'PTO' ? 'Time off' : 'Work from home'}
+                  {typeLabel(option)}
                 </button>
               ))}
             </div>
           </div>
 
+          {editType !== 'MAKEUP' ? (
           <div>
             <p className={adminLabel}>Duration</p>
             <div className="flex gap-2">
@@ -247,7 +274,27 @@ function RequestRow({
               ))}
             </div>
           </div>
+          ) : null}
 
+          {editType === 'MAKEUP' ? (
+            <div className="grid gap-3 min-[480px]:grid-cols-2">
+              <div>
+                <p className={adminLabel}>Day lost</p>
+                <AdminDatePicker value={editLostDate} onChange={setEditLostDate} required />
+              </div>
+              <div>
+                <p className={adminLabel}>Make-up day</p>
+                <AdminDatePicker
+                  value={editStart}
+                  onChange={(next) => {
+                    setEditStart(next);
+                    setEditEnd(next);
+                  }}
+                  required
+                />
+              </div>
+            </div>
+          ) : (
           <div className={`grid gap-3 ${editPortion === 'half' ? '' : 'min-[480px]:grid-cols-2'}`}>
             <div>
               <p className={adminLabel}>{editPortion === 'half' ? 'Date' : 'Start date'}</p>
@@ -272,6 +319,7 @@ function RequestRow({
               </div>
             ) : null}
           </div>
+          )}
 
           <div>
             <p className={adminLabel}>Note</p>

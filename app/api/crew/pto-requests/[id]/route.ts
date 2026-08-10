@@ -41,6 +41,7 @@ type PatchBody = {
   endDate?: string;
   note?: string;
   dayPortion?: DayPortion;
+  lostDate?: string | null;
 };
 
 /** Edit + re-submit for approval (notifies admins; unwinds prior approval if needed). */
@@ -72,13 +73,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const type = body.type ?? existing.type;
-  if (type !== 'PTO' && type !== 'WFH') {
-    return NextResponse.json({ error: 'Type must be PTO or WFH.' }, { status: 400 });
+  if (type !== 'PTO' && type !== 'WFH' && type !== 'MAKEUP') {
+    return NextResponse.json({ error: 'Type must be PTO, WFH, or MAKEUP.' }, { status: 400 });
   }
   const startDate = body.startDate ?? existing.startDate;
   const endDate = body.endDate ?? existing.endDate;
   if (!startDate || !endDate) {
     return NextResponse.json({ error: 'Start and end dates are required.' }, { status: 400 });
+  }
+  const lostDate =
+    type === 'MAKEUP'
+      ? (typeof body.lostDate === 'string' ? body.lostDate : existing.lostDate)
+      : null;
+  if (type === 'MAKEUP' && !lostDate) {
+    return NextResponse.json(
+      { error: 'Make-up day requests must include the day being made up.' },
+      { status: 400 }
+    );
   }
 
   try {
@@ -103,9 +114,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       id: params.id,
       type,
       startDate,
-      endDate,
+      endDate: type === 'MAKEUP' ? startDate : endDate,
       note: typeof body.note === 'string' ? body.note : existing.note,
-      dayPortion: normalizeDayPortion(body.dayPortion ?? existing.dayPortion),
+      dayPortion: type === 'MAKEUP' ? 'full' : normalizeDayPortion(body.dayPortion ?? existing.dayPortion),
+      lostDate,
     });
 
     try {

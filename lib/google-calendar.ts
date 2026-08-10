@@ -48,7 +48,7 @@ function nextDay(dateStr: string): string {
 }
 
 export type PtoCalendarEventInput = {
-  type: 'PTO' | 'WFH';
+  type: 'PTO' | 'WFH' | 'MAKEUP';
   employeeName: string;
   startDate: string;
   endDate: string;
@@ -56,13 +56,19 @@ export type PtoCalendarEventInput = {
   note?: string;
   /** Half-day shows in the event title; still an all-day marker on that date. */
   dayPortion?: 'full' | 'half';
+  /** Day being made up (MAKEUP only) — included in the event description. */
+  lostDate?: string | null;
 };
 
 export async function createPtoCalendarEvent(input: PtoCalendarEventInput): Promise<string> {
   const calendar = getCalendarClient();
-  const emoji = input.type === 'PTO' ? '🌴' : '🏠';
+  const emoji = input.type === 'PTO' ? '🌴' : input.type === 'WFH' ? '🏠' : '🛠️';
+  const typeLabel =
+    input.type === 'PTO' ? 'PTO' : input.type === 'WFH' ? 'WFH' : 'Make-up';
   const halfLabel = input.dayPortion === 'half' ? ' (Half day)' : '';
   const noteParts = [
+    input.type === 'MAKEUP' && input.lostDate ? `Making up for: ${input.lostDate}` : null,
+    input.type === 'MAKEUP' ? 'Strongly advised to work in-office' : null,
     input.dayPortion === 'half' ? 'Half day' : null,
     input.note?.trim() || null,
   ].filter(Boolean);
@@ -70,18 +76,23 @@ export async function createPtoCalendarEvent(input: PtoCalendarEventInput): Prom
   const res = await calendar.events.insert({
     calendarId: getCalendarId(),
     requestBody: {
-      summary: `${emoji} ${input.type}${halfLabel} — ${input.employeeName}`,
+      summary: `${emoji} ${typeLabel}${halfLabel} — ${input.employeeName}`,
       description: noteParts.length > 0 ? noteParts.join('\n') : undefined,
       start: { date: input.startDate },
-      end: { date: nextDay(input.dayPortion === 'half' ? input.startDate : input.endDate) },
-      // 11 = tomato (red) for PTO, 9 = blueberry for WFH — Google's fixed colorId palette.
-      colorId: input.type === 'PTO' ? '11' : '9',
+      end: {
+        date: nextDay(
+          input.dayPortion === 'half' || input.type === 'MAKEUP' ? input.startDate : input.endDate
+        ),
+      },
+      // 11 = tomato (PTO), 9 = blueberry (WFH), 5 = banana (make-up).
+      colorId: input.type === 'PTO' ? '11' : input.type === 'WFH' ? '9' : '5',
       extendedProperties: {
         private: {
           anim8PortalRequestId: input.requestId,
           anim8PortalType: input.type,
           anim8PortalEmployeeName: input.employeeName,
           anim8PortalDayPortion: input.dayPortion === 'half' ? 'half' : 'full',
+          ...(input.lostDate ? { anim8PortalLostDate: input.lostDate } : {}),
         },
       },
     },

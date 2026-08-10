@@ -21,6 +21,7 @@ type EditBody = {
   endDate?: string;
   note?: string;
   dayPortion?: DayPortion;
+  lostDate?: string | null;
   /** When set, this PATCH is an admin field edit (not an approve/reject). */
   edit?: boolean;
 };
@@ -71,13 +72,23 @@ async function patchAdminEdit(id: string, body: EditBody, _adminEmail: string) {
   if (!existing) return NextResponse.json({ error: 'Request not found.' }, { status: 404 });
 
   const type = body.type ?? existing.type;
-  if (type !== 'PTO' && type !== 'WFH') {
-    return NextResponse.json({ error: 'Type must be PTO or WFH.' }, { status: 400 });
+  if (type !== 'PTO' && type !== 'WFH' && type !== 'MAKEUP') {
+    return NextResponse.json({ error: 'Type must be PTO, WFH, or MAKEUP.' }, { status: 400 });
   }
   const startDate = body.startDate ?? existing.startDate;
   const endDate = body.endDate ?? existing.endDate;
   if (!startDate || !endDate) {
     return NextResponse.json({ error: 'Start and end dates are required.' }, { status: 400 });
+  }
+  const lostDate =
+    type === 'MAKEUP'
+      ? (typeof body.lostDate === 'string' ? body.lostDate : existing.lostDate)
+      : null;
+  if (type === 'MAKEUP' && !lostDate) {
+    return NextResponse.json(
+      { error: 'Make-up day requests must include the day being made up.' },
+      { status: 400 }
+    );
   }
 
   let calendarError: string | null = null;
@@ -106,14 +117,15 @@ async function patchAdminEdit(id: string, body: EditBody, _adminEmail: string) {
       }
     }
 
-    const dayPortion = normalizeDayPortion(body.dayPortion ?? existing.dayPortion);
+    const dayPortion = type === 'MAKEUP' ? 'full' : normalizeDayPortion(body.dayPortion ?? existing.dayPortion);
     const { request: updated } = await adminUpdatePtoRequestFields({
       id,
       type,
       startDate,
-      endDate,
+      endDate: type === 'MAKEUP' ? startDate : endDate,
       note: typeof body.note === 'string' ? body.note : existing.note,
       dayPortion,
+      lostDate,
       calendarEventId: existing.status === 'approved' ? null : undefined,
     });
 
@@ -130,6 +142,7 @@ async function patchAdminEdit(id: string, body: EditBody, _adminEmail: string) {
           requestId: updated.id,
           note: updated.note,
           dayPortion: updated.dayPortion,
+          lostDate: updated.lostDate,
         });
       } catch (err) {
         calendarError =
@@ -154,6 +167,7 @@ async function patchAdminEdit(id: string, body: EditBody, _adminEmail: string) {
         endDate: updated.endDate,
         note: updated.note,
         dayPortion: updated.dayPortion,
+        lostDate: updated.lostDate,
         calendarEventId: calendarEventId ?? null,
       });
 

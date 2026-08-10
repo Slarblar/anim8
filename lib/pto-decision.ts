@@ -41,6 +41,7 @@ export async function applyPtoDecision(input: {
         requestId: existing.id,
         note: existing.note,
         dayPortion: existing.dayPortion,
+        lostDate: existing.lostDate,
       });
     } catch (err) {
       // Still record the approval — don't lose the decision if Calendar

@@ -1,6 +1,6 @@
 import 'server-only';
 import type { WeeklyDigest } from './weekly-digest';
-import { ptoDaysForRequest, type PtoRequest } from './pto-requests';
+import { ptoDaysForRequest, requestIsMakeupLate, type PtoRequest } from './pto-requests';
 import { getCrewMember } from './crew-directory';
 import { emailButton, escapeHtml, noteBlock, renderEmailHtml, statLine, warningBanner } from './email-template';
 import { formatBothTimeZones } from './timezone-format';
@@ -102,9 +102,14 @@ export async function notifyAdminsNewPtoRequest(
   if (recipients.length === 0) return false;
 
   const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
+  const typeLabel =
+    request.type === 'PTO' ? 'PTO' : request.type === 'WFH' ? 'WFH' : 'Make-up';
   const range = formatRange(request.startDate, request.endDate);
   const halfSuffix = request.dayPortion === 'half' ? ' (half day)' : '';
+  const makeupSuffix =
+    request.type === 'MAKEUP' && request.lostDate ? ` (making up ${request.lostDate})` : '';
   const isEdit = options?.isEdit === true;
+  const isLate = requestIsMakeupLate(request);
 
   let balanceDays: number | null = null;
   let requestedDays: number | null = null;
@@ -125,8 +130,8 @@ export async function notifyAdminsNewPtoRequest(
   const dashboardUrl = `${baseUrl()}/admin/pto-requests`;
 
   const subject = isEdit
-    ? `Updated ${request.type} request — ${request.employeeName}`
-    : `New ${request.type} request — ${request.employeeName}`;
+    ? `Updated ${typeLabel} request — ${request.employeeName}`
+    : `New ${typeLabel} request — ${request.employeeName}`;
 
   const stamp = request.updatedAt ?? request.createdAt;
   const submittedBoth = formatBothTimeZones(stamp);
@@ -134,9 +139,10 @@ export async function notifyAdminsNewPtoRequest(
 
   const textLines = [
     isEdit
-      ? `${request.employeeName} updated their ${request.type} request for ${range}${halfSuffix}. It needs approval again.`
-      : `${request.employeeName} requested ${request.type} for ${range}${halfSuffix}.`,
+      ? `${request.employeeName} updated their ${typeLabel} request for ${range}${halfSuffix}${makeupSuffix}. It needs approval again.`
+      : `${request.employeeName} requested ${typeLabel} for ${range}${halfSuffix}${makeupSuffix}.`,
     `${stampLabel}: ${submittedBoth}`,
+    isLate ? '\n⚠ Late: submitted with less than 14 days notice before the make-up day.' : null,
     request.note ? `\nNote: ${request.note}` : null,
     balanceDays !== null ? `\nCurrent balance: ${balanceDays} days · Requesting: ${requestedDays} days` : null,
     overdraft ? `\n⚠ This would take their balance negative.` : null,
@@ -149,11 +155,14 @@ export async function notifyAdminsNewPtoRequest(
 
   const bodyHtml = [
     isEdit
-      ? `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> updated their <strong style="color:#ffffff;">${escapeHtml(request.type)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}${escapeHtml(halfSuffix)}</strong>. It needs approval again.</p>`
-      : `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> requested <strong style="color:#ffffff;">${escapeHtml(request.type)}</strong> for <strong style="color:#ffffff;">${escapeHtml(range)}${escapeHtml(halfSuffix)}</strong>.</p>`,
-    // Shown in both Vietnam (studio) and admin-team timezones — this is a static
-    // email, so it can't detect the reader's own zone the way the web app can.
+      ? `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> updated their <strong style="color:#ffffff;">${escapeHtml(typeLabel)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}${escapeHtml(halfSuffix)}${escapeHtml(makeupSuffix)}</strong>. It needs approval again.</p>`
+      : `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(request.employeeName)}</strong> requested <strong style="color:#ffffff;">${escapeHtml(typeLabel)}</strong> for <strong style="color:#ffffff;">${escapeHtml(range)}${escapeHtml(halfSuffix)}${escapeHtml(makeupSuffix)}</strong>.</p>`,
     `<p style="margin:0 0 12px 0;font-size:12px;color:#8b95a8;">${stampLabel} ${escapeHtml(submittedBoth)}</p>`,
+    isLate
+      ? warningBanner(
+          'Late request — submitted with less than 14 days notice before the make-up day. Still eligible for approval.'
+        )
+      : '',
     balanceDays !== null
       ? `<div style="margin:16px 0;">${statLine('Current balance', `${balanceDays} day${balanceDays === 1 ? '' : 's'}`)}${statLine('Requesting', `${requestedDays} day${requestedDays === 1 ? '' : 's'}`)}</div>`
       : '<div style="margin:16px 0 0 0;"></div>',
@@ -180,7 +189,7 @@ export async function notifyAdminsNewPtoRequest(
 export async function notifyEmployeePtoDecision(input: {
   to: string;
   employeeName: string;
-  type: 'PTO' | 'WFH';
+  type: 'PTO' | 'WFH' | 'MAKEUP';
   startDate: string;
   endDate: string;
   decision: 'approved' | 'rejected';

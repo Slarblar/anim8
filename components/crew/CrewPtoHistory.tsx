@@ -67,8 +67,20 @@ function HistoryRow({ request, onDeleted }: { request: PtoRequest; onDeleted: ()
       <div className="min-w-0">
         <p className="font-bold text-white">
           <HoverTranslate
-            en={request.type === 'PTO' ? crewT.en.ptoPage.typePto : crewT.en.ptoPage.typeWfh}
-            vn={request.type === 'PTO' ? crewT.vn.ptoPage.typePto : crewT.vn.ptoPage.typeWfh}
+            en={
+              request.type === 'PTO'
+                ? crewT.en.ptoPage.typePto
+                : request.type === 'WFH'
+                  ? crewT.en.ptoPage.typeWfh
+                  : crewT.en.ptoPage.typeMakeup
+            }
+            vn={
+              request.type === 'PTO'
+                ? crewT.vn.ptoPage.typePto
+                : request.type === 'WFH'
+                  ? crewT.vn.ptoPage.typeWfh
+                  : crewT.vn.ptoPage.typeMakeup
+            }
           />
           {request.dayPortion === 'half' ? (
             <span className="ml-2 text-xs font-normal text-text-muted">
@@ -78,6 +90,12 @@ function HistoryRow({ request, onDeleted }: { request: PtoRequest; onDeleted: ()
           ) : null}
         </p>
         <p className={adminBody}>{formatRange(request.startDate, request.endDate)}</p>
+        {request.type === 'MAKEUP' && request.lostDate ? (
+          <p className="mt-1 text-xs text-text-muted">
+            <HoverTranslate en={crewT.en.ptoPage.formLostDate} vn={crewT.vn.ptoPage.formLostDate} />
+            {`: ${request.lostDate}`}
+          </p>
+        ) : null}
         {request.note ? <p className="mt-1 text-xs text-text-muted">{request.note}</p> : null}
         {request.status === 'rejected' && request.decisionNote ? (
           <p className="mt-1 text-xs text-brand-pink">

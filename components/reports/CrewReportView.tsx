@@ -111,7 +111,9 @@ export function CrewReportView({ data }: { data: CrewReportData }) {
                   <td className="py-2 pr-3 font-mono text-xs text-white print:text-black">
                     {r.startDate === r.endDate ? formatDate(r.startDate) : `${formatDate(r.startDate)} – ${formatDate(r.endDate)}`}
                   </td>
-                  <td className="py-2 pr-3">{r.type === 'PTO' ? 'Time off' : 'Work from home'}</td>
+                  <td className="py-2 pr-3">
+                    {r.type === 'PTO' ? 'Time off' : r.type === 'WFH' ? 'Work from home' : 'Make-up day'}
+                  </td>
                   <td className="py-2 pr-3">{STATUS_LABELS[r.status] ?? r.status}</td>
                   <td className="py-2 pr-3 max-w-[16rem] truncate">{r.note || '—'}</td>
                 </tr>

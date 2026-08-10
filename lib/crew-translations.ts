@@ -94,6 +94,7 @@ type PtoPageT = {
   entitledTo: (entitlementDays: number | null) => string;
   typePto: string;
   typeWfh: string;
+  typeMakeup: string;
   historyLoading: string;
   historyEmpty: string;
   historyLoadError: string;
@@ -101,6 +102,7 @@ type PtoPageT = {
   statusApproved: string;
   statusRejected: string;
   statusPending: string;
+  lateBadge: string;
   newRequestTitle: string;
   newRequestSubtitle: string;
   formTypeLabel: string;
@@ -113,6 +115,10 @@ type PtoPageT = {
   formDate: string;
   formStartDate: string;
   formEndDate: string;
+  formLostDate: string;
+  formMakeupDate: string;
+  formMakeupInOfficeAdvice: string;
+  formMakeupLateWarning: (noticeDays: number) => string;
   formNoteOptional: string;
   formNotePlaceholder: string;
   formRequestingDays: (n: number) => string;
@@ -234,6 +240,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
         `Entitled to ${entitlementDays ?? '—'}/year · accrues monthly (Handbook 3.7)`,
       typePto: 'Time off',
       typeWfh: 'Work from home',
+      typeMakeup: 'Make-up day',
       historyLoading: 'Loading your requests…',
       historyEmpty: "You haven't submitted any requests yet.",
       historyLoadError: 'Could not load your requests.',
@@ -241,6 +248,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       statusApproved: 'Approved',
       statusRejected: 'Rejected',
       statusPending: 'Pending',
+      lateBadge: 'Late',
       newRequestTitle: 'New PTO / WFH request',
       newRequestSubtitle:
         "Submit a request — an admin will approve or reject it, and it'll sync to the team calendar.",
@@ -254,6 +262,12 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       formDate: 'Date',
       formStartDate: 'Start date',
       formEndDate: 'End date',
+      formLostDate: 'Day lost',
+      formMakeupDate: 'Make-up day',
+      formMakeupInOfficeAdvice:
+        'Strongly advised: work in-office on make-up days so the team can plan around you being here.',
+      formMakeupLateWarning: (noticeDays) =>
+        `This make-up day is less than ${noticeDays} days away. You can still submit — admins will see it marked Late.`,
       formNoteOptional: 'Note (optional)',
       formNotePlaceholder: 'Anything your admin should know…',
       formRequestingDays: (n) =>
@@ -370,6 +384,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
         `Được cấp ${entitlementDays ?? '—'} ngày/năm · tích lũy theo tháng (Handbook 3.7)`,
       typePto: 'Nghỉ phép',
       typeWfh: 'Làm việc tại nhà',
+      typeMakeup: 'Ngày bù',
       historyLoading: 'Đang tải yêu cầu của bạn…',
       historyEmpty: 'Bạn chưa gửi yêu cầu nào.',
       historyLoadError: 'Không thể tải yêu cầu của bạn.',
@@ -377,6 +392,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       statusApproved: 'Đã duyệt',
       statusRejected: 'Đã từ chối',
       statusPending: 'Đang chờ',
+      lateBadge: 'Muộn',
       newRequestTitle: 'Yêu cầu nghỉ phép / WFH mới',
       newRequestSubtitle:
         'Gửi yêu cầu — admin sẽ duyệt hoặc từ chối, và yêu cầu sẽ được đồng bộ vào lịch của nhóm.',
@@ -390,6 +406,12 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       formDate: 'Ngày',
       formStartDate: 'Ngày bắt đầu',
       formEndDate: 'Ngày kết thúc',
+      formLostDate: 'Ngày bị mất',
+      formMakeupDate: 'Ngày bù',
+      formMakeupInOfficeAdvice:
+        'Khuyến nghị mạnh: làm việc tại văn phòng vào ngày bù để team chủ động sắp xếp.',
+      formMakeupLateWarning: (noticeDays) =>
+        `Ngày bù còn chưa đủ ${noticeDays} ngày. Bạn vẫn có thể gửi — admin sẽ thấy gắn nhãn Muộn.`,
       formNoteOptional: 'Ghi chú (không bắt buộc)',
       formNotePlaceholder: 'Điều gì admin cần biết…',
       formRequestingDays: (n) =>

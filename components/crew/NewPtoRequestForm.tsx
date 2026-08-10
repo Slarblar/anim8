@@ -12,17 +12,39 @@ import {
 import { AdminDatePicker } from '@/components/admin/AdminDatePicker';
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
-import { normalizeDayPortion, requestedWorkingDays, type DayPortion } from '@/lib/pto-days';
-import type { PtoRequest } from '@/lib/pto-requests';
+import {
+  isMakeupRequestLate,
+  MAKEUP_NOTICE_DAYS,
+  normalizeDayPortion,
+  requestedWorkingDays,
+  type DayPortion,
+} from '@/lib/pto-days';
+import type { PtoRequest, PtoRequestType } from '@/lib/pto-requests';
+import { studioTodayDateString } from '@/lib/studio-date';
 import { HoverTranslate } from './HoverTranslate';
 
 type FormInitial = {
-  type: 'PTO' | 'WFH';
+  type: PtoRequestType;
   startDate: string;
   endDate: string;
   note: string;
   dayPortion: DayPortion;
+  lostDate: string | null;
 };
+
+const TYPE_OPTIONS: PtoRequestType[] = ['PTO', 'WFH', 'MAKEUP'];
+
+function typeLabelEn(type: PtoRequestType): string {
+  if (type === 'PTO') return crewT.en.ptoPage.typePto;
+  if (type === 'WFH') return crewT.en.ptoPage.typeWfh;
+  return crewT.en.ptoPage.typeMakeup;
+}
+
+function typeLabelVn(type: PtoRequestType): string {
+  if (type === 'PTO') return crewT.vn.ptoPage.typePto;
+  if (type === 'WFH') return crewT.vn.ptoPage.typeWfh;
+  return crewT.vn.ptoPage.typeMakeup;
+}
 
 export function NewPtoRequestForm({
   mode = 'create',
@@ -36,10 +58,11 @@ export function NewPtoRequestForm({
   const router = useRouter();
   const { lang } = useCrewLanguage();
   const c = crewT[lang].ptoPage;
-  const [type, setType] = useState<'PTO' | 'WFH'>(initial?.type ?? 'PTO');
+  const [type, setType] = useState<PtoRequestType>(initial?.type ?? 'PTO');
   const [dayPortion, setDayPortion] = useState<DayPortion>(initial?.dayPortion ?? 'full');
   const [startDate, setStartDate] = useState(initial?.startDate ?? '');
   const [endDate, setEndDate] = useState(initial?.endDate ?? '');
+  const [lostDate, setLostDate] = useState(initial?.lostDate ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,14 +75,22 @@ export function NewPtoRequestForm({
       .catch(() => setBalanceDays(null));
   }, []);
 
+  const selectType = useCallback((next: PtoRequestType) => {
+    setType(next);
+    if (next === 'MAKEUP') {
+      setDayPortion('full');
+      if (startDate) setEndDate(startDate);
+    }
+  }, [startDate]);
+
   const setStart = useCallback(
     (next: string) => {
       setStartDate(next);
-      if (dayPortion === 'half' || !endDate || endDate < next) {
+      if (type === 'MAKEUP' || dayPortion === 'half' || !endDate || endDate < next) {
         setEndDate(next);
       }
     },
-    [dayPortion, endDate]
+    [type, dayPortion, endDate]
   );
 
   const setPortion = useCallback(
@@ -72,15 +103,23 @@ export function NewPtoRequestForm({
     [startDate]
   );
 
-  const effectiveEnd = dayPortion === 'half' ? startDate : endDate;
+  const effectiveEnd = type === 'MAKEUP' || dayPortion === 'half' ? startDate : endDate;
   const requestedDays = useMemo(
     () =>
-      startDate && effectiveEnd
+      type === 'PTO' && startDate && effectiveEnd
         ? requestedWorkingDays(startDate, effectiveEnd, dayPortion)
         : 0,
-    [startDate, effectiveEnd, dayPortion]
+    [type, startDate, effectiveEnd, dayPortion]
   );
   const overdraft = type === 'PTO' && balanceDays !== null && requestedDays > balanceDays;
+  const makeupLatePreview =
+    type === 'MAKEUP' &&
+    !!startDate &&
+    isMakeupRequestLate({
+      type: 'MAKEUP',
+      makeupDate: startDate,
+      submittedAt: studioTodayDateString(),
+    });
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -91,9 +130,10 @@ export function NewPtoRequestForm({
       const payload = {
         type,
         startDate,
-        endDate: dayPortion === 'half' ? startDate : endDate,
+        endDate: type === 'MAKEUP' || dayPortion === 'half' ? startDate : endDate,
         note,
-        dayPortion,
+        dayPortion: type === 'MAKEUP' ? 'full' : dayPortion,
+        lostDate: type === 'MAKEUP' ? lostDate || null : null,
       };
 
       try {
@@ -125,6 +165,7 @@ export function NewPtoRequestForm({
       endDate,
       note,
       dayPortion,
+      lostDate,
       mode,
       requestId,
       router,
@@ -141,22 +182,19 @@ export function NewPtoRequestForm({
         <label className={adminLabel}>
           <HoverTranslate en={crewT.en.ptoPage.formTypeLabel} vn={crewT.vn.ptoPage.formTypeLabel} />
         </label>
-        <div className="flex gap-2">
-          {(['PTO', 'WFH'] as const).map((option) => (
+        <div className="flex flex-wrap gap-2">
+          {TYPE_OPTIONS.map((option) => (
             <button
               key={option}
               type="button"
-              onClick={() => setType(option)}
-              className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-bold transition ${
+              onClick={() => selectType(option)}
+              className={`min-w-[7.5rem] flex-1 rounded-lg border px-3 py-2.5 text-sm font-bold transition ${
                 type === option
                   ? 'border-brand-cyan/50 bg-brand-cyan/15 text-brand-cyan'
                   : 'border-white/10 bg-white/[0.03] text-text-muted hover:border-white/25'
               }`}
             >
-              <HoverTranslate
-                en={option === 'PTO' ? crewT.en.ptoPage.typePto : crewT.en.ptoPage.typeWfh}
-                vn={option === 'PTO' ? crewT.vn.ptoPage.typePto : crewT.vn.ptoPage.typeWfh}
-              />
+              <HoverTranslate en={typeLabelEn(option)} vn={typeLabelVn(option)} />
             </button>
           ))}
         </div>
@@ -172,70 +210,109 @@ export function NewPtoRequestForm({
             )}
           </p>
         ) : null}
-      </div>
-
-      <div>
-        <label className={adminLabel}>
-          <HoverTranslate en={crewT.en.ptoPage.formDurationLabel} vn={crewT.vn.ptoPage.formDurationLabel} />
-        </label>
-        <div className="flex gap-2">
-          {(['full', 'half'] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setPortion(option)}
-              className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-bold transition ${
-                dayPortion === option
-                  ? 'border-brand-cyan/50 bg-brand-cyan/15 text-brand-cyan'
-                  : 'border-white/10 bg-white/[0.03] text-text-muted hover:border-white/25'
-              }`}
-            >
-              <HoverTranslate
-                en={option === 'full' ? crewT.en.ptoPage.formFullDay : crewT.en.ptoPage.formHalfDay}
-                vn={option === 'full' ? crewT.vn.ptoPage.formFullDay : crewT.vn.ptoPage.formHalfDay}
-              />
-            </button>
-          ))}
-        </div>
-        {dayPortion === 'half' ? (
-          <p className="mt-2 text-xs text-text-muted">
-            <HoverTranslate en={crewT.en.ptoPage.formHalfDayHint} vn={crewT.vn.ptoPage.formHalfDayHint} />
+        {type === 'MAKEUP' ? (
+          <p className="mt-2 rounded-lg border border-brand-cyan/25 bg-brand-cyan/10 px-3.5 py-2.5 text-xs text-brand-cyan">
+            <HoverTranslate
+              en={crewT.en.ptoPage.formMakeupInOfficeAdvice}
+              vn={crewT.vn.ptoPage.formMakeupInOfficeAdvice}
+            />
           </p>
         ) : null}
       </div>
 
-      <div className={`grid gap-4 ${dayPortion === 'half' ? '' : 'min-[480px]:grid-cols-2'}`}>
+      {type !== 'MAKEUP' ? (
         <div>
-          <label className={adminLabel} htmlFor="startDate">
-            <HoverTranslate
-              en={dayPortion === 'half' ? crewT.en.ptoPage.formDate : crewT.en.ptoPage.formStartDate}
-              vn={dayPortion === 'half' ? crewT.vn.ptoPage.formDate : crewT.vn.ptoPage.formStartDate}
-            />
+          <label className={adminLabel}>
+            <HoverTranslate en={crewT.en.ptoPage.formDurationLabel} vn={crewT.vn.ptoPage.formDurationLabel} />
           </label>
-          <AdminDatePicker
-            id="startDate"
-            value={startDate}
-            onChange={setStart}
-            placeholder={dayPortion === 'half' ? 'Date' : 'Start date'}
-            required
-          />
+          <div className="flex gap-2">
+            {(['full', 'half'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setPortion(option)}
+                className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-bold transition ${
+                  dayPortion === option
+                    ? 'border-brand-cyan/50 bg-brand-cyan/15 text-brand-cyan'
+                    : 'border-white/10 bg-white/[0.03] text-text-muted hover:border-white/25'
+                }`}
+              >
+                <HoverTranslate
+                  en={option === 'full' ? crewT.en.ptoPage.formFullDay : crewT.en.ptoPage.formHalfDay}
+                  vn={option === 'full' ? crewT.vn.ptoPage.formFullDay : crewT.vn.ptoPage.formHalfDay}
+                />
+              </button>
+            ))}
+          </div>
+          {dayPortion === 'half' ? (
+            <p className="mt-2 text-xs text-text-muted">
+              <HoverTranslate en={crewT.en.ptoPage.formHalfDayHint} vn={crewT.vn.ptoPage.formHalfDayHint} />
+            </p>
+          ) : null}
         </div>
-        {dayPortion === 'full' ? (
+      ) : null}
+
+      {type === 'MAKEUP' ? (
+        <div className="grid gap-4 min-[480px]:grid-cols-2">
           <div>
-            <label className={adminLabel} htmlFor="endDate">
-              <HoverTranslate en={crewT.en.ptoPage.formEndDate} vn={crewT.vn.ptoPage.formEndDate} />
+            <label className={adminLabel} htmlFor="lostDate">
+              <HoverTranslate en={crewT.en.ptoPage.formLostDate} vn={crewT.vn.ptoPage.formLostDate} />
             </label>
             <AdminDatePicker
-              id="endDate"
-              value={endDate}
-              onChange={setEndDate}
-              min={startDate || undefined}
-              placeholder="End date"
+              id="lostDate"
+              value={lostDate}
+              onChange={setLostDate}
+              placeholder="Day lost"
               required
             />
           </div>
-        ) : null}
-      </div>
+          <div>
+            <label className={adminLabel} htmlFor="makeupDate">
+              <HoverTranslate en={crewT.en.ptoPage.formMakeupDate} vn={crewT.vn.ptoPage.formMakeupDate} />
+            </label>
+            <AdminDatePicker
+              id="makeupDate"
+              value={startDate}
+              onChange={setStart}
+              placeholder="Make-up day"
+              required
+            />
+          </div>
+        </div>
+      ) : (
+        <div className={`grid gap-4 ${dayPortion === 'half' ? '' : 'min-[480px]:grid-cols-2'}`}>
+          <div>
+            <label className={adminLabel} htmlFor="startDate">
+              <HoverTranslate
+                en={dayPortion === 'half' ? crewT.en.ptoPage.formDate : crewT.en.ptoPage.formStartDate}
+                vn={dayPortion === 'half' ? crewT.vn.ptoPage.formDate : crewT.vn.ptoPage.formStartDate}
+              />
+            </label>
+            <AdminDatePicker
+              id="startDate"
+              value={startDate}
+              onChange={setStart}
+              placeholder={dayPortion === 'half' ? 'Date' : 'Start date'}
+              required
+            />
+          </div>
+          {dayPortion === 'full' ? (
+            <div>
+              <label className={adminLabel} htmlFor="endDate">
+                <HoverTranslate en={crewT.en.ptoPage.formEndDate} vn={crewT.vn.ptoPage.formEndDate} />
+              </label>
+              <AdminDatePicker
+                id="endDate"
+                value={endDate}
+                onChange={setEndDate}
+                min={startDate || undefined}
+                placeholder="End date"
+                required
+              />
+            </div>
+          ) : null}
+        </div>
+      )}
 
       <div>
         <label className={adminLabel} htmlFor="note">
@@ -255,6 +332,15 @@ export function NewPtoRequestForm({
           <HoverTranslate
             en={crewT.en.ptoPage.formRequestingDays(requestedDays)}
             vn={crewT.vn.ptoPage.formRequestingDays(requestedDays)}
+          />
+        </p>
+      ) : null}
+
+      {makeupLatePreview ? (
+        <p className="rounded-lg border border-brand-pink/30 bg-brand-pink/10 px-3.5 py-2.5 text-xs text-brand-pink">
+          <HoverTranslate
+            en={crewT.en.ptoPage.formMakeupLateWarning(MAKEUP_NOTICE_DAYS)}
+            vn={crewT.vn.ptoPage.formMakeupLateWarning(MAKEUP_NOTICE_DAYS)}
           />
         </p>
       ) : null}
@@ -309,5 +395,6 @@ export function initialFromRequest(request: PtoRequest): FormInitial {
     endDate: request.endDate,
     note: request.note,
     dayPortion: normalizeDayPortion(request.dayPortion),
+    lostDate: request.lostDate ?? null,
   };
 }

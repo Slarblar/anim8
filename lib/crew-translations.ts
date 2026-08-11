@@ -262,8 +262,8 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       formDate: 'Date',
       formStartDate: 'Start date',
       formEndDate: 'End date',
-      formLostDate: 'PTO day',
-      formMakeupDate: 'Make-up day',
+      formLostDate: 'PTO Day',
+      formMakeupDate: 'Make-Up Day',
       formMakeupInOfficeAdvice:
         'Strongly advised: work in-office on make-up days so the team can plan around you being here.',
       formMakeupLateWarning: (noticeDays) =>
@@ -407,7 +407,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
       formStartDate: 'Ngày bắt đầu',
       formEndDate: 'Ngày kết thúc',
       formLostDate: 'Ngày PTO',
-      formMakeupDate: 'Ngày bù',
+      formMakeupDate: 'Ngày Make-Up',
       formMakeupInOfficeAdvice:
         'Khuyến nghị mạnh: làm việc tại văn phòng vào ngày bù để team chủ động sắp xếp.',
       formMakeupLateWarning: (noticeDays) =>

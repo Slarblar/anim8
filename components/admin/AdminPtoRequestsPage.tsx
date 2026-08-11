@@ -279,11 +279,11 @@ function RequestRow({
           {editType === 'MAKEUP' ? (
             <div className="grid gap-3 min-[480px]:grid-cols-2">
               <div>
-                <p className={adminLabel}>PTO day</p>
+                <p className={adminLabel}>PTO Day</p>
                 <AdminDatePicker value={editLostDate} onChange={setEditLostDate} required />
               </div>
               <div>
-                <p className={adminLabel}>Make-up day</p>
+                <p className={adminLabel}>Make-Up Day</p>
                 <AdminDatePicker
                   value={editStart}
                   onChange={(next) => {

@@ -253,28 +253,38 @@ export function NewPtoRequestForm({
       ) : null}
 
       {type === 'MAKEUP' ? (
-        <div className="grid gap-4 min-[480px]:grid-cols-2">
+        <div key="makeup-dates" className="grid gap-4 min-[480px]:grid-cols-2">
           <div>
             <label className={adminLabel} htmlFor="lostDate">
-              <HoverTranslate en={crewT.en.ptoPage.formLostDate} vn={crewT.vn.ptoPage.formLostDate} />
+              <HoverTranslate
+                key="label-pto-day"
+                en={crewT.en.ptoPage.formLostDate}
+                vn={crewT.vn.ptoPage.formLostDate}
+              />
             </label>
             <AdminDatePicker
               id="lostDate"
               value={lostDate}
               onChange={setLostDate}
-              placeholder="PTO day"
+              placeholder="PTO Day"
+              aria-label="PTO Day"
               required
             />
           </div>
           <div>
             <label className={adminLabel} htmlFor="makeupDate">
-              <HoverTranslate en={crewT.en.ptoPage.formMakeupDate} vn={crewT.vn.ptoPage.formMakeupDate} />
+              <HoverTranslate
+                key="label-makeup-day"
+                en={crewT.en.ptoPage.formMakeupDate}
+                vn={crewT.vn.ptoPage.formMakeupDate}
+              />
             </label>
             <AdminDatePicker
               id="makeupDate"
               value={startDate}
               onChange={setStart}
-              placeholder="Make-up day"
+              placeholder="Make-Up Day"
+              aria-label="Make-Up Day"
               required
             />
           </div>

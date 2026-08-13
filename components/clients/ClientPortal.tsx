@@ -3,6 +3,7 @@
 import type {
   ClientPortalActiveTask,
   ClientPortalApprovedTask,
+  ClientPortalPastTask,
   ClientPortalTask,
   ClientPortalTasks,
   TaskProgress,
@@ -30,12 +31,19 @@ import {
   portalTaskCard,
 } from './portal-ui';
 
+type PortalTask =
+  | ClientPortalTask
+  | ClientPortalApprovedTask
+  | ClientPortalActiveTask
+  | ClientPortalPastTask;
+
 type ClientPortalProps = {
   slug: string;
   displayName: string;
   pendingProjects: ClientPortalTask[];
   approvedProjects: ClientPortalApprovedTask[];
   activeProjects: ClientPortalActiveTask[];
+  pastProjects: ClientPortalPastTask[];
   tasksError: string | null;
   showSubmittedSuccess?: boolean;
 };
@@ -69,7 +77,7 @@ function TaskMetaRow({
   task,
   hideDate,
 }: {
-  task: ClientPortalTask | ClientPortalApprovedTask | ClientPortalActiveTask;
+  task: PortalTask;
   hideDate?: boolean;
 }) {
   return (
@@ -179,9 +187,7 @@ function PendingApprovalActions({
   );
 }
 
-function defaultExpandedTaskGids(
-  tasks: Array<ClientPortalTask | ClientPortalApprovedTask | ClientPortalActiveTask>
-): Set<string> {
+function defaultExpandedTaskGids(tasks: PortalTask[]): Set<string> {
   if (tasks.length <= 1) {
     return new Set(tasks.map((task) => task.gid));
   }
@@ -197,20 +203,22 @@ function TaskBadges({
   task,
   showApprovedStatus,
   showPipeline,
+  pastSection,
 }: {
-  task: ClientPortalTask | ClientPortalApprovedTask | ClientPortalActiveTask;
+  task: PortalTask;
   showApprovedStatus?: boolean;
   showPipeline?: boolean;
+  pastSection?: boolean;
 }) {
   return (
     <>
       {showApprovedStatus && 'status' in task && task.status ? (
         <span className={portalStatusBadge}>{task.status}</span>
       ) : null}
-      {showPipeline && 'status' in task && task.status ? (
+      {(showPipeline || pastSection) && 'status' in task && task.status ? (
         <span className={portalStatusBadge}>{task.status}</span>
       ) : null}
-      {showPipeline && 'pipeline' in task ? (
+      {(showPipeline || pastSection) && 'pipeline' in task && task.pipeline ? (
         <span className={pipelineBadgeClass(task.pipeline)}>{task.pipeline}</span>
       ) : null}
     </>
@@ -225,27 +233,31 @@ function CollapsibleTaskCard({
   showPipeline,
   pendingSection,
   approvedSection,
+  pastSection,
   slug,
   actionLoadingGid,
   onApprove,
   onReject,
 }: {
-  task: ClientPortalTask | ClientPortalApprovedTask | ClientPortalActiveTask;
+  task: PortalTask;
   expanded: boolean;
   onToggle: () => void;
   showApprovedStatus?: boolean;
   showPipeline?: boolean;
   pendingSection?: boolean;
   approvedSection?: boolean;
+  pastSection?: boolean;
   slug?: string;
   actionLoadingGid?: string | null;
   onApprove?: (taskGid: string) => void;
   onReject?: (task: ClientPortalTask) => void;
 }) {
-  // Neither pending nor approved — the "active pipeline" card variant, where
+  // Neither pending, approved, nor past — the "active pipeline" card variant, where
   // due date + progress are the most important info and should stay visible
   // even while collapsed.
-  const isActiveVariant = !pendingSection && !approvedSection;
+  const isActiveVariant = !pendingSection && !approvedSection && !pastSection;
+  const pastCompletedAt =
+    pastSection && 'completedAt' in task ? task.completedAt : null;
 
   const header = (
     <>
@@ -255,8 +267,21 @@ function CollapsibleTaskCard({
             {task.name}
           </p>
           <p className="shrink-0 text-right text-xs min-[480px]:text-sm font-mono leading-snug">
-            <span className="text-brand-cyan">Due </span>
-            <span className="text-white">{formatDueDate(task.dueOn)}</span>
+            {pastSection ? (
+              pastCompletedAt ? (
+                <>
+                  <span className="text-brand-cyan">Completed </span>
+                  <span className="text-white">{formatDueDate(pastCompletedAt)}</span>
+                </>
+              ) : (
+                <span className="text-brand-cyan">Archived</span>
+              )
+            ) : (
+              <>
+                <span className="text-brand-cyan">Due </span>
+                <span className="text-white">{formatDueDate(task.dueOn)}</span>
+              </>
+            )}
           </p>
         </div>
         <div className={`portal-task-badges ${!expanded ? 'portal-task-badges--hidden' : ''}`}>
@@ -265,6 +290,7 @@ function CollapsibleTaskCard({
               task={task}
               showApprovedStatus={showApprovedStatus}
               showPipeline={showPipeline}
+              pastSection={pastSection}
             />
           </div>
         </div>
@@ -323,17 +349,19 @@ function TaskList({
   showApprovedStatus,
   pendingSection,
   approvedSection,
+  pastSection,
   slug,
   actionLoadingGid,
   onApprove,
   onReject,
 }: {
-  tasks: Array<ClientPortalTask | ClientPortalApprovedTask | ClientPortalActiveTask>;
+  tasks: PortalTask[];
   emptyMessage: string;
   showPipeline?: boolean;
   showApprovedStatus?: boolean;
   pendingSection?: boolean;
   approvedSection?: boolean;
+  pastSection?: boolean;
   slug?: string;
   actionLoadingGid?: string | null;
   onApprove?: (taskGid: string) => void;
@@ -395,6 +423,7 @@ function TaskList({
           showPipeline={showPipeline}
           pendingSection={pendingSection}
           approvedSection={approvedSection}
+          pastSection={pastSection}
           slug={slug}
           actionLoadingGid={actionLoadingGid}
           onApprove={onApprove}
@@ -411,12 +440,14 @@ export function ClientPortal({
   pendingProjects: initialPending,
   approvedProjects: initialApproved,
   activeProjects: initialActive,
+  pastProjects: initialPast,
   tasksError: initialTasksError,
   showSubmittedSuccess = false,
 }: ClientPortalProps) {
   const [pendingProjects, setPendingProjects] = useState(initialPending);
   const [approvedProjects, setApprovedProjects] = useState(initialApproved);
   const [activeProjects, setActiveProjects] = useState(initialActive);
+  const [pastProjects, setPastProjects] = useState(initialPast);
   const [tasksError, setTasksError] = useState(initialTasksError);
   const [actionLoadingGid, setActionLoadingGid] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -431,8 +462,9 @@ export function ClientPortal({
     setPendingProjects(initialPending);
     setApprovedProjects(initialApproved);
     setActiveProjects(initialActive);
+    setPastProjects(initialPast);
     setTasksError(initialTasksError);
-  }, [initialPending, initialApproved, initialActive, initialTasksError]);
+  }, [initialPending, initialApproved, initialActive, initialPast, initialTasksError]);
 
   const refreshProgress = useCallback(async () => {
     try {
@@ -443,6 +475,7 @@ export function ClientPortal({
       setPendingProjects(data.pending);
       setApprovedProjects(data.approved);
       setActiveProjects(data.active);
+      setPastProjects(data.past ?? []);
       setTasksError(null);
     } catch {
       // Keep showing the last known progress if a poll fails quietly.
@@ -531,8 +564,8 @@ export function ClientPortal({
           {formatPortalDisplayName(displayName)}
         </h1>
         <p className={`${portalBody} mt-2 min-[480px]:mt-3 max-w-2xl`}>
-          Track pending intake requests and active pipeline progress. Updates refresh
-          automatically while this page is open.
+          Track pending intake requests, active pipeline progress, and past
+          projects. Updates refresh automatically while this page is open.
         </p>
       </div>
 
@@ -603,6 +636,18 @@ export function ClientPortal({
           tasks={activeProjects}
           emptyMessage="No active projects right now."
           showPipeline
+        />
+      </section>
+
+      <section className="mt-8 min-[480px]:mt-10 md:mt-12">
+        <h2 className={portalSectionTitle}>Past projects</h2>
+        <p className={`${portalBody} mt-2`}>
+          Completed and archived work from our pipeline.
+        </p>
+        <TaskList
+          tasks={pastProjects}
+          emptyMessage="No past projects yet."
+          pastSection
         />
       </section>
 

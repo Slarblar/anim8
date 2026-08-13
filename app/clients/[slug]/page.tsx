@@ -13,6 +13,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
   let pendingProjects: Awaited<ReturnType<typeof getClientPortalTasks>>['pending'] = [];
   let approvedProjects: Awaited<ReturnType<typeof getClientPortalTasks>>['approved'] = [];
   let activeProjects: Awaited<ReturnType<typeof getClientPortalTasks>>['active'] = [];
+  let pastProjects: Awaited<ReturnType<typeof getClientPortalTasks>>['past'] = [];
   let tasksError: string | null = null;
 
   try {
@@ -23,6 +24,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
     pendingProjects = tasks.pending;
     approvedProjects = tasks.approved;
     activeProjects = tasks.active;
+    pastProjects = tasks.past;
   } catch (err) {
     console.error('Failed to load client tasks', err);
     tasksError =
@@ -36,6 +38,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
       pendingProjects={pendingProjects}
       approvedProjects={approvedProjects}
       activeProjects={activeProjects}
+      pastProjects={pastProjects}
       tasksError={tasksError}
       showSubmittedSuccess={searchParams.submitted === '1'}
     />

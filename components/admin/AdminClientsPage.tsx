@@ -5,6 +5,7 @@ import type { ClientRecord } from '@/lib/client-registry';
 import type {
   ClientPortalActiveTask,
   ClientPortalApprovedTask,
+  ClientPortalPastTask,
   ClientPortalTask,
   ClientPortalTasks,
 } from '@/lib/asana';
@@ -28,8 +29,8 @@ import {
 
 type AsanaOption = { gid: string; name: string; enabled: boolean };
 
-type AdminProjectRow = (ClientPortalTask | ClientPortalApprovedTask | ClientPortalActiveTask) & {
-  stage: 'Pending' | 'Approved' | 'Production' | 'Design';
+type AdminProjectRow = (ClientPortalTask | ClientPortalApprovedTask | ClientPortalActiveTask | ClientPortalPastTask) & {
+  stage: 'Pending' | 'Approved' | 'Production' | 'Design' | 'Past';
 };
 
 function formatDueDate(dueOn: string | null): string {
@@ -47,10 +48,12 @@ function todayDateString(): string {
 }
 
 function isOverdue(row: AdminProjectRow): boolean {
+  if (row.stage === 'Past') return false;
   return !!row.dueOn && row.dueOn < todayDateString() && row.progress.percent !== 100;
 }
 
 function isDueSoon(row: AdminProjectRow): boolean {
+  if (row.stage === 'Past') return false;
   if (!row.dueOn || isOverdue(row) || row.progress.percent === 100) return false;
   const due = new Date(`${row.dueOn}T00:00:00`).getTime();
   const in7Days = Date.now() + 7 * 24 * 60 * 60 * 1000;
@@ -58,17 +61,26 @@ function isDueSoon(row: AdminProjectRow): boolean {
 }
 
 function mergeProjectRows(tasks: ClientPortalTasks): AdminProjectRow[] {
-  const rows: AdminProjectRow[] = [
+  const current: AdminProjectRow[] = [
     ...tasks.pending.map((t) => ({ ...t, stage: 'Pending' as const })),
     ...tasks.approved.map((t) => ({ ...t, stage: 'Approved' as const })),
     ...tasks.active.map((t) => ({ ...t, stage: t.pipeline })),
-  ];
-  return rows.sort((a, b) => {
+  ].sort((a, b) => {
     if (!a.dueOn && !b.dueOn) return 0;
     if (!a.dueOn) return 1;
     if (!b.dueOn) return -1;
     return a.dueOn.localeCompare(b.dueOn);
   });
+  const past: AdminProjectRow[] = (tasks.past ?? []).map((t) => ({ ...t, stage: 'Past' as const }));
+  past.sort((a, b) => {
+    const aCompleted = 'completedAt' in a ? a.completedAt : null;
+    const bCompleted = 'completedAt' in b ? b.completedAt : null;
+    if (aCompleted && bCompleted) return bCompleted.localeCompare(aCompleted);
+    if (aCompleted) return -1;
+    if (bCompleted) return 1;
+    return 0;
+  });
+  return [...current, ...past];
 }
 
 const STAGE_BADGE_CLASS: Record<AdminProjectRow['stage'], string> = {
@@ -76,6 +88,7 @@ const STAGE_BADGE_CLASS: Record<AdminProjectRow['stage'], string> = {
   Approved: 'border-brand-lime/30 bg-brand-lime/10 text-brand-lime',
   Production: 'border-brand-cyan/30 bg-brand-cyan/10 text-brand-cyan',
   Design: 'border-brand-pink/30 bg-brand-pink/10 text-brand-pink',
+  Past: 'border-white/15 text-text-muted',
 };
 
 function ProjectProgressBar({ progress }: { progress: AdminProjectRow['progress'] }) {
@@ -109,7 +122,11 @@ function ProjectRow({ row }: { row: AdminProjectRow }) {
             className={`font-mono text-xs ${overdue ? 'font-bold text-brand-pink' : dueSoon ? 'text-yellow-300' : 'text-text-muted'}`}
           >
             {overdue ? 'OVERDUE ' : ''}
-            {formatDueDate(row.dueOn)}
+            {row.stage === 'Past'
+              ? 'completedAt' in row && row.completedAt
+                ? formatDueDate(row.completedAt)
+                : 'Archived'
+              : formatDueDate(row.dueOn)}
           </span>
           <span className={`admin-collapse-chevron text-brand-cyan ${expanded ? 'admin-collapse-chevron--open' : ''}`} aria-hidden>
             ▾

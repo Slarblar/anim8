@@ -75,10 +75,17 @@ export type ClientPortalApprovedTask = ClientPortalTask & {
   status: string | null;
 };
 
+export type ClientPortalPastTask = ClientPortalTask & {
+  pipeline: 'Production' | 'Design' | null;
+  status: string | null;
+  completedAt: string | null;
+};
+
 export type ClientPortalTasks = {
   pending: ClientPortalTask[];
   approved: ClientPortalApprovedTask[];
   active: ClientPortalActiveTask[];
+  past: ClientPortalPastTask[];
 };
 
 type AsanaCustomFieldRaw = {
@@ -93,17 +100,23 @@ type AsanaTaskRaw = {
   name: string;
   due_on: string | null;
   completed: boolean;
+  completed_at?: string | null;
   permalink_url?: string;
   num_subtasks?: number;
   custom_fields?: AsanaCustomFieldRaw[];
+  memberships?: Array<{
+    section?: { gid?: string; name?: string | null } | null;
+  }>;
 };
 
 const TASK_OPT_FIELDS = [
   'name',
   'due_on',
   'completed',
+  'completed_at',
   'permalink_url',
   'num_subtasks',
+  'memberships.section.name',
   'custom_fields.gid',
   'custom_fields.number_value',
   'custom_fields.display_value',
@@ -159,20 +172,81 @@ function readEnumCustomFieldLabel(
   const cleaned = raw.replace(/^[^\p{L}\p{N}]+/u, '').trim();
   return cleaned || raw.trim();
 }
+
+function isPastLabel(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  const cleaned = raw.replace(/^[^\p{L}\p{N}]+/u, '').trim().toLowerCase();
+  return /^(complete[d]?|done|archiv(e|ed))\b/.test(cleaned);
+}
+
+/** Complete checkbox, or a Complete / Archived / Done pipeline column or status. */
+function isPastTask(task: AsanaTaskRaw): boolean {
+  if (task.completed) return true;
+  if (isPastLabel(readEnumCustomFieldLabel(task.custom_fields, FIELD_PIPELINE_STATUS))) {
+    return true;
+  }
+  return (task.memberships ?? []).some((membership) => isPastLabel(membership.section?.name));
+}
+
+function completedAtDate(task: AsanaTaskRaw): string | null {
+  return task.completed_at ? task.completed_at.slice(0, 10) : null;
+}
+
+function toPastPortalTask(
+  task: AsanaTaskRaw,
+  pipeline: 'Production' | 'Design' | null
+): ClientPortalPastTask {
+  const pipelineStatus = readEnumCustomFieldLabel(task.custom_fields, FIELD_PIPELINE_STATUS);
+  const archivedByColumn = (task.memberships ?? []).some((membership) =>
+    isPastLabel(membership.section?.name)
+  );
+  return {
+    ...toPortalTask(task, EMPTY_PROGRESS),
+    pipeline,
+    status: task.completed
+      ? 'Completed'
+      : isPastLabel(pipelineStatus)
+        ? pipelineStatus
+        : archivedByColumn
+          ? 'Archived'
+          : pipelineStatus,
+    completedAt: completedAtDate(task),
+    needsClientApproval: false,
+  };
+}
+
+function sortPastTasks(tasks: ClientPortalPastTask[]): ClientPortalPastTask[] {
+  return [...tasks].sort((a, b) => {
+    if (a.completedAt && b.completedAt) return b.completedAt.localeCompare(a.completedAt);
+    if (a.completedAt) return -1;
+    if (b.completedAt) return 1;
+    if (!a.dueOn && !b.dueOn) return 0;
+    if (!a.dueOn) return 1;
+    if (!b.dueOn) return -1;
+    return b.dueOn.localeCompare(a.dueOn);
+  });
+}
+
 async function searchProjectTasks(
   projectGid: string,
-  filters: ClientFieldFilter[]
+  filters: ClientFieldFilter[],
+  options: { completed?: boolean } = {}
 ): Promise<AsanaTaskRaw[]> {
   const seen = new Map<string, AsanaTaskRaw>();
+  const completed = options.completed ?? false;
 
   for (const filter of filters) {
     const params = new URLSearchParams({
       opt_fields: TASK_OPT_FIELDS,
-      completed: 'false',
+      completed: completed ? 'true' : 'false',
       // Portal cards are parent tasks only — subtasks feed progress bars, not the list.
       is_subtask: 'false',
       limit: '100',
     });
+    if (completed) {
+      params.set('sort_by', 'completed_at');
+      params.set('sort_ascending', 'false');
+    }
     params.set(`custom_fields.${filter.fieldGid}.value`, filter.optionGid);
     params.append('projects.any', projectGid);
 
@@ -183,7 +257,9 @@ async function searchProjectTasks(
     for (const task of tasks) seen.set(task.gid, task);
   }
 
-  return sortTasksByDueDate(Array.from(seen.values()));
+  return completed
+    ? Array.from(seen.values())
+    : sortTasksByDueDate(Array.from(seen.values()));
 }
 
 /** Cap concurrent Asana reads — unbounded Promise.all trips their simultaneous-request 429. */
@@ -338,44 +414,75 @@ function sortTasksByDueDate<T extends { due_on: string | null }>(tasks: T[]): T[
 
 /**
  * Pending = intake + New Submission. Approved = intake + client approved (pre-pipeline).
- * Active = production or design pipeline.
+ * Active = production or design pipeline (not complete/archived).
+ * Past = completed tasks, or still-open tasks in a Complete / Archived / Done column.
  *
  * Subtask progress is only fetched for active pipeline tasks (shown in the UI).
- * Pending/approved use empty progress so large intake lists don't 429 Asana.
+ * Pending/approved/past use empty progress so large lists don't 429 Asana.
  */
 export async function getClientPortalTasks(
   filters: ClientFieldFilter[],
   intakeProjectGid: string = INTAKE_PROJECT_GID
 ): Promise<ClientPortalTasks> {
-  const [intakeRaw, productionRaw, designRaw] = await Promise.all([
+  const [
+    intakeRaw,
+    productionRaw,
+    designRaw,
+    intakeDoneRaw,
+    productionDoneRaw,
+    designDoneRaw,
+  ] = await Promise.all([
     searchProjectTasks(intakeProjectGid, filters),
     searchProjectTasks(PRODUCTION_PIPELINE_GID, filters),
     searchProjectTasks(DESIGN_PIPELINE_GID, filters),
+    searchProjectTasks(intakeProjectGid, filters, { completed: true }),
+    searchProjectTasks(PRODUCTION_PIPELINE_GID, filters, { completed: true }),
+    searchProjectTasks(DESIGN_PIPELINE_GID, filters, { completed: true }),
   ]);
 
+  const pastRaw = new Map<string, AsanaTaskRaw & { pipeline: 'Production' | 'Design' | null }>();
   const activeRaw = new Map<string, AsanaTaskRaw & { pipeline: 'Production' | 'Design' }>();
+
+  function addPast(task: AsanaTaskRaw, pipeline: 'Production' | 'Design' | null) {
+    const existing = pastRaw.get(task.gid);
+    if (!existing || (existing.pipeline == null && pipeline != null)) {
+      pastRaw.set(task.gid, { ...task, pipeline });
+    }
+  }
+
   for (const task of productionRaw) {
-    activeRaw.set(task.gid, { ...task, pipeline: 'Production' });
+    if (isPastTask(task)) addPast(task, 'Production');
+    else activeRaw.set(task.gid, { ...task, pipeline: 'Production' });
   }
   for (const task of designRaw) {
-    if (!activeRaw.has(task.gid)) {
+    if (isPastTask(task)) addPast(task, 'Design');
+    else if (!activeRaw.has(task.gid)) {
       activeRaw.set(task.gid, { ...task, pipeline: 'Design' });
     }
   }
 
-  const activeGids = new Set(activeRaw.keys());
-  const intakeOnlyRaw = intakeRaw.filter((task) => !activeGids.has(task.gid));
+  for (const task of productionDoneRaw) addPast(task, 'Production');
+  for (const task of designDoneRaw) addPast(task, 'Design');
+  for (const task of intakeDoneRaw) addPast(task, null);
+
+  const takenGids = new Set([...activeRaw.keys(), ...pastRaw.keys()]);
+  const intakeOnlyRaw = intakeRaw.filter((task) => !takenGids.has(task.gid));
 
   const pendingRaw = intakeOnlyRaw.filter(
     (task) =>
+      !isPastTask(task) &&
       readEnumCustomFieldOptionGid(task.custom_fields, FIELD_CLIENT_STATUS) ===
-      CLIENT_STATUS_NEW_SUBMISSION
+        CLIENT_STATUS_NEW_SUBMISSION
   );
   const approvedRaw = intakeOnlyRaw.filter(
     (task) =>
+      !isPastTask(task) &&
       readEnumCustomFieldOptionGid(task.custom_fields, FIELD_CLIENT_STATUS) !==
-      CLIENT_STATUS_NEW_SUBMISSION
+        CLIENT_STATUS_NEW_SUBMISSION
   );
+  for (const task of intakeOnlyRaw) {
+    if (isPastTask(task)) addPast(task, null);
+  }
 
   const sortedActiveRaw = sortTasksByDueDate(Array.from(activeRaw.values()));
 
@@ -384,6 +491,9 @@ export async function getClientPortalTasks(
     ...toPortalTask(task, EMPTY_PROGRESS),
     status: readEnumCustomFieldLabel(task.custom_fields, FIELD_CLIENT_STATUS),
   }));
+  const past = sortPastTasks(
+    Array.from(pastRaw.values()).map((task) => toPastPortalTask(task, task.pipeline))
+  );
   // Skip subtask fan-out when Asana already says there are none — otherwise
   // large client boards (100+ tasks) burn the serverless timeout on empty GETs.
   const activeWithProgress = await mapWithConcurrency(
@@ -402,7 +512,7 @@ export async function getClientPortalTasks(
     }
   );
 
-  return { pending, approved, active: activeWithProgress };
+  return { pending, approved, active: activeWithProgress, past };
 }
 
 /** @deprecated Use getClientPortalTasks. */

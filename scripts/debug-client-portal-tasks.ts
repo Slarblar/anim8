@@ -117,6 +117,7 @@ async function main() {
         pending: tasks.pending.length,
         approved: tasks.approved.length,
         active: tasks.active.length,
+        past: tasks.past.length,
         activeSample: tasks.active.slice(0, 10).map((task) => ({
           name: task.name,
           pipeline: task.pipeline,

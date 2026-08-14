@@ -14,13 +14,14 @@ export default function ClientPortalNotFound() {
           <p className={portalEyebrow}>Anim-8</p>
           <h1 className={`${portalPageTitle} mt-4 text-2xl md:text-3xl`}>Portal not found</h1>
           <p className={`${portalBody} mt-4`}>
-            This link may be invalid or no longer active. Contact Anim-8 if you need a new link.
+            This link may be invalid or no longer active. You can also find your portal
+            by email, or contact Anim-8 if you need a new link.
           </p>
           <Link
-            href="/"
+            href="/clients"
             className="mt-6 inline-block text-xs font-bold uppercase tracking-widest text-brand-cyan transition hover:text-brand-lime font-mono"
           >
-            ← back home
+            Find your portal
           </Link>
         </div>
       </main>

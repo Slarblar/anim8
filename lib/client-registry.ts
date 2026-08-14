@@ -41,6 +41,22 @@ export async function getClientBySlug(slug: string): Promise<ClientRecord | null
   return record;
 }
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/** Active portal whose contact email matches (case-insensitive). */
+export async function getClientByEmail(email: string): Promise<ClientRecord | null> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return null;
+
+  const records = await listClientRecords();
+  return (
+    records.find((record) => record.active && normalizeEmail(record.contactEmail) === normalized) ??
+    null
+  );
+}
+
 /** Admin — every client record, active or deactivated, newest first. */
 export async function listClientRecords(): Promise<ClientRecord[]> {
   const keys = await getKv().keys(`${KEY_PREFIX}*`);
@@ -100,7 +116,7 @@ export async function createClientLink(input: {
   const record: ClientRecord = {
     slug,
     displayName: input.displayName,
-    contactEmail: input.contactEmail,
+    contactEmail: input.contactEmail.trim().toLowerCase(),
     filters: input.filters,
     intakeProjectGid: input.intakeProjectGid ?? DEFAULT_INTAKE_PROJECT_GID,
     intakeSectionGid: input.intakeSectionGid ?? DEFAULT_INTAKE_SECTION_GID,

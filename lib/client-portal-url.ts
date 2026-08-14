@@ -13,6 +13,23 @@ export function clientPortalUrl(slug: string, origin: string = CLIENT_PORTAL_ORI
   return `${origin}${clientPortalPath(slug)}`;
 }
 
+/** Origin for links in client emails — prefers .com over a legacy .xyz APP_BASE_URL. */
+export function publicAppOrigin(): string {
+  const configured = process.env.APP_BASE_URL?.replace(/\/+$/, '');
+  if (!configured) {
+    return process.env.VERCEL || process.env.NODE_ENV === 'production'
+      ? CLIENT_PORTAL_ORIGINS[0]
+      : 'http://localhost:3000';
+  }
+  try {
+    const host = new URL(configured).hostname.replace(/^www\./, '').toLowerCase();
+    if (host === 'anim-8.xyz') return CLIENT_PORTAL_ORIGINS[0];
+  } catch {
+    /* keep configured */
+  }
+  return configured;
+}
+
 /** Log every live portal URL (for scripts / provisioning). */
 export function logClientPortalLinks(slug: string, label = 'Portal links'): void {
   console.log(`${label}:`);

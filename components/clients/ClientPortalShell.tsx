@@ -6,7 +6,7 @@ import { ClientPortalFloatingCards } from './ClientPortalFloatingCards';
 import { portalBackLink } from './portal-ui';
 
 type ClientPortalShellProps = {
-  slug: string;
+  slug?: string;
   backHref?: string;
   backLabel?: string;
   headerAction?: ReactNode;
@@ -15,7 +15,7 @@ type ClientPortalShellProps = {
 };
 
 export function ClientPortalShell({
-  slug,
+  slug = 'login',
   backHref,
   backLabel = '← Back to portal',
   headerAction,

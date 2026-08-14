@@ -524,6 +524,9 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
           <p className="font-bold text-white">{client.displayName}</p>
           <p className={adminBody}>{client.contactEmail}</p>
           <p className="mt-1 font-mono text-xs text-text-muted">/clients/{client.slug}</p>
+          <p className="mt-1 text-xs text-text-muted">
+            Or <span className="font-mono">/clients</span> with {client.contactEmail}
+          </p>
         </div>
         <span className={client.active ? adminBadgeActive : adminBadgeInactive}>
           {client.active ? 'Active' : 'Deactivated'}
@@ -672,6 +675,8 @@ export function AdminClientsPage() {
         <h1 className="text-2xl font-black uppercase tracking-tight text-white">Clients</h1>
         <p className={`${adminBody} mt-1`}>
           Manage client portal links and their Asana &quot;Design Clients&quot; mapping.
+          Clients can also open <span className="font-mono text-white/80">/clients</span> and
+          enter their contact email to get a sign-in link. Direct slug links still work.
         </p>
       </div>
 

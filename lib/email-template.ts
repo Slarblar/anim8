@@ -61,7 +61,12 @@ export function statLine(label: string, value: string): string {
  * our own template helpers), NOT raw user input — escape anything dynamic
  * with `escapeHtml` before interpolating it into `bodyHtml`.
  */
-export function renderEmailHtml(input: { heading: string; bodyHtml: string; preheader?: string }): string {
+export function renderEmailHtml(input: {
+  heading: string;
+  bodyHtml: string;
+  preheader?: string;
+  footer?: string;
+}): string {
   return `<!DOCTYPE html>
 <html>
   <head>
@@ -88,7 +93,7 @@ export function renderEmailHtml(input: { heading: string; bodyHtml: string; preh
               </td>
             </tr>
           </table>
-          <p style="margin:16px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${COLORS.textMuted};">Anim-8 crew &amp; admin portal</p>
+          <p style="margin:16px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${COLORS.textMuted};">${escapeHtml(input.footer ?? 'Anim-8 crew & admin portal')}</p>
         </td>
       </tr>
     </table>

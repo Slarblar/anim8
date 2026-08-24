@@ -5,7 +5,7 @@ import { put } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import { MdStorage } from 'react-icons/md';
+import { FiHardDrive } from 'react-icons/fi';
 import { ClientPortalShell } from './ClientPortalShell';
 import {
   portalActionsReveal,
@@ -82,7 +82,7 @@ async function readJson<T>(res: Response): Promise<T> {
 
 function attachErrorMessage(driveFolderUrl?: string): string {
   return driveFolderUrl
-    ? 'We could not attach those files. Remove them and submit, or use the Drive folder button.'
+    ? 'We could not attach those files. Remove them and submit, or use Your Drive.'
     : 'We could not attach those files. Remove them and submit, or paste a Drive link in Primary link.';
 }
 
@@ -308,17 +308,17 @@ export function ClientRequestForm({
                     target="_blank"
                     rel="noopener noreferrer"
                     className={portalAttachBtn}
-                    aria-label="Choose files from Google Drive"
+                    aria-label="Open your Google Drive folder"
                   >
-                    <MdStorage className="h-4 w-4" aria-hidden />
-                    Choose files
+                    <FiHardDrive className="h-4 w-4" aria-hidden />
+                    Your Drive
                   </a>
                 ) : null}
                 <span className="min-w-0 text-sm text-text-muted">{fileSummary}</span>
               </div>
               <p className={`${portalBody} mt-2`}>
                 {driveFolderUrl
-                  ? 'Up to 5 files, 50 MB total. Bigger than that? Use the storage button to open your Drive folder.'
+                  ? 'Up to 5 files, 50 MB total. Bigger than that? Open Your Drive and upload there.'
                   : 'Up to 5 files, 50 MB total. Bigger than that? Paste a Google Drive folder link above instead.'}
               </p>
             </motion.div>

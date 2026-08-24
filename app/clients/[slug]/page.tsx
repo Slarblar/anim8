@@ -2,6 +2,8 @@ import { resolveClientPortal } from '@/lib/client-portal-access';
 import { ClientPortal } from '@/components/clients/ClientPortal';
 import { getClientPortalTasks } from '@/lib/asana';
 
+export const dynamic = 'force-dynamic';
+
 type PageProps = {
   params: { slug: string };
   searchParams: { submitted?: string };

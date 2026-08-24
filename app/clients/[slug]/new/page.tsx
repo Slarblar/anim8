@@ -1,6 +1,8 @@
 import { resolveClientPortal } from '@/lib/client-portal-access';
 import { ClientRequestForm } from '@/components/clients/ClientRequestForm';
 
+export const dynamic = 'force-dynamic';
+
 type PageProps = {
   params: { slug: string };
 };

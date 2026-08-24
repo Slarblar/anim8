@@ -1,4 +1,5 @@
 import { customAlphabet } from 'nanoid';
+import { unstable_noStore as noStore } from 'next/cache';
 import type { ClientFieldFilter } from './asana';
 import { getKv } from './kv';
 
@@ -64,6 +65,7 @@ export async function getClientByEmail(email: string): Promise<ClientRecord | nu
 
 /** Admin — every client record, active or deactivated, newest first. */
 export async function listClientRecords(): Promise<ClientRecord[]> {
+  noStore();
   const keys = await getKv().keys(`${KEY_PREFIX}*`);
   if (keys.length === 0) return [];
 
@@ -82,6 +84,7 @@ export async function getClientPortalRedirect(slug: string): Promise<string | nu
 }
 
 async function getClientRecordBySlug(slug: string): Promise<ClientRecord | null> {
+  noStore();
   return getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
 }
 

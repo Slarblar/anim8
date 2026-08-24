@@ -6,6 +6,14 @@ export const maxDuration = 60;
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
+const UPLOADS_UNAVAILABLE =
+  'File uploads are temporarily unavailable. Submit without attachments, or add files in your Drive folder.';
+
+function readWriteToken(): string | undefined {
+  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  return token || undefined;
+}
+
 async function resolveClient(req: NextRequest, slug: string) {
   const client = await getClientBySlug(slug);
   if (client) return { client } as const;
@@ -38,10 +46,16 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
 
+  if (body.type === 'blob.generate-client-token' && !readWriteToken()) {
+    console.error('BLOB_READ_WRITE_TOKEN is not set; cannot mint client upload tokens.');
+    return NextResponse.json({ error: UPLOADS_UNAVAILABLE }, { status: 503 });
+  }
+
   try {
     const json = await handleUpload({
       body,
       request: req,
+      token: readWriteToken(),
       onBeforeGenerateToken: async (pathname) => {
         if (!pathname.startsWith(prefix)) {
           throw new Error('Invalid upload path.');
@@ -52,16 +66,16 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
           tokenPayload: JSON.stringify({ slug: client.slug }),
         };
       },
-      onUploadCompleted: async () => {
-        // Token mint is enough — the form attaches blob URLs to the Asana task.
-      },
     });
     return NextResponse.json(json);
   } catch (err) {
     console.error('Blob client upload failed', err);
+    const message = err instanceof Error ? err.message : '';
+    const uploadsDown =
+      /BLOB_READ_WRITE_TOKEN|read-write token|blob credentials/i.test(message);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Could not upload file.' },
-      { status: 400 }
+      { error: uploadsDown ? UPLOADS_UNAVAILABLE : 'Could not upload file.' },
+      { status: uploadsDown ? 503 : 400 }
     );
   }
 }

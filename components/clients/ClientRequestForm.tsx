@@ -1,10 +1,11 @@
 'use client';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { upload } from '@vercel/blob/client';
+import { put } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { MdStorage } from 'react-icons/md';
 import { ClientPortalShell } from './ClientPortalShell';
 import {
   portalActionsReveal,
@@ -16,7 +17,6 @@ import {
   portalPageStagger,
   portalVariants,
 } from './portal-motion';
-import { ClientDriveFolderCallout } from './ClientDriveFolderCallout';
 import {
   portalAlertError,
   portalBody,
@@ -38,6 +38,15 @@ type ClientRequestFormProps = {
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 const MAX_FILES = 5;
+
+const portalAttachBtn =
+  'inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-lime px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-brand-black transition hover:opacity-90 focus-lime';
+
+function fileSummaryLabel(files: File[]): string {
+  if (files.length === 0) return 'No file chosen';
+  if (files.length === 1) return files[0].name;
+  return `${files.length} files chosen`;
+}
 
 function selectedFiles(form: HTMLFormElement): File[] {
   const input = form.querySelector<HTMLInputElement>('input[name="files"]');
@@ -71,6 +80,39 @@ async function readJson<T>(res: Response): Promise<T> {
   }
 }
 
+function attachErrorMessage(driveFolderUrl?: string): string {
+  return driveFolderUrl
+    ? 'We could not attach those files. Remove them and submit, or use the Drive folder button.'
+    : 'We could not attach those files. Remove them and submit, or paste a Drive link in Primary link.';
+}
+
+async function uploadAttachment(slug: string, file: File): Promise<string> {
+  const pathname = safeBlobPathname(slug, file.name);
+  const tokenRes = await fetch(`/api/clients/${slug}/blob`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'blob.generate-client-token',
+      payload: {
+        pathname,
+        clientPayload: null,
+        multipart: true,
+      },
+    }),
+  });
+  const tokenData = await readJson<{ clientToken?: string; error?: string }>(tokenRes);
+  if (!tokenRes.ok || !tokenData.clientToken) {
+    throw new Error(tokenData.error ?? attachErrorMessage());
+  }
+
+  const blob = await put(pathname, file, {
+    access: 'public',
+    token: tokenData.clientToken,
+    multipart: true,
+  });
+  return blob.url;
+}
+
 function MotionField({
   children,
   reduce,
@@ -95,6 +137,8 @@ export function ClientRequestForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitLabel, setSubmitLabel] = useState('Submitting…');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fileSummary, setFileSummary] = useState('No file chosen');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -118,14 +162,8 @@ export function ClientRequestForm({
       if (files.length > 0) {
         const urls: string[] = [];
         for (let i = 0; i < files.length; i += 1) {
-          const file = files[i];
           setSubmitLabel(`Uploading ${i + 1} of ${files.length}…`);
-          const blob = await upload(safeBlobPathname(slug, file.name), file, {
-            access: 'public',
-            handleUploadUrl: `/api/clients/${slug}/blob`,
-            multipart: true,
-          });
-          urls.push(blob.url);
+          urls.push(await uploadAttachment(slug, files[i]));
         }
         formData.set('attachmentUrls', JSON.stringify(urls));
       }
@@ -144,7 +182,13 @@ export function ClientRequestForm({
 
       router.push(`/clients/${slug}?submitted=1`);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      const fallback = attachErrorMessage(driveFolderUrl);
+      const message = err instanceof Error ? err.message : fallback;
+      setSubmitError(
+        /vercel blob|client token|could not attach|file uploads are temporarily/i.test(message)
+          ? fallback
+          : message
+      );
     } finally {
       setSubmitting(false);
     }
@@ -175,8 +219,6 @@ export function ClientRequestForm({
             next steps.
           </motion.p>
         </motion.header>
-
-        {driveFolderUrl ? <ClientDriveFolderCallout url={driveFolderUrl} /> : null}
 
         {/* Future: AI-assisted scope + cost estimate from STAFF MGMT board */}
         <section className="hidden" aria-hidden data-client-request-estimate>
@@ -232,20 +274,54 @@ export function ClientRequestForm({
               <input name="dueOn" type="date" className={`${portalInput} w-full min-[480px]:max-w-xs`} />
             </MotionField>
 
-            <MotionField reduce={!!reduceMotion}>
-              <span className={portalLabel}>Attachments (optional)</span>
+            <motion.div
+              className="block"
+              variants={portalVariants(!!reduceMotion, portalFieldItem)}
+            >
+              <span className={portalLabel} id="client-request-attachments-label">
+                Attachments (optional)
+              </span>
               <input
+                ref={fileInputRef}
+                id="client-request-files"
                 name="files"
                 type="file"
                 multiple
-                className="portal-file-input mt-3 block w-full text-sm text-text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-brand-lime file:px-4 file:py-2.5 file:text-xs file:font-bold file:uppercase file:tracking-wider file:text-brand-black hover:file:opacity-90"
+                className="sr-only"
+                aria-labelledby="client-request-attachments-label"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []).filter((file) => file.size > 0);
+                  setFileSummary(fileSummaryLabel(files));
+                }}
               />
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className={portalAttachBtn}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Choose files
+                </button>
+                {driveFolderUrl ? (
+                  <a
+                    href={driveFolderUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={portalAttachBtn}
+                    aria-label="Choose files from Google Drive"
+                  >
+                    <MdStorage className="h-4 w-4" aria-hidden />
+                    Choose files
+                  </a>
+                ) : null}
+                <span className="min-w-0 text-sm text-text-muted">{fileSummary}</span>
+              </div>
               <p className={`${portalBody} mt-2`}>
                 {driveFolderUrl
-                  ? 'Up to 5 files, 50 MB total. Bigger than that? Upload to your Drive folder above instead.'
+                  ? 'Up to 5 files, 50 MB total. Bigger than that? Use the storage button to open your Drive folder.'
                   : 'Up to 5 files, 50 MB total. Bigger than that? Paste a Google Drive folder link above instead.'}
               </p>
-            </MotionField>
+            </motion.div>
           </motion.div>
 
           <AnimatePresence mode="wait">

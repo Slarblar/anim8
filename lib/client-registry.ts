@@ -16,6 +16,11 @@ export type ClientRecord = {
   intakeProjectGid: string;
   /** Section within that project — defaults to the top "Untitled section" */
   intakeSectionGid: string;
+  /**
+   * Public Google Drive folder the client can upload into. Shown on the
+   * portal so they don't have to remember the link for large files.
+   */
+  driveFolderUrl?: string;
   active: boolean;
   /** When a link is renamed, old slug records point here. */
   redirectTo?: string;
@@ -93,6 +98,30 @@ function validateSlug(slug: string): void {
   }
 }
 
+/** Empty string clears the folder. Otherwise must be an https Google Drive URL. */
+export function normalizeDriveFolderUrl(raw: string | undefined | null): string | undefined {
+  const trimmed = raw?.trim() ?? '';
+  if (!trimmed) return undefined;
+
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error('Paste a full Google Drive folder link (https://drive.google.com/...).');
+  }
+
+  if (url.protocol !== 'https:') {
+    throw new Error('Drive folder link must start with https://');
+  }
+
+  const host = url.hostname.toLowerCase();
+  if (host !== 'drive.google.com' && host !== 'docs.google.com') {
+    throw new Error('Link must be a Google Drive URL (drive.google.com).');
+  }
+
+  return url.toString();
+}
+
 /**
  * Admin helper — run from scripts/create-client-link.ts, not exposed as a
  * public API route. Generates a random slug unless `slug` is provided.
@@ -104,6 +133,7 @@ export async function createClientLink(input: {
   slug?: string;
   intakeProjectGid?: string;
   intakeSectionGid?: string;
+  driveFolderUrl?: string;
 }): Promise<ClientRecord> {
   const slug = input.slug ?? `${slugify(input.displayName)}${nanoid()}`;
   validateSlug(slug);
@@ -113,6 +143,8 @@ export async function createClientLink(input: {
     throw new Error(`Slug already in use: ${slug}`);
   }
 
+  const driveFolderUrl = normalizeDriveFolderUrl(input.driveFolderUrl);
+
   const record: ClientRecord = {
     slug,
     displayName: input.displayName,
@@ -120,6 +152,7 @@ export async function createClientLink(input: {
     filters: input.filters,
     intakeProjectGid: input.intakeProjectGid ?? DEFAULT_INTAKE_PROJECT_GID,
     intakeSectionGid: input.intakeSectionGid ?? DEFAULT_INTAKE_SECTION_GID,
+    ...(driveFolderUrl ? { driveFolderUrl } : {}),
     active: true,
     createdAt: new Date().toISOString(),
   };
@@ -167,6 +200,26 @@ export async function reactivateClientLink(slug: string): Promise<void> {
   const record = await getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
   if (!record) throw new Error(`No client found for slug: ${slug}`);
   await getKv().set(`${KEY_PREFIX}${slug}`, { ...record, active: true, redirectTo: undefined });
+}
+
+/** Set or clear the client's public Google Drive folder URL. */
+export async function updateClientDriveFolder(
+  slug: string,
+  raw: string | undefined | null
+): Promise<ClientRecord> {
+  const record = await getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
+  if (!record) throw new Error(`No client found for slug: ${slug}`);
+
+  const driveFolderUrl = normalizeDriveFolderUrl(raw);
+  const next: ClientRecord = { ...record };
+  if (driveFolderUrl) {
+    next.driveFolderUrl = driveFolderUrl;
+  } else {
+    delete next.driveFolderUrl;
+  }
+
+  await getKv().set(`${KEY_PREFIX}${slug}`, next);
+  return next;
 }
 
 /**

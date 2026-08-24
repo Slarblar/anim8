@@ -16,6 +16,7 @@ import {
   portalPageStagger,
   portalVariants,
 } from './portal-motion';
+import { ClientDriveFolderCallout } from './ClientDriveFolderCallout';
 import {
   portalAlertError,
   portalBody,
@@ -31,6 +32,7 @@ import {
 type ClientRequestFormProps = {
   slug: string;
   displayName: string;
+  driveFolderUrl?: string;
 };
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -83,7 +85,11 @@ function MotionField({
   );
 }
 
-export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps) {
+export function ClientRequestForm({
+  slug,
+  displayName,
+  driveFolderUrl,
+}: ClientRequestFormProps) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [submitting, setSubmitting] = useState(false);
@@ -170,6 +176,8 @@ export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps)
           </motion.p>
         </motion.header>
 
+        {driveFolderUrl ? <ClientDriveFolderCallout url={driveFolderUrl} /> : null}
+
         {/* Future: AI-assisted scope + cost estimate from STAFF MGMT board */}
         <section className="hidden" aria-hidden data-client-request-estimate>
           <h2 className="text-lg text-text">Estimated scope</h2>
@@ -233,8 +241,9 @@ export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps)
                 className="portal-file-input mt-3 block w-full text-sm text-text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-brand-lime file:px-4 file:py-2.5 file:text-xs file:font-bold file:uppercase file:tracking-wider file:text-brand-black hover:file:opacity-90"
               />
               <p className={`${portalBody} mt-2`}>
-                Up to 5 files, 50 MB total. Bigger than that? Paste a Google Drive folder link above
-                instead.
+                {driveFolderUrl
+                  ? 'Up to 5 files, 50 MB total. Bigger than that? Upload to your Drive folder above instead.'
+                  : 'Up to 5 files, 50 MB total. Bigger than that? Paste a Google Drive folder link above instead.'}
               </p>
             </MotionField>
           </motion.div>

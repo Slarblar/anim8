@@ -5,11 +5,13 @@ import {
   deleteClientLink,
   reactivateClientLink,
   renameClientLink,
+  updateClientDriveFolder,
 } from '@/lib/client-registry';
 
 type PatchBody = {
-  action?: 'deactivate' | 'reactivate' | 'rename';
+  action?: 'deactivate' | 'reactivate' | 'rename' | 'setDriveFolder';
   newSlug?: string;
+  driveFolderUrl?: string;
 };
 
 export async function PATCH(req: NextRequest, { params }: { params: { slug: string } }) {
@@ -34,6 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
         return NextResponse.json({ error: 'New slug is required.' }, { status: 400 });
       }
       await renameClientLink(params.slug, newSlug);
+    } else if (body.action === 'setDriveFolder') {
+      await updateClientDriveFolder(params.slug, body.driveFolderUrl ?? '');
     } else {
       return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
     }

@@ -35,6 +35,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
     <ClientPortal
       slug={client.slug}
       displayName={client.displayName}
+      driveFolderUrl={client.driveFolderUrl}
       pendingProjects={pendingProjects}
       approvedProjects={approvedProjects}
       activeProjects={activeProjects}

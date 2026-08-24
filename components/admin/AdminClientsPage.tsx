@@ -263,6 +263,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [slug, setSlug] = useState('');
+  const [driveFolderUrl, setDriveFolderUrl] = useState('');
   const [options, setOptions] = useState<AsanaOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [fieldOptionGid, setFieldOptionGid] = useState('');
@@ -292,6 +293,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
     setDisplayName('');
     setContactEmail('');
     setSlug('');
+    setDriveFolderUrl('');
     setFieldOptionGid('');
     setNewOptionName('');
     setError(null);
@@ -311,6 +313,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
             displayName,
             contactEmail,
             slug: slug || undefined,
+            driveFolderUrl: driveFolderUrl || undefined,
             fieldOptionGid: fieldOptionGid || undefined,
             fieldOptionName: fieldOptionGid ? undefined : newOptionName,
           }),
@@ -330,7 +333,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
         setSubmitting(false);
       }
     },
-    [displayName, contactEmail, slug, fieldOptionGid, newOptionName, onCreated, resetForm]
+    [displayName, contactEmail, slug, driveFolderUrl, fieldOptionGid, newOptionName, onCreated, resetForm]
   );
 
   return (
@@ -403,6 +406,24 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
           </div>
 
           <div>
+            <label className={adminLabel} htmlFor="driveFolderUrl">
+              Public Google Drive folder (optional)
+            </label>
+            <input
+              id="driveFolderUrl"
+              type="url"
+              className={adminInput}
+              value={driveFolderUrl}
+              onChange={(e) => setDriveFolderUrl(e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/…"
+            />
+            <p className={`${adminBody} mt-1.5 text-xs`}>
+              Share the folder so anyone with the link can add files (Editor). Clients see this
+              on every new request for large uploads.
+            </p>
+          </div>
+
+          <div>
             <label className={adminLabel} htmlFor="fieldOption">
               Asana &quot;Design Clients&quot; value
             </label>
@@ -451,8 +472,14 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
   const [linksLoading, setLinksLoading] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [newSlug, setNewSlug] = useState(client.slug);
+  const [editingDrive, setEditingDrive] = useState(false);
+  const [driveFolderUrl, setDriveFolderUrl] = useState(client.driveFolderUrl ?? '');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  useEffect(() => {
+    setDriveFolderUrl(client.driveFolderUrl ?? '');
+  }, [client.driveFolderUrl]);
 
   const runAction = useCallback(
     async (body: Record<string, unknown>) => {
@@ -467,11 +494,13 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
         const data = (await res.json()) as { error?: string };
         if (!res.ok) {
           setError(data.error ?? 'Action failed.');
-          return;
+          return false;
         }
         onChanged();
+        return true;
       } catch {
         setError('Action failed. Please try again.');
+        return false;
       } finally {
         setLoading(false);
       }
@@ -527,6 +556,20 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
           <p className="mt-1 text-xs text-text-muted">
             Or <span className="font-mono">/clients</span> with {client.contactEmail}
           </p>
+          {client.driveFolderUrl ? (
+            <p className="mt-1 text-xs">
+              <a
+                href={client.driveFolderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-cyan hover:underline"
+              >
+                Drive folder ↗
+              </a>
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-text-muted">No Drive folder set</p>
+          )}
         </div>
         <span className={client.active ? adminBadgeActive : adminBadgeInactive}>
           {client.active ? 'Active' : 'Deactivated'}
@@ -544,6 +587,13 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
           </button>
           <button type="button" className={adminBtnGhost} onClick={() => setRenaming((v) => !v)}>
             Rename link
+          </button>
+          <button
+            type="button"
+            className={adminBtnGhost}
+            onClick={() => setEditingDrive((v) => !v)}
+          >
+            {client.driveFolderUrl ? 'Change Drive folder' : 'Add Drive folder'}
           </button>
           <button
             type="button"
@@ -618,6 +668,38 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
           >
             Save
           </button>
+        </div>
+      ) : null}
+
+      {editingDrive ? (
+        <div className="space-y-2">
+          <label className={adminLabel} htmlFor={`drive-folder-${client.slug}`}>
+            Public Google Drive folder
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              id={`drive-folder-${client.slug}`}
+              type="url"
+              className={`${adminInput} max-w-xl`}
+              value={driveFolderUrl}
+              onChange={(e) => setDriveFolderUrl(e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/…"
+            />
+            <button
+              type="button"
+              className={adminBtnSecondary}
+              disabled={loading || driveFolderUrl.trim() === (client.driveFolderUrl ?? '')}
+              onClick={async () => {
+                const ok = await runAction({ action: 'setDriveFolder', driveFolderUrl });
+                if (ok) setEditingDrive(false);
+              }}
+            >
+              Save
+            </button>
+          </div>
+          <p className={`${adminBody} text-xs`}>
+            Leave blank and save to remove. Share so anyone with the link can add files (Editor).
+          </p>
         </div>
       ) : null}
 

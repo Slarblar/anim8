@@ -8,5 +8,11 @@ type PageProps = {
 export default async function ClientNewRequestPage({ params }: PageProps) {
   const client = await resolveClientPortal(params.slug);
 
-  return <ClientRequestForm slug={client.slug} displayName={client.displayName} />;
+  return (
+    <ClientRequestForm
+      slug={client.slug}
+      displayName={client.displayName}
+      driveFolderUrl={client.driveFolderUrl}
+    />
+  );
 }

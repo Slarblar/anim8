@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ClientPortalShell } from './ClientPortalShell';
 import { ClientRejectModal } from './ClientRejectModal';
 import { PortalDismissibleAlert } from './PortalDismissibleAlert';
+import { ClientDriveFolderCallout } from './ClientDriveFolderCallout';
 import {
   pipelineBadgeClass,
   portalAlertWarning,
@@ -40,6 +41,7 @@ type PortalTask =
 type ClientPortalProps = {
   slug: string;
   displayName: string;
+  driveFolderUrl?: string;
   pendingProjects: ClientPortalTask[];
   approvedProjects: ClientPortalApprovedTask[];
   activeProjects: ClientPortalActiveTask[];
@@ -437,6 +439,7 @@ function TaskList({
 export function ClientPortal({
   slug,
   displayName,
+  driveFolderUrl,
   pendingProjects: initialPending,
   approvedProjects: initialApproved,
   activeProjects: initialActive,
@@ -568,6 +571,8 @@ export function ClientPortal({
           projects. Updates refresh automatically while this page is open.
         </p>
       </div>
+
+      {driveFolderUrl ? <ClientDriveFolderCallout url={driveFolderUrl} /> : null}
 
       <PortalDismissibleAlert
         message="Request submitted. We will follow up soon."

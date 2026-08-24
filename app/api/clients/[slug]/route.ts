@@ -155,6 +155,9 @@ export async function POST(
         `Attachments:\n${attachmentUrls.map((url, index) => `${index + 1}. ${url}`).join('\n')}`
       );
     }
+    if (client.driveFolderUrl) {
+      noteParts.push(`Client Drive folder:\n${client.driveFolderUrl}`);
+    }
 
     await createClientSubmission({
       name: `[${client.displayName}] ${name.trim()}`,

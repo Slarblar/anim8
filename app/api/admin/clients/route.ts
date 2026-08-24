@@ -18,6 +18,7 @@ type CreateClientBody = {
   slug?: string;
   fieldOptionGid?: string;
   fieldOptionName?: string;
+  driveFolderUrl?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
       displayName,
       contactEmail,
       slug: body.slug?.trim() || undefined,
+      driveFolderUrl: body.driveFolderUrl,
       filters: [{ fieldGid: FIELD_DESIGN_CLIENTS, optionGid }],
     });
 

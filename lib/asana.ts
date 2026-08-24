@@ -566,11 +566,16 @@ export async function createClientSubmission(input: {
 
   // Section membership is set as a separate call in the Asana API — a task
   // can't be created directly into a section, only added to one after.
+  // Don't fail the whole submission if this move 429s; the task already exists.
   if (input.sectionGid) {
-    await asanaFetch(`/sections/${input.sectionGid}/addTask`, {
-      method: 'POST',
-      body: JSON.stringify({ data: { task: task.gid } }),
-    });
+    try {
+      await asanaFetch(`/sections/${input.sectionGid}/addTask`, {
+        method: 'POST',
+        body: JSON.stringify({ data: { task: task.gid } }),
+      });
+    } catch (err) {
+      console.error(`Failed to move submission ${task.gid} into section ${input.sectionGid}`, err);
+    }
   }
 
   return task;

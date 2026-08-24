@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientBySlug, getClientPortalRedirect } from '@/lib/client-registry';
-import { createClientSubmission, attachFileToTask, getClientPortalTasks } from '@/lib/asana';
+import { createClientSubmission, getClientPortalTasks } from '@/lib/asana';
 import {
   CLIENT_STATUS_NEW_SUBMISSION,
   FIELD_CLIENT_STATUS,
@@ -8,12 +8,37 @@ import {
   INTAKE_SECTION_NEW_SUBMISSIONS,
 } from '@/lib/client-portal-asana-config';
 
+export const maxDuration = 60;
+
 // Basic per-slug throttle so a leaked link can't be used to spam Asana.
 // NOTE: this Map is per serverless instance, so it's a soft limit, not a
 // hard guarantee. Swap for Vercel KV / Upstash rate limiting if this route
 // needs to be bulletproof.
 const recentSubmissions = new Map<string, number>();
 const THROTTLE_MS = 60_000;
+const MAX_ATTACHMENT_URLS = 5;
+
+function isVercelBlobUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === 'blob.vercel-storage.com' || host.endsWith('.blob.vercel-storage.com');
+  } catch {
+    return false;
+  }
+}
+
+function parseAttachmentUrls(raw: FormDataEntryValue | null): string[] {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item): item is string => typeof item === 'string' && isVercelBlobUrl(item))
+      .slice(0, MAX_ATTACHMENT_URLS);
+  } catch {
+    return [];
+  }
+}
 
 async function resolveClientForApi(req: NextRequest, slug: string) {
   const client = await getClientBySlug(slug);
@@ -75,14 +100,25 @@ export async function POST(
     );
   }
 
-  const formData = await req.formData();
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch (err) {
+    console.error('Client submission formData parse failed', err);
+    return NextResponse.json(
+      {
+        error:
+          'That request was too large to upload here. Try again without attachments, or paste Drive / Dropbox links instead.',
+      },
+      { status: 413 }
+    );
+  }
+
   const name = formData.get('name');
   const brief = formData.get('brief');
   const referenceLinks = formData.get('referenceLinks');
   const dueOn = formData.get('dueOn');
-  const files = formData
-    .getAll('files')
-    .filter((f): f is File => f instanceof File && f.size > 0);
+  const attachmentUrlsRaw = formData.get('attachmentUrls');
 
   if (
     typeof name !== 'string' ||
@@ -104,23 +140,30 @@ export async function POST(
       customFields[filter.fieldGid] = filter.optionGid;
     }
 
-    if (typeof referenceLinks === 'string' && referenceLinks.trim()) {
-      customFields[FIELD_PRIMARY_LINK] = referenceLinks.trim();
+    const linkText =
+      typeof referenceLinks === 'string' ? referenceLinks.trim() : '';
+    const attachmentUrls = parseAttachmentUrls(attachmentUrlsRaw);
+    const primary = (linkText || attachmentUrls[0] || '').slice(0, 1024);
+    if (primary) {
+      customFields[FIELD_PRIMARY_LINK] = primary;
     }
 
-    const task = await createClientSubmission({
+    const noteParts = [brief.trim()];
+    if (linkText) noteParts.push(`Primary link:\n${linkText}`);
+    if (attachmentUrls.length > 0) {
+      noteParts.push(
+        `Attachments:\n${attachmentUrls.map((url, index) => `${index + 1}. ${url}`).join('\n')}`
+      );
+    }
+
+    await createClientSubmission({
       name: `[${client.displayName}] ${name.trim()}`,
-      notes: brief.trim(),
+      notes: noteParts.join('\n\n'),
       dueOn: typeof dueOn === 'string' && dueOn ? dueOn : undefined,
       projectGid: client.intakeProjectGid,
       sectionGid: INTAKE_SECTION_NEW_SUBMISSIONS,
       customFields,
     });
-
-    // Sequential on purpose — Asana's attachment endpoint doesn't love bursts.
-    for (const file of files.slice(0, 5)) {
-      await attachFileToTask(task.gid, file);
-    }
 
     recentSubmissions.set(client.slug, Date.now());
 
@@ -128,7 +171,7 @@ export async function POST(
   } catch (err) {
     console.error('Client submission failed', err);
     return NextResponse.json(
-      { error: 'Something went wrong on our end.' },
+      { error: 'Something went wrong on our end. Please try again.' },
       { status: 500 }
     );
   }

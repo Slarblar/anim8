@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { upload } from '@vercel/blob/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -32,6 +33,42 @@ type ClientRequestFormProps = {
   displayName: string;
 };
 
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const MAX_FILES = 5;
+
+function selectedFiles(form: HTMLFormElement): File[] {
+  const input = form.querySelector<HTMLInputElement>('input[name="files"]');
+  if (!input?.files) return [];
+  return Array.from(input.files).filter((file) => file.size > 0);
+}
+
+function validateAttachments(files: File[]): string | null {
+  if (files.length > MAX_FILES) return 'Please attach up to 5 files.';
+  if (files.some((file) => file.size > MAX_FILE_BYTES)) {
+    return 'Each file must be 50 MB or smaller.';
+  }
+  const total = files.reduce((sum, file) => sum + file.size, 0);
+  if (total > MAX_TOTAL_BYTES) {
+    return 'Attachments are over 50 MB total. Remove some files or paste a Google Drive link instead.';
+  }
+  return null;
+}
+
+function safeBlobPathname(slug: string, fileName: string): string {
+  const base = fileName.replace(/[^\w.\- ()]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return `client-portal/${slug}/${Date.now()}-${base || 'file'}`;
+}
+
+async function readJson<T>(res: Response): Promise<T> {
+  const raw = await res.text();
+  try {
+    return (raw ? JSON.parse(raw) : {}) as T;
+  } catch {
+    return {} as T;
+  }
+}
+
 function MotionField({
   children,
   reduce,
@@ -50,22 +87,49 @@ export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps)
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [submitting, setSubmitting] = useState(false);
+  const [submitLabel, setSubmitLabel] = useState('Submitting…');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitLabel('Submitting…');
 
     const form = e.currentTarget;
+    const files = selectedFiles(form);
+    const attachError = validateAttachments(files);
+    if (attachError) {
+      setSubmitError(attachError);
+      setSubmitting(false);
+      return;
+    }
+
     const formData = new FormData(form);
+    formData.delete('files');
 
     try {
+      if (files.length > 0) {
+        const urls: string[] = [];
+        for (let i = 0; i < files.length; i += 1) {
+          const file = files[i];
+          setSubmitLabel(`Uploading ${i + 1} of ${files.length}…`);
+          const blob = await upload(safeBlobPathname(slug, file.name), file, {
+            access: 'public',
+            handleUploadUrl: `/api/clients/${slug}/blob`,
+            multipart: true,
+          });
+          urls.push(blob.url);
+        }
+        formData.set('attachmentUrls', JSON.stringify(urls));
+      }
+
+      setSubmitLabel('Submitting…');
       const res = await fetch(`/api/clients/${slug}`, {
         method: 'POST',
         body: formData,
       });
-      const data = (await res.json()) as { error?: string };
+      const data = await readJson<{ error?: string }>(res);
 
       if (!res.ok) {
         setSubmitError(data.error ?? 'Submission failed. Please try again.');
@@ -73,8 +137,8 @@ export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps)
       }
 
       router.push(`/clients/${slug}?submitted=1`);
-    } catch {
-      setSubmitError('Something went wrong. Please try again.');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -168,7 +232,10 @@ export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps)
                 multiple
                 className="portal-file-input mt-3 block w-full text-sm text-text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-brand-lime file:px-4 file:py-2.5 file:text-xs file:font-bold file:uppercase file:tracking-wider file:text-brand-black hover:file:opacity-90"
               />
-              <p className={`${portalBody} mt-2`}>Up to 5 files.</p>
+              <p className={`${portalBody} mt-2`}>
+                Up to 5 files, 50 MB total. Bigger than that? Paste a Google Drive folder link above
+                instead.
+              </p>
             </MotionField>
           </motion.div>
 
@@ -204,7 +271,7 @@ export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps)
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
-                  key={submitting ? 'loading' : 'idle'}
+                  key={submitting ? submitLabel : 'idle'}
                   initial={reduceMotion ? false : { opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
@@ -217,7 +284,7 @@ export function ClientRequestForm({ slug, displayName }: ClientRequestFormProps)
                         className="portal-submit-spinner inline-block h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white"
                         aria-hidden
                       />
-                      Submitting…
+                      {submitLabel}
                     </>
                   ) : (
                     'Submit request'

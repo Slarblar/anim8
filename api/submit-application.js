@@ -19,6 +19,7 @@ const roleEnumGid = {
   designer:     '1213548447605505', // Designer
   designIntern: '1213548447605505', // Designer (closest match)
   videoEditor:  '1213548447605511', // Editor
+  other:        '1218211404679399', // Other
 };
 
 // ── Position type enum option GIDs ───────────────────────────────────────────
@@ -62,6 +63,7 @@ const roleTagMap = {
   videoEditor:  'video-editor',
   modeler:      '3d-modeler',
   animator:     'animator',
+  other:        'other',
 };
 
 const roleLabels = {
@@ -71,27 +73,41 @@ const roleLabels = {
   videoEditor:  'Video Editor / VFX Artist',
   modeler:      '3D Modeler / Generalist',
   animator:     'Senior Animator',
+  other:        'Other',
+};
+
+function resolveRoleLabel(role, otherRole) {
+  const custom = typeof otherRole === 'string' ? otherRole.trim() : '';
+  if (role === 'other') return custom ? `Other — ${custom}` : 'Other';
+  return roleLabels[role] || role;
+}
+
+const questionNoteLabels = {
+  goal: 'What they want to do here',
+  proudWork: 'Project they are proud of',
+  growth: 'Where they want to grow',
+  tools: 'Tools',
+  toolsOther: 'Other tools',
 };
 
 function formatKey(key) {
-  return key
+  return questionNoteLabels[key] || key
     .replace(/([A-Z])/g, ' $1')
     .trim()
     .replace(/^./, c => c.toUpperCase());
 }
 
-function buildNotes(role, basics, roleQuestions, universalQuestions) {
+function buildNotes(role, otherRole, basics, roleQuestions, universalQuestions) {
   const lines = [
-    `ROLE: ${roleLabels[role] || role}`,
+    `ROLE: ${resolveRoleLabel(role, otherRole)}`,
     `POSITION TYPE: ${basics.positionType || '—'}`,
     `EMAIL: ${basics.email}`,
     `PORTFOLIO: ${basics.portfolio}`,
     `CV / RESUME: ${basics.cv}`,
     `OTHER LINKS: ${basics.otherLinks || '—'}`,
-    '',
-    '── ROLE QUESTIONS ──',
   ];
 
+  const questionLines = [];
   if (roleQuestions && typeof roleQuestions === 'object') {
     for (const [key, value] of Object.entries(roleQuestions)) {
       if (value === null || value === undefined || value === '') continue;
@@ -99,13 +115,20 @@ function buildNotes(role, basics, roleQuestions, universalQuestions) {
 
       const label = formatKey(key);
       if (Array.isArray(value)) {
-        lines.push(`${label}: ${value.join(', ')}`);
+        questionLines.push(`${label}: ${value.join(', ')}`);
       } else if (typeof value === 'boolean') {
-        lines.push(`${label}: ${value ? 'Yes' : 'No'}`);
+        questionLines.push(`${label}: ${value ? 'Yes' : 'No'}`);
+      } else if (role === 'other') {
+        questionLines.push(`${label}:\n${value}`);
       } else {
-        lines.push(`${label}: ${value}`);
+        questionLines.push(`${label}: ${value}`);
       }
     }
+  }
+
+  if (questionLines.length) {
+    const heading = role === 'other' ? '── GOALS ──' : '── ROLE QUESTIONS ──';
+    lines.push('', heading, ...questionLines);
   }
 
   lines.push('', '── WHY ANIM-8 ──', universalQuestions.whyAnim8 || '');
@@ -216,14 +239,20 @@ export default async function handler(req, res) {
     Accept:         'application/json',
   };
 
-  const { role, basics, roleQuestions, universalQuestions } = req.body || {};
+  const { role, otherRole, basics, roleQuestions, universalQuestions } = req.body || {};
 
   if (!role || !basics || !universalQuestions) {
     return res.status(400).json({ success: false, error: 'Invalid request body' });
   }
 
-  const taskName     = `${basics.name} — ${roleLabels[role] || role}`;
-  const notes        = buildNotes(role, basics, roleQuestions, universalQuestions);
+  const customRole = typeof otherRole === 'string' ? otherRole.trim() : '';
+  if (role === 'other' && !customRole) {
+    return res.status(400).json({ success: false, error: 'Please specify the role' });
+  }
+
+  const roleLabel    = resolveRoleLabel(role, customRole);
+  const taskName     = `${basics.name} — ${roleLabel}`;
+  const notes        = buildNotes(role, customRole, basics, roleQuestions, universalQuestions);
   const customFields = buildCustomFields(role, basics);
 
   // ── 1. Create task with custom fields ────────────────────────────────────

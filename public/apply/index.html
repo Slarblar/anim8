@@ -756,6 +756,13 @@
             <select id="role-select"><!-- JS populated --></select>
             <span class="error-msg" data-t="required"></span>
           </div>
+          <div class="conditional" id="other-role-wrap">
+            <div class="field" id="field-other-role">
+              <label class="field-label" data-t="otherRoleLabel" for="f-other-role"></label>
+              <input type="text" id="f-other-role" data-ph="otherRolePlaceholder">
+              <span class="error-msg" data-t="required"></span>
+            </div>
+          </div>
         </div>
         <div class="btn-row">
           <button class="btn-primary" onclick="nextStep()" data-t="next"></button>
@@ -916,8 +923,11 @@ const translations = {
       conceptArtist: "Storyboard & Concept Artist",
       videoEditor: "Video Editor / VFX Artist",
       modeler: "3D Modeler / Generalist",
-      animator: "Senior Animator"
+      animator: "Senior Animator",
+      other: "Other"
     },
+    otherRoleLabel: "Your role",
+    otherRolePlaceholder: "e.g. Lighting Artist",
     step2Title: "The basics",
     positionType: "Position type",
     positionTypes: { fulltime: "Full-time", parttime: "Part-time", contract: "Contract" },
@@ -1013,6 +1023,16 @@ const translations = {
         realtime: "Any Unreal Engine or real-time animation experience?",
         realtimeMore: "Tell us about that experience",
         realtimeMorePlaceholder: "What projects, what tools, what did you build?"
+      },
+      other: {
+        goal: "What kind of work are you hoping to take on at Anim-8?",
+        goalPlaceholder: "The type of work you want to do — not just a job title",
+        proudWork: "Walk us through a project you're proud of — what was the goal, what did you do, and what changed because of it?",
+        proudWorkPlaceholder: "Focus on the goal and the outcome, not just the tools",
+        tools: "What tools do you use?",
+        toolsOptions: ["Maya", "Blender", "ZBrush", "Photoshop", "Figma", "After Effects", "Premiere", "Unreal Engine", "Houdini", "Cinema 4D"],
+        growth: "Where do you want to grow in the next year, and how would this studio help you get there?",
+        growthPlaceholder: "The skill, craft, or responsibility you want to build toward"
       }
     }
   },
@@ -1039,8 +1059,11 @@ const translations = {
       conceptArtist: "Họa sĩ storyboard & concept",
       videoEditor: "Biên tập video / VFX Artist",
       modeler: "Họa sĩ 3D / Generalist",
-      animator: "Senior Animator"
+      animator: "Senior Animator",
+      other: "Khác"
     },
+    otherRoleLabel: "Vị trí của bạn",
+    otherRolePlaceholder: "Ví dụ: Họa sĩ ánh sáng",
     step2Title: "Thông tin cơ bản",
     positionType: "Hình thức làm việc",
     positionTypes: { fulltime: "Toàn thời gian", parttime: "Bán thời gian", contract: "Hợp đồng" },
@@ -1136,6 +1159,16 @@ const translations = {
         realtime: "Bạn có kinh nghiệm với Unreal Engine hoặc hoạt hình real-time không?",
         realtimeMore: "Kể về kinh nghiệm đó",
         realtimeMorePlaceholder: "Dự án nào, công cụ nào, bạn đã xây dựng gì?"
+      },
+      other: {
+        goal: "Bạn muốn đảm nhận loại công việc nào tại Anim-8?",
+        goalPlaceholder: "Loại công việc bạn muốn làm — không chỉ chức danh",
+        proudWork: "Kể về một dự án bạn tự hào — mục tiêu là gì, bạn đã làm gì, và điều gì thay đổi nhờ điều đó?",
+        proudWorkPlaceholder: "Tập trung vào mục tiêu và kết quả, không chỉ công cụ",
+        tools: "Bạn dùng những công cụ nào?",
+        toolsOptions: ["Maya", "Blender", "ZBrush", "Photoshop", "Figma", "After Effects", "Premiere", "Unreal Engine", "Houdini", "Cinema 4D"],
+        growth: "Bạn muốn phát triển điều gì trong năm tới, và studio này sẽ giúp bạn như thế nào?",
+        growthPlaceholder: "Kỹ năng, nghề, hoặc trách nhiệm bạn muốn hướng tới"
       }
     }
   }
@@ -1178,6 +1211,12 @@ const roleQConfig = {
     { type: 'checkboxes',       id: 'style' },
     { type: 'textarea',         id: 'rigging' },
     { type: 'yesno-textarea',   id: 'realtime',    followId: 'realtimeMore' },
+  ],
+  other: [
+    { type: 'textarea',         id: 'goal' },
+    { type: 'textarea',         id: 'proudWork' },
+    { type: 'checkboxes-other', id: 'tools',       required: true },
+    { type: 'textarea',         id: 'growth' },
   ],
 };
 
@@ -1243,6 +1282,19 @@ function populateRoleSelect() {
     if (k === cur) opt.selected = true;
     sel.appendChild(opt);
   });
+  toggleOtherRoleField();
+}
+
+function isOtherRole() {
+  return document.getElementById('role-select')?.value === 'other';
+}
+
+function toggleOtherRoleField() {
+  const wrap = document.getElementById('other-role-wrap');
+  if (!wrap) return;
+  const open = isOtherRole();
+  wrap.classList.toggle('open', open);
+  if (!open) clrErr('other-role');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1534,6 +1586,12 @@ function validateStep(step) {
   if (step === 1) {
     const role = document.getElementById('role-select').value;
     if (!role) { setErr('role', 'required'); ok = false; } else clrErr('role');
+    if (role === 'other') {
+      const otherRole = document.getElementById('f-other-role').value.trim();
+      if (!otherRole) { setErr('other-role', 'required'); ok = false; } else clrErr('other-role');
+    } else {
+      clrErr('other-role');
+    }
   }
 
   if (step === 2) {
@@ -1623,8 +1681,10 @@ async function handleSubmit() {
   if (!validateStep(4)) return;
 
   const role = document.getElementById('role-select').value;
+  const otherRole = role === 'other' ? document.getElementById('f-other-role').value.trim() : '';
   const formData = {
     role,
+    otherRole,
     lang: state.lang,
     basics: {
       positionType: document.querySelector('#position-type-group .pill-btn.selected')?.dataset.pt || '',
@@ -1671,18 +1731,24 @@ async function handleSubmit() {
 /* ═══════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════ */
+function isKnownRole(role) {
+  return Object.prototype.hasOwnProperty.call(roleQConfig, role)
+    || Object.prototype.hasOwnProperty.call(translations.en.roles, role);
+}
+
 function applyRolePrefillFromQuery() {
   const role = new URLSearchParams(window.location.search).get('role');
-  if (!role || !Object.prototype.hasOwnProperty.call(roleQConfig, role)) return;
+  if (!role || !isKnownRole(role)) return;
   const sel = document.getElementById('role-select');
   if (!sel) return;
   sel.value = role;
+  toggleOtherRoleField();
 }
 
 function scrollToRoleFieldIfLinked() {
   const params = new URLSearchParams(window.location.search);
   const role = params.get('role');
-  const validRole = role && Object.prototype.hasOwnProperty.call(roleQConfig, role);
+  const validRole = role && isKnownRole(role);
   if (window.location.hash !== '#field-role' && !validRole) return;
   requestAnimationFrame(() => {
     document.getElementById('field-role')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1701,6 +1767,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('role-select').addEventListener('change', () => {
     clrErr('role');
     lastRenderedRole = '';
+    toggleOtherRoleField();
   });
 
   // Position type pill select

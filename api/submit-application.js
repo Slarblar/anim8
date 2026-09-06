@@ -54,6 +54,10 @@ const softwareTagMap = {
   'Premiere':          'premiere',
   'DaVinci Resolve':   'davinci-resolve',
   'Nuke':              'nuke',
+  'Google Suite':      'google-suite',
+  'Meta Ads':          'meta-ads',
+  'Influencer Marketing': 'influencer-marketing',
+  'Social Media':      'social-media',
 };
 
 const roleTagMap = {

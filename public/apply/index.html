@@ -475,6 +475,64 @@
     .other-input-wrap { display: none; padding: 8px 0 0; }
     .other-input-wrap.open { display: block; animation: qBlockIn 0.2s ease; }
 
+    /* ── TOOL GROUP DROPDOWNS ────────────────────── */
+    .tool-groups {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .tool-group {
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--r);
+      background: rgba(255,255,255,0.03);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .tool-group.open { border-color: rgba(124,193,66,0.28); }
+    .field.has-error .tool-group { border-color: rgba(248,113,113,0.35); }
+    .tool-group-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+    }
+    .tool-group-toggle:hover { background: rgba(255,255,255,0.04); }
+    .tool-group-toggle > span:first-child { flex: 1; }
+    .tool-group-count {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f0f0f;
+      background: var(--green);
+      border-radius: 9999px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .tool-group-count.show { display: inline-flex; }
+    .tool-group-chevron {
+      width: 11px;
+      height: 11px;
+      flex-shrink: 0;
+      opacity: 0.45;
+      transition: transform 0.2s;
+    }
+    .tool-group.open .tool-group-chevron { transform: rotate(180deg); }
+    .tool-group-body { display: none; padding: 0 8px 8px; }
+    .tool-group.open .tool-group-body { display: block; animation: qBlockIn 0.2s ease; }
+
     /* ── PILL SELECT (position type) ────────────── */
     .pill-select {
       display: inline-flex;
@@ -964,6 +1022,15 @@ const translations = {
     step2Label: "Basics",
     step3Label: "Questions",
     step4Label: "Final",
+    toolGroups: {
+      designer: "Designer",
+      concept: "Concept / Storyboard",
+      modeler: "Modeler",
+      animator: "Animator",
+      editor: "Editor / VFX",
+      realtime: "Technical / Real-time",
+      marketing: "Marketing"
+    },
 
     questions: {
       designer: {
@@ -1030,7 +1097,6 @@ const translations = {
         proudWork: "Walk us through a project you're proud of — what was the goal, what did you do, and what changed because of it?",
         proudWorkPlaceholder: "Focus on the goal and the outcome, not just the tools",
         tools: "What tools do you use?",
-        toolsOptions: ["Maya", "Blender", "ZBrush", "Photoshop", "Figma", "After Effects", "Premiere", "Unreal Engine", "Houdini", "Cinema 4D"],
         growth: "Where do you want to grow in the next year, and how would this studio help you get there?",
         growthPlaceholder: "The skill, craft, or responsibility you want to build toward"
       }
@@ -1100,6 +1166,15 @@ const translations = {
     step2Label: "Cơ bản",
     step3Label: "Câu hỏi",
     step4Label: "Cuối",
+    toolGroups: {
+      designer: "Nhà thiết kế",
+      concept: "Concept / Storyboard",
+      modeler: "Họa sĩ 3D",
+      animator: "Animator",
+      editor: "Biên tập / VFX",
+      realtime: "Kỹ thuật / Real-time",
+      marketing: "Marketing"
+    },
 
     questions: {
       designer: {
@@ -1166,13 +1241,25 @@ const translations = {
         proudWork: "Kể về một dự án bạn tự hào — mục tiêu là gì, bạn đã làm gì, và điều gì thay đổi nhờ điều đó?",
         proudWorkPlaceholder: "Tập trung vào mục tiêu và kết quả, không chỉ công cụ",
         tools: "Bạn dùng những công cụ nào?",
-        toolsOptions: ["Maya", "Blender", "ZBrush", "Photoshop", "Figma", "After Effects", "Premiere", "Unreal Engine", "Houdini", "Cinema 4D"],
         growth: "Bạn muốn phát triển điều gì trong năm tới, và studio này sẽ giúp bạn như thế nào?",
         growthPlaceholder: "Kỹ năng, nghề, hoặc trách nhiệm bạn muốn hướng tới"
       }
     }
   }
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   GROUPED STUDIO TOOLS (Other role)
+═══════════════════════════════════════════════════════════════ */
+const studioToolGroups = [
+  { id: 'designer',  options: ['Figma', 'Illustrator', 'Photoshop', 'InDesign', 'Procreate'] },
+  { id: 'concept',   options: ['Photoshop', 'Procreate', 'Clip Studio'] },
+  { id: 'modeler',   options: ['Maya', 'Blender', 'ZBrush', 'Substance Painter', 'Marvelous Designer', 'Cinema 4D'] },
+  { id: 'animator',  options: ['Maya', 'Blender', 'Cinema 4D'] },
+  { id: 'editor',    options: ['Premiere', 'After Effects', 'DaVinci Resolve', 'Nuke'] },
+  { id: 'realtime',  options: ['Unreal Engine', 'Unity', 'Houdini'] },
+  { id: 'marketing', options: ['Google Suite', 'Meta Ads', 'Influencer Marketing', 'Social Media'] },
+];
 
 /* ═══════════════════════════════════════════════════════════════
    ROLE QUESTION CONFIG
@@ -1213,10 +1300,10 @@ const roleQConfig = {
     { type: 'yesno-textarea',   id: 'realtime',    followId: 'realtimeMore' },
   ],
   other: [
-    { type: 'textarea',         id: 'goal' },
-    { type: 'textarea',         id: 'proudWork' },
-    { type: 'checkboxes-other', id: 'tools',       required: true },
-    { type: 'textarea',         id: 'growth' },
+    { type: 'textarea',                  id: 'goal' },
+    { type: 'textarea',                  id: 'proudWork' },
+    { type: 'checkboxes-grouped-other',  id: 'tools', required: true, groups: studioToolGroups },
+    { type: 'textarea',                  id: 'growth' },
   ],
 };
 
@@ -1394,6 +1481,41 @@ function buildField(f, q, t) {
         </div>`;
     }
 
+    case 'checkboxes-grouped-other': {
+      const chevron = `<svg class="tool-group-chevron" viewBox="0 0 16 10" aria-hidden="true"><path d="M1 1l7 7 7-7" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const groups = (f.groups || []).map(g => {
+        const opts = (g.options || []).map(o =>
+          `<label class="checkbox-item"><input type="checkbox" data-field="${esc(f.id)}" data-group="${esc(g.id)}" value="${esc(o)}"><span>${esc(o)}</span></label>`
+        ).join('');
+        return `
+          <div class="tool-group" data-group="${esc(g.id)}">
+            <button type="button" class="tool-group-toggle" aria-expanded="false">
+              <span>${esc(t.toolGroups?.[g.id] || g.id)}</span>
+              <span class="tool-group-count" aria-hidden="true">0</span>
+              ${chevron}
+            </button>
+            <div class="tool-group-body">
+              <div class="checkbox-group">${opts}</div>
+            </div>
+          </div>`;
+      }).join('');
+      return `
+        <div class="field q-block" id="field-${f.id}">
+          <label class="field-label">${esc(q[f.id])}</label>
+          <div class="tool-groups">
+            ${groups}
+            <label class="checkbox-item">
+              <input type="checkbox" data-field="${esc(f.id)}" value="__other__" id="${f.id}-other-cb">
+              <span>${esc(t.otherSoftware)}</span>
+            </label>
+            <div class="other-input-wrap" id="${f.id}-other-wrap">
+              <input type="text" id="${f.id}-other-input" placeholder="${esc(t.otherSoftwarePlaceholder)}">
+            </div>
+          </div>
+          <span class="error-msg">${esc(t.required)}</span>
+        </div>`;
+    }
+
     case 'checkboxes': {
       const opts = (q[`${f.id}Options`] || []).map(o =>
         `<label class="checkbox-item"><input type="checkbox" data-field="${esc(f.id)}" value="${esc(o)}"><span>${esc(o)}</span></label>`
@@ -1453,11 +1575,33 @@ function buildField(f, q, t) {
   return '';
 }
 
+function updateToolGroupCount(groupEl) {
+  const countEl = groupEl.querySelector('.tool-group-count');
+  if (!countEl) return;
+  const n = groupEl.querySelectorAll('input[type="checkbox"]:checked').length;
+  countEl.textContent = n;
+  countEl.classList.toggle('show', n > 0);
+}
+
 function attachStep3Events() {
   document.querySelectorAll('[value="__other__"]').forEach(cb => {
     const fieldId = cb.dataset.field;
     cb.addEventListener('change', () => {
       document.getElementById(`${fieldId}-other-wrap`)?.classList.toggle('open', cb.checked);
+    });
+  });
+  document.querySelectorAll('.tool-group-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.closest('.tool-group');
+      const open = !group.classList.contains('open');
+      group.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
+  document.querySelectorAll('.tool-group input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const group = cb.closest('.tool-group');
+      if (group) updateToolGroupCount(group);
     });
   });
   document.querySelectorAll('.yesno-btn').forEach(btn => {
@@ -1483,12 +1627,11 @@ function restoreStep3() {
   const cfg  = roleQConfig[role];
   if (!cfg) return;
   cfg.forEach(f => {
-    if (f.type === 'checkboxes-other' || f.type === 'checkboxes') {
+    if (f.type === 'checkboxes-other' || f.type === 'checkboxes' || f.type === 'checkboxes-grouped-other') {
       (savedStep3[f.id] || []).forEach(val => {
-        const cb = document.querySelector(`[data-field="${f.id}"][value="${val}"]`);
-        if (cb) cb.checked = true;
+        document.querySelectorAll(`[data-field="${f.id}"][value="${val}"]`).forEach(cb => { cb.checked = true; });
       });
-      if (f.type === 'checkboxes-other' && savedStep3[`${f.id}Other`]) {
+      if ((f.type === 'checkboxes-other' || f.type === 'checkboxes-grouped-other') && savedStep3[`${f.id}Other`]) {
         const cb = document.querySelector(`[data-field="${f.id}"][value="__other__"]`);
         if (cb) {
           cb.checked = true;
@@ -1497,6 +1640,15 @@ function restoreStep3() {
           if (inp) inp.value = savedStep3[`${f.id}Other`];
           if (wrp) wrp.classList.add('open');
         }
+      }
+      if (f.type === 'checkboxes-grouped-other') {
+        document.querySelectorAll(`#field-${f.id} .tool-group`).forEach(group => {
+          updateToolGroupCount(group);
+          if (group.querySelector('input[type="checkbox"]:checked')) {
+            group.classList.add('open');
+            group.querySelector('.tool-group-toggle')?.setAttribute('aria-expanded', 'true');
+          }
+        });
       }
     }
     if (f.type === 'textarea') {
@@ -1534,9 +1686,12 @@ function collectRoleQuestions(role) {
   if (!cfg) return data;
   cfg.forEach(f => {
     switch (f.type) {
-      case 'checkboxes-other': {
-        data[f.id] = [...document.querySelectorAll(`[data-field="${f.id}"]:checked`)]
-          .filter(c => c.value !== '__other__').map(c => c.value);
+      case 'checkboxes-other':
+      case 'checkboxes-grouped-other': {
+        data[f.id] = [...new Set(
+          [...document.querySelectorAll(`[data-field="${f.id}"]:checked`)]
+            .filter(c => c.value !== '__other__').map(c => c.value)
+        )];
         const otherCb = document.querySelector(`[data-field="${f.id}"][value="__other__"]`);
         data[`${f.id}Other`] = otherCb?.checked
           ? (document.getElementById(`${f.id}-other-input`)?.value.trim() || '') : '';
@@ -1623,7 +1778,7 @@ function validateStep(step) {
   if (step === 3) {
     const cfg = roleQConfig[document.getElementById('role-select').value] || [];
     cfg.forEach(f => {
-      if (f.type === 'checkboxes-other' && f.required) {
+      if ((f.type === 'checkboxes-other' || f.type === 'checkboxes-grouped-other') && f.required) {
         const field = document.getElementById(`field-${f.id}`);
         if (!document.querySelectorAll(`[data-field="${f.id}"]:checked`).length) {
           field?.classList.add('has-error'); ok = false;

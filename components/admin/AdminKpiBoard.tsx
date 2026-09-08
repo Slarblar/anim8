@@ -52,7 +52,13 @@ function BandBadge({ score, band }: { score: number; band?: PerformanceBand }) {
 function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
   const [expanded, setExpanded] = useState(false);
   const summary = person.summary;
-  const monthScore = summary?.currentMonthScore ?? 0;
+  const lastMonthScore = summary?.previousMonthScore ?? 0;
+  const thisMonthScore = summary?.currentMonthScore ?? 0;
+  // Month before last — for delta vs the reporting window (last month).
+  const monthBeforeLast =
+    summary?.lastThreeMonthly && summary.lastThreeMonthly.length >= 3
+      ? summary.lastThreeMonthly[summary.lastThreeMonthly.length - 3]?.score ?? 0
+      : 0;
 
   return (
     <li className={`${adminCard} admin-collapse-card ${expanded ? 'admin-collapse-card--expanded' : ''}`}>
@@ -65,10 +71,10 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <p className="min-w-0 truncate font-bold text-white">{person.name}</p>
-            <div className="flex shrink-0 flex-wrap items-center justify-center gap-1.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
               {!person.active ? <span className={adminBadgeInactive}>Deactivated</span> : null}
               {summary ? (
-                <BandBadge score={monthScore} band={summary.currentMonthBand} />
+                <BandBadge score={lastMonthScore} band={summary.previousMonthBand} />
               ) : (
                 <span className={adminBadgeInactive}>No KPI</span>
               )}
@@ -84,7 +90,10 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
             {summary ? (
               <>
                 <span className="font-mono text-brand-cyan">
-                  <CountUp value={monthScore} decimals={1} /> this mo
+                  <CountUp value={lastMonthScore} decimals={1} /> last mo
+                </span>
+                <span className="font-mono text-text-muted">
+                  <CountUp value={thisMonthScore} decimals={1} /> this mo
                 </span>
                 <span className="font-mono text-text-muted">
                   YTD <CountUp value={summary.ytdScore} decimals={1} />
@@ -92,8 +101,8 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
                 <span className="font-mono text-text-muted">
                   <CountUp value={summary.ytdTasks} decimals={0} /> tasks
                 </span>
-                {monthScore > 0 ? (
-                  <ScoreDelta current={monthScore} previous={summary.previousMonthScore} />
+                {lastMonthScore > 0 ? (
+                  <ScoreDelta current={lastMonthScore} previous={monthBeforeLast} />
                 ) : null}
               </>
             ) : (
@@ -122,7 +131,7 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
                     This month
                   </p>
                   <p className="mt-1 text-2xl font-black text-white">
-                    <CountUp value={monthScore} decimals={2} />
+                    <CountUp value={thisMonthScore} decimals={2} />
                   </p>
                 </div>
                 <div>
@@ -229,7 +238,7 @@ export function AdminKpiBoard() {
     });
   }, [people, query, showInactive]);
 
-  const scored = filtered.filter((p) => p.summary && p.summary.currentMonthScore > 0).length;
+  const scored = filtered.filter((p) => p.summary && p.summary.previousMonthScore > 0).length;
 
   return (
     <div className="space-y-6">
@@ -237,7 +246,7 @@ export function AdminKpiBoard() {
         <div>
           <h1 className={adminSectionTitle}>KPI board</h1>
           <p className={`${adminBody} mt-1`}>
-            Crew progress from the 🐸 Anim8 KPI project — sorted by this month&apos;s score.
+            Crew progress from the 🐸 Anim8 KPI project — sorted by last month&apos;s score.
           </p>
         </div>
         <button type="button" className={`${adminBtnGhost} gap-1.5`} onClick={refresh} disabled={refreshing}>
@@ -267,7 +276,7 @@ export function AdminKpiBoard() {
         </label>
         {people ? (
           <p className={`${adminBody} ml-auto`}>
-            {scored}/{filtered.length} with a score this month
+            {scored}/{filtered.length} with a score last month
           </p>
         ) : null}
       </div>

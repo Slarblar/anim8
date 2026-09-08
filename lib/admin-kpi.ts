@@ -36,11 +36,12 @@ export async function buildAdminKpiBoard(): Promise<AdminKpiPerson[]> {
     toAdminKpiPerson(m, all[m.email.toLowerCase()] ?? null)
   );
 
-  // Active crew first, then highest this-month score — empty KPI rows sink to the bottom.
+  // Active crew first, then highest last-month score — empty KPI rows sink to the bottom.
+  // Last month is the reporting window; the current month is usually still mid-grading.
   people.sort((a, b) => {
     if (a.active !== b.active) return a.active ? -1 : 1;
-    const aScore = a.summary?.currentMonthScore ?? -1;
-    const bScore = b.summary?.currentMonthScore ?? -1;
+    const aScore = a.summary?.previousMonthScore ?? -1;
+    const bScore = b.summary?.previousMonthScore ?? -1;
     if (bScore !== aScore) return bScore - aScore;
     return a.name.localeCompare(b.name);
   });

@@ -567,8 +567,8 @@ export function ClientPortal({
           {formatPortalDisplayName(displayName)}
         </h1>
         <p className={`${portalBody} mt-2 min-[480px]:mt-3 max-w-2xl`}>
-          Track pending intake requests, active pipeline progress, and past
-          projects. Updates refresh automatically while this page is open.
+          Review planning, follow active work, and browse archives. Updates
+          refresh automatically while this page is open.
         </p>
       </div>
 
@@ -601,41 +601,49 @@ export function ClientPortal({
       />
 
       <section className="mt-8 min-[480px]:mt-10 md:mt-12">
-        <h2 className={portalSectionTitle}>Pending projects</h2>
+        <h2 className={portalSectionTitle}>Planning stage</h2>
         <p className={`${portalBody} mt-2`}>
-          New submissions in intake before they are moved into a pipeline.
+          New requests and estimates to review before production starts.
         </p>
-        <TaskList
-          tasks={pendingProjects}
-          emptyMessage="No pending projects right now."
-          pendingSection
-          slug={slug}
-          actionLoadingGid={actionLoadingGid}
-          onApprove={handleApprove}
-          onReject={(task) => {
-            setRejectError(null);
-            setRejectTask(task);
-          }}
-        />
+        {pendingProjects.length === 0 && approvedProjects.length === 0 ? (
+          <div className={`${portalTaskCard} mt-5 text-center`}>
+            <p className={portalBody}>No projects in planning right now.</p>
+            <Link href={`/clients/${slug}/new`} className={`${portalBtnPrimary} mt-5 inline-flex`}>
+              New request
+            </Link>
+          </div>
+        ) : (
+          <>
+            {pendingProjects.length > 0 ? (
+              <TaskList
+                tasks={pendingProjects}
+                emptyMessage="No pending projects right now."
+                pendingSection
+                slug={slug}
+                actionLoadingGid={actionLoadingGid}
+                onApprove={handleApprove}
+                onReject={(task) => {
+                  setRejectError(null);
+                  setRejectTask(task);
+                }}
+              />
+            ) : null}
+            {approvedProjects.length > 0 ? (
+              <TaskList
+                tasks={approvedProjects}
+                emptyMessage="No approved projects right now."
+                approvedSection
+                showApprovedStatus
+              />
+            ) : null}
+          </>
+        )}
       </section>
 
       <section className="mt-8 min-[480px]:mt-10 md:mt-12">
-        <h2 className={portalSectionTitle}>Approved projects</h2>
+        <h2 className={portalSectionTitle}>Active</h2>
         <p className={`${portalBody} mt-2`}>
-          Approved work while we gather assets and assign your project to the team.
-        </p>
-        <TaskList
-          tasks={approvedProjects}
-          emptyMessage="No approved projects right now."
-          approvedSection
-          showApprovedStatus
-        />
-      </section>
-
-      <section className="mt-8 min-[480px]:mt-10 md:mt-12">
-        <h2 className={portalSectionTitle}>Active projects</h2>
-        <p className={`${portalBody} mt-2`}>
-          View your projects in real time in our pipeline.
+          Work currently in our production or design pipeline.
         </p>
         <TaskList
           tasks={activeProjects}
@@ -645,13 +653,13 @@ export function ClientPortal({
       </section>
 
       <section className="mt-8 min-[480px]:mt-10 md:mt-12">
-        <h2 className={portalSectionTitle}>Past projects</h2>
+        <h2 className={portalSectionTitle}>Archives</h2>
         <p className={`${portalBody} mt-2`}>
-          Completed and archived work from our pipeline.
+          Completed and archived work.
         </p>
         <TaskList
           tasks={pastProjects}
-          emptyMessage="No past projects yet."
+          emptyMessage="No archived projects yet."
           pastSection
         />
       </section>

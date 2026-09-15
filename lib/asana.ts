@@ -413,9 +413,9 @@ function sortTasksByDueDate<T extends { due_on: string | null }>(tasks: T[]): T[
 }
 
 /**
- * Pending = intake + New Submission. Approved = intake + client approved (pre-pipeline).
+ * Planning (pending + approved) = intake before a pipeline.
  * Active = production or design pipeline (not complete/archived).
- * Past = completed tasks, or still-open tasks in a Complete / Archived / Done column.
+ * Archives (past) = completed tasks, or still-open tasks in a Complete / Archived / Done column.
  *
  * Subtask progress is only fetched for active pipeline tasks (shown in the UI).
  * Pending/approved/past use empty progress so large lists don't 429 Asana.

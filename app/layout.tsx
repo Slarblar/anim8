@@ -1,4 +1,12 @@
 import type { Metadata } from 'next'
+import '@fontsource/cascadia-code/latin-300.css'
+import '@fontsource/cascadia-code/latin-400.css'
+import '@fontsource/cascadia-code/latin-600.css'
+import '@fontsource/cascadia-code/latin-700.css'
+import '@fontsource/cascadia-code/vietnamese-300.css'
+import '@fontsource/cascadia-code/vietnamese-400.css'
+import '@fontsource/cascadia-code/vietnamese-600.css'
+import '@fontsource/cascadia-code/vietnamese-700.css'
 import './globals.css'
 import { CookieBanner } from '@/components/ui/CookieBanner'
 

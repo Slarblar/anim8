@@ -8,8 +8,12 @@
     --font-futura-book: 'futura-pt-book', sans-serif;
     --font-futura-bold: 'futura-pt-bold', sans-serif;
     --font-futura-heavy: 'futura-pt-heavy', sans-serif;
-    /* System mono — reliable Vietnamese diacritics (Segoe UI Mono on Windows). */
-    --font-crew-vi-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Menlo, Consolas, monospace;
+    /*
+     * Vietnamese UI — Cascadia Code only (no Futura). Weights match Futura PT:
+     * 300 book / body, 400 regular, 600 bold, 700 heavy headings.
+     */
+    --font-vi: 'Cascadia Code', ui-monospace, 'Segoe UI Mono', Menlo, Consolas, monospace;
+    --font-crew-vi-mono: var(--font-vi);
   }
 
   html {
@@ -1867,30 +1871,44 @@ a.inline-flex .crew-hover-translate__stack {
 }
 
 /*
- * Vietnamese crew UI — lock everything to the system mono stack (Segoe UI Mono
- * on Windows). That is what renders diacritics reliably; Futura + font-heading
- * / font-sans on h1·p were still winning without explicit resets below.
+ * Vietnamese UI — Cascadia Code with Futura-equivalent weights.
+ * html.crew-lang-vn  → /crew
+ * html.careers-lang-vn → /careers VN toggle
+ * Futura has no Vietnamese glyphs; never let it paint these trees.
  */
-html.crew-lang-vn .crew-shell,
-html.crew-lang-vn .crew-shell *,
-html.crew-lang-vn .crew-shell h1,
-html.crew-lang-vn .crew-shell h2,
-html.crew-lang-vn .crew-shell h3,
-html.crew-lang-vn .crew-shell h4,
-html.crew-lang-vn .crew-shell h5,
-html.crew-lang-vn .crew-shell h6,
-html.crew-lang-vn .crew-shell p,
-html.crew-lang-vn .crew-shell strong,
-html.crew-lang-vn .crew-shell .font-bold,
-html.crew-lang-vn .crew-shell .font-sans,
-html.crew-lang-vn .crew-shell .font-heading {
-  font-family: var(--font-crew-vi-mono) !important;
+html.crew-lang-vn,
+html.careers-lang-vn {
+  font-family: var(--font-vi);
+}
+
+html.crew-lang-vn :is(body, .crew-shell, .crew-shell *, h1, h2, h3, h4, h5, h6, p, a, span, button, label, li, strong, em, small, input, textarea, select),
+html.crew-lang-vn :is(.font-sans, .font-heading, .font-bold, .font-black, .font-mono, .font-futura-book, .font-futura-bold, .font-futura-heavy, .font-be-vietnam),
+html.careers-lang-vn :is(body, h1, h2, h3, h4, h5, h6, p, a, span, button, label, li, strong, em, small, input, textarea, select),
+html.careers-lang-vn :is(.font-sans, .font-heading, .font-bold, .font-black, .font-mono, .font-futura-book, .font-futura-bold, .font-futura-heavy, .font-be-vietnam) {
+  font-family: var(--font-vi) !important;
   font-synthesis: none;
 }
 
-/* Bilingual / translated copy — always mono so VN glyphs never hit Futura. */
+/* book → Light */
+html.crew-lang-vn :is(p, .font-futura-book, .font-normal, .font-light),
+html.careers-lang-vn :is(p, .font-futura-book, .font-normal, .font-light) {
+  font-weight: 300;
+}
+
+/* bold → SemiBold */
+html.crew-lang-vn :is(strong, .font-bold, .font-semibold, .font-futura-bold),
+html.careers-lang-vn :is(strong, .font-bold, .font-semibold, .font-futura-bold) {
+  font-weight: 600 !important;
+}
+
+/* heavy / headings → Bold (Cascadia's heaviest cut) */
+html.crew-lang-vn :is(h1, h2, h3, h4, h5, h6, .font-heading, .font-black, .font-extrabold, .font-futura-heavy),
+html.careers-lang-vn :is(h1, h2, h3, h4, h5, h6, .font-heading, .font-black, .font-extrabold, .font-futura-heavy) {
+  font-weight: 700 !important;
+}
+
 .crew-vi-text {
-  font-family: var(--font-crew-vi-mono) !important;
+  font-family: var(--font-vi) !important;
   font-synthesis: none;
 }
 

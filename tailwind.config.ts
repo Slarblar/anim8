@@ -37,7 +37,7 @@ const config: Config = {
         'futura-bold': ['futura-pt-bold', 'futura-pt', 'sans-serif'],
         'futura-heavy': ['futura-pt-heavy', 'futura-pt', 'sans-serif'],
         jost: ['Jost', 'system-ui', 'sans-serif'],
-        'be-vietnam': ['var(--font-crew-vi-mono)'],
+        'be-vietnam': ['"Cascadia Code"', 'ui-monospace', 'Segoe UI Mono', 'monospace'],
         mono: [
           'ui-monospace',
           'Cascadia Code',

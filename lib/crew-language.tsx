@@ -19,15 +19,14 @@ type CrewLanguageContextValue = {
 const CrewLanguageContext = createContext<CrewLanguageContextValue | null>(null);
 
 /**
- * Syncs `<html lang>` + `crew-lang-vn` so globals.css applies the system UI
- * Vietnamese stack (Segoe UI sans — same family as the reliable .font-mono).
+ * Syncs `<html lang>` + `crew-lang-vn` so globals.css locks Vietnamese UI to
+ * Cascadia Code (Futura has no VN glyphs).
  */
 function applyHtmlLang(lang: CrewLang) {
   const root = document.documentElement;
   root.lang = lang === 'vn' ? 'vi' : 'en';
-  // Class drives the Be Vietnam Pro lock in globals.css — more reliable than
-  // :lang() alone, which lost to body/utility futura-pt rules and caused
-  // mixed-glyph "bouncing" on Vietnamese diacritics.
+  // Class drives Cascadia Code in globals.css — more reliable than :lang()
+  // alone, which lost to body/utility futura-pt rules.
   root.classList.toggle('crew-lang-vn', lang === 'vn');
 }
 

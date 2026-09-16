@@ -194,9 +194,17 @@ export default function CareersPage() {
 
     return () => {
       document.documentElement.classList.remove('careers-page-active')
+      document.documentElement.classList.remove('careers-lang-vn')
       document.documentElement.style.scrollPaddingTop = ''
+      document.documentElement.lang = 'en'
     }
   }, [])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('careers-lang-vn', lang === 'vn')
+    root.lang = lang === 'vn' ? 'vi' : 'en'
+  }, [lang])
 
   /** Web apply form (`public/apply/index.html` → `/apply`) */
   const applyHref = '/apply'

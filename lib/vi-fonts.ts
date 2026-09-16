@@ -1,11 +1,9 @@
 /**
- * Vietnamese UI font stacks for /crew (and careers VN mode).
- * Segoe UI Mono on Windows is the most reliable for diacritics — proportional
- * Futura / web sans stacks still produce mixed glyphs when Typekit is loaded.
+ * Vietnamese UI font — Cascadia Code only (Futura has no VN glyphs).
+ * Weights: 300 book, 400 regular, 600 bold, 700 heavy.
  */
 export const crewViMonoStack =
-  'ui-monospace, "Cascadia Code", "Segoe UI Mono", Menlo, Consolas, monospace';
+  '"Cascadia Code", ui-monospace, "Segoe UI Mono", Menlo, Consolas, monospace';
 
-/** @deprecated Prefer crewViMonoStack — sans stack still conflicted with Futura on headings. */
-export const crewViSansStack =
-  'ui-sans-serif, system-ui, "Segoe UI", "Segoe UI Variable", "Helvetica Neue", Arial, sans-serif';
+/** @deprecated Same stack as crewViMonoStack. */
+export const crewViSansStack = crewViMonoStack;

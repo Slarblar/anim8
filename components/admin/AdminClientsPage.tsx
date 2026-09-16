@@ -60,19 +60,27 @@ function isDueSoon(row: AdminProjectRow): boolean {
   return due <= in7Days;
 }
 
-function mergeProjectRows(tasks: ClientPortalTasks): AdminProjectRow[] {
-  const current: AdminProjectRow[] = [
-    ...tasks.pending.map((t) => ({ ...t, stage: 'Pending' as const })),
-    ...tasks.approved.map((t) => ({ ...t, stage: 'Approved' as const })),
-    ...tasks.active.map((t) => ({ ...t, stage: t.pipeline })),
-  ].sort((a, b) => {
+function sortByDueDate(rows: AdminProjectRow[]): AdminProjectRow[] {
+  return [...rows].sort((a, b) => {
     if (!a.dueOn && !b.dueOn) return 0;
     if (!a.dueOn) return 1;
     if (!b.dueOn) return -1;
     return a.dueOn.localeCompare(b.dueOn);
   });
-  const past: AdminProjectRow[] = (tasks.past ?? []).map((t) => ({ ...t, stage: 'Past' as const }));
-  past.sort((a, b) => {
+}
+
+function groupClientProjects(tasks: ClientPortalTasks): {
+  planning: AdminProjectRow[];
+  active: AdminProjectRow[];
+  archives: AdminProjectRow[];
+} {
+  const planning = sortByDueDate([
+    ...tasks.pending.map((t) => ({ ...t, stage: 'Pending' as const })),
+    ...tasks.approved.map((t) => ({ ...t, stage: 'Approved' as const })),
+  ]);
+  const active = sortByDueDate(tasks.active.map((t) => ({ ...t, stage: t.pipeline })));
+  const archives = (tasks.past ?? []).map((t) => ({ ...t, stage: 'Past' as const }));
+  archives.sort((a, b) => {
     const aCompleted = 'completedAt' in a ? a.completedAt : null;
     const bCompleted = 'completedAt' in b ? b.completedAt : null;
     if (aCompleted && bCompleted) return bCompleted.localeCompare(aCompleted);
@@ -80,7 +88,12 @@ function mergeProjectRows(tasks: ClientPortalTasks): AdminProjectRow[] {
     if (bCompleted) return 1;
     return 0;
   });
-  return [...current, ...past];
+  return { planning, active, archives };
+}
+
+function stageBadgeLabel(stage: AdminProjectRow['stage']): string {
+  if (stage === 'Past') return 'Archives';
+  return stage;
 }
 
 const STAGE_BADGE_CLASS: Record<AdminProjectRow['stage'], string> = {
@@ -140,7 +153,7 @@ function ProjectRow({ row }: { row: AdminProjectRow }) {
         <div className="admin-collapse-expand-inner space-y-1.5 pt-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider font-mono ${STAGE_BADGE_CLASS[row.stage]}`}>
-              {row.stage}
+              {stageBadgeLabel(row.stage)}
             </span>
             {'status' in row && row.status ? (
               <span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted font-mono">
@@ -164,7 +177,35 @@ function ProjectRow({ row }: { row: AdminProjectRow }) {
   );
 }
 
-/** Collapsible per-client project list — progress + due dates at a glance, so admins know who to follow up with. */
+function ProjectSection({
+  title,
+  rows,
+  empty,
+}: {
+  title: string;
+  rows: AdminProjectRow[];
+  empty: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-white font-mono">
+        {title}
+        <span className="ml-2 font-medium tracking-wide text-text-muted">{rows.length}</span>
+      </p>
+      {rows.length === 0 ? (
+        <p className={adminBody}>{empty}</p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((row) => (
+            <ProjectRow key={row.gid} row={row} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Collapsible per-client project list — same Planning / Active / Archives split clients see. */
 function AdminClientProjects({ slug }: { slug: string }) {
   const [open, setOpen] = useState(false);
   const [tasks, setTasks] = useState<ClientPortalTasks | null>(null);
@@ -194,7 +235,8 @@ function AdminClientProjects({ slug }: { slug: string }) {
     if (!tasks && !loading) load();
   }, [tasks, loading, load]);
 
-  const rows = tasks ? mergeProjectRows(tasks) : [];
+  const grouped = tasks ? groupClientProjects(tasks) : null;
+  const rows = grouped ? [...grouped.planning, ...grouped.active, ...grouped.archives] : [];
   const overdueCount = rows.filter(isOverdue).length;
   const dueSoonCount = rows.filter(isDueSoon).length;
 
@@ -243,14 +285,24 @@ function AdminClientProjects({ slug }: { slug: string }) {
             <p className={adminBody}>Loading projects…</p>
           ) : error ? (
             <p className={adminAlertError}>{error}</p>
-          ) : tasks === null ? null : rows.length === 0 ? (
-            <p className={adminBody}>No projects found for this client.</p>
-          ) : (
-            <ul className="space-y-2">
-              {rows.map((row) => (
-                <ProjectRow key={row.gid} row={row} />
-              ))}
-            </ul>
+          ) : tasks === null || grouped === null ? null : (
+            <div className="space-y-4">
+              <ProjectSection
+                title="Planning stage"
+                rows={grouped.planning}
+                empty="No projects in planning right now."
+              />
+              <ProjectSection
+                title="Active"
+                rows={grouped.active}
+                empty="No active projects right now."
+              />
+              <ProjectSection
+                title="Archives"
+                rows={grouped.archives}
+                empty="No archived projects yet."
+              />
+            </div>
           )}
         </div>
       </div>

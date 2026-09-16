@@ -32,7 +32,7 @@ function BulletList({ items }: { items: readonly string[] }) {
   return (
     <ul className="space-y-2">
       {items.map((item, i) => (
-        <li key={i} className="flex items-start gap-3 text-text-muted text-base leading-relaxed">
+        <li key={i} className="flex items-start gap-3 text-white/80 text-base leading-relaxed">
           <span className="text-brand-lime mt-1 flex-shrink-0 font-mono text-sm">→</span>
           <span>{item}</span>
         </li>
@@ -54,7 +54,10 @@ function SoftwareTag({ children, level }: { children: React.ReactNode; level: 'e
   )
 }
 
-const cellBase = "p-5 md:p-8 bg-white/[0.03] backdrop-blur-sm"
+const cellBase = 'p-5 md:p-8 bg-[#0b0c14]/92 backdrop-blur-md'
+const cardShell =
+  'rounded-2xl overflow-hidden border border-white/10 bg-[#0b0c14]/95 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.04)]'
+const cardBody = 'text-white/80 leading-relaxed'
 
 function RoleCardGrid({
   overview,
@@ -66,7 +69,7 @@ function RoleCardGrid({
   right: React.ReactNode
 }) {
   return (
-    <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(56,194,214,0.06)]">
+    <div className={cardShell}>
       <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
         {overview}
       </div>
@@ -332,7 +335,7 @@ export default function CareersPage() {
                 </div>
 
                 <RoleCardGrid
-                  overview={<><CardLabel>{c.designer.overview.label}</CardLabel><p className="text-text-muted leading-relaxed">{c.designer.overview.body}</p></>}
+                  overview={<><CardLabel>{c.designer.overview.label}</CardLabel><p className={cardBody}>{c.designer.overview.body}</p></>}
                   left={<><CardLabel>{c.designer.do.label}</CardLabel><BulletList items={c.designer.do.items} /></>}
                   right={<><CardLabel>{c.designer.looking.label}</CardLabel><BulletList items={c.designer.looking.items} /></>}
                 />
@@ -365,7 +368,7 @@ export default function CareersPage() {
                 </div>
 
                 <RoleCardGrid
-                  overview={<><CardLabel>{c.intern.about.label}</CardLabel><p className="text-text-muted leading-relaxed">{c.intern.about.body}</p></>}
+                  overview={<><CardLabel>{c.intern.about.label}</CardLabel><p className={cardBody}>{c.intern.about.body}</p></>}
                   left={<><CardLabel>{c.intern.do.label}</CardLabel><BulletList items={c.intern.do.items} /></>}
                   right={<><CardLabel>{c.intern.looking.label}</CardLabel><BulletList items={c.intern.looking.items} /></>}
                 />
@@ -397,11 +400,11 @@ export default function CareersPage() {
                   </span>
                 </div>
 
-                <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(124,193,66,0.05)]">
+                <div className={cardShell}>
                   {/* Overview - full width */}
                   <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
                     <CardLabel>{c.modeler.overview.label}</CardLabel>
-                    <p className="text-text-muted leading-relaxed">{c.modeler.overview.body}</p>
+                    <p className={cardBody}>{c.modeler.overview.body}</p>
                   </div>
                   {/* Pairs row 1 */}
                   <RoleCardRow
@@ -476,10 +479,10 @@ export default function CareersPage() {
                   </span>
                 </div>
 
-                <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,92,42,0.05)]">
+                <div className={cardShell}>
                   <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
                     <CardLabel>{c.animator.overview.label}</CardLabel>
-                    <p className="text-text-muted leading-relaxed">{c.animator.overview.body}</p>
+                    <p className={cardBody}>{c.animator.overview.body}</p>
                   </div>
                   <RoleCardRow
                     left={<><CardLabel>{c.animator.animation.label}</CardLabel><BulletList items={c.animator.animation.items} /></>}
@@ -552,7 +555,7 @@ export default function CareersPage() {
                 </div>
 
                 <RoleCardGrid
-                  overview={<><CardLabel>{c.storyboard.overview.label}</CardLabel><p className="text-text-muted leading-relaxed">{c.storyboard.overview.body}</p></>}
+                  overview={<><CardLabel>{c.storyboard.overview.label}</CardLabel><p className={cardBody}>{c.storyboard.overview.body}</p></>}
                   left={<><CardLabel>{c.storyboard.do.label}</CardLabel><BulletList items={c.storyboard.do.items} /></>}
                   right={<>
                     <CardLabel>{c.storyboard.looking.label}</CardLabel>
@@ -591,11 +594,11 @@ export default function CareersPage() {
                   </span>
                 </div>
 
-                <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(56,194,214,0.06)]">
+                <div className={cardShell}>
                   {/* Overview */}
                   <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
                     <CardLabel>{c.video.overview.label}</CardLabel>
-                    <p className="text-text-muted leading-relaxed">{c.video.overview.body}</p>
+                    <p className={cardBody}>{c.video.overview.body}</p>
                   </div>
 
                   {/* Position 1 | Position 2 */}
@@ -654,7 +657,7 @@ export default function CareersPage() {
 
                 <div className="grid md:grid-cols-2 gap-6 md:gap-8 mb-8">
                   {/* Studio Info */}
-                  <div className="glass-card p-5 md:p-8">
+                  <div className={`${cardShell} p-5 md:p-8`}>
                     <CardLabel>{c.about.studioInfo.label}</CardLabel>
                     <ul className="space-y-4 mb-6">
                       {[
@@ -662,7 +665,7 @@ export default function CareersPage() {
                         { icon: '🕐', text: c.about.studioInfo.items[1] },
                         { icon: '🌐', text: c.about.studioInfo.items[2] },
                       ].map(({ icon, text }) => (
-                        <li key={icon} className="flex items-start gap-3 text-text-muted text-sm">
+                        <li key={icon} className="flex items-start gap-3 text-white/80 text-sm">
                           <span className="text-base flex-shrink-0">{icon}</span>
                           <span>{text}</span>
                         </li>
@@ -679,11 +682,11 @@ export default function CareersPage() {
                         </a>
                       </li>
                     </ul>
-                    <p className="text-text-muted text-sm leading-relaxed">{c.about.studioInfo.description}</p>
+                    <p className="text-white/80 text-sm leading-relaxed">{c.about.studioInfo.description}</p>
                   </div>
 
                   {/* Creative Leadership */}
-                  <div className="glass-card p-5 md:p-8">
+                  <div className={`${cardShell} p-5 md:p-8`}>
                     <CardLabel>{c.about.leadership.label}</CardLabel>
                     <div className="space-y-6">
                       {[
@@ -740,7 +743,7 @@ export default function CareersPage() {
                 </div>
 
                 {/* Production Team */}
-                <div className="glass-card p-5 md:p-8 mb-8">
+                <div className={`${cardShell} p-5 md:p-8 mb-8`}>
                   <CardLabel>{c.about.team.label}</CardLabel>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
@@ -749,7 +752,7 @@ export default function CareersPage() {
                       { name: 'Luka Trinh', role: lang === 'vn' ? 'Giám Đốc Hoạt Hình' : 'Animation Supervisor', studio: 'ILM · AAA Senior Animator' },
                       { name: 'Keira Duong', role: lang === 'vn' ? 'Giám Đốc Điều Hành' : 'Chief Operating Officer', studio: 'Big 4 Advisory · Finance & Growth' },
                     ].map((member) => (
-                      <div key={member.name} className="bg-white/3 border border-white/5 rounded-xl p-4">
+                      <div key={member.name} className="bg-black/30 border border-white/8 rounded-xl p-4">
                         <p className="text-white font-bold text-sm mb-1">{member.name}</p>
                         <p className="text-brand-lime text-[11px] uppercase tracking-wider font-bold mb-1">{member.role}</p>
                         <p className="text-text-muted text-[11px] font-mono leading-snug">{member.studio}</p>
@@ -759,7 +762,7 @@ export default function CareersPage() {
                 </div>
 
                 {/* Benefits */}
-                <div className="glass-card p-5 md:p-8">
+                <div className={`${cardShell} p-5 md:p-8`}>
                   <CardLabel>{c.about.benefits.label}</CardLabel>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {c.about.benefits.items.map((benefit) => (
@@ -768,7 +771,7 @@ export default function CareersPage() {
                         className={`p-5 rounded-xl border transition-all duration-200 hover:border-brand-lime/30 ${
                           benefit.highlight
                             ? 'bg-brand-lime/8 border-brand-lime/20'
-                            : 'bg-white/3 border-white/5'
+                            : 'bg-black/30 border-white/8'
                         }`}
                       >
                         <p className="text-white font-bold text-sm mb-1">{benefit.title}</p>

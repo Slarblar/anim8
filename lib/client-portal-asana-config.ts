@@ -19,5 +19,7 @@ export const CLIENT_STATUS_NEW_SUBMISSION = '1216732614798564';
 export const CLIENT_STATUS_IN_PROGRESS = '1216741576166629';
 export const FIELD_BILLABLE_HOURS = '1216738674667157';
 export const FIELD_COST_ESTIMATE = '1216741637481525';
+/** Asana "Cost" — actual / invoiced amount vs the estimate. */
+export const FIELD_FINAL_COST = '1212000405636255';
 /** Status- on production / design pipeline projects. */
 export const FIELD_PIPELINE_STATUS = '1211366366275944';

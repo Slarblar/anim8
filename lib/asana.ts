@@ -5,6 +5,7 @@ import {
   FIELD_BILLABLE_HOURS,
   FIELD_CLIENT_STATUS,
   FIELD_COST_ESTIMATE,
+  FIELD_FINAL_COST,
   FIELD_PIPELINE_STATUS,
   INTAKE_PROJECT_GID,
   INTAKE_SECTION_APPROVED,
@@ -61,6 +62,8 @@ export type ClientPortalTask = {
   dueOn: string | null;
   billableHours: number | null;
   costEstimate: number | null;
+  /** Invoiced / actual cost from Asana "Cost". */
+  finalCost: number | null;
   /** True when estimates are set and client can approve or reject. */
   needsClientApproval: boolean;
   progress: TaskProgress;
@@ -398,6 +401,7 @@ function toPortalTask(task: AsanaTaskRaw, progress: TaskProgress): ClientPortalT
     dueOn: task.due_on,
     billableHours: readNumberCustomField(task.custom_fields, FIELD_BILLABLE_HOURS),
     costEstimate: readNumberCustomField(task.custom_fields, FIELD_COST_ESTIMATE),
+    finalCost: readNumberCustomField(task.custom_fields, FIELD_FINAL_COST),
     needsClientApproval: taskNeedsClientApproval(task),
     progress,
   };

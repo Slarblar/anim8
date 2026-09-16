@@ -66,13 +66,37 @@ function formatBillableHours(hours: number | null): string {
   return `${hours.toLocaleString('en-US', { maximumFractionDigits: 1 })} hrs`;
 }
 
-function formatCostEstimate(cost: number | null): string {
+function formatCost(cost: number | null): string {
   if (cost == null) return '—';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: 0,
+    maximumFractionDigits: cost % 1 === 0 ? 0 : 2,
   }).format(cost);
+}
+
+function sumBilling(tasks: Array<{ costEstimate: number | null; finalCost: number | null }>): {
+  estimate: number | null;
+  final: number | null;
+} {
+  let estimate = 0;
+  let final = 0;
+  let hasEstimate = false;
+  let hasFinal = false;
+  for (const task of tasks) {
+    if (task.costEstimate != null) {
+      estimate += task.costEstimate;
+      hasEstimate = true;
+    }
+    if (task.finalCost != null) {
+      final += task.finalCost;
+      hasFinal = true;
+    }
+  }
+  return {
+    estimate: hasEstimate ? estimate : null,
+    final: hasFinal ? final : null,
+  };
 }
 
 function TaskMetaRow({
@@ -84,7 +108,7 @@ function TaskMetaRow({
 }) {
   return (
     <dl
-      className={`mt-3 grid gap-3 border-t border-white/5 pt-3 ${hideDate ? 'grid-cols-2' : 'grid-cols-3'}`}
+      className={`mt-3 grid gap-3 border-t border-white/5 pt-3 ${hideDate ? 'grid-cols-3' : 'grid-cols-2 min-[480px]:grid-cols-4'}`}
     >
       {hideDate ? null : (
         <div className="min-w-0">
@@ -93,12 +117,34 @@ function TaskMetaRow({
         </div>
       )}
       <div className="min-w-0">
-        <dt className={portalLabel}>Est. billable hours</dt>
+        <dt className={portalLabel}>Est. hours</dt>
         <dd className="mt-1 text-sm text-white font-mono">{formatBillableHours(task.billableHours)}</dd>
       </div>
       <div className="min-w-0">
         <dt className={portalLabel}>Est. cost</dt>
-        <dd className="mt-1 text-sm text-white font-mono">{formatCostEstimate(task.costEstimate)}</dd>
+        <dd className="mt-1 text-sm text-white font-mono">{formatCost(task.costEstimate)}</dd>
+      </div>
+      <div className="min-w-0">
+        <dt className={portalLabel}>Final cost</dt>
+        <dd className="mt-1 text-sm text-white font-mono">{formatCost(task.finalCost)}</dd>
+      </div>
+    </dl>
+  );
+}
+
+function BillingSummary({ tasks }: { tasks: PortalTask[] }) {
+  const totals = sumBilling(tasks);
+  if (totals.estimate == null && totals.final == null) return null;
+
+  return (
+    <dl className={`${portalTaskCard} mt-5 grid gap-3 min-[480px]:grid-cols-2`}>
+      <div className="min-w-0">
+        <dt className={portalLabel}>Estimated total</dt>
+        <dd className="mt-1 text-sm text-white font-mono">{formatCost(totals.estimate)}</dd>
+      </div>
+      <div className="min-w-0">
+        <dt className={portalLabel}>Final total</dt>
+        <dd className="mt-1 text-sm text-white font-mono">{formatCost(totals.final)}</dd>
       </div>
     </dl>
   );
@@ -318,13 +364,14 @@ function CollapsibleTaskCard({
       </button>
 
       {isActiveVariant ? <ProgressBar progress={task.progress} /> : null}
+      {pastSection ? <TaskMetaRow task={task} hideDate /> : null}
 
       <div
         className={`portal-task-expand ${expanded ? 'portal-task-expand--open' : ''}`}
         aria-hidden={!expanded}
       >
         <div className="portal-task-expand-inner">
-          <TaskMetaRow task={task} hideDate />
+          {pastSection ? null : <TaskMetaRow task={task} hideDate />}
           {pendingSection && slug && onApprove && onReject ? (
             <>
               {task.progress.percent !== null ? <ProgressBar progress={task.progress} /> : null}
@@ -655,8 +702,9 @@ export function ClientPortal({
       <section className="mt-8 min-[480px]:mt-10 md:mt-12">
         <h2 className={portalSectionTitle}>Archives</h2>
         <p className={`${portalBody} mt-2`}>
-          Completed and archived work.
+          Completed work and billing history — estimate vs final cost.
         </p>
+        {pastProjects.length > 0 ? <BillingSummary tasks={pastProjects} /> : null}
         <TaskList
           tasks={pastProjects}
           emptyMessage="No archived projects yet."

@@ -41,6 +41,36 @@ function formatDueDate(dueOn: string | null): string {
   });
 }
 
+function formatCost(cost: number | null): string {
+  if (cost == null) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: cost % 1 === 0 ? 0 : 2,
+  }).format(cost);
+}
+
+function billingTotals(rows: AdminProjectRow[]): { estimate: number | null; final: number | null } {
+  let estimate = 0;
+  let final = 0;
+  let hasEstimate = false;
+  let hasFinal = false;
+  for (const row of rows) {
+    if (row.costEstimate != null) {
+      estimate += row.costEstimate;
+      hasEstimate = true;
+    }
+    if (row.finalCost != null) {
+      final += row.finalCost;
+      hasFinal = true;
+    }
+  }
+  return {
+    estimate: hasEstimate ? estimate : null,
+    final: hasFinal ? final : null,
+  };
+}
+
 /** Today's date as YYYY-MM-DD (local) — matches the dueOn string format from Asana. */
 function todayDateString(): string {
   const now = new Date();
@@ -149,6 +179,12 @@ function ProjectRow({ row }: { row: AdminProjectRow }) {
 
       <ProjectProgressBar progress={row.progress} />
 
+      <p className="mt-1.5 font-mono text-[10px] text-text-muted">
+        Est. {formatCost(row.costEstimate)}
+        <span className="text-white/20"> · </span>
+        Final {formatCost(row.finalCost)}
+      </p>
+
       <div className={`admin-collapse-expand ${expanded ? 'admin-collapse-expand--open' : ''}`} aria-hidden={!expanded}>
         <div className="admin-collapse-expand-inner space-y-1.5 pt-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -181,17 +217,28 @@ function ProjectSection({
   title,
   rows,
   empty,
+  showBilling,
 }: {
   title: string;
   rows: AdminProjectRow[];
   empty: string;
+  showBilling?: boolean;
 }) {
+  const totals = showBilling ? billingTotals(rows) : null;
+
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-bold uppercase tracking-widest text-white font-mono">
         {title}
         <span className="ml-2 font-medium tracking-wide text-text-muted">{rows.length}</span>
       </p>
+      {totals && (totals.estimate != null || totals.final != null) ? (
+        <p className="font-mono text-[10px] text-text-muted">
+          Est. {formatCost(totals.estimate)}
+          <span className="text-white/20"> · </span>
+          Final {formatCost(totals.final)}
+        </p>
+      ) : null}
       {rows.length === 0 ? (
         <p className={adminBody}>{empty}</p>
       ) : (
@@ -301,6 +348,7 @@ function AdminClientProjects({ slug }: { slug: string }) {
                 title="Archives"
                 rows={grouped.archives}
                 empty="No archived projects yet."
+                showBilling
               />
             </div>
           )}

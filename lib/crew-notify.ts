@@ -81,15 +81,10 @@ function formatRange(startDate: string, endDate: string): string {
 /**
  * Optional — set RESEND_API_KEY + ADMIN_EMAILS. Fires the moment an
  * employee submits a new PTO/WFH request, with:
- *  - direct one-click Approve/Reject links (mutate immediately on GET,
- *    gated by the request's own single-use decisionToken — no login
- *    required). Approving/rejecting is idempotent (first click wins,
- *    later clicks/opens just show the already-decided state), which
- *    caps the downside of an email security scanner "pre-clicking" a
- *    link: worst case a decision lands a few minutes earlier than a
- *    human would have made it, not a duplicated/broken action.
- *  - a link to the same decision as a page with buttons, for anyone who
- *    wants to add a note before deciding.
+ *  - Approve/Reject links that open a confirmation page (the decision is
+ *    a POST, so mail scanners prefetching the link cannot approve it).
+ *    The page asks which admin is confirming so the decision is attributed.
+ *  - a review link for anyone who wants to read the request before choosing.
  *  - the employee's current PTO balance and an overdraft warning if this
  *    request (PTO only — WFH doesn't draw from the balance) would take
  *    them negative.
@@ -124,8 +119,11 @@ export async function notifyAdminsNewPtoRequest(
   }
   const overdraft = balanceDays !== null && requestedDays !== null && requestedDays > balanceDays;
 
-  const quickApproveUrl = `${baseUrl()}/api/pto-decide/${request.id}?token=${request.decisionToken}&decision=approved`;
-  const quickRejectUrl = `${baseUrl()}/api/pto-decide/${request.id}?token=${request.decisionToken}&decision=rejected`;
+  // Land on the confirmation page — do not decide on GET. Mail scanners
+  // prefetch links, and a GET mutation was approving the request before a
+  // person ever confirmed it (the follow-up page then always said "already decided").
+  const quickApproveUrl = `${baseUrl()}/pto-decide/${request.id}?token=${request.decisionToken}&intent=approved`;
+  const quickRejectUrl = `${baseUrl()}/pto-decide/${request.id}?token=${request.decisionToken}&intent=rejected`;
   const reviewPageUrl = `${baseUrl()}/pto-decide/${request.id}?token=${request.decisionToken}`;
   const dashboardUrl = `${baseUrl()}/admin/pto-requests`;
 
@@ -195,6 +193,7 @@ export async function notifyEmployeePtoDecision(input: {
   decision: 'approved' | 'rejected';
   decisionNote?: string;
   decidedAt?: string;
+  decidedBy?: string;
 }): Promise<boolean> {
   const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
   const subject = `Your ${input.type} request was ${input.decision}`;
@@ -205,6 +204,7 @@ export async function notifyEmployeePtoDecision(input: {
     `Hi ${input.employeeName},`,
     '',
     `Your ${input.type} request for ${range} was ${input.decision}.`,
+    input.decidedBy ? `${input.decision === 'approved' ? 'Approved' : 'Rejected'} by ${input.decidedBy}.` : null,
     decidedBoth ? `Decided: ${decidedBoth}` : null,
     input.decisionNote ? `\nNote: ${input.decisionNote}` : null,
   ]
@@ -214,7 +214,7 @@ export async function notifyEmployeePtoDecision(input: {
   const badgeColor = input.decision === 'approved' ? '#7cc142' : '#dd0b83';
   const bodyHtml = [
     `<p style="margin:0 0 12px 0;">Hi ${escapeHtml(input.employeeName.split(' ')[0])},</p>`,
-    `<p style="margin:0 0 4px 0;">Your <strong style="color:#ffffff;">${escapeHtml(input.type)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}</strong> was <strong style="color:${badgeColor};text-transform:uppercase;">${escapeHtml(input.decision)}</strong>.</p>`,
+    `<p style="margin:0 0 4px 0;">Your <strong style="color:#ffffff;">${escapeHtml(input.type)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}</strong> was <strong style="color:${badgeColor};text-transform:uppercase;">${escapeHtml(input.decision)}</strong>${input.decidedBy ? ` by <strong style="color:#ffffff;">${escapeHtml(input.decidedBy)}</strong>` : ''}.</p>`,
     decidedBoth
       ? `<p style="margin:0 0 16px 0;font-size:12px;color:#8b95a8;">Decided ${escapeHtml(decidedBoth)}</p>`
       : '<div style="margin:0 0 16px 0;"></div>',
@@ -227,6 +227,57 @@ export async function notifyEmployeePtoDecision(input: {
     subject,
     text,
     html: renderEmailHtml({ heading: subject, preheader: text.split('\n')[2] ?? subject, bodyHtml }),
+  });
+}
+
+/** Tells the admin list who decided a request, so the team isn't left guessing. */
+export async function notifyAdminsPtoDecision(input: {
+  employeeName: string;
+  employeeEmail: string;
+  type: 'PTO' | 'WFH' | 'MAKEUP';
+  startDate: string;
+  endDate: string;
+  decision: 'approved' | 'rejected';
+  decisionNote?: string;
+  decidedAt?: string;
+  decidedBy: string;
+}): Promise<boolean> {
+  const recipients = adminRecipients();
+  if (recipients.length === 0) return false;
+
+  const from = process.env.CLIENT_PORTAL_FROM_EMAIL ?? 'Anim-8 Crew <onboarding@resend.dev>';
+  const range = formatRange(input.startDate, input.endDate);
+  const verb = input.decision === 'approved' ? 'approved' : 'rejected';
+  const subject = `${input.employeeName}'s ${input.type} request was ${verb} by ${input.decidedBy}`;
+  const decidedBoth = input.decidedAt ? formatBothTimeZones(input.decidedAt) : null;
+  const dashboardUrl = `${baseUrl()}/admin/pto-requests`;
+
+  const text = [
+    `${input.decidedBy} ${verb} ${input.employeeName}'s ${input.type} request for ${range}.`,
+    decidedBoth ? `Decided: ${decidedBoth}` : null,
+    input.decisionNote ? `\nNote: ${input.decisionNote}` : null,
+    '',
+    `All requests: ${dashboardUrl}`,
+  ]
+    .filter((line) => line !== null)
+    .join('\n');
+
+  const badgeColor = input.decision === 'approved' ? '#7cc142' : '#dd0b83';
+  const bodyHtml = [
+    `<p style="margin:0 0 4px 0;"><strong style="color:#ffffff;">${escapeHtml(input.decidedBy)}</strong> <strong style="color:${badgeColor};text-transform:uppercase;">${verb}</strong> ${escapeHtml(input.employeeName)}'s <strong style="color:#ffffff;">${escapeHtml(input.type)}</strong> request for <strong style="color:#ffffff;">${escapeHtml(range)}</strong>.</p>`,
+    decidedBoth
+      ? `<p style="margin:0 0 16px 0;font-size:12px;color:#8b95a8;">Decided ${escapeHtml(decidedBoth)}</p>`
+      : '<div style="margin:0 0 16px 0;"></div>',
+    input.decisionNote ? noteBlock(input.decisionNote) : '',
+    `<div style="margin:8px 0 0 0;">${emailButton(dashboardUrl, 'See all requests', 'neutral')}</div>`,
+  ].join('\n');
+
+  return sendResendEmail({
+    from,
+    to: recipients,
+    subject,
+    text,
+    html: renderEmailHtml({ heading: subject, preheader: text.split('\n')[0] ?? subject, bodyHtml }),
   });
 }
 

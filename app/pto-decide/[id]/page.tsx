@@ -1,5 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { adminEmails } from '@/lib/auth-roles';
+import { requireAdminSession } from '@/lib/auth-guards';
 import { getPtoRequest, ptoDaysForRequest, requestIsMakeupLate } from '@/lib/pto-requests';
 import { getCrewMember } from '@/lib/crew-directory';
 import { formatBothTimeZones } from '@/lib/timezone-format';
@@ -12,20 +14,24 @@ import { formatBothTimeZones } from '@/lib/timezone-format';
  * session — this route is intentionally outside middleware's /admin and
  * /api/admin matchers.
  *
- * This page itself only mutates via its POST form (the one-click GET
- * mutation lives in /api/pto-decide/[id] instead, used by the direct
- * email links) — see that route for why mutating on GET is an accepted
- * tradeoff there.
+ * Approve/Reject in the admin email land here first. Nothing is decided
+ * until the confirmation form is posted — a GET must not approve, or mail
+ * scanners decide the request before a person does.
  */
 export default async function PtoDecidePage({
   params,
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { token?: string };
+  searchParams: { token?: string; intent?: string; confirmed?: string; error?: string };
 }) {
   const request = await getPtoRequest(params.id);
   const token = searchParams.token ?? '';
+  const intent = searchParams.intent === 'approved' || searchParams.intent === 'rejected' ? searchParams.intent : null;
+  const justConfirmed = searchParams.confirmed === 'approved' || searchParams.confirmed === 'rejected';
+  const approverError = searchParams.error === 'approver';
+  const sessionAdmin = await requireAdminSession();
+  const approverChoices = adminEmails();
 
   const range = (start: string, end: string) => (start === end ? start : `${start} – ${end}`);
 
@@ -52,28 +58,29 @@ export default async function PtoDecidePage({
       </>
     );
   } else if (request.status !== 'pending') {
-    const badge =
-      request.status === 'approved'
-        ? 'text-brand-lime border-brand-lime/30 bg-brand-lime/10'
-        : 'text-brand-pink border-brand-pink/30 bg-brand-pink/10';
-    // The generic attribution used for the one-click email links (we can't
-    // tell which of the 3 admins clicked without requiring a login) isn't
-    // worth surfacing — only show a name when it was decided from the
-    // authenticated admin dashboard instead.
-    const decidedByName =
-      request.decidedBy && request.decidedBy !== 'admin (via email link)' ? request.decidedBy : null;
+    const approved = request.status === 'approved';
+    const badge = approved
+      ? 'text-brand-lime border-brand-lime/30 bg-brand-lime/10'
+      : 'text-brand-pink border-brand-pink/30 bg-brand-pink/10';
+    const typeLabel = request.type === 'PTO' ? 'PTO' : request.type === 'WFH' ? 'WFH' : 'make-up';
+    const showingConfirmation = justConfirmed && searchParams.confirmed === request.status;
+    const headline = showingConfirmation
+      ? approved
+        ? 'Approved'
+        : 'Rejected'
+      : 'Already decided';
     content = (
       <>
         <span className={`mb-3 inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider font-mono ${badge}`}>
           {request.status}
         </span>
-        <h1 className="mb-2 text-lg font-black uppercase tracking-tight text-white">Already decided</h1>
+        <h1 className="mb-2 text-lg font-black uppercase tracking-tight text-white">{headline}</h1>
         <p className="text-sm text-text-muted">
-          {request.employeeName}&apos;s{' '}
-          {request.type === 'PTO' ? 'PTO' : request.type === 'WFH' ? 'WFH' : 'make-up'} request for{' '}
-          {range(request.startDate, request.endDate)} was {request.status}
-          {decidedByName ? ` by ${decidedByName}` : ''}
-          {request.decidedAt ? ` on ${formatBothTimeZones(request.decidedAt)}` : ''}. No further action needed.
+          {showingConfirmation
+            ? `${request.employeeName}'s ${typeLabel} request for ${range(request.startDate, request.endDate)} is ${request.status}.`
+            : `${request.employeeName}'s ${typeLabel} request for ${range(request.startDate, request.endDate)} was already ${request.status}.`}
+          {request.decidedBy ? ` ${approved ? 'Approved' : 'Rejected'} by ${request.decidedBy}` : ''}
+          {request.decidedAt ? ` on ${formatBothTimeZones(request.decidedAt)}` : ''}.
         </p>
         {request.decisionNote ? (
           <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-text-muted">
@@ -95,10 +102,13 @@ export default async function PtoDecidePage({
       request.type === 'PTO' ? 'PTO' : request.type === 'WFH' ? 'WFH' : 'Make-up';
     const isLate = requestIsMakeupLate(request);
 
+    const confirming = intent === 'approved' || intent === 'rejected';
     content = (
       <>
         <h1 className="mb-1 text-lg font-black uppercase tracking-tight text-white">
-          {typeLabel} request — {request.employeeName}
+          {confirming
+            ? `${intent === 'approved' ? 'Confirm approval' : 'Confirm rejection'} — ${request.employeeName}`
+            : `${typeLabel} request — ${request.employeeName}`}
         </h1>
         <p className="mb-4 text-sm text-text-muted">
           {range(request.startDate, request.endDate)}
@@ -130,6 +140,37 @@ export default async function PtoDecidePage({
 
         <form method="POST" action={`/api/pto-decide/${request.id}`} className="space-y-3">
           <input type="hidden" name="token" value={token} />
+          {approverError ? (
+            <p className="rounded-lg border border-brand-pink/30 bg-brand-pink/10 px-3.5 py-2.5 text-xs text-brand-pink">
+              Choose which admin is confirming this decision.
+            </p>
+          ) : null}
+          <label htmlFor="approver" className="block text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono mb-1.5">
+            {intent === 'rejected' ? 'Rejecting as' : 'Approving as'}
+          </label>
+          {sessionAdmin ? (
+            <>
+              <input type="hidden" name="approver" value={sessionAdmin.email} />
+              <p className="text-sm font-bold text-white">{sessionAdmin.name || sessionAdmin.email}</p>
+            </>
+          ) : (
+            <select
+              id="approver"
+              name="approver"
+              required
+              defaultValue=""
+              className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-brand-cyan/40 focus:ring-2 focus:ring-brand-cyan/15"
+            >
+              <option value="" disabled>
+                Select your name
+              </option>
+              {approverChoices.map((email) => (
+                <option key={email} value={email}>
+                  {email}
+                </option>
+              ))}
+            </select>
+          )}
           <label htmlFor="note" className="block text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono mb-1.5">
             Note (optional, sent to {request.employeeName.split(' ')[0]})
           </label>
@@ -141,22 +182,26 @@ export default async function PtoDecidePage({
             placeholder="Optional context for the decision…"
           />
           <div className="flex gap-3 pt-1">
-            <button
-              type="submit"
-              name="decision"
-              value="approved"
-              className="inline-flex flex-1 items-center justify-center rounded-lg border border-brand-lime/50 bg-brand-lime px-4 py-2.5 text-sm font-bold text-brand-black shadow-[0_4px_20px_rgba(124,193,66,0.25)] transition hover:brightness-110"
-            >
-              Approve
-            </button>
-            <button
-              type="submit"
-              name="decision"
-              value="rejected"
-              className="inline-flex flex-1 items-center justify-center rounded-lg border border-brand-pink/40 bg-brand-pink/10 px-4 py-2.5 text-sm font-bold text-brand-pink transition hover:border-brand-pink/55 hover:bg-brand-pink/15"
-            >
-              Reject
-            </button>
+            {intent !== 'rejected' ? (
+              <button
+                type="submit"
+                name="decision"
+                value="approved"
+                className="inline-flex flex-1 items-center justify-center rounded-lg border border-brand-lime/50 bg-brand-lime px-4 py-2.5 text-sm font-bold text-brand-black shadow-[0_4px_20px_rgba(124,193,66,0.25)] transition hover:brightness-110"
+              >
+                {intent === 'approved' ? 'Confirm approval' : 'Approve'}
+              </button>
+            ) : null}
+            {intent !== 'approved' ? (
+              <button
+                type="submit"
+                name="decision"
+                value="rejected"
+                className="inline-flex flex-1 items-center justify-center rounded-lg border border-brand-pink/40 bg-brand-pink/10 px-4 py-2.5 text-sm font-bold text-brand-pink transition hover:border-brand-pink/55 hover:bg-brand-pink/15"
+              >
+                {intent === 'rejected' ? 'Confirm rejection' : 'Reject'}
+              </button>
+            ) : null}
           </div>
         </form>
       </>

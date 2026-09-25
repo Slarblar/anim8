@@ -86,6 +86,8 @@ export async function POST(req: NextRequest, { params }: { params: { email: stri
       endDate,
       decision: 'approved',
       decisionNote: 'Logged directly by admin.',
+      decidedBy: admin.email,
+      decidedAt: updated.decidedAt,
     });
 
     const refreshedMember = await getCrewMember(member.email);

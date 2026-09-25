@@ -1,7 +1,7 @@
 import 'server-only';
 import { adjustCrewMemberPtoBalance } from './crew-directory';
 import { createPtoCalendarEvent } from './google-calendar';
-import { notifyEmployeePtoDecision } from './crew-notify';
+import { notifyAdminsPtoDecision, notifyEmployeePtoDecision } from './crew-notify';
 import {
   decidePtoRequest,
   getPtoRequest,
@@ -68,16 +68,23 @@ export async function applyPtoDecision(input: {
     decisionNote: input.note,
   });
 
-  await notifyEmployeePtoDecision({
-    to: existing.employeeEmail,
+  const decisionNotice = {
     employeeName: existing.employeeName,
+    employeeEmail: existing.employeeEmail,
     type: existing.type,
     startDate: existing.startDate,
     endDate: existing.endDate,
     decision: input.decision,
     decisionNote: input.note,
     decidedAt: updated.decidedAt,
+    decidedBy: input.decidedBy,
+  };
+
+  await notifyEmployeePtoDecision({
+    to: existing.employeeEmail,
+    ...decisionNotice,
   });
+  await notifyAdminsPtoDecision(decisionNotice);
 
   return { request: updated, calendarError, balanceError };
 }

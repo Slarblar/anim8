@@ -339,61 +339,43 @@ function suggestedPieceCount(projectType: string, description: string): number |
   return count;
 }
 
-function stepKicker(step: Step, askPieces: boolean, showQuestions: boolean): string {
-  if (step === 'sent') return 'Done';
-  const path: Step[] = ['project'];
-  if (askPieces) path.push('pieces');
+function briefPath(pieces: boolean, questionRounds: number): string[] {
+  const path = ['project'];
+  if (pieces) path.push('pieces');
   path.push('timing', 'inspo');
-  if (showQuestions) path.push('questions');
+  for (let round = 1; round <= questionRounds; round += 1) path.push(`questions-${round}`);
   path.push('review');
-  const index = path.indexOf(step);
-  return index >= 0 ? `Step ${index + 1}` : STEP_COPY[step].kicker;
-}
-function railDotCount(questionRounds: number): number {
-  return 2 + Math.max(0, questionRounds) * 2;
+  return path;
 }
 
-function railActiveIndex(step: Step, questionRounds: number, total: number): number {
-  if (step === 'sent') return total;
-  if (step === 'review') return total - 1;
-  if (step === 'questions') return 2 + Math.max(0, questionRounds - 1) * 2;
-  if (step === 'project' || step === 'pieces') return 0;
-  return Math.min(1, total - 1);
-}
-
-function railPercent(step: Step, questionRounds: number): number {
-  const total = railDotCount(questionRounds);
-  if (step === 'sent') return 100;
-  const active = railActiveIndex(step, questionRounds, total);
-  const bias =
-    step === 'project' ? 0.4 : step === 'pieces' ? 0.7 : step === 'timing' ? 0.35 : step === 'inspo' ? 0.7 : 0.85;
-  return Math.min(100, Math.round(((active + bias) / total) * 100));
+function briefActiveKey(step: Step, questionRound: number): string {
+  if (step === 'questions') return `questions-${Math.max(questionRound, 1)}`;
+  if (step === 'sent') return 'sent';
+  return step;
 }
 
 function ProgressRail({
-  step,
-  questionRounds,
+  path,
+  activeKey,
   kicker,
 }: {
-  step: Step;
-  questionRounds: number;
+  path: string[];
+  activeKey: string;
   kicker: string;
 }) {
-  const rounds = step === 'questions' ? Math.max(questionRounds, 1) : questionRounds;
-  const total = railDotCount(rounds);
-  const active = railActiveIndex(step, rounds, total);
-  const pct = railPercent(step, rounds);
+  const active = activeKey === 'sent' ? path.length : Math.max(0, path.indexOf(activeKey));
+  const pct = activeKey === 'sent' ? 100 : Math.round(((active + 1) / path.length) * 100);
 
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <AnimatePresence initial={false}>
-            {Array.from({ length: total }, (_, index) => {
-              const state = index < active ? 'done' : index === active ? 'current' : 'todo';
+            {path.map((key, index) => {
+              const state = activeKey === 'sent' || index < active ? 'done' : index === active ? 'current' : 'todo';
               return (
                 <motion.span
-                  key={index}
+                  key={key}
                   className="relative grid h-3.5 w-3.5 place-items-center"
                   initial={{ opacity: 0, scale: 0.4 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -744,6 +726,13 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
     },
   };
 
+  const railPath = briefPath(
+    step === 'project' ? pieceCountApplies(projectType, description) : askPieces,
+    step === 'questions' ? Math.max(questionRound, 1) : questionRound
+  );
+  const railKey = briefActiveKey(step, questionRound);
+  const railStep = railPath.indexOf(railKey);
+
   return (
     <ClientPortalShell slug={slug} backHref={`/clients/${slug}`} backLabel="← Portal">
       <header className="pb-2 pt-1 min-[480px]:pt-2 md:pt-4">
@@ -755,9 +744,9 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
           {BRIEF_BUILDER_TOOLTIP} This one’s for {formatPortalDisplayName(displayName)}.
         </p>
         <ProgressRail
-          step={step}
-          questionRounds={questionRound}
-          kicker={stepKicker(step, askPieces, questionRound > 0 || step === 'questions')}
+          path={railPath}
+          activeKey={railKey}
+          kicker={step === 'sent' ? 'Done' : `Step ${railStep + 1}`}
         />
       </header>
 

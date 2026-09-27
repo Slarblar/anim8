@@ -2,21 +2,18 @@
 
 import { put } from '@vercel/blob/client';
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ClientPortalShell } from './ClientPortalShell';
 import { BRIEF_BUILDER_TOOLTIP } from './BriefBuilderButton';
 import {
   CATEGORY_LABELS,
-  EFFORT_LABELS,
   BRIEF_CATEGORIES,
-  BRIEF_EFFORTS,
-  isRushBrief,
+  dueWithin48Hours,
   type BriefAnswer,
   type BriefCategory,
-  type BriefEffort,
   type BriefFollowUp,
   type BriefIntake,
-  type FinalizedBrief,
+  type ClientReviewBrief,
 } from '@/lib/brief-schema';
 import {
   formatPortalDisplayName,
@@ -29,6 +26,7 @@ import {
   portalInput,
   portalLabel,
   portalPageTitle,
+  portalProgressFill,
   portalTaskCard,
 } from './portal-ui';
 
@@ -122,10 +120,30 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
   const [questions, setQuestions] = useState<BriefFollowUp[]>([]);
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const [questionRound, setQuestionRound] = useState(0);
-  const [brief, setBrief] = useState<FinalizedBrief | null>(null);
+  const [brief, setBrief] = useState<ClientReviewBrief | null>(null);
+  const [effortToken, setEffortToken] = useState('');
+  const [largeJob, setLargeJob] = useState(false);
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState('Working…');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const submitTimerRef = useRef<number | null>(null);
+  const aliveRef = useRef(true);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      if (submitTimerRef.current != null) window.clearInterval(submitTimerRef.current);
+    };
+  }, []);
+
+  function stopSubmitTimer() {
+    if (submitTimerRef.current == null) return;
+    window.clearInterval(submitTimerRef.current);
+    submitTimerRef.current = null;
+  }
 
   function intakeBody(): BriefIntake {
     return {
@@ -185,12 +203,19 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'finalize', intake, answers: nextAnswers }),
       });
-      const data = await readJson<{ brief?: FinalizedBrief; error?: string }>(res);
-      if (!res.ok || !data.brief) {
+      const data = await readJson<{
+        brief?: ClientReviewBrief;
+        effortToken?: string;
+        largeJob?: boolean;
+        error?: string;
+      }>(res);
+      if (!res.ok || !data.brief || !data.effortToken) {
         throw new Error(data.error ?? 'Could not write the brief.');
       }
       setAnswers(nextAnswers);
       setBrief(data.brief);
+      setEffortToken(data.effortToken);
+      setLargeJob(data.largeJob === true);
       setStage('review');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not write the brief.');
@@ -268,21 +293,41 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
   }
 
   async function onApprove() {
-    if (!brief) return;
+    if (!brief || !effortToken || submitting) return;
+    setSubmitting(true);
     setBusy(true);
-    setBusyLabel('Sending to the team…');
+    setSubmitProgress(8);
     setError(null);
+
+    const started = Date.now();
+    stopSubmitTimer();
+    submitTimerRef.current = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      setSubmitProgress(Math.min(92, 8 + 84 * (1 - Math.exp(-elapsed / 3200))));
+    }, 100);
+
     try {
-      await postBrief('submit', { brief });
+      await postBrief('submit', { brief, effortToken });
+      stopSubmitTimer();
+      if (!aliveRef.current) return;
+      setSubmitProgress(100);
+      await new Promise((resolve) => window.setTimeout(resolve, 420));
+      if (!aliveRef.current) return;
       setStage('done');
     } catch (err) {
+      stopSubmitTimer();
+      if (!aliveRef.current) return;
+      setSubmitProgress(0);
       setError(err instanceof Error ? err.message : 'Could not send the brief.');
     } finally {
-      setBusy(false);
+      if (aliveRef.current) {
+        setBusy(false);
+        setSubmitting(false);
+      }
     }
   }
 
-  const rush = brief ? isRushBrief(dueDate, brief.effort) : false;
+  const rush = largeJob && dueWithin48Hours(dueDate);
 
   return (
     <ClientPortalShell slug={slug} backHref={`/clients/${slug}`} backLabel="← Portal">
@@ -450,7 +495,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
           </div>
           {rush ? (
             <p className="rounded-[20px] border border-brand-pink/30 bg-brand-pink/10 px-5 py-4 text-sm text-red-100">
-              This is due in under 48 hours and the effort is large, so a rush fee applies.
+              This due date is inside 48 hours, so a rush fee applies.
             </p>
           ) : null}
           <label className="block">
@@ -461,36 +506,20 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
               className={portalInput}
             />
           </label>
-          <div className="grid gap-5 min-[480px]:grid-cols-2">
-            <label className="block">
-              <span className={portalLabel}>Category</span>
-              <select
-                value={brief.category}
-                onChange={(e) => setBrief({ ...brief, category: e.target.value as BriefCategory })}
-                className={portalInput}
-              >
-                {BRIEF_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {CATEGORY_LABELS[category]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className={portalLabel}>Effort</span>
-              <select
-                value={brief.effort}
-                onChange={(e) => setBrief({ ...brief, effort: e.target.value as BriefEffort })}
-                className={portalInput}
-              >
-                {BRIEF_EFFORTS.map((effort) => (
-                  <option key={effort} value={effort}>
-                    {EFFORT_LABELS[effort]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <label className="block">
+            <span className={portalLabel}>Category</span>
+            <select
+              value={brief.category}
+              onChange={(e) => setBrief({ ...brief, category: e.target.value as BriefCategory })}
+              className={portalInput}
+            >
+              {BRIEF_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {CATEGORY_LABELS[category]}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="block">
             <span className={portalLabel}>Due date</span>
             <input
@@ -546,26 +575,38 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
               </ul>
             </div>
           ) : null}
-          <div className="flex flex-col gap-3 border-t border-white/10 pt-5 min-[480px]:flex-row">
-            <button
-              type="button"
-              disabled={busy || !brief.title.trim() || !brief.deliverables.some((line) => line.trim())}
-              onClick={() => void onApprove()}
-              className={`${portalBtnPrimary} disabled:cursor-not-allowed disabled:opacity-50`}
-            >
-              {busy ? busyLabel : 'Send to the team'}
-            </button>
-            <button type="button" className={portalBtnSecondary} disabled={busy} onClick={() => setStage('intake')}>
-              Start over
-            </button>
-          </div>
+          {submitting ? (
+            <div className="border-t border-white/10 pt-5" role="status" aria-live="polite">
+              <div className="mb-2 flex justify-between font-mono text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                <span>Sending to the team</span>
+                <span>{Math.round(submitProgress)}%</span>
+              </div>
+              <div className="portal-progress-track h-2 rounded-full border border-white/5 bg-black/20">
+                <div className={portalProgressFill} style={{ width: `${submitProgress}%` }} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 border-t border-white/10 pt-5 min-[480px]:flex-row">
+              <button
+                type="button"
+                disabled={busy || !brief.title.trim() || !brief.deliverables.some((line) => line.trim())}
+                onClick={() => void onApprove()}
+                className={`${portalBtnPrimary} disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                Send to the team
+              </button>
+              <button type="button" className={portalBtnSecondary} disabled={busy} onClick={() => setStage('intake')}>
+                Start over
+              </button>
+            </div>
+          )}
         </div>
       ) : null}
 
       {stage === 'done' ? (
         <div className={`${portalAlertSuccess} mt-6 min-[480px]:mt-8`}>
-          <p>Brief sent. The team has it, and it is in the production queue.</p>
-          <Link href={`/clients/${slug}`} className={`${portalBtnPrimary} mt-4`}>
+          <p className="font-mono text-sm">Brief sent. The team has it, and it is in the production queue.</p>
+          <Link href={`/clients/${slug}`} className={`${portalBtnPrimary} mt-4 font-mono`}>
             Back to portal
           </Link>
         </div>

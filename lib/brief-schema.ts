@@ -68,15 +68,25 @@ export type FinalizedBrief = {
   suggested_subtasks: BriefSubtask[];
 };
 
+/** What the client reviews. Effort stays off this object so they cannot set hours. */
+export type ClientReviewBrief = Omit<FinalizedBrief, 'effort'>;
+
 const LARGE_EFFORT = new Set<BriefEffort>(['L', 'XL', 'XXL']);
 
-/** Rush fee is code-owned: due within 48 hours and effort is L or larger. */
-export function isRushBrief(dueDate: string, effort: BriefEffort, now = Date.now()): boolean {
-  if (!LARGE_EFFORT.has(effort)) return false;
+export function isLargeEffort(effort: BriefEffort): boolean {
+  return LARGE_EFFORT.has(effort);
+}
+
+export function dueWithin48Hours(dueDate: string, now = Date.now()): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return false;
   const due = new Date(`${dueDate}T00:00:00`);
   if (Number.isNaN(due.getTime())) return false;
   return due.getTime() - now < 48 * 60 * 60 * 1000;
+}
+
+/** Rush fee is code-owned: due within 48 hours and effort is L or larger. */
+export function isRushBrief(dueDate: string, effort: BriefEffort, now = Date.now()): boolean {
+  return isLargeEffort(effort) && dueWithin48Hours(dueDate, now);
 }
 
 export function isBriefCategory(value: string): value is BriefCategory {

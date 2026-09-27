@@ -1,4 +1,5 @@
 import 'server-only';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { createBriefIntakeTask } from './asana';
 import type { ClientFieldFilter } from './asana';
 import {
@@ -22,11 +23,13 @@ import {
   EFFORT_LABELS,
   isBriefCategory,
   isBriefEffort,
+  isLargeEffort,
   isRushBrief,
   type BriefAnswer,
   type BriefEffort,
   type BriefFollowUp,
   type BriefIntake,
+  type ClientReviewBrief,
   type FinalizedBrief,
 } from './brief-schema';
 
@@ -213,9 +216,48 @@ The current form state and answers are the whole conversation. Do not assume any
   return { ready: false, questions };
 }
 
+const EFFORT_TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
+
+function effortSecret(): string {
+  const secret = process.env.NEXTAUTH_SECRET ?? process.env.CRON_SECRET;
+  if (!secret) throw new Error('NEXTAUTH_SECRET is not set');
+  return secret;
+}
+
+/** Signed so a client cannot swap the hour estimate before the brief is sent. */
+export function signBriefEffort(effort: BriefEffort): string {
+  const payload = Buffer.from(
+    JSON.stringify({ effort, exp: Date.now() + EFFORT_TOKEN_TTL_MS })
+  ).toString('base64url');
+  const sig = createHmac('sha256', effortSecret()).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+export function readSignedEffort(token: string): BriefEffort | null {
+  const [payload, sig] = token.split('.');
+  if (!payload || !sig) return null;
+  const expected = createHmac('sha256', effortSecret()).update(payload).digest('base64url');
+  const actual = Buffer.from(sig);
+  const wanted = Buffer.from(expected);
+  if (actual.length !== wanted.length || !timingSafeEqual(actual, wanted)) return null;
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
+      effort?: string;
+      exp?: number;
+    };
+    if (typeof data.exp !== 'number' || data.exp < Date.now()) return null;
+    if (typeof data.effort !== 'string' || !isBriefEffort(data.effort)) return null;
+    return data.effort;
+  } catch {
+    return null;
+  }
+}
+
 export async function finalizeBrief(intake: BriefIntake, answers: BriefAnswer[]): Promise<{
-  brief: FinalizedBrief;
-  rush: boolean;
+  brief: ClientReviewBrief;
+  effortToken: string;
+  largeJob: boolean;
 }> {
   const raw = await anthropicJson<FinalizedBrief>({
     model: SONNET_MODEL,
@@ -239,30 +281,34 @@ export async function finalizeBrief(intake: BriefIntake, answers: BriefAnswer[])
       description: (item.description ?? '').trim(),
     }));
 
-  const brief: FinalizedBrief = {
+  const brief: ClientReviewBrief = {
     title: raw.title.trim() || intake.project_type.trim(),
     category: raw.category,
     deliverables: deliverables.length > 0 ? deliverables : [intake.project_type.trim()],
-    effort: raw.effort,
     creative_direction: raw.creative_direction.trim(),
     suggested_subtasks: subtasks,
   };
 
-  return { brief, rush: isRushBrief(intake.due_date, brief.effort) };
+  return {
+    brief,
+    effortToken: signBriefEffort(raw.effort),
+    largeJob: isLargeEffort(raw.effort),
+  };
 }
 
 function formatBriefNotes(input: {
   clientName: string;
   intake: BriefIntake;
-  brief: FinalizedBrief;
+  brief: ClientReviewBrief;
+  effort: BriefEffort;
   rush: boolean;
 }): string {
-  const { brief, intake, rush } = input;
+  const { brief, intake, rush, effort } = input;
   const lines = [
     brief.title,
     '',
     `Category: ${CATEGORY_LABELS[brief.category]}`,
-    `Effort: ${EFFORT_LABELS[brief.effort]}`,
+    `Effort: ${EFFORT_LABELS[effort]}`,
     `Due: ${intake.due_date}`,
     `Rush fee: ${rush ? 'Yes — due in under 48 hours on a large request' : 'No'}`,
     '',
@@ -301,9 +347,10 @@ export async function deliverBrief(input: {
   clientName: string;
   filters: ClientFieldFilter[];
   intake: BriefIntake;
-  brief: FinalizedBrief;
+  brief: ClientReviewBrief;
+  effort: BriefEffort;
 }): Promise<{ permalinkUrl: string; rush: boolean; emailed: boolean }> {
-  const rush = isRushBrief(input.intake.due_date, input.brief.effort);
+  const rush = isRushBrief(input.intake.due_date, input.effort);
   const services = servicesClientOptionGid({
     displayName: input.clientName,
     filters: input.filters,
@@ -312,7 +359,7 @@ export async function deliverBrief(input: {
   const customFields: Record<string, string> = {
     [FIELD_CLIENT_STATUS]: CLIENT_STATUS_NEW_SUBMISSION,
     [FIELD_TASK_TYPE]: TASK_TYPE_CLIENT_WORK,
-    [FIELD_EFFORT]: EFFORT_OPTION_GIDS[input.brief.effort],
+    [FIELD_EFFORT]: EFFORT_OPTION_GIDS[input.effort],
   };
 
   for (const filter of input.filters) {
@@ -324,6 +371,7 @@ export async function deliverBrief(input: {
     clientName: input.clientName,
     intake: input.intake,
     brief: input.brief,
+    effort: input.effort,
     rush,
   });
 
@@ -349,12 +397,11 @@ export async function deliverBrief(input: {
   return { permalinkUrl: task.permalink_url, rush, emailed };
 }
 
-export function parseApprovedBrief(value: unknown): FinalizedBrief | null {
+export function parseApprovedBrief(value: unknown): ClientReviewBrief | null {
   if (!value || typeof value !== 'object') return null;
-  const brief = value as Partial<FinalizedBrief>;
+  const brief = value as Partial<ClientReviewBrief>;
   if (typeof brief.title !== 'string' || !brief.title.trim()) return null;
   if (typeof brief.category !== 'string' || !isBriefCategory(brief.category)) return null;
-  if (typeof brief.effort !== 'string' || !isBriefEffort(brief.effort)) return null;
   if (!Array.isArray(brief.deliverables)) return null;
 
   const deliverables = brief.deliverables
@@ -381,7 +428,6 @@ export function parseApprovedBrief(value: unknown): FinalizedBrief | null {
     title: brief.title.trim().slice(0, 140),
     category: brief.category,
     deliverables,
-    effort: brief.effort as BriefEffort,
     creative_direction:
       typeof brief.creative_direction === 'string' ? brief.creative_direction.trim().slice(0, 4000) : '',
     suggested_subtasks: subtasks,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientBySlug, getClientPortalRedirect } from '@/lib/client-registry';
-import { deliverBrief, finalizeBrief, parseApprovedBrief, refineBrief } from '@/lib/brief-builder';
+import { deliverBrief, finalizeBrief, parseApprovedBrief, readSignedEffort, refineBrief } from '@/lib/brief-builder';
 import type { BriefAnswer, BriefIntake } from '@/lib/brief-schema';
 
 export const maxDuration = 60;
@@ -95,7 +95,13 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
   }
 
   const { client } = resolved;
-  let body: { action?: string; intake?: unknown; answers?: unknown; brief?: unknown };
+  let body: {
+    action?: string;
+    intake?: unknown;
+    answers?: unknown;
+    brief?: unknown;
+    effortToken?: unknown;
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -133,7 +139,17 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
       const brief = parseApprovedBrief(body.brief);
       if (!brief) {
-        return NextResponse.json({ error: 'The brief is missing a title or deliverables.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'The brief is missing a title or deliverables.' },
+          { status: 400 }
+        );
+      }
+      const effort = typeof body.effortToken === 'string' ? readSignedEffort(body.effortToken) : null;
+      if (!effort) {
+        return NextResponse.json(
+          { error: 'Please review the brief again before sending it.' },
+          { status: 400 }
+        );
       }
 
       const result = await deliverBrief({
@@ -141,6 +157,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
         filters: client.filters,
         intake,
         brief,
+        effort,
       });
       recentSubmits.set(client.slug, Date.now());
       return NextResponse.json({ ok: true, rush: result.rush });

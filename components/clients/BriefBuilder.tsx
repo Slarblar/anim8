@@ -4,6 +4,7 @@ import { put } from '@vercel/blob/client';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AdminDatePicker } from '@/components/admin/AdminDatePicker';
 import { ClientPortalShell } from './ClientPortalShell';
 import { BRIEF_BUILDER_TOOLTIP } from './BriefBuilderButton';
 import { BriefQuestionVisual } from './BriefQuestionVisual';
@@ -57,7 +58,7 @@ const STEP_COPY: Record<Step, { kicker: string; title: string; blurb: string }> 
   sent: {
     kicker: 'Done',
     title: 'Brief’s in',
-    blurb: 'The team has it.',
+    blurb: 'The squad’s on it!',
   },
 };
 
@@ -74,9 +75,23 @@ const labelBase = 'block text-[11px] font-bold uppercase tracking-[0.18em] text-
 const helpBase = 'text-sm leading-relaxed text-white/50';
 
 const btnPrimary =
-  'group relative inline-flex w-full min-[480px]:w-auto items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-3 text-sm font-bold text-brand-black transition-transform duration-300 disabled:cursor-not-allowed disabled:opacity-50';
+  'relative inline-flex w-full min-[480px]:w-auto items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-3 text-sm font-bold text-brand-black disabled:cursor-not-allowed disabled:opacity-50';
 const btnGhost =
-  'inline-flex w-full min-[480px]:w-auto items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white/70 transition-colors duration-300 hover:border-white/30 hover:text-white disabled:opacity-40';
+  'inline-flex w-full min-[480px]:w-auto items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white/70 transition-[color,background-color,border-color,box-shadow] duration-200 ease-out hover:border-brand-cyan/45 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_10px_28px_rgba(56,194,214,0.14)] disabled:opacity-40';
+
+const pressSpring = { type: 'spring' as const, stiffness: 480, damping: 28, mass: 0.5 };
+const pressVariants = {
+  rest: { scale: 1, y: 0 },
+  hover: { scale: 1.035, y: -3 },
+  tap: { scale: 0.97, y: 0 },
+};
+
+function todayIso(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
 
 function fileSummaryLabel(files: File[]): string {
   if (files.length === 0) return 'Nothing added yet';
@@ -133,7 +148,9 @@ function cleanLink(item: string): string | null {
   }
 }
 
-/** Gradient-filled CTA — the lime/cyan ramp is the flow's signature. */
+const MotionLink = motion(Link);
+
+/** Gradient-filled CTA — spring lift plus a sheen, so the press reads as liquid. */
 function PrimaryButton({
   children,
   disabled,
@@ -146,17 +163,94 @@ function PrimaryButton({
   type?: 'button' | 'submit';
 }) {
   const reduce = useReducedMotion();
+  const live = !reduce && !disabled;
   return (
     <motion.button
       type={type}
       disabled={disabled}
       onClick={onClick}
       className={btnPrimary}
-      whileHover={reduce || disabled ? undefined : { scale: 1.02 }}
-      whileTap={reduce || disabled ? undefined : { scale: 0.98 }}
+      initial="rest"
+      whileHover={live ? 'hover' : undefined}
+      whileTap={live ? 'tap' : undefined}
+      variants={pressVariants}
+      transition={pressSpring}
     >
-      <span className="absolute inset-0 bg-gradient-to-r from-brand-lime via-brand-cyan to-brand-lime bg-[length:200%_100%] transition-[background-position] duration-700 group-hover:bg-[position:100%_50%]" />
-      <span className="relative z-10 flex items-center gap-2">{children}</span>
+      <span className="brief-cta-fill pointer-events-none absolute inset-0" aria-hidden />
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute -inset-y-2 left-0 w-[42%] skew-x-[-16deg] bg-gradient-to-r from-transparent via-white/60 to-transparent"
+        variants={{
+          rest: { x: '-170%', opacity: 0 },
+          hover: { x: '300%', opacity: 1 },
+          tap: { x: '300%', opacity: 0.35 },
+        }}
+        transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+      />
+      <span className="relative z-10">{children}</span>
+    </motion.button>
+  );
+}
+
+function GhostButton({
+  children,
+  onClick,
+  href,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  href?: string;
+  disabled?: boolean;
+}) {
+  const reduce = useReducedMotion();
+  const live = !reduce && !disabled;
+  const shared = {
+    className: btnGhost,
+    initial: 'rest' as const,
+    whileHover: live ? ('hover' as const) : undefined,
+    whileTap: live ? ('tap' as const) : undefined,
+    variants: {
+      rest: { scale: 1, y: 0 },
+      hover: { scale: 1.025, y: -2 },
+      tap: { scale: 0.98, y: 0 },
+    },
+    transition: pressSpring,
+  };
+  if (href) {
+    return (
+      <MotionLink href={href} {...shared}>
+        {children}
+      </MotionLink>
+    );
+  }
+  return (
+    <motion.button type="button" disabled={disabled} onClick={onClick} {...shared}>
+      {children}
+    </motion.button>
+  );
+}
+
+function NudgeButton({
+  children,
+  onClick,
+  className,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  className: string;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      className={className}
+      whileHover={reduce ? undefined : { x: 4 }}
+      whileTap={reduce ? undefined : { scale: 0.96 }}
+      transition={pressSpring}
+    >
+      {children}
     </motion.button>
   );
 }
@@ -170,13 +264,19 @@ function ProgressRail({ step, pct }: { step: Step; pct: number }) {
             const activeIndex = STEP_ORDER.indexOf(step);
             const state = step === 'sent' || index < activeIndex ? 'done' : index === activeIndex ? 'current' : 'todo';
             return (
-              <span
-                key={item}
-                data-state={state}
-                className={`brief-step-dot h-2 w-2 rounded-full ${
-                  state === 'todo' ? 'bg-white/20' : state === 'current' ? 'bg-brand-lime' : 'bg-brand-cyan'
-                }`}
-              />
+              <span key={item} className="relative grid h-3.5 w-3.5 place-items-center">
+                {state === 'current' ? (
+                  <motion.span
+                    layoutId="brief-step-current"
+                    className="h-2.5 w-2.5 rounded-full bg-brand-lime shadow-[0_0_0_4px_rgba(124,193,66,0.16)]"
+                    transition={{ type: 'spring', stiffness: 460, damping: 30 }}
+                  />
+                ) : (
+                  <span
+                    className={`h-2 w-2 rounded-full ${state === 'done' ? 'bg-brand-cyan' : 'bg-white/20'}`}
+                  />
+                )}
+              </span>
             );
           })}
         </div>
@@ -189,7 +289,7 @@ function ProgressRail({ step, pct }: { step: Step; pct: number }) {
           className="portal-progress-fill"
           initial={false}
           animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ type: 'spring', stiffness: 140, damping: 22, mass: 0.7 }}
         />
       </div>
     </div>
@@ -442,9 +542,42 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
   const rush = largeJob && dueWithin48Hours(dueDate);
 
   const slide = {
-    enter: (dir: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: dir > 0 ? 42 : -42 }),
-    center: { opacity: 1, x: 0 },
-    exit: (dir: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: dir > 0 ? -42 : 42 }),
+    enter: (dir: number) =>
+      reduce ? { opacity: 0 } : { opacity: 0, x: dir > 0 ? 32 : -32, filter: 'blur(8px)' },
+    center: {
+      opacity: 1,
+      x: 0,
+      filter: 'blur(0px)',
+      transition: reduce
+        ? { duration: 0.2 }
+        : {
+            x: { type: 'spring' as const, stiffness: 280, damping: 30, mass: 0.75 },
+            opacity: { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const },
+            filter: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const },
+            staggerChildren: 0.055,
+            delayChildren: 0.02,
+          },
+    },
+    exit: (dir: number) =>
+      reduce
+        ? { opacity: 0, transition: { duration: 0.15 } }
+        : {
+            opacity: 0,
+            x: dir > 0 ? -22 : 22,
+            filter: 'blur(6px)',
+            transition: { duration: 0.2, ease: [0.4, 0, 1, 1] as const },
+          },
+  };
+
+  const rise = {
+    enter: reduce ? { opacity: 0 } : { opacity: 0, y: 16 },
+    center: {
+      opacity: 1,
+      y: 0,
+      transition: reduce
+        ? { duration: 0.2 }
+        : { type: 'spring' as const, stiffness: 380, damping: 30, mass: 0.6 },
+    },
   };
 
   return (
@@ -477,10 +610,14 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
           ) : null}
         </AnimatePresence>
 
-        <div className="brief-card relative overflow-hidden p-5 min-[480px]:p-7 md:p-8">
+        <motion.div
+          layout
+          className="brief-card relative overflow-hidden p-5 min-[480px]:p-7 md:p-8"
+          transition={{ layout: { type: 'spring', stiffness: 260, damping: 32 } }}
+        >
           <AnimatePresence>{busy ? <BusyVeil label={busyLabel} progress={busyProgress} /> : null}</AnimatePresence>
 
-          <AnimatePresence mode="wait" custom={direction} initial={false}>
+          <AnimatePresence mode="popLayout" custom={direction} initial={false}>
             <motion.div
               key={step}
               custom={direction}
@@ -490,13 +627,20 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
               exit="exit"
               transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
             >
-              <h2 className="text-xl font-black uppercase tracking-tight text-white min-[480px]:text-2xl">
+              <motion.h2
+                variants={rise}
+                className={`text-xl font-black uppercase tracking-tight text-white min-[480px]:text-2xl ${
+                  step === 'sent' ? 'text-center' : ''
+                }`}
+              >
                 {STEP_COPY[step].title}
-              </h2>
-              <p className={`${helpBase} mt-2`}>{STEP_COPY[step].blurb}</p>
+              </motion.h2>
+              <motion.p variants={rise} className={`${helpBase} mt-2 ${step === 'sent' ? 'text-center' : ''}`}>
+                {STEP_COPY[step].blurb}
+              </motion.p>
 
               {step === 'project' ? (
-                <div className="mt-6 space-y-5">
+                <motion.div variants={rise} className="mt-6 space-y-5">
                   <label className="block">
                     <span className={labelBase}>The project</span>
                     <input
@@ -521,25 +665,24 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     <PrimaryButton disabled={!canLeaveProject} onClick={() => goTo('timing', 1)}>
                       Next
                     </PrimaryButton>
-                    <Link href={`/clients/${slug}`} className={btnGhost}>
-                      Cancel
-                    </Link>
+                    <GhostButton href={`/clients/${slug}`}>Cancel</GhostButton>
                   </div>
-                </div>
+                </motion.div>
               ) : null}
 
               {step === 'timing' ? (
-                <div className="mt-6 space-y-5">
-                  <label className="block">
+                <motion.div variants={rise} className="mt-6 space-y-5">
+                  <div>
                     <span className={labelBase}>Need it by</span>
-                    <input
-                      autoFocus
-                      type="date"
+                    <AdminDatePicker
                       value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                      className={`${fieldBase} w-full min-[480px]:max-w-xs`}
+                      onChange={setDueDate}
+                      min={todayIso()}
+                      placeholder="Pick a date"
+                      aria-label="Need it by"
+                      triggerClassName={fieldBase}
                     />
-                  </label>
+                  </div>
                   <label className="block">
                     <span className={labelBase}>The vibe</span>
                     <textarea
@@ -554,18 +697,25 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     <PrimaryButton disabled={!canLeaveTiming} onClick={() => goTo('inspo', 1)}>
                       Next
                     </PrimaryButton>
-                    <button type="button" className={btnGhost} onClick={() => goTo('project', -1)}>
-                      Back
-                    </button>
+                    <GhostButton onClick={() => goTo('project', -1)}>Back</GhostButton>
                   </div>
-                </div>
+                </motion.div>
               ) : null}
 
               {step === 'inspo' ? (
-                <div className="mt-6 space-y-5">
+                <motion.div variants={rise} className="mt-6 space-y-5">
                   <div className="space-y-3">
+                  <AnimatePresence initial={false}>
                     {links.map((value, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                      <motion.div
+                        key={index}
+                        layout
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: 16 }}
+                        transition={pressSpring}
+                        className="flex items-center gap-2"
+                      >
                         <input
                           value={value}
                           onChange={(e) =>
@@ -579,26 +729,25 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                           aria-label={LINK_PLACEHOLDERS[index] ?? `Link ${index + 1}`}
                         />
                         {links.length > 3 ? (
-                          <button
-                            type="button"
-                            className="shrink-0 text-xs font-bold uppercase tracking-wider text-white/40 transition-colors hover:text-white"
+                          <NudgeButton
+                            className="shrink-0 text-xs font-bold uppercase tracking-wider text-white/40 hover:text-white"
                             onClick={() => setLinks((current) => current.filter((_, i) => i !== index))}
                           >
                             Remove
-                          </button>
+                          </NudgeButton>
                         ) : null}
-                      </div>
+                      </motion.div>
                     ))}
+                  </AnimatePresence>
                   </div>
 
                   {links.length < MAX_LINKS ? (
-                    <button
-                      type="button"
-                      className="text-xs font-bold uppercase tracking-wider text-brand-lime transition-colors hover:text-white"
+                    <NudgeButton
+                      className="text-xs font-bold uppercase tracking-wider text-brand-lime hover:text-white"
                       onClick={() => setLinks((current) => [...current, ''])}
                     >
                       + Add another
-                    </button>
+                    </NudgeButton>
                   ) : null}
 
                   <div className="rounded-2xl border border-dashed border-white/12 p-4">
@@ -619,13 +768,18 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                       }}
                     />
                     <div className="mt-3 flex flex-wrap items-center gap-3">
-                      <button
+                      <motion.button
                         type="button"
-                        className="rounded-lg bg-brand-lime px-4 py-2 text-xs font-bold uppercase tracking-wider text-brand-black transition-opacity hover:opacity-90"
+                        className="rounded-lg bg-brand-lime px-4 py-2 text-xs font-bold uppercase tracking-wider text-brand-black"
                         onClick={() => fileInputRef.current?.click()}
+                        initial="rest"
+                        whileHover={reduce ? undefined : 'hover'}
+                        whileTap={reduce ? undefined : 'tap'}
+                        variants={pressVariants}
+                        transition={pressSpring}
                       >
                         Add files
-                      </button>
+                      </motion.button>
                       <span className="min-w-0 text-sm text-white/45">{fileSummary}</span>
                     </div>
                     <p className={`${helpBase} mt-2 text-xs`}>Up to 5 files, 50 MB altogether.</p>
@@ -633,19 +787,20 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
 
                   <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
                     <PrimaryButton onClick={() => void runRefine(answers, 0)}>Build my brief</PrimaryButton>
-                    <button type="button" className={btnGhost} onClick={() => goTo('timing', -1)}>
-                      Back
-                    </button>
+                    <GhostButton onClick={() => goTo('timing', -1)}>Back</GhostButton>
                   </div>
-                </div>
+                </motion.div>
               ) : null}
 
               {step === 'questions' ? (
-                <div className="mt-6 space-y-6">
-                  {questions.map((question) => (
-                    <div
+                <motion.div variants={rise} className="mt-6 space-y-6">
+                  {questions.map((question, index) => (
+                    <motion.div
                       key={question.id}
                       className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 min-[480px]:gap-x-4"
+                      initial={reduce ? false : { opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ ...pressSpring, delay: index * 0.05 }}
                     >
                       <p className="col-span-2 text-sm leading-snug text-white min-[480px]:text-base">
                         {question.prompt}
@@ -661,7 +816,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                         aria-label={question.prompt}
                         className={`${fieldBase} !mt-0 resize-y`}
                       />
-                    </div>
+                    </motion.div>
                   ))}
                   <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
                     <PrimaryButton
@@ -673,15 +828,15 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     >
                       Keep going
                     </PrimaryButton>
-                    <button type="button" className={btnGhost} onClick={() => void runFinalize(collectAnswers())}>
+                    <GhostButton onClick={() => void runFinalize(collectAnswers())}>
                       That’s enough, write it up
-                    </button>
+                    </GhostButton>
                   </div>
-                </div>
+                </motion.div>
               ) : null}
 
               {step === 'review' && brief ? (
-                <div className="mt-6 space-y-5">
+                <motion.div variants={rise} className="mt-6 space-y-5">
                   {rush ? (
                     <p className="rounded-2xl border border-brand-pink/35 bg-brand-pink/10 px-5 py-4 text-sm text-red-100">
                       That date is pretty tight, so a rush fee applies.
@@ -712,15 +867,17 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                         ))}
                       </select>
                     </label>
-                    <label className="block">
+                    <div>
                       <span className={labelBase}>Needed by</span>
-                      <input
-                        type="date"
+                      <AdminDatePicker
                         value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
-                        className={fieldBase}
+                        onChange={setDueDate}
+                        min={todayIso()}
+                        placeholder="Pick a date"
+                        aria-label="Needed by"
+                        triggerClassName={fieldBase}
                       />
-                    </label>
+                    </div>
                   </div>
 
                   <label className="block">
@@ -773,9 +930,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     >
                       Send it over
                     </PrimaryButton>
-                    <button
-                      type="button"
-                      className={btnGhost}
+                    <GhostButton
                       onClick={() => {
                         setBrief(null);
                         setEffortToken('');
@@ -786,13 +941,13 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                       }}
                     >
                       Start fresh
-                    </button>
+                    </GhostButton>
                   </div>
-                </div>
+                </motion.div>
               ) : null}
 
               {step === 'sent' ? (
-                <div className="mt-6 text-center">
+                <motion.div variants={rise} className="mt-6 text-center">
                   <motion.div
                     className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand-lime to-brand-cyan"
                     initial={reduce ? false : { scale: 0.6, opacity: 0 }}
@@ -814,15 +969,13 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     We’ll be in touch if anything needs a second pass.
                   </p>
                   <div className="mt-6 flex justify-center">
-                    <Link href={`/clients/${slug}`} className={btnGhost}>
-                      Back to your portal
-                    </Link>
+                    <GhostButton href={`/clients/${slug}`}>Back to your portal</GhostButton>
                   </div>
-                </div>
+                </motion.div>
               ) : null}
             </motion.div>
           </AnimatePresence>
-        </div>
+        </motion.div>
       </div>
     </ClientPortalShell>
   );

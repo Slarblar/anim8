@@ -1794,26 +1794,44 @@ html.careers-page-active {
   animation: brief-bar-indeterminate 1.5s ease-in-out infinite;
 }
 
+@keyframes brief-cta-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/** Living lime-to-cyan fill so the primary button keeps moving at rest. */
+.brief-cta-fill {
+  background: linear-gradient(100deg, #7cc142 0%, #38c2d6 45%, #7cc142 100%);
+  background-size: 220% 100%;
+  animation: brief-cta-flow 3.2s ease-in-out infinite;
+}
+
 .brief-field {
   transition:
-    border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    border-color 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .brief-field:focus {
-  transform: translateY(-1px);
-  border-color: rgba(124, 193, 66, 0.55);
+  transform: translateY(-2px);
+  border-color: rgba(124, 193, 66, 0.7);
+  background-color: rgba(255, 255, 255, 0.06);
   box-shadow:
-    0 0 0 3px rgba(124, 193, 66, 0.14),
-    0 10px 30px rgba(0, 0, 0, 0.35);
+    0 0 0 3px rgba(124, 193, 66, 0.16),
+    0 14px 32px rgba(56, 194, 214, 0.08);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .brief-card::before,
   .brief-aurora,
-  .brief-bar-sweep {
+  .brief-bar-sweep,
+  .brief-cta-fill {
     animation: none;
   }
 

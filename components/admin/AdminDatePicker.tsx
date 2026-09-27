@@ -80,6 +80,8 @@ type AdminDatePickerProps = {
   onChange: (value: string) => void;
   id?: string;
   className?: string;
+  /** Replaces the default admin input chrome on the trigger. The calendar panel stays the same. */
+  triggerClassName?: string;
   placeholder?: string;
   min?: string;
   max?: string;
@@ -93,6 +95,7 @@ export function AdminDatePicker({
   onChange,
   id,
   className,
+  triggerClassName,
   placeholder = 'Select date',
   min,
   max,
@@ -333,7 +336,7 @@ export function AdminDatePicker({
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`${adminInput} flex w-full items-center justify-between gap-2 text-left ${className ?? ''} ${
+        className={`${triggerClassName ?? adminInput} flex w-full items-center justify-between gap-2 text-left ${className ?? ''} ${
           disabled ? 'cursor-not-allowed opacity-50' : ''
         }`}
         onClick={() => {

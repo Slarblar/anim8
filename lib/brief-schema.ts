@@ -41,6 +41,8 @@ export type BriefIntake = {
   creative_direction: string;
   reference_links: string[];
   reference_uploads: string[];
+  /** Finished pieces the client asked for. One Asana subtask each. */
+  piece_count?: number;
 };
 
 export type BriefFollowUp = {
@@ -97,8 +99,10 @@ export function isBriefEffort(value: string): value is BriefEffort {
   return (BRIEF_EFFORTS as readonly string[]).includes(value);
 }
 
-/** One counted line can become this many piece subtasks. */
-const MAX_COUNTED_PIECES = 24;
+/** One counted line, or the client's piece stepper, can become this many piece subtasks. */
+export const PIECE_COUNT_MIN = 1;
+export const PIECE_COUNT_MAX = 24;
+const MAX_COUNTED_PIECES = PIECE_COUNT_MAX;
 /** Piece subtasks plus shared setup steps. */
 export const MAX_BRIEF_SUBTASKS = 36;
 
@@ -163,12 +167,37 @@ export function expandCountedDeliverables(deliverables: string[]): BriefSubtask[
   return pieces;
 }
 
+function piecesFromCount(count: number, label: string): BriefSubtask[] {
+  const safe = Math.min(PIECE_COUNT_MAX, Math.max(PIECE_COUNT_MIN, Math.round(count)));
+  const stripped = label
+    .trim()
+    .replace(/^\d{1,2}\s+/, '')
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .trim();
+  const base = capitalize(singularizePhrase(stripped || 'Piece'));
+  if (safe === 1) {
+    return [{ name: base, description: 'The one piece for this project.' }];
+  }
+  return Array.from({ length: safe }, (_, index) => {
+    const n = index + 1;
+    return { name: `${base} ${n}`, description: `${n} of ${safe}.` };
+  });
+}
+
 /**
- * Counted deliverables become one subtask each. Shared setup steps from the
- * model stay, except a lone "episode 1" that stood in for the whole set.
+ * The client's piece count wins. Otherwise a leading number on a deliverable
+ * line is expanded. Shared setup steps stay, except a lone "episode 1".
  */
-export function assembleBriefSubtasks(deliverables: string[], modelSteps: BriefSubtask[]): BriefSubtask[] {
-  const pieces = expandCountedDeliverables(deliverables);
+export function assembleBriefSubtasks(
+  deliverables: string[],
+  modelSteps: BriefSubtask[],
+  pieceCount?: number,
+  pieceLabel?: string
+): BriefSubtask[] {
+  const pieces =
+    typeof pieceCount === 'number' && pieceCount >= PIECE_COUNT_MIN
+      ? piecesFromCount(pieceCount, pieceLabel || deliverables.find((line) => line.trim()) || 'Piece')
+      : expandCountedDeliverables(deliverables);
   const stems = new Set(pieces.map((piece) => pieceStem(piece.name)).filter((stem): stem is string => !!stem));
 
   const setup = modelSteps.filter((step) => {

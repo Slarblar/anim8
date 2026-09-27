@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Quantum } from 'ldrs/react';
 import 'ldrs/react/Quantum.css';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AdminDatePicker } from '@/components/admin/AdminDatePicker';
 import { ClientPortalShell } from './ClientPortalShell';
 import { BRIEF_BUILDER_TOOLTIP } from './BriefBuilderButton';
@@ -14,6 +14,9 @@ import {
   CATEGORY_LABELS,
   BRIEF_CATEGORIES,
   dueWithin48Hours,
+  assembleBriefSubtasks,
+  PIECE_COUNT_MAX,
+  PIECE_COUNT_MIN,
   type BriefAnswer,
   type BriefCategory,
   type BriefFollowUp,
@@ -28,8 +31,6 @@ type BriefBuilderProps = {
 };
 
 type Step = 'project' | 'timing' | 'inspo' | 'questions' | 'review' | 'sent';
-
-const STEP_ORDER: Step[] = ['project', 'timing', 'inspo', 'questions', 'review'];
 
 const STEP_COPY: Record<Step, { kicker: string; title: string; blurb: string }> = {
   project: {
@@ -234,6 +235,61 @@ function GhostButton({
   );
 }
 
+function PieceStepper({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+}) {
+  const reduce = useReducedMotion();
+  function setCount(next: number) {
+    if (!Number.isFinite(next)) return;
+    onChange(Math.min(PIECE_COUNT_MAX, Math.max(PIECE_COUNT_MIN, Math.round(next))));
+  }
+
+  return (
+    <div className="brief-stepper mt-2 flex w-full max-w-[11rem] items-stretch overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
+      <input
+        inputMode="numeric"
+        aria-label="How many pieces"
+        value={value}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, '');
+          if (!digits) {
+            onChange(PIECE_COUNT_MIN);
+            return;
+          }
+          setCount(Number(digits));
+        }}
+        className="w-full bg-transparent px-3 py-3 text-center text-lg font-bold text-white outline-none"
+      />
+      <div className="flex w-9 flex-col border-l border-white/10">
+        <motion.button
+          type="button"
+          aria-label="More pieces"
+          disabled={value >= PIECE_COUNT_MAX}
+          onClick={() => setCount(value + 1)}
+          whileTap={reduce ? undefined : { scale: 0.92 }}
+          className="flex flex-1 items-center justify-center text-[10px] text-brand-lime transition-colors hover:bg-white/10 disabled:opacity-30"
+        >
+          ▲
+        </motion.button>
+        <motion.button
+          type="button"
+          aria-label="Fewer pieces"
+          disabled={value <= PIECE_COUNT_MIN}
+          onClick={() => setCount(value - 1)}
+          whileTap={reduce ? undefined : { scale: 0.92 }}
+          className="flex flex-1 items-center justify-center border-t border-white/10 text-[10px] text-brand-lime transition-colors hover:bg-white/10 disabled:opacity-30"
+        >
+          ▼
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
 function NudgeButton({
   children,
   onClick,
@@ -258,30 +314,62 @@ function NudgeButton({
   );
 }
 
-function ProgressRail({ step, pct }: { step: Step; pct: number }) {
+function railDotCount(questionRounds: number): number {
+  return 2 + Math.max(0, questionRounds) * 2;
+}
+
+function railActiveIndex(step: Step, questionRounds: number, total: number): number {
+  if (step === 'sent') return total;
+  if (step === 'review') return total - 1;
+  if (step === 'questions') return 1 + Math.max(0, questionRounds - 1) * 2;
+  return 0;
+}
+
+function railPercent(step: Step, questionRounds: number): number {
+  const total = railDotCount(questionRounds);
+  if (step === 'sent') return 100;
+  if (step === 'project' || step === 'timing' || step === 'inspo') {
+    const along = step === 'project' ? 0.34 : step === 'timing' ? 0.67 : 1;
+    return Math.round((along / total) * 100);
+  }
+  return Math.round(((railActiveIndex(step, questionRounds, total) + 1) / total) * 100);
+}
+
+function ProgressRail({ step, questionRounds }: { step: Step; questionRounds: number }) {
+  const rounds = step === 'questions' ? Math.max(questionRounds, 1) : questionRounds;
+  const total = railDotCount(rounds);
+  const active = railActiveIndex(step, rounds, total);
+  const pct = railPercent(step, rounds);
+
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          {STEP_ORDER.map((item, index) => {
-            const activeIndex = STEP_ORDER.indexOf(step);
-            const state = step === 'sent' || index < activeIndex ? 'done' : index === activeIndex ? 'current' : 'todo';
-            return (
-              <span key={item} className="relative grid h-3.5 w-3.5 place-items-center">
-                {state === 'current' ? (
-                  <motion.span
-                    layoutId="brief-step-current"
-                    className="h-2.5 w-2.5 rounded-full bg-brand-lime shadow-[0_0_0_4px_rgba(124,193,66,0.16)]"
-                    transition={{ type: 'spring', stiffness: 460, damping: 30 }}
-                  />
-                ) : (
-                  <span
-                    className={`h-2 w-2 rounded-full ${state === 'done' ? 'bg-brand-cyan' : 'bg-white/20'}`}
-                  />
-                )}
-              </span>
-            );
-          })}
+          <AnimatePresence initial={false}>
+            {Array.from({ length: total }, (_, index) => {
+              const state = index < active ? 'done' : index === active ? 'current' : 'todo';
+              return (
+                <motion.span
+                  key={index}
+                  className="relative grid h-3.5 w-3.5 place-items-center"
+                  initial={{ opacity: 0, scale: 0.4 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.4 }}
+                  transition={{ type: 'spring', stiffness: 460, damping: 28 }}
+                >
+                  {state === 'current' ? (
+                    <motion.span
+                      layoutId="brief-step-current"
+                      className="h-2.5 w-2.5 rounded-full bg-brand-lime shadow-[0_0_0_4px_rgba(124,193,66,0.16)]"
+                      transition={{ type: 'spring', stiffness: 460, damping: 30 }}
+                    />
+                  ) : (
+                    <span className={`h-2 w-2 rounded-full ${state === 'done' ? 'bg-brand-cyan' : 'bg-white/20'}`} />
+                  )}
+                </motion.span>
+              );
+            })}
+          </AnimatePresence>
         </div>
         <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
           {STEP_COPY[step].kicker}
@@ -342,6 +430,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
   const [direction, setDirection] = useState(1);
 
   const [projectType, setProjectType] = useState('');
+  const [pieceCount, setPieceCount] = useState(1);
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [creativeDirection, setCreativeDirection] = useState('');
@@ -372,12 +461,6 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
     };
   }, []);
 
-  const pct = useMemo(() => {
-    if (step === 'sent') return 100;
-    const index = STEP_ORDER.indexOf(step);
-    return Math.round(((index + 1) / (STEP_ORDER.length + 1)) * 100);
-  }, [step]);
-
   function goTo(next: Step, dir: number) {
     setDirection(dir);
     setError(null);
@@ -390,12 +473,31 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
     submitTimerRef.current = null;
   }
 
+  function changePieceCount(next: number) {
+    const count = Math.min(PIECE_COUNT_MAX, Math.max(PIECE_COUNT_MIN, Math.round(next)));
+    setPieceCount(count);
+    setBrief((current) =>
+      current
+        ? {
+            ...current,
+            suggested_subtasks: assembleBriefSubtasks(
+              current.deliverables,
+              current.suggested_subtasks,
+              count,
+              projectType
+            ),
+          }
+        : current
+    );
+  }
+
   function intakeBody(uploads: string[]): BriefIntake {
     return {
       project_type: projectType.trim(),
       description: description.trim(),
       due_date: dueDate,
       creative_direction: creativeDirection.trim(),
+      piece_count: pieceCount,
       reference_links: links.map(cleanLink).filter((item): item is string => !!item).slice(0, MAX_LINKS),
       reference_uploads: uploads,
     };
@@ -596,7 +698,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
         <p className={`${helpBase} mt-3 max-w-2xl`}>
           {BRIEF_BUILDER_TOOLTIP} This one’s for {formatPortalDisplayName(displayName)}.
         </p>
-        <ProgressRail step={step} pct={pct} />
+        <ProgressRail step={step} questionRounds={questionRound} />
       </header>
 
       <div className="relative mt-6 min-[480px]:mt-8">
@@ -654,9 +756,16 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                       value={projectType}
                       onChange={(e) => setProjectType(e.target.value)}
                       className={fieldBase}
-                      placeholder="3 reels for the drop, a podcast cut, a poster…"
+                      placeholder="Short videos for the series, a podcast cut, a poster…"
                     />
                   </label>
+                  <div>
+                    <span className={labelBase}>How many pieces</span>
+                    <PieceStepper value={pieceCount} onChange={changePieceCount} />
+                    <p className={`${helpBase} mt-2 text-xs`}>
+                      Each piece becomes its own task. Ten short videos means ten subtasks.
+                    </p>
+                  </div>
                   <label className="block">
                     <span className={labelBase}>The gist</span>
                     <textarea
@@ -884,6 +993,12 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                         triggerClassName={fieldBase}
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <span className={labelBase}>How many pieces</span>
+                    <PieceStepper value={pieceCount} onChange={changePieceCount} />
+                    <p className={`${helpBase} mt-2 text-xs`}>This is the number of subtasks we open for the pieces.</p>
                   </div>
 
                   <label className="block">

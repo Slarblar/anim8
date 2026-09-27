@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getClientBySlug, getClientPortalRedirect } from '@/lib/client-registry';
 import { deliverBrief, finalizeBrief, parseApprovedBrief, readSignedEffort, refineBrief } from '@/lib/brief-builder';
 import type { BriefAnswer, BriefIntake } from '@/lib/brief-schema';
+import { PIECE_COUNT_MAX, PIECE_COUNT_MIN } from '@/lib/brief-schema';
 
 export const maxDuration = 60;
 
@@ -53,6 +54,10 @@ function parseIntake(value: unknown): BriefIntake | null {
         .slice(0, MAX_UPLOADS)
     : [];
 
+  const count = typeof raw.piece_count === 'number' ? raw.piece_count : Number(raw.piece_count);
+  const pieceCount =
+    Number.isInteger(count) && count >= PIECE_COUNT_MIN && count <= PIECE_COUNT_MAX ? count : undefined;
+
   return {
     project_type: projectType,
     description,
@@ -60,6 +65,7 @@ function parseIntake(value: unknown): BriefIntake | null {
     creative_direction: clip(raw.creative_direction, 2000),
     reference_links: links,
     reference_uploads: uploads,
+    piece_count: pieceCount,
   };
 }
 

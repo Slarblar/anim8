@@ -91,7 +91,9 @@ Return only the structured brief. Do not invent a budget, a price, or a rush fee
 Category must be one of: ${BRIEF_CATEGORIES.join(', ')}.
 Effort must be one of: S (0.5-2 hrs), M (2-8 hrs), L (8-16 hrs), XL (16-32 hrs), XXL (4-5 days). Estimate fresh from this request. There are no category defaults.
 
-Write one suggested subtask per counted deliverable, numbered ("Shortform video cutdown 1" through the full count). Do not collapse a count into a single step such as "Cut episode 1". After those pieces, add up to 4 shared setup steps (template, selects, review) that apply to the whole job.
+The client sets piece_count. That number is exact: one finished piece per count. Put that same number on the deliverables line. Do not invent a different quantity.
+
+Write one suggested subtask per piece, numbered through the full piece_count. Do not collapse the count into a single step such as "Cut episode 1". After those pieces, add up to 4 shared setup steps (template, selects, review) that apply to the whole job.
 
 creative_direction should be a cleaned, organized version of the client's notes: tone, must-haves, must-avoids, and brand notes. Drop filler. Keep their constraints.
 
@@ -184,6 +186,7 @@ function intakePayload(intake: BriefIntake, answers: BriefAnswer[]) {
   return JSON.stringify(
     {
       project_type: intake.project_type,
+      piece_count: intake.piece_count ?? null,
       description: intake.description,
       due_date: intake.due_date,
       creative_direction: intake.creative_direction,
@@ -319,7 +322,9 @@ export async function finalizeBrief(intake: BriefIntake, answers: BriefAnswer[])
     creative_direction: raw.creative_direction.trim(),
     suggested_subtasks: assembleBriefSubtasks(
       deliverables.length > 0 ? deliverables : [intake.project_type.trim()],
-      modelSteps
+      modelSteps,
+      intake.piece_count,
+      intake.project_type
     ),
   };
 
@@ -344,6 +349,7 @@ function formatBriefNotes(input: {
     `Category: ${CATEGORY_LABELS[brief.category]}`,
     `Effort: ${EFFORT_LABELS[effort]}`,
     `Due: ${intake.due_date}`,
+    `Pieces: ${intake.piece_count ?? '—'}`,
     `Rush fee: ${rush ? 'Yes — due in under 48 hours on a large request' : 'No'}`,
     '',
     'Deliverables:',
@@ -421,12 +427,15 @@ export async function deliverBrief(input: {
         projectGid: INTAKE_PROJECT_GID,
         sectionGid: INTAKE_SECTION_NEW_SUBMISSIONS,
         customFields: fields,
-        subtasks: assembleBriefSubtasks(input.brief.deliverables, input.brief.suggested_subtasks).map(
-          (item) => ({
-            name: item.name,
-            notes: item.description,
-          })
-        ),
+        subtasks: assembleBriefSubtasks(
+          input.brief.deliverables,
+          input.brief.suggested_subtasks,
+          input.intake.piece_count,
+          input.intake.project_type
+        ).map((item) => ({
+          name: item.name,
+          notes: item.description,
+        })),
         comment: formatReferenceComment(input.intake),
       });
     } catch (err) {

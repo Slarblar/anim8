@@ -1,5 +1,4 @@
 import 'server-only';
-import { createHmac, timingSafeEqual } from 'crypto';
 import { createBriefIntakeTask } from './asana';
 import type { ClientFieldFilter } from './asana';
 import {
@@ -104,17 +103,30 @@ function clientKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+function validServiceGids(): Set<string> {
+  return new Set(
+    [...Object.values(SERVICES_CLIENT_GIDS), SERVICES_CLIENT_MISC_GID].filter((gid) => gid.length > 0)
+  );
+}
+
 export function servicesClientOptionGid(input: {
   displayName: string;
   filters: ClientFieldFilter[];
 }): { gid: string | null; usedMisc: boolean } {
+  const valid = validServiceGids();
   const fromPortal = input.filters.find((filter) => filter.fieldGid === FIELD_DESIGN_CLIENTS)?.optionGid;
-  if (fromPortal) {
+  if (fromPortal && valid.has(fromPortal)) {
     return { gid: fromPortal, usedMisc: fromPortal === SERVICES_CLIENT_MISC_GID };
   }
 
-  const fromName = SERVICES_CLIENT_GIDS[clientKey(input.displayName)];
-  if (fromName) return { gid: fromName, usedMisc: false };
+  const key = clientKey(input.displayName);
+  const exact = SERVICES_CLIENT_GIDS[key];
+  if (exact) return { gid: exact, usedMisc: false };
+
+  const prefix = Object.entries(SERVICES_CLIENT_GIDS)
+    .sort((a, b) => b[0].length - a[0].length)
+    .find(([name]) => name.length >= 4 && key.startsWith(name));
+  if (prefix) return { gid: prefix[1], usedMisc: false };
 
   if (SERVICES_CLIENT_MISC_GID) return { gid: SERVICES_CLIENT_MISC_GID, usedMisc: true };
   return { gid: null, usedMisc: true };
@@ -226,22 +238,38 @@ function effortSecret(): string {
   return secret;
 }
 
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i += 1) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
+async function signPayload(payload: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(effortSecret()),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return Buffer.from(signature).toString('base64url');
+}
+
 /** Signed so a client cannot swap the hour estimate before the brief is sent. */
-export function signBriefEffort(effort: BriefEffort): string {
+export async function signBriefEffort(effort: BriefEffort): Promise<string> {
   const payload = Buffer.from(
     JSON.stringify({ effort, exp: Date.now() + EFFORT_TOKEN_TTL_MS })
   ).toString('base64url');
-  const sig = createHmac('sha256', effortSecret()).update(payload).digest('base64url');
-  return `${payload}.${sig}`;
+  return `${payload}.${await signPayload(payload)}`;
 }
 
-export function readSignedEffort(token: string): BriefEffort | null {
+export async function readSignedEffort(token: string): Promise<BriefEffort | null> {
   const [payload, sig] = token.split('.');
   if (!payload || !sig) return null;
-  const expected = createHmac('sha256', effortSecret()).update(payload).digest('base64url');
-  const actual = Buffer.from(sig);
-  const wanted = Buffer.from(expected);
-  if (actual.length !== wanted.length || !timingSafeEqual(actual, wanted)) return null;
+  const expected = await signPayload(payload);
+  if (!safeEqual(sig, expected)) return null;
 
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
@@ -293,7 +321,7 @@ export async function finalizeBrief(intake: BriefIntake, answers: BriefAnswer[])
 
   return {
     brief,
-    effortToken: signBriefEffort(raw.effort),
+    effortToken: await signBriefEffort(raw.effort),
     largeJob: isLargeEffort(raw.effort),
   };
 }
@@ -365,6 +393,7 @@ export async function deliverBrief(input: {
   };
 
   for (const filter of input.filters) {
+    if (filter.fieldGid === FIELD_DESIGN_CLIENTS) continue;
     customFields[filter.fieldGid] = filter.optionGid;
   }
   if (services.gid) customFields[FIELD_DESIGN_CLIENTS] = services.gid;
@@ -377,24 +406,44 @@ export async function deliverBrief(input: {
     rush,
   });
 
-  const task = await createBriefIntakeTask({
-    name: `[${input.clientName}] ${input.brief.title}`,
-    notes,
-    dueOn: input.intake.due_date,
-    projectGid: INTAKE_PROJECT_GID,
-    sectionGid: INTAKE_SECTION_NEW_SUBMISSIONS,
-    customFields,
-    subtasks: input.brief.suggested_subtasks.map((item) => ({
-      name: item.name,
-      notes: item.description,
-    })),
-    comment: formatReferenceComment(input.intake),
-  });
+  let fields = customFields;
+  let task: { gid: string; permalink_url: string } | null = null;
+  for (let attempt = 0; attempt < 4 && !task; attempt += 1) {
+    try {
+      task = await createBriefIntakeTask({
+        name: `[${input.clientName}] ${input.brief.title}`,
+        notes,
+        dueOn: input.intake.due_date,
+        projectGid: INTAKE_PROJECT_GID,
+        sectionGid: INTAKE_SECTION_NEW_SUBMISSIONS,
+        customFields: fields,
+        subtasks: input.brief.suggested_subtasks.map((item) => ({
+          name: item.name,
+          notes: item.description,
+        })),
+        comment: formatReferenceComment(input.intake),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      const rejected = message.match(/not:\s*(\d+)/)?.[1];
+      if (!rejected) throw err;
+      const next = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== rejected));
+      if (Object.keys(next).length === Object.keys(fields).length) throw err;
+      console.error(`Asana rejected option ${rejected}; retrying without it`);
+      fields = next;
+    }
+  }
+  if (!task) throw new Error('Could not create the Asana task');
 
-  const emailed = await notifyClientPortalTeam({
-    subject: `[${input.clientName}] Brief: ${input.brief.title}`,
-    body: [notes, '', task.permalink_url ? `Asana: ${task.permalink_url}` : ''].filter(Boolean).join('\n'),
-  });
+  let emailed = false;
+  try {
+    emailed = await notifyClientPortalTeam({
+      subject: `[${input.clientName}] Brief: ${input.brief.title}`,
+      body: [notes, '', task.permalink_url ? `Asana: ${task.permalink_url}` : ''].filter(Boolean).join('\n'),
+    });
+  } catch (err) {
+    console.error('Brief email failed', err);
+  }
 
   return { permalinkUrl: task.permalink_url, rush, emailed };
 }

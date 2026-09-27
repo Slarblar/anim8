@@ -478,20 +478,19 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
             </p>
           </div>
           {questions.map((question) => (
-            <div key={question.id} className="flex items-start gap-3 min-[480px]:gap-4">
+            <div key={question.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 min-[480px]:gap-x-4">
+              <p className="col-span-2 text-sm leading-snug text-white min-[480px]:text-base">{question.prompt}</p>
               <BriefQuestionVisual prompt={question.prompt} active={focusedQuestion === question.id} />
-              <label className="block min-w-0 flex-1">
-                <span className="block text-sm leading-snug text-white min-[480px]:text-base">{question.prompt}</span>
-                <textarea
-                  rows={3}
-                  value={draftAnswers[question.id] ?? ''}
-                  onChange={(e) =>
-                    setDraftAnswers((current) => ({ ...current, [question.id]: e.target.value }))
-                  }
-                  onFocus={() => setFocusedQuestion(question.id)}
-                  className={`${portalInput} resize-y`}
-                />
-              </label>
+              <textarea
+                rows={3}
+                value={draftAnswers[question.id] ?? ''}
+                onChange={(e) =>
+                  setDraftAnswers((current) => ({ ...current, [question.id]: e.target.value }))
+                }
+                onFocus={() => setFocusedQuestion(question.id)}
+                aria-label={question.prompt}
+                className={`${portalInput} !mt-0 resize-y`}
+              />
             </div>
           ))}
           <div className="flex flex-col gap-3 border-t border-white/10 pt-5 min-[480px]:flex-row">

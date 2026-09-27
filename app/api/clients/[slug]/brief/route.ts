@@ -144,7 +144,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
           { status: 400 }
         );
       }
-      const effort = typeof body.effortToken === 'string' ? readSignedEffort(body.effortToken) : null;
+      const effort = typeof body.effortToken === 'string' ? await readSignedEffort(body.effortToken) : null;
       if (!effort) {
         return NextResponse.json(
           { error: 'Look it over once more, then send it.' },

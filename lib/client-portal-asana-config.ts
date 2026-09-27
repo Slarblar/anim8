@@ -31,10 +31,9 @@ export const EFFORT_OPTION_GIDS = {
 
 /**
  * Services Clients options, keyed by a compact client name (letters and digits only).
- * MISC is not created yet — leave the GID empty until it exists in Asana.
- * An empty GID means omit the field instead of failing the submission.
+ * MISC is the fallback when a portal client is not in this list.
  */
-export const SERVICES_CLIENT_MISC_GID = '';
+export const SERVICES_CLIENT_MISC_GID = '1218912834925067';
 
 export const SERVICES_CLIENT_GIDS: Record<string, string> = {
   anim8: '1212054697251950',

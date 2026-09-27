@@ -111,7 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
   const intake = parseIntake(body.intake);
   if (!intake) {
     return NextResponse.json(
-      { error: 'Project type, description, and a due date are required.' },
+      { error: 'Tell us what we’re making, the gist, and when you need it.' },
       { status: 400 }
     );
   }
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
       const last = recentSubmits.get(client.slug);
       if (last && Date.now() - last < SUBMIT_THROTTLE_MS) {
         return NextResponse.json(
-          { error: 'Please wait a moment before submitting again.' },
+          { error: 'Give it a second before sending another one.' },
           { status: 429 }
         );
       }
@@ -140,14 +140,14 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
       const brief = parseApprovedBrief(body.brief);
       if (!brief) {
         return NextResponse.json(
-          { error: 'The brief is missing a title or deliverables.' },
+          { error: 'It needs a name and at least one thing you’ll get.' },
           { status: 400 }
         );
       }
       const effort = typeof body.effortToken === 'string' ? readSignedEffort(body.effortToken) : null;
       if (!effort) {
         return NextResponse.json(
-          { error: 'Please review the brief again before sending it.' },
+          { error: 'Look it over once more, then send it.' },
           { status: 400 }
         );
       }
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
   } catch (err) {
     console.error('Brief builder failed', err);
     return NextResponse.json(
-      { error: 'Something went wrong on our end. Please try again.' },
+      { error: 'Something hiccuped. Try again.' },
       { status: 500 }
     );
   }

@@ -5,7 +5,7 @@ import { useId } from 'react';
 import { portalBtnBrief } from './portal-ui';
 
 export const BRIEF_BUILDER_TOOLTIP =
-  'Describe the project in your own words. We’ll ask a few follow-ups, then turn it into a brief you can review before it goes to the team.';
+  'Walk us through the project in your own words. We’ll ask a few questions and shape it into a brief before it hits the team.';
 
 export function BriefBuilderButton({ slug }: { slug: string }) {
   const tipId = useId();

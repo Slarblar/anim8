@@ -192,9 +192,11 @@ export async function refineBrief(intake: BriefIntake, answers: BriefAnswer[]): 
     schema: REFINE_SCHEMA,
     system: `You help a retainer client finish a creative brief for Anim-8. You only ask follow-up questions. You do not write the brief.
 
-Ask 2 to 4 short questions about missing or vague production details: deliverable count, format, length, aspect ratio, must-include, must-avoid, or who the piece is for. Do not ask about budget, price, or the client's name. Do not repeat a question they already answered.
+Ask 2 to 4 short questions about anything still fuzzy: how many pieces, format, length, ratio, must-haves, things to avoid, or who it's for. Do not ask about budget, price, or the client's name. Do not repeat a question they already answered.
 
-If the request is already specific enough to produce from, set ready to true and questions to an empty array.
+Write like a producer texting a client you know. Plain words, contractions, one clear question each. No "please provide", "kindly", "utilize", or corporate filler.
+
+If the request is already specific enough to make, set ready to true and questions to an empty array.
 
 The current form state and answers are the whole conversation. Do not assume anything from a previous turn that is not in this payload.`,
     user: intakePayload(intake, answers),

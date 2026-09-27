@@ -152,20 +152,17 @@ function cleanLink(item: string): string | null {
 
 const MotionLink = motion(Link);
 
-/** Gradient-filled CTA — spring lift plus a sheen, so the press reads as liquid. */
+/** Continue button — lime sweeping through brand green, white label, thin glint. */
 function PrimaryButton({
   children,
   disabled,
   onClick,
   type = 'button',
-  signal = false,
 }: {
   children: React.ReactNode;
   disabled?: boolean;
   onClick?: () => void;
   type?: 'button' | 'submit';
-  /** Lime-to-brand-green sweep. Used on Next, the green light to continue. */
-  signal?: boolean;
 }) {
   const reduce = useReducedMotion();
   const live = !reduce && !disabled;
@@ -174,27 +171,24 @@ function PrimaryButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      data-ready={signal && !disabled ? 'true' : undefined}
-      className={`${btnPrimary} ${signal ? 'brief-go !text-white' : ''}`}
+      data-ready={!disabled ? 'true' : undefined}
+      className={`${btnPrimary} brief-go !text-white`}
       initial="rest"
       whileHover={live ? 'hover' : undefined}
       whileTap={live ? 'tap' : undefined}
       variants={pressVariants}
       transition={pressSpring}
     >
-      <span
-        className={`${signal ? 'brief-go-fill' : 'brief-cta-fill'} pointer-events-none absolute inset-0`}
-        aria-hidden
-      />
+      <span className="brief-go-fill pointer-events-none absolute inset-0" aria-hidden />
       <motion.span
         aria-hidden
-        className="pointer-events-none absolute -inset-y-2 left-0 w-[42%] skew-x-[-16deg] bg-gradient-to-r from-transparent via-white/45 to-transparent"
+        className="pointer-events-none absolute inset-y-0 left-0 w-[14%] skew-x-[-18deg] bg-gradient-to-r from-transparent via-white/25 to-transparent"
         variants={{
-          rest: { x: '-170%', opacity: 0 },
-          hover: { x: '300%', opacity: 1 },
-          tap: { x: '300%', opacity: 0.35 },
+          rest: { x: '-180%', opacity: 0 },
+          hover: { x: '720%', opacity: 0.55 },
+          tap: { x: '720%', opacity: 0.2 },
         }}
-        transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       />
       <span className="relative z-10">{children}</span>
     </motion.button>
@@ -674,7 +668,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     />
                   </label>
                   <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
-                    <PrimaryButton signal disabled={!canLeaveProject} onClick={() => goTo('timing', 1)}>
+                    <PrimaryButton disabled={!canLeaveProject} onClick={() => goTo('timing', 1)}>
                       Next
                     </PrimaryButton>
                     <GhostButton href={`/clients/${slug}`}>Cancel</GhostButton>
@@ -706,7 +700,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     />
                   </label>
                   <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
-                    <PrimaryButton signal disabled={!canLeaveTiming} onClick={() => goTo('inspo', 1)}>
+                    <PrimaryButton disabled={!canLeaveTiming} onClick={() => goTo('inspo', 1)}>
                       Next
                     </PrimaryButton>
                     <GhostButton onClick={() => goTo('project', -1)}>Back</GhostButton>

@@ -26,6 +26,11 @@ export const portalFadeUp: Variants = {
     y: 0,
     transition: { duration: 0.55, ease: portalMotionEase },
   },
+  exit: {
+    opacity: 0,
+    y: -10,
+    transition: { duration: 0.22, ease: portalMotionEase },
+  },
 };
 
 export const portalFormReveal: Variants = {
@@ -87,6 +92,41 @@ export const portalInstant: Variants = {
   hidden: { opacity: 1 },
   show: { opacity: 1 },
   exit: { opacity: 1 },
+};
+
+/** Route change inside the client portal. Opacity only, so fixed layers stay on the viewport. */
+export const portalRoute: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { duration: 0.38, ease: portalMotionEase },
+  },
+  exit: {
+    opacity: 0,
+    transition: { duration: 0.2, ease: portalMotionEase },
+  },
+};
+
+export const portalModalBackdrop: Variants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { duration: 0.28, ease: portalMotionEase } },
+  exit: { opacity: 0, transition: { duration: 0.2, ease: portalMotionEase } },
+};
+
+export const portalModalPanel: Variants = {
+  hidden: { opacity: 0, y: 28, scale: 0.97 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: 'spring', stiffness: 380, damping: 32, mass: 0.7 },
+  },
+  exit: {
+    opacity: 0,
+    y: 16,
+    scale: 0.98,
+    transition: { duration: 0.2, ease: portalMotionEase },
+  },
 };
 
 export function portalVariants(prefersReduced: boolean | null, variants: Variants): Variants {

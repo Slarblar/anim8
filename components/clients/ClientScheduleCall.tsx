@@ -1,9 +1,11 @@
 'use client';
 
 import { ANIM8_CALENDAR_URL } from '@/lib/client-portal-asana-config';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { useState } from 'react';
 import { ClientPortalShell } from './ClientPortalShell';
+import { portalFadeUp, portalVariants } from './portal-motion';
 import {
   portalBody,
   portalBtnPrimary,
@@ -23,6 +25,8 @@ type ClientScheduleCallProps = {
 
 export function ClientScheduleCall({ slug, displayName }: ClientScheduleCallProps) {
   const [embedBlocked, setEmbedBlocked] = useState(false);
+  const reduce = useReducedMotion();
+  const reveal = portalVariants(!!reduce, portalFadeUp);
 
   return (
     <ClientPortalShell slug={slug} backHref={`/clients/${slug}`} backLabel="← Portal" wide>
@@ -39,23 +43,37 @@ export function ClientScheduleCall({ slug, displayName }: ClientScheduleCallProp
         <h2 className={portalSectionTitle}>Select a time</h2>
 
         <div className={`${portalTaskCard} mt-4 min-[480px]:mt-5 overflow-hidden p-0`}>
-          {!embedBlocked ? (
-            <iframe
-              src={ANIM8_CALENDAR_URL}
-              title="Book a call with Anim-8"
-              className="min-h-[480px] w-full border-0 bg-white min-[480px]:min-h-[560px] md:min-h-[640px] lg:min-h-[720px]"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              onError={() => setEmbedBlocked(true)}
-            />
-          ) : (
-            <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-              <p className="text-lg font-bold text-white">Calendar embed unavailable</p>
-              <p className={portalBody}>
-                Use the button below to open Google Calendar booking in a new tab.
-              </p>
-            </div>
-          )}
+          <AnimatePresence mode="wait" initial={false}>
+            {!embedBlocked ? (
+              <motion.iframe
+                key="calendar"
+                src={ANIM8_CALENDAR_URL}
+                title="Book a call with Anim-8"
+                className="min-h-[480px] w-full border-0 bg-white min-[480px]:min-h-[560px] md:min-h-[640px] lg:min-h-[720px]"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                onError={() => setEmbedBlocked(true)}
+                variants={reveal}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+              />
+            ) : (
+              <motion.div
+                key="calendar-fallback"
+                className="flex min-h-[320px] flex-col items-center justify-center gap-4 px-6 py-12 text-center"
+                variants={reveal}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+              >
+                <p className="text-lg font-bold text-white">Calendar embed unavailable</p>
+                <p className={portalBody}>
+                  Use the button below to open Google Calendar booking in a new tab.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
 

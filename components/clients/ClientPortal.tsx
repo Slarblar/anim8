@@ -11,6 +11,7 @@ import type {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { BriefBuilderButton } from './BriefBuilderButton';
 import { ClientPortalShell } from './ClientPortalShell';
 import { ClientRejectModal } from './ClientRejectModal';
@@ -32,6 +33,7 @@ import {
   portalStatusBadge,
   portalTaskCard,
 } from './portal-ui';
+import { portalFadeUp, portalPageStagger, portalVariants } from './portal-motion';
 
 type PortalTask =
   | ClientPortalTask
@@ -287,6 +289,7 @@ function CollapsibleTaskCard({
   actionLoadingGid,
   onApprove,
   onReject,
+  index,
 }: {
   task: PortalTask;
   expanded: boolean;
@@ -300,7 +303,9 @@ function CollapsibleTaskCard({
   actionLoadingGid?: string | null;
   onApprove?: (taskGid: string) => void;
   onReject?: (task: ClientPortalTask) => void;
+  index: number;
 }) {
+  const reduce = useReducedMotion();
   // Neither pending, approved, nor past — the "active pipeline" card variant, where
   // due date + progress are the most important info and should stay visible
   // even while collapsed.
@@ -354,7 +359,12 @@ function CollapsibleTaskCard({
   );
 
   return (
-    <li className={`portal-task-card ${portalTaskCard} ${expanded ? 'portal-task-card--expanded' : ''}`}>
+    <motion.li
+      className={`portal-task-card ${portalTaskCard} ${expanded ? 'portal-task-card--expanded' : ''}`}
+      initial={reduce ? false : { opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1], delay: Math.min(index, 6) * 0.045 }}
+    >
       <button
         type="button"
         className="portal-task-card-toggle flex w-full items-start justify-between gap-3 text-left"
@@ -388,7 +398,7 @@ function CollapsibleTaskCard({
           ) : null}
         </div>
       </div>
-    </li>
+    </motion.li>
   );
 }
 
@@ -466,9 +476,10 @@ function TaskList({
 
   return (
     <ul className="mt-5 space-y-4">
-      {tasks.map((task) => (
+      {tasks.map((task, index) => (
         <CollapsibleTaskCard
           key={task.gid}
+          index={index}
           task={task}
           expanded={expandedGids.has(task.gid)}
           onToggle={() => toggleTask(task.gid)}
@@ -511,6 +522,7 @@ export function ClientPortal({
   const [approveSuccess, setApproveSuccess] = useState<string | null>(null);
   const [submittedDismissed, setSubmittedDismissed] = useState(false);
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     setPendingProjects(initialPending);
@@ -613,7 +625,15 @@ export function ClientPortal({
         </div>
       }
     >
-      <div className="border-b border-white/10 pb-6 pt-1 min-[480px]:pb-8 min-[480px]:pt-2 md:pt-4">
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={portalVariants(!!reduceMotion, portalPageStagger)}
+      >
+      <motion.div
+        className="border-b border-white/10 pb-6 pt-1 min-[480px]:pb-8 min-[480px]:pt-2 md:pt-4"
+        variants={portalVariants(!!reduceMotion, portalFadeUp)}
+      >
         <p className={portalEyebrow}>Client portal</p>
         <h1 className={`${portalPageTitle} mt-2 min-[480px]:mt-3 break-words`}>
           {formatPortalDisplayName(displayName)}
@@ -622,9 +642,13 @@ export function ClientPortal({
           Review planning, follow active work, and browse archives. Updates
           refresh automatically while this page is open.
         </p>
-      </div>
+      </motion.div>
 
-      {driveFolderUrl ? <ClientDriveFolderCallout url={driveFolderUrl} /> : null}
+      {driveFolderUrl ? (
+        <motion.div variants={portalVariants(!!reduceMotion, portalFadeUp)}>
+          <ClientDriveFolderCallout url={driveFolderUrl} />
+        </motion.div>
+      ) : null}
 
       <PortalDismissibleAlert
         message="Request submitted. We will follow up soon."
@@ -652,7 +676,10 @@ export function ClientPortal({
         onDismiss={() => setApproveSuccess(null)}
       />
 
-      <section className="mt-8 min-[480px]:mt-10 md:mt-12">
+      <motion.section
+        className="mt-8 min-[480px]:mt-10 md:mt-12"
+        variants={portalVariants(!!reduceMotion, portalFadeUp)}
+      >
         <h2 className={portalSectionTitle}>Planning stage</h2>
         <p className={`${portalBody} mt-2`}>
           New requests and estimates to review before production starts.
@@ -693,9 +720,12 @@ export function ClientPortal({
             ) : null}
           </>
         )}
-      </section>
+      </motion.section>
 
-      <section className="mt-8 min-[480px]:mt-10 md:mt-12">
+      <motion.section
+        className="mt-8 min-[480px]:mt-10 md:mt-12"
+        variants={portalVariants(!!reduceMotion, portalFadeUp)}
+      >
         <h2 className={portalSectionTitle}>Active</h2>
         <p className={`${portalBody} mt-2`}>
           Work currently in our production or design pipeline.
@@ -705,9 +735,12 @@ export function ClientPortal({
           emptyMessage="No active projects right now."
           showPipeline
         />
-      </section>
+      </motion.section>
 
-      <section className="mt-8 min-[480px]:mt-10 md:mt-12">
+      <motion.section
+        className="mt-8 min-[480px]:mt-10 md:mt-12"
+        variants={portalVariants(!!reduceMotion, portalFadeUp)}
+      >
         <h2 className={portalSectionTitle}>Archives</h2>
         <p className={`${portalBody} mt-2`}>
           Completed work and billing history — estimate vs final cost.
@@ -718,7 +751,8 @@ export function ClientPortal({
           emptyMessage="No archived projects yet."
           pastSection
         />
-      </section>
+      </motion.section>
+      </motion.div>
 
       <ClientRejectModal
         open={rejectTask != null}

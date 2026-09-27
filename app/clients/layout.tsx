@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ClientPortalTransition } from '@/components/clients/ClientPortalTransition';
 
 export const metadata: Metadata = {
   title: 'Client Portal | Anim-8',
@@ -15,6 +16,8 @@ export default function ClientPortalLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="client-portal-root antialiased">{children}</div>
+    <div className="client-portal-root antialiased">
+      <ClientPortalTransition>{children}</ClientPortalTransition>
+    </div>
   );
 }

@@ -1235,6 +1235,20 @@ html.careers-page-active {
     100% 100%;
 }
 
+@keyframes portal-route-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/** Ends on opacity 1, so a cancelled route animation cannot leave the page blank. */
+.portal-route-in {
+  animation: portal-route-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .client-portal-shell .glass-nav {
   background: rgba(6, 7, 11, 0.82);
   border-bottom-color: rgba(255, 255, 255, 0.06);
@@ -1490,6 +1504,10 @@ html.careers-page-active {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .portal-route-in {
+    animation: none;
+  }
+
   .client-portal-shell .portal-input:focus-visible {
     transform: none;
   }

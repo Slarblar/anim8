@@ -46,6 +46,10 @@ export const portalBtnPrimary =
 export const portalBtnSecondary =
   'inline-flex w-full min-[480px]:w-auto shrink-0 items-center justify-center rounded-lg border-2 border-white/25 bg-white/5 px-4 py-2.5 min-[480px]:px-5 text-xs min-[480px]:text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10 focus-lime';
 
+/** AI brief builder — lime outline so it sits beside the cyan New request button. */
+export const portalBtnBrief =
+  'inline-flex w-full min-[480px]:w-auto shrink-0 items-center justify-center rounded-lg border border-brand-lime/45 bg-brand-lime/10 px-4 py-2.5 min-[480px]:px-5 text-xs min-[480px]:text-sm font-bold text-brand-lime transition hover:bg-brand-lime/20 focus-lime';
+
 export const portalBtnDanger =
   'inline-flex w-full min-[480px]:w-auto shrink-0 items-center justify-center rounded-lg border border-brand-pink/40 bg-brand-pink/10 px-4 py-2.5 min-[480px]:px-5 text-xs min-[480px]:text-sm font-bold text-brand-pink transition hover:border-brand-pink/55 hover:bg-brand-pink/15 focus-lime disabled:opacity-50';
 

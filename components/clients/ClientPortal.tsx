@@ -11,6 +11,7 @@ import type {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BriefBuilderButton } from './BriefBuilderButton';
 import { ClientPortalShell } from './ClientPortalShell';
 import { ClientRejectModal } from './ClientRejectModal';
 import { PortalDismissibleAlert } from './PortalDismissibleAlert';
@@ -452,9 +453,12 @@ function TaskList({
       <div className={`${portalTaskCard} mt-5 text-center`}>
         <p className={portalBody}>{emptyMessage}</p>
         {pendingSection && slug ? (
-          <Link href={`/clients/${slug}/new`} className={`${portalBtnPrimary} mt-5 inline-flex`}>
-            New request
-          </Link>
+          <div className="mt-5 flex flex-col items-center gap-3 min-[480px]:flex-row min-[480px]:justify-center">
+            <Link href={`/clients/${slug}/new`} className={portalBtnPrimary}>
+              New request
+            </Link>
+            <BriefBuilderButton slug={slug} />
+          </div>
         ) : null}
       </div>
     );
@@ -602,6 +606,7 @@ export function ClientPortal({
           <Link href={`/clients/${slug}/schedule`} className={portalBtnSecondary}>
             Schedule call
           </Link>
+          <BriefBuilderButton slug={slug} />
           <Link href={`/clients/${slug}/new`} className={portalBtnPrimary}>
             New request
           </Link>
@@ -655,9 +660,12 @@ export function ClientPortal({
         {pendingProjects.length === 0 && approvedProjects.length === 0 ? (
           <div className={`${portalTaskCard} mt-5 text-center`}>
             <p className={portalBody}>No projects in planning right now.</p>
-            <Link href={`/clients/${slug}/new`} className={`${portalBtnPrimary} mt-5 inline-flex`}>
-              New request
-            </Link>
+            <div className="mt-5 flex flex-col items-center gap-3 min-[480px]:flex-row min-[480px]:justify-center">
+              <Link href={`/clients/${slug}/new`} className={portalBtnPrimary}>
+                New request
+              </Link>
+              <BriefBuilderButton slug={slug} />
+            </div>
           </div>
         ) : (
           <>

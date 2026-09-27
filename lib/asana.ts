@@ -585,6 +585,47 @@ export async function createClientSubmission(input: {
   return task;
 }
 
+export async function createBriefIntakeTask(input: {
+  name: string;
+  notes: string;
+  dueOn?: string;
+  projectGid: string;
+  sectionGid?: string;
+  customFields: Record<string, string>;
+  subtasks: Array<{ name: string; notes: string }>;
+  comment: string;
+}): Promise<{ gid: string; permalink_url: string }> {
+  const task = await createClientSubmission({
+    name: input.name,
+    notes: input.notes,
+    dueOn: input.dueOn,
+    projectGid: input.projectGid,
+    sectionGid: input.sectionGid,
+    customFields: input.customFields,
+  });
+
+  for (const subtask of input.subtasks) {
+    try {
+      await asanaFetch(`/tasks/${task.gid}/subtasks`, {
+        method: 'POST',
+        body: JSON.stringify({
+          data: { name: subtask.name, notes: subtask.notes },
+        }),
+      });
+    } catch (err) {
+      console.error(`Failed to add brief subtask on ${task.gid}`, err);
+    }
+  }
+
+  try {
+    await addTaskStory(task.gid, input.comment);
+  } catch (err) {
+    console.error(`Failed to add brief reference comment on ${task.gid}`, err);
+  }
+
+  return task;
+}
+
 /**
  * Streams a file straight through to Asana's attachment endpoint —
  * nothing touches our own storage or the client's browser twice.

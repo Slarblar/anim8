@@ -910,19 +910,26 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                   {brief.suggested_subtasks.length > 0 ? (
                     <div>
                       <span className={labelBase}>How we’d tackle it</span>
-                      <ul className="mt-3 space-y-2">
+                      <ul className="brief-plan mt-4">
                         {brief.suggested_subtasks.map((subtask, index) => (
                           <motion.li
                             key={`${subtask.name}-${index}`}
-                            className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3"
-                            initial={reduce ? false : { opacity: 0, y: 10 }}
+                            className="brief-plan-step"
+                            data-tone={index % 3}
+                            style={{ animationDelay: `${index * 0.45}s` }}
+                            initial={reduce ? false : { opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.05 * index, duration: 0.35 }}
+                            transition={{ delay: 0.05 * index, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                           >
-                            <p className="text-sm font-semibold text-white">{subtask.name}</p>
-                            {subtask.description ? (
-                              <p className={`${helpBase} mt-1 text-xs`}>{subtask.description}</p>
-                            ) : null}
+                            <span className="brief-plan-index" aria-hidden>
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-white">{subtask.name}</p>
+                              {subtask.description ? (
+                                <p className={`${helpBase} mt-1 text-xs`}>{subtask.description}</p>
+                              ) : null}
+                            </div>
                           </motion.li>
                         ))}
                       </ul>

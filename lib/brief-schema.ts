@@ -96,3 +96,98 @@ export function isBriefCategory(value: string): value is BriefCategory {
 export function isBriefEffort(value: string): value is BriefEffort {
   return (BRIEF_EFFORTS as readonly string[]).includes(value);
 }
+
+/** One counted line can become this many piece subtasks. */
+const MAX_COUNTED_PIECES = 24;
+/** Piece subtasks plus shared setup steps. */
+export const MAX_BRIEF_SUBTASKS = 36;
+
+const TIME_UNIT = /^(hours?|days?|weeks?|minutes?|mins?|seconds?|secs?|months?)\b/i;
+/** A single "episode 1" / "cutdown 1" step, which a counted set replaces. */
+const SINGLE_UNIT = /\b(episode|cutdown|video|reel|post|asset|piece|short)\s*#?\s*0*1\b/i;
+
+function singularizeWord(word: string): string {
+  if (/ies$/i.test(word) && word.length > 4) return `${word.slice(0, -3)}y`;
+  if (/(ches|shes|xes|zes|ses)$/i.test(word) && word.length > 4) return word.slice(0, -2);
+  if (/s$/i.test(word) && !/ss$/i.test(word) && word.length > 3) return word.slice(0, -1);
+  return word;
+}
+
+function singularizePhrase(phrase: string): string {
+  const words = phrase.split(/\s+/);
+  const last = words.length - 1;
+  words[last] = singularizeWord(words[last]);
+  return words.join(' ');
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function pieceStem(name: string): string | null {
+  const match = name.trim().match(/^(.*)\s+\d+$/);
+  return match ? match[1].toLowerCase() : null;
+}
+
+/** "10 shortform video cutdowns (30-45 sec each)" → ten numbered piece subtasks. */
+export function expandCountedDeliverables(deliverables: string[]): BriefSubtask[] {
+  const pieces: BriefSubtask[] = [];
+
+  for (const line of deliverables) {
+    if (pieces.length >= MAX_COUNTED_PIECES) break;
+    const match = line.trim().match(/^(\d{1,2})(?!\s*[-–—])\s+(.+)$/);
+    if (!match) continue;
+
+    const count = Number(match[1]);
+    if (count < 2 || count > MAX_COUNTED_PIECES) continue;
+
+    let rest = match[2].trim();
+    let spec = '';
+    const paren = rest.match(/\s*\(([^)]+)\)\s*$/);
+    if (paren && paren.index != null) {
+      spec = paren[1].trim();
+      rest = rest.slice(0, paren.index).trim();
+    }
+    rest = rest.replace(/[.:;,]+$/, '').trim();
+    if (rest.length < 3 || TIME_UNIT.test(rest)) continue;
+
+    const label = capitalize(singularizePhrase(rest));
+    for (let i = 1; i <= count && pieces.length < MAX_COUNTED_PIECES; i += 1) {
+      pieces.push({
+        name: `${label} ${i}`,
+        description: spec ? `${spec}. ${i} of ${count}.` : `${i} of ${count}.`,
+      });
+    }
+  }
+
+  return pieces;
+}
+
+/**
+ * Counted deliverables become one subtask each. Shared setup steps from the
+ * model stay, except a lone "episode 1" that stood in for the whole set.
+ */
+export function assembleBriefSubtasks(deliverables: string[], modelSteps: BriefSubtask[]): BriefSubtask[] {
+  const pieces = expandCountedDeliverables(deliverables);
+  const stems = new Set(pieces.map((piece) => pieceStem(piece.name)).filter((stem): stem is string => !!stem));
+
+  const setup = modelSteps.filter((step) => {
+    const name = step.name.trim();
+    if (!name) return false;
+    const stem = pieceStem(name);
+    if (stem && stems.has(stem)) return false;
+    if (pieces.length > 0 && SINGLE_UNIT.test(name)) return false;
+    return true;
+  });
+
+  const merged: BriefSubtask[] = [];
+  const seen = new Set<string>();
+  for (const item of [...pieces, ...setup]) {
+    const key = item.name.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push({ name: item.name.trim(), description: item.description.trim() });
+    if (merged.length >= MAX_BRIEF_SUBTASKS) break;
+  }
+  return merged;
+}

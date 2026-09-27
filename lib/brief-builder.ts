@@ -24,6 +24,8 @@ import {
   isBriefEffort,
   isLargeEffort,
   isRushBrief,
+  assembleBriefSubtasks,
+  MAX_BRIEF_SUBTASKS,
   type BriefAnswer,
   type BriefEffort,
   type BriefFollowUp,
@@ -89,12 +91,12 @@ Return only the structured brief. Do not invent a budget, a price, or a rush fee
 Category must be one of: ${BRIEF_CATEGORIES.join(', ')}.
 Effort must be one of: S (0.5-2 hrs), M (2-8 hrs), L (8-16 hrs), XL (16-32 hrs), XXL (4-5 days). Estimate fresh from this request. There are no category defaults.
 
-Write 3 to 6 suggested subtasks a producer could assign. Each subtask name is short. Each description says what "done" looks like.
+Write one suggested subtask per counted deliverable, numbered ("Shortform video cutdown 1" through the full count). Do not collapse a count into a single step such as "Cut episode 1". After those pieces, add up to 4 shared setup steps (template, selects, review) that apply to the whole job.
 
 creative_direction should be a cleaned, organized version of the client's notes: tone, must-haves, must-avoids, and brand notes. Drop filler. Keep their constraints.
 
 Example 1 input: "3 Instagram reels for the new drop, due next Friday, punchy, no stock music, refs attached."
-Example 1 output shape: title "New drop Instagram reels", category "social-content", effort "M", deliverables listing 3 cutdowns, creative_direction capturing punchy tone and no stock music, subtasks for selects, cut, captions, and review.
+Example 1 output shape: title "New drop Instagram reels", category "social-content", effort "M", deliverables listing "3 Instagram reels", creative_direction capturing punchy tone and no stock music, subtasks "Instagram reel 1", "Instagram reel 2", "Instagram reel 3", plus selects and review.
 
 Example 2 input: "Recut the podcast into a 45 minute YouTube episode and a trailer, keep the host's asides, due in two days."
 Example 2 output shape: title "Podcast episode recut and trailer", category "podcast-longform-edit", effort "L", deliverables for the long cut and the trailer, subtasks for assembly, trailer, captions, and export.`;
@@ -292,7 +294,7 @@ export async function finalizeBrief(intake: BriefIntake, answers: BriefAnswer[])
   const raw = await anthropicJson<FinalizedBrief>({
     model: SONNET_MODEL,
     cacheSystem: true,
-    maxTokens: 2500,
+    maxTokens: 4000,
     schema: FINALIZE_SCHEMA,
     system: SONNET_SYSTEM,
     user: `Write the brief from this request.\n\n${intakePayload(intake, answers)}`,
@@ -303,9 +305,8 @@ export async function finalizeBrief(intake: BriefIntake, answers: BriefAnswer[])
   }
 
   const deliverables = (raw.deliverables ?? []).map((item) => item.trim()).filter(Boolean).slice(0, 12);
-  const subtasks = (raw.suggested_subtasks ?? [])
+  const modelSteps = (raw.suggested_subtasks ?? [])
     .filter((item) => item?.name?.trim())
-    .slice(0, 6)
     .map((item) => ({
       name: item.name.trim(),
       description: (item.description ?? '').trim(),
@@ -316,7 +317,10 @@ export async function finalizeBrief(intake: BriefIntake, answers: BriefAnswer[])
     category: raw.category,
     deliverables: deliverables.length > 0 ? deliverables : [intake.project_type.trim()],
     creative_direction: raw.creative_direction.trim(),
-    suggested_subtasks: subtasks,
+    suggested_subtasks: assembleBriefSubtasks(
+      deliverables.length > 0 ? deliverables : [intake.project_type.trim()],
+      modelSteps
+    ),
   };
 
   return {
@@ -417,10 +421,12 @@ export async function deliverBrief(input: {
         projectGid: INTAKE_PROJECT_GID,
         sectionGid: INTAKE_SECTION_NEW_SUBMISSIONS,
         customFields: fields,
-        subtasks: input.brief.suggested_subtasks.map((item) => ({
-          name: item.name,
-          notes: item.description,
-        })),
+        subtasks: assembleBriefSubtasks(input.brief.deliverables, input.brief.suggested_subtasks).map(
+          (item) => ({
+            name: item.name,
+            notes: item.description,
+          })
+        ),
         comment: formatReferenceComment(input.intake),
       });
     } catch (err) {
@@ -473,7 +479,7 @@ export function parseApprovedBrief(value: unknown): ClientReviewBrief | null {
       };
     })
     .filter((item): item is { name: string; description: string } => item !== null)
-    .slice(0, 6);
+    .slice(0, MAX_BRIEF_SUBTASKS);
 
   return {
     title: brief.title.trim().slice(0, 140),

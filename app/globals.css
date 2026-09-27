@@ -1890,6 +1890,108 @@ html.careers-page-active {
   animation: brief-go-flow 2.6s ease-in-out infinite;
 }
 
+@keyframes brief-plan-wash {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translate3d(-6%, 0, 0);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate3d(8%, 0, 0);
+  }
+}
+
+/** Production steps — lime, cyan, and magenta in turn, with a slow color wash. */
+.brief-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.brief-plan-step {
+  --plan-accent: #7cc142;
+  --plan-glow: rgba(124, 193, 66, 0.34);
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.9rem;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.95rem 1rem 0.95rem 0.85rem;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.brief-plan-step[data-tone='1'] {
+  --plan-accent: #38c2d6;
+  --plan-glow: rgba(56, 194, 214, 0.34);
+}
+
+.brief-plan-step[data-tone='2'] {
+  --plan-accent: #dd0b83;
+  --plan-glow: rgba(221, 11, 131, 0.3);
+}
+
+.brief-plan-step::before {
+  content: '';
+  position: absolute;
+  top: 0.7rem;
+  bottom: 0.7rem;
+  left: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--plan-accent);
+  box-shadow: 0 0 12px var(--plan-glow);
+}
+
+.brief-plan-step::after {
+  content: '';
+  position: absolute;
+  inset: -20% auto -20% -10%;
+  width: 55%;
+  background: radial-gradient(circle at 30% 50%, var(--plan-glow), transparent 68%);
+  pointer-events: none;
+  animation: brief-plan-wash 5.5s ease-in-out infinite;
+  animation-delay: inherit;
+}
+
+.brief-plan-step:hover {
+  transform: translateY(-3px);
+  border-color: var(--plan-accent);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.35),
+    0 0 24px var(--plan-glow);
+}
+
+.brief-plan-step:hover::after {
+  opacity: 0.95;
+}
+
+.brief-plan-index {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.1rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--plan-accent);
+  text-shadow: 0 0 12px var(--plan-glow);
+}
+
+.brief-plan-step > div {
+  position: relative;
+  z-index: 1;
+}
+
 .brief-field {
   transition:
     border-color 0.22s cubic-bezier(0.22, 1, 0.36, 1),
@@ -1914,12 +2016,14 @@ html.careers-page-active {
   .brief-cta-fill,
   .brief-loader-glow,
   .brief-go,
-  .brief-go-fill {
+  .brief-go-fill,
+  .brief-plan-step::after {
     animation: none;
   }
 
   .brief-step-dot,
-  .brief-field {
+  .brief-field,
+  .brief-plan-step {
     transition: none;
   }
 }

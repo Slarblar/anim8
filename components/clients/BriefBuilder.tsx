@@ -2,6 +2,8 @@
 
 import { put } from '@vercel/blob/client';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Quantum } from 'ldrs/react';
+import 'ldrs/react/Quantum.css';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AdminDatePicker } from '@/components/admin/AdminDatePicker';
@@ -156,11 +158,14 @@ function PrimaryButton({
   disabled,
   onClick,
   type = 'button',
+  signal = false,
 }: {
   children: React.ReactNode;
   disabled?: boolean;
   onClick?: () => void;
   type?: 'button' | 'submit';
+  /** Lime-to-brand-green sweep. Used on Next, the green light to continue. */
+  signal?: boolean;
 }) {
   const reduce = useReducedMotion();
   const live = !reduce && !disabled;
@@ -169,17 +174,21 @@ function PrimaryButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={btnPrimary}
+      data-ready={signal && !disabled ? 'true' : undefined}
+      className={`${btnPrimary} ${signal ? 'brief-go !text-white' : ''}`}
       initial="rest"
       whileHover={live ? 'hover' : undefined}
       whileTap={live ? 'tap' : undefined}
       variants={pressVariants}
       transition={pressSpring}
     >
-      <span className="brief-cta-fill pointer-events-none absolute inset-0" aria-hidden />
+      <span
+        className={`${signal ? 'brief-go-fill' : 'brief-cta-fill'} pointer-events-none absolute inset-0`}
+        aria-hidden
+      />
       <motion.span
         aria-hidden
-        className="pointer-events-none absolute -inset-y-2 left-0 w-[42%] skew-x-[-16deg] bg-gradient-to-r from-transparent via-white/60 to-transparent"
+        className="pointer-events-none absolute -inset-y-2 left-0 w-[42%] skew-x-[-16deg] bg-gradient-to-r from-transparent via-white/45 to-transparent"
         variants={{
           rest: { x: '-170%', opacity: 0 },
           hover: { x: '300%', opacity: 1 },
@@ -296,31 +305,34 @@ function ProgressRail({ step, pct }: { step: Step; pct: number }) {
   );
 }
 
-/** Covers the card while a model call runs so the wait reads as progress, not a freeze. */
+/** Covers the card while a model call runs. Quantum is a stand-in until we draw our own. */
 function BusyVeil({ label, progress }: { label: string; progress: number | null }) {
+  const reduce = useReducedMotion();
   return (
     <motion.div
-      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-[24px] bg-[#0b0c12]/80 px-6 backdrop-blur-sm"
+      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 rounded-[24px] bg-[#07080d]/90 px-6 backdrop-blur-md"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: 0.28 }}
       role="status"
       aria-live="polite"
     >
-      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-brand-lime">{label}</p>
-      <div className="portal-progress-track relative h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-white/10">
-        {progress == null ? (
-          <span className="brief-bar-sweep" />
-        ) : (
+      <div className="relative grid place-items-center">
+        <span className="brief-loader-glow" aria-hidden />
+        <Quantum size={84} speed={reduce ? 0 : 1.35} color="#7cc142" />
+      </div>
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.28em] text-white">{label}</p>
+      {progress != null ? (
+        <div className="portal-progress-track relative h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-white/10">
           <motion.div
             className="portal-progress-fill"
             initial={false}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3, ease: 'linear' }}
           />
-        )}
-      </div>
+        </div>
+      ) : null}
     </motion.div>
   );
 }
@@ -662,7 +674,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     />
                   </label>
                   <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
-                    <PrimaryButton disabled={!canLeaveProject} onClick={() => goTo('timing', 1)}>
+                    <PrimaryButton signal disabled={!canLeaveProject} onClick={() => goTo('timing', 1)}>
                       Next
                     </PrimaryButton>
                     <GhostButton href={`/clients/${slug}`}>Cancel</GhostButton>
@@ -694,7 +706,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     />
                   </label>
                   <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
-                    <PrimaryButton disabled={!canLeaveTiming} onClick={() => goTo('inspo', 1)}>
+                    <PrimaryButton signal disabled={!canLeaveTiming} onClick={() => goTo('inspo', 1)}>
                       Next
                     </PrimaryButton>
                     <GhostButton onClick={() => goTo('project', -1)}>Back</GhostButton>

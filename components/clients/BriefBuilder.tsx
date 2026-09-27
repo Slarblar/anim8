@@ -1,8 +1,9 @@
 'use client';
 
 import { put } from '@vercel/blob/client';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClientPortalShell } from './ClientPortalShell';
 import { BRIEF_BUILDER_TOOLTIP } from './BriefBuilderButton';
 import { BriefQuestionVisual } from './BriefQuestionVisual';
@@ -16,35 +17,66 @@ import {
   type BriefIntake,
   type ClientReviewBrief,
 } from '@/lib/brief-schema';
-import {
-  formatPortalDisplayName,
-  portalAlertError,
-  portalAlertSuccess,
-  portalBody,
-  portalBtnPrimary,
-  portalBtnSecondary,
-  portalEyebrow,
-  portalInput,
-  portalLabel,
-  portalPageTitle,
-  portalProgressFill,
-  portalTaskCard,
-} from './portal-ui';
+import { formatPortalDisplayName, portalEyebrow } from './portal-ui';
 
 type BriefBuilderProps = {
   slug: string;
   displayName: string;
 };
 
-type Stage = 'intake' | 'questions' | 'review' | 'done';
+type Step = 'project' | 'timing' | 'inspo' | 'questions' | 'review' | 'sent';
+
+const STEP_ORDER: Step[] = ['project', 'timing', 'inspo', 'questions', 'review'];
+
+const STEP_COPY: Record<Step, { kicker: string; title: string; blurb: string }> = {
+  project: {
+    kicker: 'Step 1',
+    title: 'What are we making?',
+    blurb: 'Give us the shape of it. Rough is fine — we’ll tighten it together.',
+  },
+  timing: {
+    kicker: 'Step 2',
+    title: 'When and what vibe',
+    blurb: 'A date to work back from, plus how it should feel.',
+  },
+  inspo: {
+    kicker: 'Step 3',
+    title: 'Show us the inspo',
+    blurb: 'Links or files. A reel you loved says more than a paragraph.',
+  },
+  questions: {
+    kicker: 'Step 4',
+    title: 'A couple things',
+    blurb: 'Answer what you know. Skip whatever you want us to call.',
+  },
+  review: {
+    kicker: 'Step 5',
+    title: 'Look this over',
+    blurb: 'Change anything that doesn’t sound like you, then send it.',
+  },
+  sent: {
+    kicker: 'Done',
+    title: 'Brief’s in',
+    blurb: 'The team has it.',
+  },
+};
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 const MAX_FILES = 5;
 const MAX_QUESTION_ROUNDS = 2;
+const MAX_LINKS = 8;
+const LINK_PLACEHOLDERS = ['Instagram link', 'TikTok link', 'Anything else that nails it'];
 
-const attachBtn =
-  'inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-lime px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-brand-black transition hover:opacity-90 focus-lime';
+const fieldBase =
+  'brief-field mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 min-[480px]:text-[0.9375rem]';
+const labelBase = 'block text-[11px] font-bold uppercase tracking-[0.18em] text-white/55 font-mono';
+const helpBase = 'text-sm leading-relaxed text-white/50';
+
+const btnPrimary =
+  'group relative inline-flex w-full min-[480px]:w-auto items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-3 text-sm font-bold text-brand-black transition-transform duration-300 disabled:cursor-not-allowed disabled:opacity-50';
+const btnGhost =
+  'inline-flex w-full min-[480px]:w-auto items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white/70 transition-colors duration-300 hover:border-white/30 hover:text-white disabled:opacity-40';
 
 function fileSummaryLabel(files: File[]): string {
   if (files.length === 0) return 'Nothing added yet';
@@ -88,9 +120,6 @@ async function uploadAttachment(slug: string, file: File): Promise<string> {
   return blob.url;
 }
 
-const LINK_PLACEHOLDERS = ['Instagram link', 'TikTok link', 'Something that inspired you'];
-const MAX_LINKS = 8;
-
 function cleanLink(item: string): string | null {
   const trimmed = item.trim();
   if (!trimmed) return null;
@@ -104,10 +133,108 @@ function cleanLink(item: string): string | null {
   }
 }
 
+/** Gradient-filled CTA — the lime/cyan ramp is the flow's signature. */
+function PrimaryButton({
+  children,
+  disabled,
+  onClick,
+  type = 'button',
+}: {
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick?: () => void;
+  type?: 'button' | 'submit';
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={btnPrimary}
+      whileHover={reduce || disabled ? undefined : { scale: 1.02 }}
+      whileTap={reduce || disabled ? undefined : { scale: 0.98 }}
+    >
+      <span className="absolute inset-0 bg-gradient-to-r from-brand-lime via-brand-cyan to-brand-lime bg-[length:200%_100%] transition-[background-position] duration-700 group-hover:bg-[position:100%_50%]" />
+      <span className="relative z-10 flex items-center gap-2">{children}</span>
+    </motion.button>
+  );
+}
+
+function ProgressRail({ step, pct }: { step: Step; pct: number }) {
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {STEP_ORDER.map((item, index) => {
+            const activeIndex = STEP_ORDER.indexOf(step);
+            const state = step === 'sent' || index < activeIndex ? 'done' : index === activeIndex ? 'current' : 'todo';
+            return (
+              <span
+                key={item}
+                data-state={state}
+                className={`brief-step-dot h-2 w-2 rounded-full ${
+                  state === 'todo' ? 'bg-white/20' : state === 'current' ? 'bg-brand-lime' : 'bg-brand-cyan'
+                }`}
+              />
+            );
+          })}
+        </div>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
+          {STEP_COPY[step].kicker}
+        </span>
+      </div>
+      <div className="portal-progress-track mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+        <motion.div
+          className="portal-progress-fill"
+          initial={false}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Covers the card while a model call runs so the wait reads as progress, not a freeze. */
+function BusyVeil({ label, progress }: { label: string; progress: number | null }) {
+  return (
+    <motion.div
+      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-[24px] bg-[#0b0c12]/80 px-6 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      role="status"
+      aria-live="polite"
+    >
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-brand-lime">{label}</p>
+      <div className="portal-progress-track relative h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-white/10">
+        {progress == null ? (
+          <span className="brief-bar-sweep" />
+        ) : (
+          <motion.div
+            className="portal-progress-fill"
+            initial={false}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.3, ease: 'linear' }}
+          />
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
+  const reduce = useReducedMotion();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadUrlsRef = useRef<string[]>([]);
-  const [stage, setStage] = useState<Stage>('intake');
+  const aliveRef = useRef(true);
+  const submitTimerRef = useRef<number | null>(null);
+
+  const [step, setStep] = useState<Step>('project');
+  const [direction, setDirection] = useState(1);
+
   const [projectType, setProjectType] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -115,22 +242,21 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
   const [links, setLinks] = useState(['', '', '']);
   const [files, setFiles] = useState<File[]>([]);
   const [fileSummary, setFileSummary] = useState('Nothing added yet');
-  const [uploadUrls, setUploadUrls] = useState<string[]>([]);
+
   const [answers, setAnswers] = useState<BriefAnswer[]>([]);
   const [questions, setQuestions] = useState<BriefFollowUp[]>([]);
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const [questionRound, setQuestionRound] = useState(0);
+  const [focusedQuestion, setFocusedQuestion] = useState<string | null>(null);
+
   const [brief, setBrief] = useState<ClientReviewBrief | null>(null);
   const [effortToken, setEffortToken] = useState('');
   const [largeJob, setLargeJob] = useState(false);
+
   const [busy, setBusy] = useState(false);
-  const [busyLabel, setBusyLabel] = useState('Working…');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitProgress, setSubmitProgress] = useState(0);
+  const [busyLabel, setBusyLabel] = useState('Working');
+  const [busyProgress, setBusyProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [focusedQuestion, setFocusedQuestion] = useState<string | null>(null);
-  const submitTimerRef = useRef<number | null>(null);
-  const aliveRef = useRef(true);
 
   useEffect(() => {
     aliveRef.current = true;
@@ -140,20 +266,32 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
     };
   }, []);
 
+  const pct = useMemo(() => {
+    if (step === 'sent') return 100;
+    const index = STEP_ORDER.indexOf(step);
+    return Math.round(((index + 1) / (STEP_ORDER.length + 1)) * 100);
+  }, [step]);
+
+  function goTo(next: Step, dir: number) {
+    setDirection(dir);
+    setError(null);
+    setStep(next);
+  }
+
   function stopSubmitTimer() {
     if (submitTimerRef.current == null) return;
     window.clearInterval(submitTimerRef.current);
     submitTimerRef.current = null;
   }
 
-  function intakeBody(): BriefIntake {
+  function intakeBody(uploads: string[]): BriefIntake {
     return {
       project_type: projectType.trim(),
       description: description.trim(),
       due_date: dueDate,
       creative_direction: creativeDirection.trim(),
       reference_links: links.map(cleanLink).filter((item): item is string => !!item).slice(0, MAX_LINKS),
-      reference_uploads: uploadUrls,
+      reference_uploads: uploads,
     };
   }
 
@@ -167,91 +305,33 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
     if (total > MAX_TOTAL_BYTES) {
       throw new Error("That's over 50 MB altogether. Pull a couple, or paste a Drive link.");
     }
+
     const urls: string[] = [];
     for (let i = 0; i < files.length; i += 1) {
-      setBusyLabel(`Uploading ${i + 1} of ${files.length}…`);
+      setBusyLabel(`Uploading ${i + 1} of ${files.length}`);
+      setBusyProgress(Math.round((i / files.length) * 100));
       urls.push(await uploadAttachment(slug, files[i]));
     }
+    setBusyProgress(null);
     uploadUrlsRef.current = urls;
-    setUploadUrls(urls);
     return urls;
   }
 
-  async function postBrief(action: 'refine' | 'finalize' | 'submit', extra?: Record<string, unknown>) {
-    const uploads = action === 'submit' ? uploadUrlsRef.current : await ensureUploads();
-    const intake = { ...intakeBody(), reference_uploads: uploads };
+  async function callBrief<T>(action: 'refine' | 'finalize' | 'submit', body: Record<string, unknown>): Promise<T> {
     const res = await fetch(`/api/clients/${slug}/brief`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action, intake, answers, ...extra }),
+      body: JSON.stringify({ action, ...body }),
     });
     const data = await readJson<Record<string, unknown>>(res);
     if (!res.ok) {
       throw new Error(typeof data.error === 'string' ? data.error : 'Something hiccuped. Try again.');
     }
-    return data;
+    return data as T;
   }
 
-  async function goFinalize(nextAnswers: BriefAnswer[]) {
-    setBusy(true);
-    setBusyLabel('Writing it up…');
-    setError(null);
-    try {
-      const uploads = await ensureUploads();
-      const intake = { ...intakeBody(), reference_uploads: uploads };
-      const res = await fetch(`/api/clients/${slug}/brief`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'finalize', intake, answers: nextAnswers }),
-      });
-      const data = await readJson<{
-        brief?: ClientReviewBrief;
-        effortToken?: string;
-        largeJob?: boolean;
-        error?: string;
-      }>(res);
-      if (!res.ok || !data.brief || !data.effortToken) {
-        throw new Error(data.error ?? "We couldn't write that up. Give it another try.");
-      }
-      setAnswers(nextAnswers);
-      setBrief(data.brief);
-      setEffortToken(data.effortToken);
-      setLargeJob(data.largeJob === true);
-      setStage('review');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "We couldn't write that up. Give it another try.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onIntakeSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setBusyLabel('Reading this…');
-    setError(null);
-    try {
-      const data = await postBrief('refine');
-      const ready = data.ready === true;
-      const nextQuestions = Array.isArray(data.questions) ? (data.questions as BriefFollowUp[]) : [];
-      if (ready || nextQuestions.length === 0) {
-        await goFinalize(answers);
-        return;
-      }
-      setQuestions(nextQuestions);
-      setDraftAnswers({});
-      setQuestionRound(1);
-      setStage('questions');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "That didn't go through. Try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onAnswerSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const nextAnswers = [
+  function collectAnswers(): BriefAnswer[] {
+    return [
       ...answers,
       ...questions.map((question) => ({
         id: question.id,
@@ -259,33 +339,58 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
         answer: (draftAnswers[question.id] ?? '').trim(),
       })),
     ].filter((item) => item.answer);
-    setAnswers(nextAnswers);
+  }
 
-    if (questionRound >= MAX_QUESTION_ROUNDS) {
-      await goFinalize(nextAnswers);
-      return;
-    }
-
+  async function runFinalize(nextAnswers: BriefAnswer[]) {
     setBusy(true);
-    setBusyLabel('One more look…');
+    setBusyLabel('Writing it up');
+    setBusyProgress(null);
     setError(null);
     try {
       const uploads = await ensureUploads();
-      const intake = { ...intakeBody(), reference_uploads: uploads };
-      const res = await fetch(`/api/clients/${slug}/brief`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'refine', intake, answers: nextAnswers }),
+      const data = await callBrief<{
+        brief?: ClientReviewBrief;
+        effortToken?: string;
+        largeJob?: boolean;
+      }>('finalize', { intake: intakeBody(uploads), answers: nextAnswers });
+
+      if (!data.brief || !data.effortToken) {
+        throw new Error("We couldn't write that up. Give it another try.");
+      }
+      setAnswers(nextAnswers);
+      setBrief(data.brief);
+      setEffortToken(data.effortToken);
+      setLargeJob(data.largeJob === true);
+      goTo('review', 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn't write that up. Give it another try.");
+    } finally {
+      setBusy(false);
+      setBusyProgress(null);
+    }
+  }
+
+  async function runRefine(nextAnswers: BriefAnswer[], round: number) {
+    setBusy(true);
+    setBusyLabel(round === 0 ? 'Reading this' : 'One more look');
+    setBusyProgress(null);
+    setError(null);
+    try {
+      const uploads = await ensureUploads();
+      const data = await callBrief<{ ready?: boolean; questions?: BriefFollowUp[] }>('refine', {
+        intake: intakeBody(uploads),
+        answers: nextAnswers,
       });
-      const data = await readJson<{ ready?: boolean; questions?: BriefFollowUp[]; error?: string }>(res);
-      if (!res.ok) throw new Error(data.error ?? 'Could not continue.');
+
       if (data.ready || !data.questions?.length) {
-        await goFinalize(nextAnswers);
+        await runFinalize(nextAnswers);
         return;
       }
+      setAnswers(nextAnswers);
       setQuestions(data.questions);
       setDraftAnswers({});
-      setQuestionRound((round) => round + 1);
+      setQuestionRound(round + 1);
+      goTo('questions', 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "That didn't go through. Try again.");
     } finally {
@@ -293,358 +398,432 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
     }
   }
 
-  async function onApprove() {
-    if (!brief || !effortToken || submitting) return;
-    setSubmitting(true);
+  async function onSend() {
+    if (!brief || !effortToken || busy) return;
     setBusy(true);
-    setSubmitProgress(8);
+    setBusyLabel('Sending it over');
+    setBusyProgress(6);
     setError(null);
 
     const started = Date.now();
     stopSubmitTimer();
     submitTimerRef.current = window.setInterval(() => {
       const elapsed = Date.now() - started;
-      setSubmitProgress(Math.min(92, 8 + 84 * (1 - Math.exp(-elapsed / 3200))));
+      setBusyProgress(Math.min(92, 6 + 86 * (1 - Math.exp(-elapsed / 3000))));
     }, 100);
 
     try {
-      await postBrief('submit', { brief, effortToken });
+      await callBrief('submit', {
+        intake: intakeBody(uploadUrlsRef.current),
+        answers,
+        brief,
+        effortToken,
+      });
       stopSubmitTimer();
       if (!aliveRef.current) return;
-      setSubmitProgress(100);
-      await new Promise((resolve) => window.setTimeout(resolve, 420));
+      setBusyProgress(100);
+      await new Promise((resolve) => window.setTimeout(resolve, 500));
       if (!aliveRef.current) return;
-      setStage('done');
+      goTo('sent', 1);
     } catch (err) {
       stopSubmitTimer();
       if (!aliveRef.current) return;
-      setSubmitProgress(0);
       setError(err instanceof Error ? err.message : "We couldn't send that. Try again in a second.");
     } finally {
       if (aliveRef.current) {
         setBusy(false);
-        setSubmitting(false);
+        setBusyProgress(null);
       }
     }
   }
 
+  const canLeaveProject = projectType.trim().length > 0 && description.trim().length > 0;
+  const canLeaveTiming = /^\d{4}-\d{2}-\d{2}$/.test(dueDate);
   const rush = largeJob && dueWithin48Hours(dueDate);
+
+  const slide = {
+    enter: (dir: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: dir > 0 ? 42 : -42 }),
+    center: { opacity: 1, x: 0 },
+    exit: (dir: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: dir > 0 ? -42 : 42 }),
+  };
 
   return (
     <ClientPortalShell slug={slug} backHref={`/clients/${slug}`} backLabel="← Portal">
-      <header className="border-b border-white/10 pb-6 pt-1 min-[480px]:pb-8 min-[480px]:pt-2 md:pt-4">
+      <header className="pb-2 pt-1 min-[480px]:pt-2 md:pt-4">
         <p className={portalEyebrow}>Client portal</p>
-        <h1 className={`${portalPageTitle} mt-2 min-[480px]:mt-3`}>Brief builder</h1>
-        <p className={`${portalBody} mt-2 min-[480px]:mt-3 max-w-2xl`}>
+        <h1 className="mt-2 text-[clamp(1.75rem,5vw,2.75rem)] font-black uppercase leading-[1.05] tracking-tight text-white">
+          Brief builder
+        </h1>
+        <p className={`${helpBase} mt-3 max-w-2xl`}>
           {BRIEF_BUILDER_TOOLTIP} This one’s for {formatPortalDisplayName(displayName)}.
         </p>
+        <ProgressRail step={step} pct={pct} />
       </header>
 
-      {error ? (
-        <p className={`${portalAlertError} mt-6`} role="alert">
-          {error}
-        </p>
-      ) : null}
+      <div className="relative mt-6 min-[480px]:mt-8">
+        <span className="brief-aurora" aria-hidden />
 
-      {stage === 'intake' ? (
-        <form onSubmit={onIntakeSubmit} className={`${portalTaskCard} portal-form-card mt-6 min-[480px]:mt-8 space-y-5`}>
-          <label className="block">
-            <span className={portalLabel}>What are we making?</span>
-            <input
-              required
-              value={projectType}
-              onChange={(e) => setProjectType(e.target.value)}
-              className={portalInput}
-              placeholder="3 reels for the drop, a podcast cut, a poster…"
-            />
-          </label>
-          <label className="block">
-            <span className={portalLabel}>The gist</span>
-            <textarea
-              required
-              rows={5}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className={`${portalInput} min-h-[120px] resize-y`}
-              placeholder="Who it’s for, what it needs to do, and anything that’s non-negotiable."
-            />
-          </label>
-          <label className="block">
-            <span className={portalLabel}>When do you need it?</span>
-            <input
-              required
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className={`${portalInput} w-full min-[480px]:max-w-xs`}
-            />
-          </label>
-          <label className="block">
-            <span className={portalLabel}>The vibe</span>
-            <textarea
-              rows={3}
-              value={creativeDirection}
-              onChange={(e) => setCreativeDirection(e.target.value)}
-              className={`${portalInput} resize-y`}
-              placeholder="Tone, things to lean into, things to stay away from."
-            />
-          </label>
-          <fieldset>
-            <legend className={portalLabel}>Show us the inspo</legend>
-            <p className={`${portalBody} mt-2`}>
-              Start with a few. An Instagram, a TikTok, a site you like. We’ll pick up the feeling from there.
-            </p>
-            <div className="mt-3 space-y-3">
-              {links.map((value, index) => (
-                <div key={index} className="flex items-end gap-2">
-                  <input
-                    value={value}
-                    onChange={(e) =>
-                      setLinks((current) => current.map((item, itemIndex) => (itemIndex === index ? e.target.value : item)))
-                    }
-                    className={`${portalInput} !mt-0`}
-                    placeholder={LINK_PLACEHOLDERS[index] ?? 'Another link'}
-                    inputMode="url"
-                    aria-label={LINK_PLACEHOLDERS[index] ?? `Link ${index + 1}`}
-                  />
-                  {links.length > 3 ? (
+        <AnimatePresence>
+          {error ? (
+            <motion.p
+              className="mb-4 rounded-2xl border border-brand-pink/35 bg-brand-pink/10 px-5 py-4 text-sm text-red-100"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              role="alert"
+            >
+              {error}
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
+
+        <div className="brief-card relative overflow-hidden p-5 min-[480px]:p-7 md:p-8">
+          <AnimatePresence>{busy ? <BusyVeil label={busyLabel} progress={busyProgress} /> : null}</AnimatePresence>
+
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+            <motion.div
+              key={step}
+              custom={direction}
+              variants={slide}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <h2 className="text-xl font-black uppercase tracking-tight text-white min-[480px]:text-2xl">
+                {STEP_COPY[step].title}
+              </h2>
+              <p className={`${helpBase} mt-2`}>{STEP_COPY[step].blurb}</p>
+
+              {step === 'project' ? (
+                <div className="mt-6 space-y-5">
+                  <label className="block">
+                    <span className={labelBase}>The project</span>
+                    <input
+                      autoFocus
+                      value={projectType}
+                      onChange={(e) => setProjectType(e.target.value)}
+                      className={fieldBase}
+                      placeholder="3 reels for the drop, a podcast cut, a poster…"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={labelBase}>The gist</span>
+                    <textarea
+                      rows={6}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className={`${fieldBase} resize-y`}
+                      placeholder="Who it’s for, what it needs to do, and anything that’s non-negotiable."
+                    />
+                  </label>
+                  <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
+                    <PrimaryButton disabled={!canLeaveProject} onClick={() => goTo('timing', 1)}>
+                      Next
+                    </PrimaryButton>
+                    <Link href={`/clients/${slug}`} className={btnGhost}>
+                      Cancel
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+
+              {step === 'timing' ? (
+                <div className="mt-6 space-y-5">
+                  <label className="block">
+                    <span className={labelBase}>Need it by</span>
+                    <input
+                      autoFocus
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className={`${fieldBase} w-full min-[480px]:max-w-xs`}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={labelBase}>The vibe</span>
+                    <textarea
+                      rows={5}
+                      value={creativeDirection}
+                      onChange={(e) => setCreativeDirection(e.target.value)}
+                      className={`${fieldBase} resize-y`}
+                      placeholder="Tone, things to lean into, things to stay away from."
+                    />
+                  </label>
+                  <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
+                    <PrimaryButton disabled={!canLeaveTiming} onClick={() => goTo('inspo', 1)}>
+                      Next
+                    </PrimaryButton>
+                    <button type="button" className={btnGhost} onClick={() => goTo('project', -1)}>
+                      Back
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {step === 'inspo' ? (
+                <div className="mt-6 space-y-5">
+                  <div className="space-y-3">
+                    {links.map((value, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          value={value}
+                          onChange={(e) =>
+                            setLinks((current) =>
+                              current.map((item, itemIndex) => (itemIndex === index ? e.target.value : item))
+                            )
+                          }
+                          className={`${fieldBase} !mt-0`}
+                          placeholder={LINK_PLACEHOLDERS[index] ?? 'Another link'}
+                          inputMode="url"
+                          aria-label={LINK_PLACEHOLDERS[index] ?? `Link ${index + 1}`}
+                        />
+                        {links.length > 3 ? (
+                          <button
+                            type="button"
+                            className="shrink-0 text-xs font-bold uppercase tracking-wider text-white/40 transition-colors hover:text-white"
+                            onClick={() => setLinks((current) => current.filter((_, i) => i !== index))}
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+
+                  {links.length < MAX_LINKS ? (
                     <button
                       type="button"
-                      className="shrink-0 text-xs font-bold uppercase tracking-wider text-text-muted hover:text-white"
-                      onClick={() => setLinks((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                      className="text-xs font-bold uppercase tracking-wider text-brand-lime transition-colors hover:text-white"
+                      onClick={() => setLinks((current) => [...current, ''])}
                     >
-                      Remove
+                      + Add another
                     </button>
                   ) : null}
-                </div>
-              ))}
-            </div>
-            {links.length < MAX_LINKS ? (
-              <button
-                type="button"
-                className="mt-3 text-xs font-bold uppercase tracking-wider text-brand-lime hover:text-white"
-                onClick={() => setLinks((current) => [...current, ''])}
-              >
-                Add another link
-              </button>
-            ) : null}
-          </fieldset>
-          <div>
-            <span className={portalLabel} id="brief-files-label">
-              Got files?
-            </span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="sr-only"
-              aria-labelledby="brief-files-label"
-              onChange={(e) => {
-                const next = Array.from(e.target.files ?? []).filter((file) => file.size > 0);
-                setFiles(next);
-                uploadUrlsRef.current = [];
-                setUploadUrls([]);
-                setFileSummary(fileSummaryLabel(next));
-              }}
-            />
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button type="button" className={attachBtn} onClick={() => fileInputRef.current?.click()}>
-                Add files
-              </button>
-              <span className="min-w-0 text-sm text-text-muted">{fileSummary}</span>
-            </div>
-            <p className={`${portalBody} mt-2`}>Up to 5 files, 50 MB altogether.</p>
-          </div>
-          <div className="flex flex-col gap-3 border-t border-white/10 pt-5 min-[480px]:flex-row">
-            <button type="submit" disabled={busy} className={`${portalBtnPrimary} disabled:cursor-not-allowed disabled:opacity-50`}>
-              {busy ? busyLabel : "Let's go"}
-            </button>
-            <Link
-              href={`/clients/${slug}`}
-              className="inline-flex w-full min-[480px]:w-auto items-center justify-center rounded-lg border-2 border-white/15 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-text-muted font-mono"
-            >
-              Cancel
-            </Link>
-          </div>
-        </form>
-      ) : null}
 
-      {stage === 'questions' ? (
-        <form onSubmit={onAnswerSubmit} className={`${portalTaskCard} mt-6 min-[480px]:mt-8 space-y-5`}>
-          <div>
-            <h2 className="text-lg font-black uppercase tracking-tight text-white">A couple things</h2>
-            <p className={`${portalBody} mt-2`}>
-              Answer what you know. Skip anything you want us to figure out.
-            </p>
-          </div>
-          {questions.map((question) => (
-            <div key={question.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 min-[480px]:gap-x-4">
-              <p className="col-span-2 text-sm leading-snug text-white min-[480px]:text-base">{question.prompt}</p>
-              <BriefQuestionVisual prompt={question.prompt} active={focusedQuestion === question.id} />
-              <textarea
-                rows={3}
-                value={draftAnswers[question.id] ?? ''}
-                onChange={(e) =>
-                  setDraftAnswers((current) => ({ ...current, [question.id]: e.target.value }))
-                }
-                onFocus={() => setFocusedQuestion(question.id)}
-                aria-label={question.prompt}
-                className={`${portalInput} !mt-0 resize-y`}
-              />
-            </div>
-          ))}
-          <div className="flex flex-col gap-3 border-t border-white/10 pt-5 min-[480px]:flex-row">
-            <button type="submit" disabled={busy} className={`${portalBtnPrimary} disabled:cursor-not-allowed disabled:opacity-50`}>
-              {busy ? busyLabel : 'Keep going'}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              className={portalBtnSecondary}
-              onClick={() => {
-                const nextAnswers = [
-                  ...answers,
-                  ...questions.map((question) => ({
-                    id: question.id,
-                    prompt: question.prompt,
-                    answer: (draftAnswers[question.id] ?? '').trim(),
-                  })),
-                ].filter((item) => item.answer);
-                void goFinalize(nextAnswers);
-              }}
-            >
-              That’s enough, write it up
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      {stage === 'review' && brief ? (
-        <div className={`${portalTaskCard} mt-6 min-[480px]:mt-8 space-y-5`}>
-          <div>
-            <h2 className="text-lg font-black uppercase tracking-tight text-white">Look this over</h2>
-            <p className={`${portalBody} mt-2`}>
-              Change anything that doesn’t sound like you. Once you send it, the team runs with this.
-            </p>
-          </div>
-          {rush ? (
-            <p className="rounded-[20px] border border-brand-pink/30 bg-brand-pink/10 px-5 py-4 text-sm text-red-100">
-              That date is pretty tight, so a rush fee applies.
-            </p>
-          ) : null}
-          <label className="block">
-            <span className={portalLabel}>What we’ll call it</span>
-            <input
-              value={brief.title}
-              onChange={(e) => setBrief({ ...brief, title: e.target.value })}
-              className={portalInput}
-            />
-          </label>
-          <label className="block">
-            <span className={portalLabel}>What kind of work</span>
-            <select
-              value={brief.category}
-              onChange={(e) => setBrief({ ...brief, category: e.target.value as BriefCategory })}
-              className={portalInput}
-            >
-              {BRIEF_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {CATEGORY_LABELS[category]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className={portalLabel}>Needed by</span>
-            <input
-              type="date"
-              required
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className={`${portalInput} w-full min-[480px]:max-w-xs`}
-            />
-          </label>
-          <label className="block">
-            <span className={portalLabel}>What you’ll get</span>
-            <textarea
-              rows={4}
-              value={brief.deliverables.join('\n')}
-              onChange={(e) =>
-                setBrief({
-                  ...brief,
-                  deliverables: e.target.value.split('\n'),
-                })
-              }
-              className={`${portalInput} resize-y`}
-            />
-            <p className={`${portalBody} mt-2`}>One thing per line.</p>
-          </label>
-          <label className="block">
-            <span className={portalLabel}>Direction</span>
-            <textarea
-              rows={4}
-              value={brief.creative_direction}
-              onChange={(e) => setBrief({ ...brief, creative_direction: e.target.value })}
-              className={`${portalInput} resize-y`}
-            />
-          </label>
-          {brief.suggested_subtasks.length > 0 ? (
-            <div>
-              <span className={portalLabel}>How we’d tackle it</span>
-              <ul className="mt-3 space-y-3">
-                {brief.suggested_subtasks.map((subtask, index) => (
-                  <li key={`${subtask.name}-${index}`} className="rounded-lg border border-white/10 px-3 py-3">
+                  <div className="rounded-2xl border border-dashed border-white/12 p-4">
+                    <span className={labelBase} id="brief-files-label">
+                      Or drop in files
+                    </span>
                     <input
-                      value={subtask.name}
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      className="sr-only"
+                      aria-labelledby="brief-files-label"
                       onChange={(e) => {
-                        const next = brief.suggested_subtasks.slice();
-                        next[index] = { ...subtask, name: e.target.value };
-                        setBrief({ ...brief, suggested_subtasks: next });
+                        const next = Array.from(e.target.files ?? []).filter((file) => file.size > 0);
+                        setFiles(next);
+                        uploadUrlsRef.current = [];
+                        setFileSummary(fileSummaryLabel(next));
                       }}
-                      className={portalInput}
                     />
-                    <p className={`${portalBody} mt-2`}>{subtask.description}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {submitting ? (
-            <div className="border-t border-white/10 pt-5" role="status" aria-live="polite">
-              <div className="mb-2 flex justify-between font-mono text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                <span>Sending it over</span>
-                <span>{Math.round(submitProgress)}%</span>
-              </div>
-              <div className="portal-progress-track h-2 rounded-full border border-white/5 bg-black/20">
-                <div className={portalProgressFill} style={{ width: `${submitProgress}%` }} />
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3 border-t border-white/10 pt-5 min-[480px]:flex-row">
-              <button
-                type="button"
-                disabled={busy || !brief.title.trim() || !brief.deliverables.some((line) => line.trim())}
-                onClick={() => void onApprove()}
-                className={`${portalBtnPrimary} disabled:cursor-not-allowed disabled:opacity-50`}
-              >
-                Send it over
-              </button>
-              <button type="button" className={portalBtnSecondary} disabled={busy} onClick={() => setStage('intake')}>
-                Start fresh
-              </button>
-            </div>
-          )}
-        </div>
-      ) : null}
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        className="rounded-lg bg-brand-lime px-4 py-2 text-xs font-bold uppercase tracking-wider text-brand-black transition-opacity hover:opacity-90"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Add files
+                      </button>
+                      <span className="min-w-0 text-sm text-white/45">{fileSummary}</span>
+                    </div>
+                    <p className={`${helpBase} mt-2 text-xs`}>Up to 5 files, 50 MB altogether.</p>
+                  </div>
 
-      {stage === 'done' ? (
-        <div className={`${portalAlertSuccess} mt-6 min-[480px]:mt-8`}>
-          <p>Got it. The team has your brief.</p>
-          <Link href={`/clients/${slug}`} className={`${portalBtnPrimary} mt-4`}>
-            Back to your portal
-          </Link>
+                  <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
+                    <PrimaryButton onClick={() => void runRefine(answers, 0)}>Build my brief</PrimaryButton>
+                    <button type="button" className={btnGhost} onClick={() => goTo('timing', -1)}>
+                      Back
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {step === 'questions' ? (
+                <div className="mt-6 space-y-6">
+                  {questions.map((question) => (
+                    <div
+                      key={question.id}
+                      className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 min-[480px]:gap-x-4"
+                    >
+                      <p className="col-span-2 text-sm leading-snug text-white min-[480px]:text-base">
+                        {question.prompt}
+                      </p>
+                      <BriefQuestionVisual prompt={question.prompt} active={focusedQuestion === question.id} />
+                      <textarea
+                        rows={3}
+                        value={draftAnswers[question.id] ?? ''}
+                        onChange={(e) =>
+                          setDraftAnswers((current) => ({ ...current, [question.id]: e.target.value }))
+                        }
+                        onFocus={() => setFocusedQuestion(question.id)}
+                        aria-label={question.prompt}
+                        className={`${fieldBase} !mt-0 resize-y`}
+                      />
+                    </div>
+                  ))}
+                  <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
+                    <PrimaryButton
+                      onClick={() => {
+                        const next = collectAnswers();
+                        if (questionRound >= MAX_QUESTION_ROUNDS) void runFinalize(next);
+                        else void runRefine(next, questionRound);
+                      }}
+                    >
+                      Keep going
+                    </PrimaryButton>
+                    <button type="button" className={btnGhost} onClick={() => void runFinalize(collectAnswers())}>
+                      That’s enough, write it up
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {step === 'review' && brief ? (
+                <div className="mt-6 space-y-5">
+                  {rush ? (
+                    <p className="rounded-2xl border border-brand-pink/35 bg-brand-pink/10 px-5 py-4 text-sm text-red-100">
+                      That date is pretty tight, so a rush fee applies.
+                    </p>
+                  ) : null}
+
+                  <label className="block">
+                    <span className={labelBase}>What we’ll call it</span>
+                    <input
+                      value={brief.title}
+                      onChange={(e) => setBrief({ ...brief, title: e.target.value })}
+                      className={fieldBase}
+                    />
+                  </label>
+
+                  <div className="grid gap-5 min-[480px]:grid-cols-2">
+                    <label className="block">
+                      <span className={labelBase}>Kind of work</span>
+                      <select
+                        value={brief.category}
+                        onChange={(e) => setBrief({ ...brief, category: e.target.value as BriefCategory })}
+                        className={fieldBase}
+                      >
+                        {BRIEF_CATEGORIES.map((category) => (
+                          <option key={category} value={category}>
+                            {CATEGORY_LABELS[category]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className={labelBase}>Needed by</span>
+                      <input
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className={fieldBase}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="block">
+                    <span className={labelBase}>What you’ll get</span>
+                    <textarea
+                      rows={4}
+                      value={brief.deliverables.join('\n')}
+                      onChange={(e) => setBrief({ ...brief, deliverables: e.target.value.split('\n') })}
+                      className={`${fieldBase} resize-y`}
+                    />
+                    <span className={`${helpBase} mt-2 block text-xs`}>One thing per line.</span>
+                  </label>
+
+                  <label className="block">
+                    <span className={labelBase}>Direction</span>
+                    <textarea
+                      rows={4}
+                      value={brief.creative_direction}
+                      onChange={(e) => setBrief({ ...brief, creative_direction: e.target.value })}
+                      className={`${fieldBase} resize-y`}
+                    />
+                  </label>
+
+                  {brief.suggested_subtasks.length > 0 ? (
+                    <div>
+                      <span className={labelBase}>How we’d tackle it</span>
+                      <ul className="mt-3 space-y-2">
+                        {brief.suggested_subtasks.map((subtask, index) => (
+                          <motion.li
+                            key={`${subtask.name}-${index}`}
+                            className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3"
+                            initial={reduce ? false : { opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.05 * index, duration: 0.35 }}
+                          >
+                            <p className="text-sm font-semibold text-white">{subtask.name}</p>
+                            {subtask.description ? (
+                              <p className={`${helpBase} mt-1 text-xs`}>{subtask.description}</p>
+                            ) : null}
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col gap-3 pt-2 min-[480px]:flex-row">
+                    <PrimaryButton
+                      disabled={!brief.title.trim() || !brief.deliverables.some((line) => line.trim())}
+                      onClick={() => void onSend()}
+                    >
+                      Send it over
+                    </PrimaryButton>
+                    <button
+                      type="button"
+                      className={btnGhost}
+                      onClick={() => {
+                        setBrief(null);
+                        setEffortToken('');
+                        setAnswers([]);
+                        setQuestions([]);
+                        setQuestionRound(0);
+                        goTo('project', -1);
+                      }}
+                    >
+                      Start fresh
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {step === 'sent' ? (
+                <div className="mt-6 text-center">
+                  <motion.div
+                    className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand-lime to-brand-cyan"
+                    initial={reduce ? false : { scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 220, damping: 16 }}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="#0f0f0f" strokeWidth="3">
+                      <motion.path
+                        d="M5 13l4 4L19 7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        initial={reduce ? false : { pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ delay: 0.15, duration: 0.45, ease: 'easeOut' }}
+                      />
+                    </svg>
+                  </motion.div>
+                  <p className={`${helpBase} mx-auto mt-5 max-w-sm`}>
+                    We’ll be in touch if anything needs a second pass.
+                  </p>
+                  <div className="mt-6 flex justify-center">
+                    <Link href={`/clients/${slug}`} className={btnGhost}>
+                      Back to your portal
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      ) : null}
+      </div>
     </ClientPortalShell>
   );
 }

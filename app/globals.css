@@ -1684,6 +1684,145 @@ html.careers-page-active {
   }
 }
 
+/* ---- Brief builder — paged intake flow ---- */
+
+@keyframes brief-aurora-drift {
+  0%,
+  100% {
+    transform: translate3d(-6%, -4%, 0) scale(1.05);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) scale(1.15);
+  }
+}
+
+@keyframes brief-border-sweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes brief-bar-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+/** Gradient hairline that slowly cycles the brand ramp around the active card. */
+.brief-card {
+  position: relative;
+  isolation: isolate;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(20, 21, 31, 0.92), rgba(12, 13, 20, 0.92));
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.brief-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    rgba(124, 193, 66, 0.55),
+    rgba(56, 194, 214, 0.55),
+    rgba(221, 11, 131, 0.45),
+    rgba(124, 193, 66, 0.55)
+  );
+  background-size: 200% 100%;
+  animation: brief-border-sweep 14s linear infinite;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/** Soft color wash behind the card so the page doesn't read as a flat form. */
+.brief-aurora {
+  position: absolute;
+  inset: -20% -10%;
+  z-index: -2;
+  pointer-events: none;
+  filter: blur(70px);
+  opacity: 0.4;
+  background:
+    radial-gradient(38% 42% at 18% 22%, rgba(124, 193, 66, 0.5), transparent 70%),
+    radial-gradient(36% 40% at 82% 28%, rgba(56, 194, 214, 0.45), transparent 70%),
+    radial-gradient(40% 44% at 50% 88%, rgba(221, 11, 131, 0.35), transparent 72%);
+  animation: brief-aurora-drift 18s ease-in-out infinite;
+}
+
+.brief-step-dot {
+  transition:
+    background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.brief-step-dot[data-state='current'] {
+  transform: scale(1.35);
+  box-shadow: 0 0 0 4px rgba(124, 193, 66, 0.16);
+}
+
+/** Indeterminate sweep used while a model call is in flight. */
+.brief-bar-sweep {
+  position: absolute;
+  inset: 0;
+  width: 32%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: brief-bar-indeterminate 1.5s ease-in-out infinite;
+}
+
+.brief-field {
+  transition:
+    border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.brief-field:focus {
+  transform: translateY(-1px);
+  border-color: rgba(124, 193, 66, 0.55);
+  box-shadow:
+    0 0 0 3px rgba(124, 193, 66, 0.14),
+    0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brief-card::before,
+  .brief-aurora,
+  .brief-bar-sweep {
+    animation: none;
+  }
+
+  .brief-step-dot,
+  .brief-field {
+    transition: none;
+  }
+}
+
 /* ---- Crew KPI dashboard — animated line chart + rating donuts ---- */
 
 /** Slow color breathing across the rating donuts' gradients — subtle, not distracting. */

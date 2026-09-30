@@ -312,7 +312,47 @@ export default function CareersPage() {
           </div>
         </nav>
 
-        {/* ── ROLE 1: DESIGNER ── */}
+        {/* ── ROLE 1: VIDEO EDITOR ── */}
+        <Section id="video-editor" className={`relative border-b border-white/5 bg-gradient-to-br from-brand-cyan/[0.05] via-brand-navy/84 to-brand-lime/[0.05] backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
+          <div className="container-custom">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`video-${lang}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
+                  <div>
+                    <RoleTag>{c.video.tag}</RoleTag>
+                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl">{c.video.title}</h2>
+                    <p className={`text-brand-cyan ${monoClass} text-sm md:text-base`}>{c.video.comp}</p>
+                  </div>
+                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
+                    {c.video.badge}
+                  </span>
+                </div>
+
+                <RoleCardGrid
+                  overview={<><CardLabel>{c.video.overview.label}</CardLabel><p className={cardBody}>{c.video.overview.body}</p></>}
+                  left={<><CardLabel>{c.video.do.label}</CardLabel><BulletList items={c.video.do.items} /></>}
+                  right={<>
+                    <CardLabel>{c.video.looking.label}</CardLabel>
+                    <BulletList items={c.video.looking.items} />
+                    <div className="mt-6 pl-4 border-l-2 border-brand-cyan/40 bg-brand-cyan/5 p-4 rounded-r-lg">
+                      <p className="text-[10px] uppercase tracking-widest text-brand-cyan font-bold mb-3">{c.video.bonus.label}</p>
+                      <BulletList items={c.video.bonus.items} />
+                    </div>
+                  </>}
+                />
+                <RoleApplyLink applyRole={APPLY_ROLE_QUERY.video} label={c.roleApply} />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </Section>
+
+        {/* ── ROLE 2: DESIGNER ── */}
         <Section id="designer" className={`relative border-b border-white/5 bg-gradient-to-br from-brand-lime/[0.08] via-brand-navy/84 to-brand-navy/80 backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
           <div className="container-custom">
             <AnimatePresence mode="wait">
@@ -567,73 +607,6 @@ export default function CareersPage() {
                   </>}
                 />
                 <RoleApplyLink applyRole={APPLY_ROLE_QUERY.storyboard} label={c.roleApply} />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </Section>
-
-        {/* ── ROLE 6: VIDEO EDITOR / VFX ARTIST ── */}
-        <Section id="video-editor" className={`relative border-b border-white/5 bg-gradient-to-br from-brand-cyan/[0.05] via-brand-navy/84 to-brand-lime/[0.05] backdrop-blur-sm ${ROLE_SECTION_CLASS}`}>
-          <div className="container-custom">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`video-${lang}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 md:mb-10">
-                  <div>
-                    <RoleTag>{c.video.tag}</RoleTag>
-                    <h2 className="text-white mb-2 text-3xl md:text-4xl lg:text-5xl">{c.video.title}</h2>
-                    <p className={`text-brand-cyan ${monoClass} text-sm md:text-base`}>{c.video.comp}</p>
-                  </div>
-                  <span className="self-start text-[10px] uppercase tracking-widest text-text-muted border border-white/10 px-3 py-2 rounded-sm font-mono whitespace-pre-line md:text-right">
-                    {c.video.badge}
-                  </span>
-                </div>
-
-                <div className={cardShell}>
-                  {/* Overview */}
-                  <div className={`${cellBase} bg-gradient-to-r from-brand-lime/5 to-transparent border-b border-white/8`}>
-                    <CardLabel>{c.video.overview.label}</CardLabel>
-                    <p className={cardBody}>{c.video.overview.body}</p>
-                  </div>
-
-                  {/* Position 1 | Position 2 */}
-                  <RoleCardRow
-                    left={<>
-                      <span className="inline-block text-xs uppercase tracking-[0.2em] font-bold text-brand-lime bg-brand-lime/10 border border-brand-lime/30 px-3 py-1 rounded-sm mb-4">
-                        {c.video.editor.label}
-                      </span>
-                      <CardLabel>{c.video.editor.responsibilities.label}</CardLabel>
-                      <BulletList items={c.video.editor.responsibilities.items} />
-                      <div className="mt-6">
-                        <CardLabel>{c.video.editor.requirements.label}</CardLabel>
-                        <BulletList items={c.video.editor.requirements.items} />
-                      </div>
-                    </>}
-                    right={<>
-                      <span className="inline-block text-xs uppercase tracking-[0.2em] font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/30 px-3 py-1 rounded-sm mb-4">
-                        {c.video.vfx.label}
-                      </span>
-                      <CardLabel>{c.video.vfx.responsibilities.label}</CardLabel>
-                      <BulletList items={c.video.vfx.responsibilities.items} />
-                      <div className="mt-6">
-                        <CardLabel>{c.video.vfx.requirements.label}</CardLabel>
-                        <BulletList items={c.video.vfx.requirements.items} />
-                      </div>
-                    </>}
-                  />
-
-                  {/* General Requirements */}
-                  <div className={`${cellBase} border-t border-white/8`}>
-                    <CardLabel>{c.video.general.label}</CardLabel>
-                    <BulletList items={c.video.general.items} />
-                  </div>
-                </div>
-                <RoleApplyLink applyRole={APPLY_ROLE_QUERY.video} label={c.roleApply} />
               </motion.div>
             </AnimatePresence>
           </div>

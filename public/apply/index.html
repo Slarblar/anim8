@@ -979,7 +979,7 @@ const translations = {
       designer: "Designer",
       designIntern: "Design Intern",
       conceptArtist: "Storyboard & Concept Artist",
-      videoEditor: "Video Editor / VFX Artist",
+      videoEditor: "Video Editor",
       modeler: "3D Modeler / Generalist",
       animator: "Senior Animator",
       other: "Other"
@@ -1027,7 +1027,7 @@ const translations = {
       concept: "Concept / Storyboard",
       modeler: "Modeler",
       animator: "Animator",
-      editor: "Editor / VFX",
+      editor: "Editor",
       realtime: "Technical / Real-time",
       marketing: "Marketing"
     },
@@ -1065,11 +1065,13 @@ const translations = {
       },
       videoEditor: {
         tools: "Primary software",
-        toolsOptions: ["Premiere", "After Effects", "DaVinci Resolve", "Nuke"],
+        toolsOptions: ["Premiere", "After Effects", "DaVinci Resolve", "Photoshop"],
         workType: "What type of work do you do most?",
-        workTypeOptions: ["Short-form social", "Long-form", "Motion graphics", "VFX compositing"],
-        complex: "Describe the most technically complex edit or VFX shot you've done",
-        complexPlaceholder: "What made it complex and how did you solve it?"
+        workTypeOptions: ["Short-form social", "Long-form", "Branded content", "Motion graphics"],
+        complex: "Describe the most technically complex edit you've done",
+        complexPlaceholder: "What made it complex and how did you solve it?",
+        english: "How comfortable are you speaking English with international teams?",
+        englishPlaceholder: "Be honest — this role is in conversation with U.S. directors and producers, on calls and in notes"
       },
       modeler: {
         tools: "Primary software",
@@ -1123,7 +1125,7 @@ const translations = {
       designer: "Nhà thiết kế",
       designIntern: "Thực tập sinh thiết kế",
       conceptArtist: "Họa sĩ storyboard & concept",
-      videoEditor: "Biên tập video / VFX Artist",
+      videoEditor: "Biên tập video",
       modeler: "Họa sĩ 3D / Generalist",
       animator: "Senior Animator",
       other: "Khác"
@@ -1171,7 +1173,7 @@ const translations = {
       concept: "Concept / Storyboard",
       modeler: "Họa sĩ 3D",
       animator: "Animator",
-      editor: "Biên tập / VFX",
+      editor: "Biên tập",
       realtime: "Kỹ thuật / Real-time",
       marketing: "Marketing"
     },
@@ -1209,11 +1211,13 @@ const translations = {
       },
       videoEditor: {
         tools: "Phần mềm chính bạn sử dụng",
-        toolsOptions: ["Premiere", "After Effects", "DaVinci Resolve", "Nuke"],
+        toolsOptions: ["Premiere", "After Effects", "DaVinci Resolve", "Photoshop"],
         workType: "Bạn thường làm loại công việc nào nhất?",
-        workTypeOptions: ["Video ngắn cho mạng xã hội", "Video dài", "Motion graphics", "VFX compositing"],
-        complex: "Mô tả phần dựng phim hoặc cảnh VFX phức tạp nhất về mặt kỹ thuật mà bạn đã thực hiện",
-        complexPlaceholder: "Điều gì làm nó phức tạp và bạn đã giải quyết như thế nào?"
+        workTypeOptions: ["Video ngắn cho mạng xã hội", "Video dài", "Nội dung thương hiệu", "Motion graphics"],
+        complex: "Mô tả bản dựng phức tạp nhất về mặt kỹ thuật mà bạn đã thực hiện",
+        complexPlaceholder: "Điều gì làm nó phức tạp và bạn đã giải quyết như thế nào?",
+        english: "Bạn giao tiếp bằng tiếng Anh nói với các đội quốc tế ở mức độ nào?",
+        englishPlaceholder: "Hãy thành thật — vị trí này cần trao đổi với đạo diễn và nhà sản xuất Hoa Kỳ, trên cuộc gọi và trong ghi chú"
       },
       modeler: {
         tools: "Phần mềm chính bạn sử dụng",
@@ -1256,7 +1260,7 @@ const studioToolGroups = [
   { id: 'concept',   options: ['Photoshop', 'Procreate', 'Clip Studio'] },
   { id: 'modeler',   options: ['Maya', 'Blender', 'ZBrush', 'Substance Painter', 'Marvelous Designer', 'Cinema 4D'] },
   { id: 'animator',  options: ['Maya', 'Blender', 'Cinema 4D'] },
-  { id: 'editor',    options: ['Premiere', 'After Effects', 'DaVinci Resolve', 'Nuke'] },
+  { id: 'editor',    options: ['Premiere', 'After Effects', 'DaVinci Resolve', 'Photoshop'] },
   { id: 'realtime',  options: ['Unreal Engine', 'Unity', 'Houdini'] },
   { id: 'marketing', options: ['Google Suite', 'Meta Ads', 'Influencer Marketing', 'Social Media'] },
 ];
@@ -1286,6 +1290,7 @@ const roleQConfig = {
     { type: 'checkboxes-other', id: 'tools',       required: true },
     { type: 'checkboxes',       id: 'workType' },
     { type: 'textarea',         id: 'complex' },
+    { type: 'textarea',         id: 'english' },
   ],
   modeler: [
     { type: 'checkboxes-other',  id: 'tools',      required: true },

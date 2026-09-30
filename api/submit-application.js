@@ -74,7 +74,7 @@ const roleLabels = {
   designer:     'Designer',
   designIntern: 'Design Intern',
   conceptArtist:'Storyboard & Concept Artist',
-  videoEditor:  'Video Editor / VFX Artist',
+  videoEditor:  'Video Editor',
   modeler:      '3D Modeler / Generalist',
   animator:     'Senior Animator',
   other:        'Other',

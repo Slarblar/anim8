@@ -799,7 +799,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
               {step === 'project' ? (
                 <motion.div variants={rise} className="mt-6 space-y-5">
                   <label className="block">
-                    <span className={labelBase}>The project</span>
+                    <span className={labelBase}>What&apos;s the project?</span>
                     <input
                       autoFocus
                       value={projectType}
@@ -809,7 +809,7 @@ export function BriefBuilder({ slug, displayName }: BriefBuilderProps) {
                     />
                   </label>
                   <label className="block">
-                    <span className={labelBase}>The gist</span>
+                    <span className={labelBase}>Tell us more about your project</span>
                     <textarea
                       rows={6}
                       value={description}

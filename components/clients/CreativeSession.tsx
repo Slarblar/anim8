@@ -3,7 +3,8 @@
 import { put } from '@vercel/blob/client';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FiAperture,
   FiArrowRight,
@@ -21,6 +22,7 @@ import {
   FiPlus,
   FiRepeat,
   FiVideo,
+  FiX,
   FiZap,
 } from 'react-icons/fi';
 import { BriefQuestionVisual } from './BriefQuestionVisual';
@@ -71,6 +73,7 @@ import {
 } from '@/lib/creative-session';
 import {
   PLACEHOLDER_INSPO,
+  gumletIdFromUrl,
   mixSeed,
   pieceCaption,
   pieceStill,
@@ -200,6 +203,13 @@ type CollageSlot = {
   rotate: number;
   z: number;
 };
+
+/** Skip pieces the client dismissed, then keep the next ones from the same shuffle. */
+function freshPieces(pieces: InspoPiece[], dismissed: string[], limit: number): InspoPiece[] {
+  const hidden = dismissed.length ? new Set(dismissed) : null;
+  const fresh = hidden ? pieces.filter((piece) => !hidden.has(piece.id)) : pieces;
+  return fresh.slice(0, Math.max(0, limit));
+}
 
 function imageFilesFromTransfer(data: DataTransfer | null): File[] {
   if (!data) return [];
@@ -354,6 +364,7 @@ export function CreativeSession({
   const [idea, setIdea] = useState('');
   const [vibes, setVibes] = useState<string[]>([]);
   const [pins, setPins] = useState<string[]>([]);
+  const [dismissed, setDismissed] = useState<string[]>([]);
   const [borrow, setBorrow] = useState<Partial<Record<string, string[]>>>({});
   const [pasted, setPasted] = useState<PastedInspo[]>([]);
   const pastedRef = useRef(pasted);
@@ -419,7 +430,10 @@ export function CreativeSession({
     });
   }, [catalog]);
 
-  const collage = useMemo(() => piecesForTags(catalog, [], 3, seed), [catalog, seed]);
+  const collage = useMemo(
+    () => freshPieces(piecesForTags(catalog, [], 3 + dismissed.length, seed), dismissed, 3),
+    [catalog, seed, dismissed]
+  );
   const studioBoard = useMemo(() => {
     const ids = selected.length ? selected : last ? [last] : [];
     if (!ids.length) return collage;
@@ -427,25 +441,39 @@ export function CreativeSession({
     const merged: InspoPiece[] = [];
     for (const id of ids) {
       const category = requests[id]?.category ?? '';
-      for (const piece of piecesForRequest(catalog, id, category, 2, mixSeed(seed, `board:${id}:${category}`))) {
+      for (const piece of freshPieces(
+        piecesForRequest(catalog, id, category, 2 + dismissed.length, mixSeed(seed, `board:${id}:${category}`)),
+        dismissed,
+        2
+      )) {
         if (seen.has(piece.id)) continue;
         seen.add(piece.id);
         merged.push(piece);
       }
     }
     return (merged.length ? merged : collage).slice(0, 3);
-  }, [catalog, selected, last, requests, seed, collage]);
+  }, [catalog, selected, last, requests, seed, collage, dismissed]);
   const featurePiece = useMemo(() => {
     if (!last) return null;
     const category = requests[last]?.category ?? '';
-    return piecesForRequest(catalog, last, category, 1, mixSeed(seed, `feature:${last}:${category}`))[0] ?? null;
-  }, [catalog, last, requests, seed]);
+    return (
+      freshPieces(
+        piecesForRequest(catalog, last, category, 1 + dismissed.length, mixSeed(seed, `feature:${last}:${category}`)),
+        dismissed,
+        1
+      )[0] ?? null
+    );
+  }, [catalog, last, requests, seed, dismissed]);
   const gallery = useMemo(() => {
     const picked = selected.flatMap((id) => {
       const category = requests[id]?.category ?? '';
-      return piecesForRequest(catalog, id, category, 3, mixSeed(seed, `gallery:${id}:${category}`));
+      return freshPieces(
+        piecesForRequest(catalog, id, category, 3 + dismissed.length, mixSeed(seed, `gallery:${id}:${category}`)),
+        dismissed,
+        3
+      );
     });
-    const pool = picked.length ? picked : piecesForTags(catalog, [], 6, seed);
+    const pool = picked.length ? picked : freshPieces(piecesForTags(catalog, [], 6 + dismissed.length, seed), dismissed, 6);
     const pinned = pins
       .map((id) => catalog.find((piece) => piece.id === id))
       .filter((piece): piece is InspoPiece => Boolean(piece));
@@ -457,7 +485,7 @@ export function CreativeSession({
       merged.push(piece);
     }
     return merged.slice(0, 6);
-  }, [catalog, selected, requests, pins, seed]);
+  }, [catalog, selected, requests, pins, seed, dismissed]);
 
   const snapshot: SessionSnapshot = {
     profile,
@@ -482,8 +510,14 @@ export function CreativeSession({
   const requestPiece = useMemo(() => {
     if (!activeId) return featurePiece;
     const category = requests[activeId]?.category ?? '';
-    return piecesForRequest(catalog, activeId, category, 1, mixSeed(seed, `request:${activeId}:${category}`))[0] ?? null;
-  }, [catalog, activeId, requests, seed, featurePiece]);
+    return (
+      freshPieces(
+        piecesForRequest(catalog, activeId, category, 1 + dismissed.length, mixSeed(seed, `request:${activeId}:${category}`)),
+        dismissed,
+        1
+      )[0] ?? null
+    );
+  }, [catalog, activeId, requests, seed, featurePiece, dismissed]);
   const accentPiece = catalog.find((piece) => piece.id === pins[0]) ?? requestPiece ?? collage[0] ?? null;
   const generated = assembleBrief(snapshot);
   const draft = customDraft ?? generated;
@@ -597,6 +631,17 @@ export function CreativeSession({
       pastedRef.current.forEach((item) => URL.revokeObjectURL(item.url));
     };
   }, []);
+
+  function dismissStudio(id: string) {
+    setDismissed((current) => (current.includes(id) ? current : [...current, id]));
+    setPins((current) => current.filter((pin) => pin !== id));
+    setBorrow((current) => {
+      if (!current[id]) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
 
   function togglePin(id: string) {
     const on = pins.includes(id);
@@ -861,6 +906,7 @@ export function CreativeSession({
                 onExtras={() => setShowExtras((value) => !value)}
                 onIdea={setIdea}
                 onPin={togglePin}
+                onDismiss={dismissStudio}
                 onAddPasted={addPasted}
                 onRemovePasted={removePasted}
                 formatId={focus ? (requests[focus]?.category ?? '') : ''}
@@ -879,6 +925,7 @@ export function CreativeSession({
                 requestPiece={requestPiece}
                 reduce={reduce}
                 onPin={togglePin}
+                onDismiss={dismissStudio}
                 onAddPasted={addPasted}
                 onRemovePasted={removePasted}
                 onBranch={setActive}
@@ -1046,6 +1093,7 @@ function IdeaStep({
   onExtras,
   onIdea,
   onPin,
+  onDismiss,
   onAddPasted,
   onRemovePasted,
   formatId,
@@ -1066,6 +1114,7 @@ function IdeaStep({
   onExtras: () => void;
   onIdea: (value: string) => void;
   onPin: (id: string) => void;
+  onDismiss: (id: string) => void;
   onAddPasted: (files: File[]) => void;
   onRemovePasted: (id: string) => void;
   formatId: string;
@@ -1253,10 +1302,96 @@ function IdeaStep({
         pins={pins}
         reduce={reduce}
         onPin={onPin}
+        onDismiss={onDismiss}
         onAdd={onAddPasted}
         onRemove={onRemovePasted}
       />
     </>
+  );
+}
+
+type CanvasPreview =
+  | { kind: 'image'; src: string; title: string; caption: string }
+  | { kind: 'video'; id: string; title: string; caption: string };
+
+function previewForPrint(print: {
+  piece: InspoPiece | null;
+  pasted: PastedInspo | null;
+}): CanvasPreview | null {
+  if (print.piece) {
+    const caption = pieceCaption(print.piece);
+    const videoId = gumletIdFromUrl(print.piece.gumletUrl);
+    if (videoId) return { kind: 'video', id: videoId, title: print.piece.title, caption };
+    const src = pieceStill(print.piece);
+    return src ? { kind: 'image', src, title: print.piece.title, caption } : null;
+  }
+  if (print.pasted) {
+    return { kind: 'image', src: print.pasted.url, title: 'Yours', caption: print.pasted.name };
+  }
+  return null;
+}
+
+function InspoPreview({ preview, onClose }: { preview: CanvasPreview; onClose: () => void }) {
+  const titleId = useId();
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose();
+    }
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 sm:p-8" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative w-full max-w-5xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full bg-[#f7f8ef] text-lg text-[#18220f]"
+        >
+          <FiX aria-hidden />
+        </button>
+        <div className="overflow-hidden rounded-lg bg-black shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+          {preview.kind === 'video' ? (
+            <div className="aspect-video w-full">
+              <iframe
+                src={`https://play.gumlet.io/embed/${preview.id}?autoplay=true&loop=false&primary_color=7cc142&start_high_res=true`}
+                title={preview.title}
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="origin"
+                className="h-full w-full border-0"
+              />
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview.src} alt="" className="max-h-[78vh] w-full bg-black object-contain" />
+          )}
+        </div>
+        <div className="mt-3 flex items-baseline justify-between gap-4 pr-2 text-white">
+          <h2 id={titleId} className="truncate text-sm font-semibold">
+            {preview.title}
+          </h2>
+          {preview.caption ? (
+            <p className="truncate font-mono text-[10px] uppercase tracking-wide text-white/50">{preview.caption}</p>
+          ) : null}
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1267,6 +1402,7 @@ function InspoCanvas({
   pins,
   reduce,
   onPin,
+  onDismiss,
   onAdd,
   onRemove,
 }: {
@@ -1276,6 +1412,7 @@ function InspoCanvas({
   pins: string[];
   reduce: boolean;
   onPin: (id: string) => void;
+  onDismiss: (id: string) => void;
   onAdd: (files: File[]) => void;
   onRemove: (id: string) => void;
 }) {
@@ -1284,6 +1421,8 @@ function InspoCanvas({
     ...pasted.map((item) => ({ kind: 'yours' as const, id: item.id, piece: null as InspoPiece | null, pasted: item })),
   ];
   const slots = collageSlots(prints.length);
+  const [preview, setPreview] = useState<CanvasPreview | null>(null);
+  const closePreview = useCallback(() => setPreview(null), []);
 
   useEffect(() => {
     function onWindowPaste(event: ClipboardEvent) {
@@ -1357,26 +1496,44 @@ function InspoCanvas({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={print.pasted.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
               ) : null}
-              <figcaption className="pointer-events-none absolute bottom-2 left-2 max-w-[80%] truncate font-mono text-[9px] uppercase tracking-wide text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
+              <figcaption className="pointer-events-none absolute bottom-2 left-2 z-[1] max-w-[80%] truncate font-mono text-[9px] uppercase tracking-wide text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
                 {caption}
               </figcaption>
-              {print.piece ? (
+              {previewForPrint(print) ? (
                 <button
                   type="button"
-                  aria-label={`${pinned ? 'Unpin' : 'Pin'} ${print.piece.title}`}
-                  onClick={() => onPin(print.piece!.id)}
-                  className={`absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full text-sm ${
-                    pinned ? 'bg-brand-lime text-brand-black' : 'bg-[#f7f8ef]/90 text-[#18220f]'
-                  }`}
-                >
-                  {pinned ? <FiCheck aria-hidden /> : <FiPlus aria-hidden />}
-                </button>
+                  aria-label={`Open ${caption}`}
+                  onClick={() => setPreview(previewForPrint(print))}
+                  className="absolute inset-0 cursor-zoom-in"
+                />
+              ) : null}
+              {print.piece ? (
+                <div className="absolute right-2 top-2 z-[2] flex gap-1.5">
+                  <button
+                    type="button"
+                    aria-label={`Remove ${print.piece.title}`}
+                    onClick={() => onDismiss(print.piece!.id)}
+                    className="grid h-7 w-7 place-items-center rounded-full bg-[#f7f8ef]/90 text-sm text-[#18220f]"
+                  >
+                    <FiX aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${pinned ? 'Unpin' : 'Pin'} ${print.piece.title}`}
+                    onClick={() => onPin(print.piece!.id)}
+                    className={`grid h-7 w-7 place-items-center rounded-full text-sm ${
+                      pinned ? 'bg-brand-lime text-brand-black' : 'bg-[#f7f8ef]/90 text-[#18220f]'
+                    }`}
+                  >
+                    {pinned ? <FiCheck aria-hidden /> : <FiPlus aria-hidden />}
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
                   aria-label={`Remove ${print.pasted?.name ?? 'pasted image'}`}
                   onClick={() => onRemove(print.id)}
-                  className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-[#182012]/80 text-xs text-white"
+                  className="absolute right-2 top-2 z-[2] grid h-7 w-7 place-items-center rounded-full bg-[#182012]/80 text-xs text-white"
                 >
                   ×
                 </button>
@@ -1387,9 +1544,10 @@ function InspoCanvas({
       </div>
       <p className="mt-3 text-[11px] text-white/40">
         {pasted.length
-          ? 'Your images sit with the studio work for this request.'
-          : 'Paste or drop an image. It lands with the studio work.'}
+          ? 'Click a piece to open it. Your images sit with the studio work for this request.'
+          : 'Click a piece to open it. Paste or drop an image and it lands with the studio work.'}
       </p>
+      {preview ? <InspoPreview preview={preview} onClose={closePreview} /> : null}
     </aside>
   );
 }
@@ -1412,6 +1570,7 @@ function RequestStep({
   requestPiece,
   reduce,
   onPin,
+  onDismiss,
   onAddPasted,
   onRemovePasted,
   onBranch,
@@ -1428,6 +1587,7 @@ function RequestStep({
   requestPiece: InspoPiece | null;
   reduce: boolean;
   onPin: (id: string) => void;
+  onDismiss: (id: string) => void;
   onAddPasted: (files: File[]) => void;
   onRemovePasted: (id: string) => void;
   onBranch: (id: ServiceId) => void;
@@ -1465,6 +1625,7 @@ function RequestStep({
           pins={snapshot.pins}
           reduce={reduce}
           onPin={onPin}
+          onDismiss={onDismiss}
           onAdd={onAddPasted}
           onRemove={onRemovePasted}
         />

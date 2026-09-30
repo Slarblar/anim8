@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientRecord } from '@/lib/client-registry';
+import { CLIENT_ENGAGEMENTS, type ClientEngagementId } from '@/lib/creative-session';
 import type {
   ClientPortalActiveTask,
   ClientPortalApprovedTask,
@@ -363,6 +364,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [slug, setSlug] = useState('');
+  const [engagement, setEngagement] = useState<ClientEngagementId>('new');
   const [driveFolderUrl, setDriveFolderUrl] = useState('');
   const [options, setOptions] = useState<AsanaOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -393,6 +395,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
     setDisplayName('');
     setContactEmail('');
     setSlug('');
+    setEngagement('new');
     setDriveFolderUrl('');
     setFieldOptionGid('');
     setNewOptionName('');
@@ -413,6 +416,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
             displayName,
             contactEmail,
             slug: slug || undefined,
+            engagement,
             driveFolderUrl: driveFolderUrl || undefined,
             fieldOptionGid: fieldOptionGid || undefined,
             fieldOptionName: fieldOptionGid ? undefined : newOptionName,
@@ -433,7 +437,7 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
         setSubmitting(false);
       }
     },
-    [displayName, contactEmail, slug, driveFolderUrl, fieldOptionGid, newOptionName, onCreated, resetForm]
+    [displayName, contactEmail, slug, engagement, driveFolderUrl, fieldOptionGid, newOptionName, onCreated, resetForm]
   );
 
   return (
@@ -503,6 +507,28 @@ function AddClientForm({ onCreated }: { onCreated: () => void }) {
               onChange={(e) => setSlug(e.target.value.toLowerCase())}
               placeholder="turnemsideways2026"
             />
+          </div>
+
+          <div>
+            <label className={adminLabel} htmlFor="engagement">
+              Client type
+            </label>
+            <select
+              id="engagement"
+              className={adminSelect}
+              style={adminSelectChevronStyle}
+              value={engagement}
+              onChange={(e) => setEngagement(e.target.value as ClientEngagementId)}
+            >
+              {CLIENT_ENGAGEMENTS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <p className={`${adminBody} mt-1.5 text-xs`}>
+              This sets how a new request opens: a blank project, or the formats in their retainer.
+            </p>
           </div>
 
           <div>
@@ -576,10 +602,15 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
   const [driveFolderUrl, setDriveFolderUrl] = useState(client.driveFolderUrl ?? '');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [engagement, setEngagement] = useState<ClientEngagementId>(client.engagement ?? 'new');
 
   useEffect(() => {
     setDriveFolderUrl(client.driveFolderUrl ?? '');
   }, [client.driveFolderUrl]);
+
+  useEffect(() => {
+    setEngagement(client.engagement ?? 'new');
+  }, [client.engagement]);
 
   const runAction = useCallback(
     async (body: Record<string, unknown>) => {
@@ -677,6 +708,33 @@ function ClientRow({ client, onChanged }: { client: ClientRecord; onChanged: () 
       </div>
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
+
+      <div className="max-w-xs">
+        <label className={adminLabel} htmlFor={`engagement-${client.slug}`}>
+          Client type
+        </label>
+        <select
+          id={`engagement-${client.slug}`}
+          className={adminSelect}
+          style={adminSelectChevronStyle}
+          value={engagement}
+          disabled={loading}
+          onChange={(event) => {
+            const next = event.target.value as ClientEngagementId;
+            const previous = engagement;
+            setEngagement(next);
+            void runAction({ action: 'setEngagement', engagement: next }).then((ok) => {
+              if (!ok) setEngagement(previous);
+            });
+          }}
+        >
+          {CLIENT_ENGAGEMENTS.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <AdminClientProjects slug={client.slug} />
 

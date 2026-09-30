@@ -1,6 +1,7 @@
 import { customAlphabet } from 'nanoid';
 import { unstable_noStore as noStore } from 'next/cache';
 import type { ClientFieldFilter } from './asana';
+import { isClientEngagement, type ClientEngagementId } from './creative-session';
 import { getKv } from './kv';
 
 // Lowercase alphanumeric only, 10 chars — no ambiguous characters, easy to
@@ -22,6 +23,11 @@ export type ClientRecord = {
    * portal so they don't have to remember the link for large files.
    */
   driveFolderUrl?: string;
+  /**
+   * How new requests open: new project, editing retainer, studio retainer, and so on.
+   * Missing on older records, which are treated as a new project.
+   */
+  engagement?: ClientEngagementId;
   active: boolean;
   /** When a link is renamed, old slug records point here. */
   redirectTo?: string;
@@ -137,6 +143,7 @@ export async function createClientLink(input: {
   intakeProjectGid?: string;
   intakeSectionGid?: string;
   driveFolderUrl?: string;
+  engagement?: string;
 }): Promise<ClientRecord> {
   const slug = input.slug ?? `${slugify(input.displayName)}${nanoid()}`;
   validateSlug(slug);
@@ -147,6 +154,7 @@ export async function createClientLink(input: {
   }
 
   const driveFolderUrl = normalizeDriveFolderUrl(input.driveFolderUrl);
+  const engagement = normalizeEngagement(input.engagement);
 
   const record: ClientRecord = {
     slug,
@@ -156,6 +164,7 @@ export async function createClientLink(input: {
     intakeProjectGid: input.intakeProjectGid ?? DEFAULT_INTAKE_PROJECT_GID,
     intakeSectionGid: input.intakeSectionGid ?? DEFAULT_INTAKE_SECTION_GID,
     ...(driveFolderUrl ? { driveFolderUrl } : {}),
+    engagement,
     active: true,
     createdAt: new Date().toISOString(),
   };
@@ -203,6 +212,24 @@ export async function reactivateClientLink(slug: string): Promise<void> {
   const record = await getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
   if (!record) throw new Error(`No client found for slug: ${slug}`);
   await getKv().set(`${KEY_PREFIX}${slug}`, { ...record, active: true, redirectTo: undefined });
+}
+
+function normalizeEngagement(raw: string | undefined | null): ClientEngagementId {
+  const value = raw?.trim() || 'new';
+  if (!isClientEngagement(value)) {
+    throw new Error('Choose a client type from the list.');
+  }
+  return value;
+}
+
+/** Set the engagement that shapes this client's new-request flow. */
+export async function updateClientEngagement(slug: string, raw: string): Promise<ClientRecord> {
+  const record = await getKv().get<ClientRecord>(`${KEY_PREFIX}${slug}`);
+  if (!record) throw new Error(`No client found for slug: ${slug}`);
+  const engagement = normalizeEngagement(raw);
+  const next: ClientRecord = { ...record, engagement };
+  await getKv().set(`${KEY_PREFIX}${slug}`, next);
+  return next;
 }
 
 /** Set or clear the client's public Google Drive folder URL. */

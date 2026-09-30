@@ -6,12 +6,14 @@ import {
   reactivateClientLink,
   renameClientLink,
   updateClientDriveFolder,
+  updateClientEngagement,
 } from '@/lib/client-registry';
 
 type PatchBody = {
-  action?: 'deactivate' | 'reactivate' | 'rename' | 'setDriveFolder';
+  action?: 'deactivate' | 'reactivate' | 'rename' | 'setDriveFolder' | 'setEngagement';
   newSlug?: string;
   driveFolderUrl?: string;
+  engagement?: string;
 };
 
 export async function PATCH(req: NextRequest, { params }: { params: { slug: string } }) {
@@ -38,6 +40,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { slug: stri
       await renameClientLink(params.slug, newSlug);
     } else if (body.action === 'setDriveFolder') {
       await updateClientDriveFolder(params.slug, body.driveFolderUrl ?? '');
+    } else if (body.action === 'setEngagement') {
+      if (!body.engagement?.trim()) {
+        return NextResponse.json({ error: 'Choose a client type.' }, { status: 400 });
+      }
+      await updateClientEngagement(params.slug, body.engagement);
     } else {
       return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
     }

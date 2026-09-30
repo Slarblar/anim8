@@ -1585,6 +1585,11 @@ html.careers-page-active {
   }
 }
 
+.client-portal-shell--session .client-portal-header-inner,
+.client-portal-shell--session .client-portal-main-inner--session {
+  max-width: min(100%, 80rem);
+}
+
 
 /* Client portal — animated task progress fill */
 @keyframes portal-progress-flow {

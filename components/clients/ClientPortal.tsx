@@ -10,9 +10,8 @@ import type {
 } from '@/lib/asana';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { BriefBuilderButton } from './BriefBuilderButton';
 import { ClientPortalShell } from './ClientPortalShell';
 import { ClientRejectModal } from './ClientRejectModal';
 import { PortalDismissibleAlert } from './PortalDismissibleAlert';
@@ -375,14 +374,13 @@ function CollapsibleTaskCard({
       </button>
 
       {isActiveVariant ? <ProgressBar progress={task.progress} /> : null}
-      {pastSection ? <TaskMetaRow task={task} hideDate /> : null}
 
       <div
         className={`portal-task-expand ${expanded ? 'portal-task-expand--open' : ''}`}
         aria-hidden={!expanded}
       >
         <div className="portal-task-expand-inner">
-          {pastSection ? null : <TaskMetaRow task={task} hideDate />}
+          <TaskMetaRow task={task} hideDate />
           {pendingSection && slug && onApprove && onReject ? (
             <>
               {task.progress.percent !== null ? <ProgressBar progress={task.progress} /> : null}
@@ -410,6 +408,7 @@ function TaskList({
   pendingSection,
   approvedSection,
   pastSection,
+  nested,
   slug,
   actionLoadingGid,
   onApprove,
@@ -422,6 +421,7 @@ function TaskList({
   pendingSection?: boolean;
   approvedSection?: boolean;
   pastSection?: boolean;
+  nested?: boolean;
   slug?: string;
   actionLoadingGid?: string | null;
   onApprove?: (taskGid: string) => void;
@@ -467,7 +467,6 @@ function TaskList({
             <Link href={`/clients/${slug}/new`} className={portalBtnPrimary}>
               New request
             </Link>
-            <BriefBuilderButton slug={slug} />
           </div>
         ) : null}
       </div>
@@ -475,7 +474,7 @@ function TaskList({
   }
 
   return (
-    <ul className="mt-5 space-y-4">
+    <ul className={nested ? 'mt-3 space-y-3' : 'mt-5 space-y-4'}>
       {tasks.map((task, index) => (
         <CollapsibleTaskCard
           key={task.gid}
@@ -495,6 +494,136 @@ function TaskList({
         />
       ))}
     </ul>
+  );
+}
+
+function archiveYear(task: ClientPortalPastTask): string {
+  const stamp = task.completedAt ?? task.dueOn;
+  return stamp && /^\d{4}/.test(stamp) ? stamp.slice(0, 4) : 'Undated';
+}
+
+function groupArchives(tasks: ClientPortalPastTask[]): { year: string; tasks: ClientPortalPastTask[] }[] {
+  const buckets = new Map<string, ClientPortalPastTask[]>();
+  for (const task of tasks) {
+    const year = archiveYear(task);
+    const list = buckets.get(year);
+    if (list) list.push(task);
+    else buckets.set(year, [task]);
+  }
+  return [...buckets.entries()]
+    .sort(([a], [b]) => {
+      if (a === 'Undated') return 1;
+      if (b === 'Undated') return -1;
+      return b.localeCompare(a);
+    })
+    .map(([year, yearTasks]) => ({ year, tasks: yearTasks }));
+}
+
+function ArchiveSection({ tasks }: { tasks: ClientPortalPastTask[] }) {
+  const pipelines = useMemo(() => {
+    const present = new Set(tasks.map((task) => task.pipeline).filter((pipeline): pipeline is 'Production' | 'Design' => Boolean(pipeline)));
+    return (['Production', 'Design'] as const).filter((pipeline) => present.has(pipeline));
+  }, [tasks]);
+  const [pipeline, setPipeline] = useState<'all' | 'Production' | 'Design'>('all');
+  const filtered = useMemo(
+    () => (pipeline === 'all' ? tasks : tasks.filter((task) => task.pipeline === pipeline)),
+    [tasks, pipeline]
+  );
+  const groups = useMemo(() => groupArchives(filtered), [filtered]);
+  const [openYears, setOpenYears] = useState<Set<string>>(() => new Set(groups[0] ? [groups[0].year] : []));
+
+  useEffect(() => {
+    setOpenYears((current) => {
+      const available = new Set(groups.map((group) => group.year));
+      const kept = [...current].filter((year) => available.has(year));
+      const nextYears = kept.length > 0 ? kept : groups[0] ? [groups[0].year] : [];
+      if (nextYears.length === current.size && nextYears.every((year) => current.has(year))) return current;
+      return new Set(nextYears);
+    });
+  }, [groups]);
+
+  function toggleYear(year: string) {
+    setOpenYears((current) => {
+      const next = new Set(current);
+      if (next.has(year)) next.delete(year);
+      else next.add(year);
+      return next;
+    });
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <div className={`${portalTaskCard} mt-5 text-center`}>
+        <p className={portalBody}>No archived projects yet.</p>
+      </div>
+    );
+  }
+
+  const showFilter = pipelines.length > 1;
+
+  return (
+    <div className="mt-5 space-y-3">
+      {groups.length > 1 ? <BillingSummary tasks={filtered} /> : null}
+      {showFilter ? (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter archives">
+          {(['all', ...pipelines] as const).map((option) => {
+            const on = pipeline === option;
+            const count = option === 'all' ? tasks.length : tasks.filter((task) => task.pipeline === option).length;
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setPipeline(option)}
+                className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider font-mono transition ${
+                  on
+                    ? 'border-brand-lime/50 bg-brand-lime/15 text-brand-lime'
+                    : 'border-white/15 bg-white/[0.03] text-[#8b95a8] hover:border-white/30 hover:text-white'
+                }`}
+              >
+                {option === 'all' ? 'All' : option} · {count}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {groups.map((group) => {
+        const open = openYears.has(group.year);
+        const totals = sumBilling(group.tasks);
+        const countLabel = `${group.tasks.length} project${group.tasks.length === 1 ? '' : 's'}`;
+        return (
+          <section key={group.year}>
+            <button
+              type="button"
+              className={`${portalTaskCard} flex w-full items-center justify-between gap-4 text-left`}
+              aria-expanded={open}
+              onClick={() => toggleYear(group.year)}
+            >
+              <span className="min-w-0">
+                <span className="block font-black uppercase tracking-tight text-white">{group.year}</span>
+                <span className="mt-1 block text-xs text-[#8b95a8]">{countLabel}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-4">
+                {totals.estimate != null || totals.final != null ? (
+                  <span className="hidden text-right font-mono text-[11px] leading-relaxed text-[#8b95a8] min-[480px]:block">
+                    {totals.estimate != null ? <span className="block">Est. {formatCost(totals.estimate)}</span> : null}
+                    {totals.final != null ? <span className="block text-white">Final {formatCost(totals.final)}</span> : null}
+                  </span>
+                ) : null}
+                <span className={`portal-task-chevron text-brand-cyan ${open ? 'portal-task-chevron--open' : ''}`} aria-hidden>
+                  ▾
+                </span>
+              </span>
+            </button>
+            {open ? (
+              <div className="ml-3 border-l border-white/10 pl-3 min-[480px]:ml-4 min-[480px]:pl-4">
+                <TaskList tasks={group.tasks} emptyMessage="" pastSection nested />
+              </div>
+            ) : null}
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -618,7 +747,6 @@ export function ClientPortal({
           <Link href={`/clients/${slug}/schedule`} className={portalBtnSecondary}>
             Schedule call
           </Link>
-          <BriefBuilderButton slug={slug} />
           <Link href={`/clients/${slug}/new`} className={portalBtnPrimary}>
             New request
           </Link>
@@ -691,7 +819,6 @@ export function ClientPortal({
               <Link href={`/clients/${slug}/new`} className={portalBtnPrimary}>
                 New request
               </Link>
-              <BriefBuilderButton slug={slug} />
             </div>
           </div>
         ) : (
@@ -741,16 +868,18 @@ export function ClientPortal({
         className="mt-8 min-[480px]:mt-10 md:mt-12"
         variants={portalVariants(!!reduceMotion, portalFadeUp)}
       >
-        <h2 className={portalSectionTitle}>Archives</h2>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h2 className={portalSectionTitle}>Archives</h2>
+          {pastProjects.length > 0 ? (
+            <p className="font-mono text-[11px] uppercase tracking-wider text-[#8b95a8]">
+              {pastProjects.length} project{pastProjects.length === 1 ? '' : 's'}
+            </p>
+          ) : null}
+        </div>
         <p className={`${portalBody} mt-2`}>
-          Completed work and billing history — estimate vs final cost.
+          Completed work, grouped by year. Open a project for hours and cost.
         </p>
-        {pastProjects.length > 0 ? <BillingSummary tasks={pastProjects} /> : null}
-        <TaskList
-          tasks={pastProjects}
-          emptyMessage="No archived projects yet."
-          pastSection
-        />
+        <ArchiveSection tasks={pastProjects} />
       </motion.section>
       </motion.div>
 

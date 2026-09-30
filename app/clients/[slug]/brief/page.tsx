@@ -1,5 +1,5 @@
+import { redirect } from 'next/navigation';
 import { resolveClientPortal } from '@/lib/client-portal-access';
-import { BriefBuilder } from '@/components/clients/BriefBuilder';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,8 +7,8 @@ type PageProps = {
   params: { slug: string };
 };
 
+/** Older brief-builder links land in the creative session. */
 export default async function ClientBriefBuilderPage({ params }: PageProps) {
   const client = await resolveClientPortal(params.slug);
-
-  return <BriefBuilder slug={client.slug} displayName={client.displayName} />;
+  redirect(`/clients/${client.slug}/new`);
 }

@@ -12,6 +12,8 @@ type ClientPortalShellProps = {
   headerAction?: ReactNode;
   children: ReactNode;
   wide?: boolean;
+  /** Wider canvas for the creative-session request flow. */
+  session?: boolean;
 };
 
 export function ClientPortalShell({
@@ -21,9 +23,10 @@ export function ClientPortalShell({
   headerAction,
   children,
   wide = false,
+  session = false,
 }: ClientPortalShellProps) {
   return (
-    <div className="client-portal-shell relative isolate min-h-screen">
+    <div className={`client-portal-shell relative isolate min-h-screen${session ? ' client-portal-shell--session' : ''}`}>
       <ClientPortalFloatingCards slug={slug} />
 
       <header className="glass-nav relative z-20">
@@ -60,7 +63,7 @@ export function ClientPortalShell({
 
       <main
         className={`client-portal-main container-custom relative z-10 !px-4 sm:!px-6 lg:!px-8 ${
-          wide ? 'client-portal-main-inner--wide' : ''
+          session ? 'client-portal-main-inner--session' : wide ? 'client-portal-main-inner--wide' : ''
         } client-portal-main-inner mx-auto`}
       >
         {children}

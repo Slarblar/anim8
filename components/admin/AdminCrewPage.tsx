@@ -1440,6 +1440,30 @@ function CrewRow({
   );
 }
 
+function StaffReportLink() {
+  const [pending, setPending] = useState(false);
+  return (
+    <Link
+      href="/admin/crew/report"
+      className={adminBtnPrimary}
+      aria-busy={pending}
+      onClick={() => setPending(true)}
+    >
+      {pending ? (
+        <>
+          <span
+            className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
+            aria-hidden
+          />
+          Preparing report…
+        </>
+      ) : (
+        'Staff report'
+      )}
+    </Link>
+  );
+}
+
 export function AdminCrewPage() {
   const [members, setMembers] = useState<CrewMember[] | null>(null);
   const [kpiByEmail, setKpiByEmail] = useState<Record<string, PersonKPISummary | null>>({});
@@ -1531,9 +1555,7 @@ export function AdminCrewPage() {
             Anyone listed here (and active) can sign in to /crew with their Google account.
           </p>
         </div>
-        <Link href="/admin/crew/report" className={adminBtnPrimary}>
-          Staff report
-        </Link>
+        <StaffReportLink />
       </div>
 
       <AddCrewForm onCreated={load} />

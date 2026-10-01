@@ -34,6 +34,7 @@ type Draft = {
   imageUrl: string;
   gumletUrl: string;
   tags: WorkTag[];
+  stat: string;
   file: File | null;
 };
 
@@ -45,6 +46,7 @@ const EMPTY: Draft = {
   imageUrl: '',
   gumletUrl: '',
   tags: [],
+  stat: '',
   file: null,
 };
 
@@ -125,6 +127,7 @@ export function AdminWorkBank() {
       imageUrl: piece.imageUrl,
       gumletUrl: piece.gumletUrl,
       tags: piece.tags,
+      stat: piece.stat,
       file: null,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -158,6 +161,7 @@ export function AdminWorkBank() {
         imageUrl,
         gumletUrl: draft.gumletUrl,
         tags: draft.tags,
+        stat: draft.stat,
       };
       const res = await fetch(draft.id ? `/api/admin/work/${draft.id}` : '/api/admin/work', {
         method: draft.id ? 'PATCH' : 'POST',
@@ -223,6 +227,11 @@ export function AdminWorkBank() {
                 Still or Gumlet thumbnail
               </span>
             )}
+            {draft.stat.trim() ? (
+              <span className="absolute left-2 top-2 rounded-full bg-brand-lime px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-brand-black">
+                {draft.stat}
+              </span>
+            ) : null}
           </div>
           <div className="grid gap-3">
             <label className={adminLabel}>
@@ -289,6 +298,19 @@ export function AdminWorkBank() {
                 onChange={(event) => setDraft((current) => ({ ...current, gumletUrl: event.target.value }))}
               />
             </label>
+            <label className={adminLabel}>
+              Stat
+              <span className="mb-1.5 block text-[10px] font-medium normal-case tracking-normal text-text-muted">
+                Optional. Clients see this on the piece, like 1M+ views.
+              </span>
+              <input
+                className={adminInput}
+                value={draft.stat}
+                maxLength={32}
+                placeholder="1M+ views"
+                onChange={(event) => setDraft((current) => ({ ...current, stat: event.target.value }))}
+              />
+            </label>
             <fieldset>
               <legend className={adminLabel}>Tags</legend>
               <div className="flex flex-wrap gap-2">
@@ -349,6 +371,11 @@ export function AdminWorkBank() {
                     {src ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={src} alt="" className="h-full w-full object-cover" />
+                    ) : null}
+                    {piece.stat ? (
+                      <span className="absolute left-2 top-2 rounded-full bg-brand-lime px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-brand-black">
+                        {piece.stat}
+                      </span>
                     ) : null}
                   </div>
                   <div>

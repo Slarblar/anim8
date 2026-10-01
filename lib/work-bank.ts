@@ -28,6 +28,8 @@ export type WorkPiece = {
   imageUrl: string;
   gumletUrl: string;
   tags: WorkTag[];
+  /** Optional client-facing line, like "1M+ views". Empty when unset. */
+  stat: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -41,6 +43,8 @@ export type InspoPiece = {
   imageUrl: string;
   gumletUrl: string;
   tags: WorkTag[];
+  /** Optional client-facing line, like "1M+ views". */
+  stat?: string;
   /** Crop for the built-in stills. Uploads use the default center crop. */
   position?: string;
 };
@@ -52,6 +56,7 @@ export type WorkInput = {
   imageUrl: string;
   gumletUrl: string;
   tags: WorkTag[];
+  stat: string;
 };
 
 /** Shown until the bank has real pieces, so the session is never a blank stage. */
@@ -175,6 +180,7 @@ export function parseWorkInput(raw: unknown): WorkInput | { error: string } {
   const year = typeof body.year === 'string' ? body.year.trim() : '';
   const imageUrl = typeof body.imageUrl === 'string' ? body.imageUrl.trim() : '';
   const gumletUrl = typeof body.gumletUrl === 'string' ? body.gumletUrl.trim() : '';
+  const stat = typeof body.stat === 'string' ? body.stat.replace(/\s+/g, ' ').trim() : '';
   const tags = Array.isArray(body.tags)
     ? [...new Set(body.tags.filter((tag): tag is WorkTag => typeof tag === 'string' && isWorkTag(tag)))]
     : [];
@@ -182,6 +188,7 @@ export function parseWorkInput(raw: unknown): WorkInput | { error: string } {
   if (!title || title.length > 120) return { error: 'Add a project title (120 characters or fewer).' };
   if (client.length > 80) return { error: 'Client name is too long.' };
   if (year.length > 16) return { error: 'Year should be a short label, like 2025.' };
+  if (stat.length > 32) return { error: 'Keep the stat short, like 1M+ views.' };
   if (imageUrl && !isBlobUrl(imageUrl)) return { error: 'Upload the still through this page.' };
   if (gumletUrl && !gumletIdFromUrl(gumletUrl)) {
     return { error: 'Paste a Gumlet link or video id.' };
@@ -189,7 +196,7 @@ export function parseWorkInput(raw: unknown): WorkInput | { error: string } {
   if (!imageUrl && !gumletUrl) return { error: 'Add a still, a Gumlet link, or both.' };
   if (!tags.length) return { error: 'Pick at least one tag.' };
 
-  return { title, client, year, imageUrl, gumletUrl, tags };
+  return { title, client, year, imageUrl, gumletUrl, tags, stat };
 }
 
 export function toInspoPiece(piece: WorkPiece): InspoPiece {
@@ -201,6 +208,7 @@ export function toInspoPiece(piece: WorkPiece): InspoPiece {
     imageUrl: piece.imageUrl,
     gumletUrl: piece.gumletUrl,
     tags: piece.tags,
+    stat: piece.stat,
   };
 }
 

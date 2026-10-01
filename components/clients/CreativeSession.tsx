@@ -1311,8 +1311,19 @@ function IdeaStep({
 }
 
 type CanvasPreview =
-  | { kind: 'image'; src: string; title: string; caption: string }
-  | { kind: 'video'; id: string; title: string; caption: string };
+  | { kind: 'image'; src: string; title: string; caption: string; stat: string }
+  | { kind: 'video'; id: string; title: string; caption: string; stat: string };
+
+function StatBadge({ stat, className = '' }: { stat?: string; className?: string }) {
+  if (!stat) return null;
+  return (
+    <span
+      className={`pointer-events-none inline-block rounded-full bg-brand-lime px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-brand-black ${className}`}
+    >
+      {stat}
+    </span>
+  );
+}
 
 function previewForPrint(print: {
   piece: InspoPiece | null;
@@ -1320,13 +1331,14 @@ function previewForPrint(print: {
 }): CanvasPreview | null {
   if (print.piece) {
     const caption = pieceCaption(print.piece);
+    const stat = print.piece.stat ?? '';
     const videoId = gumletIdFromUrl(print.piece.gumletUrl);
-    if (videoId) return { kind: 'video', id: videoId, title: print.piece.title, caption };
+    if (videoId) return { kind: 'video', id: videoId, title: print.piece.title, caption, stat };
     const src = pieceStill(print.piece);
-    return src ? { kind: 'image', src, title: print.piece.title, caption } : null;
+    return src ? { kind: 'image', src, title: print.piece.title, caption, stat } : null;
   }
   if (print.pasted) {
-    return { kind: 'image', src: print.pasted.url, title: 'Yours', caption: print.pasted.name };
+    return { kind: 'image', src: print.pasted.url, title: 'Yours', caption: print.pasted.name, stat: '' };
   }
   return null;
 }
@@ -1382,8 +1394,13 @@ function InspoPreview({ preview, onClose }: { preview: CanvasPreview; onClose: (
           )}
         </div>
         <div className="mt-3 flex items-baseline justify-between gap-4 pr-2 text-white">
-          <h2 id={titleId} className="truncate text-sm font-semibold">
-            {preview.title}
+          <h2 id={titleId} className="flex min-w-0 items-center gap-2 truncate text-sm font-semibold">
+            <span className="truncate">{preview.title}</span>
+            {preview.stat ? (
+              <span className="shrink-0 rounded-full bg-brand-lime px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-brand-black">
+                {preview.stat}
+              </span>
+            ) : null}
           </h2>
           {preview.caption ? (
             <p className="truncate font-mono text-[10px] uppercase tracking-wide text-white/50">{preview.caption}</p>
@@ -1492,6 +1509,7 @@ function InspoCanvas({
               }
             >
               {print.piece ? <Photo piece={print.piece} /> : null}
+              {print.piece?.stat ? <StatBadge stat={print.piece.stat} className="absolute left-2 top-2 z-[1]" /> : null}
               {print.pasted ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={print.pasted.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -1740,6 +1758,7 @@ function RequestStep({
         <StageHead left={category ? 'Just the useful questions' : 'Inspiration along the way'} right={category ? categoryLabel(snapshot.profile, activeId, category.id) || category.name : serviceLabel(snapshot.profile, service.id)} />
         <div className="relative mb-4 h-44 overflow-hidden rounded-lg">
           {requestPiece ? <Photo piece={requestPiece} /> : null}
+          {requestPiece?.stat ? <StatBadge stat={requestPiece.stat} className="absolute left-3 top-3" /> : null}
           <span className="absolute bottom-3 left-3 rounded bg-[#182012]/90 px-2 py-1 text-[10px] text-[#f3f5e9]">
             {requestPiece ? `${requestPiece.title} · studio work` : 'Studio work'}
           </span>
@@ -1914,6 +1933,7 @@ function DirectionStep({
                 <div className="px-3 py-2.5">
                   <strong className="block text-xs font-medium">{piece.title}</strong>
                   <small className="mt-0.5 block text-[10px] text-white/45">{caption || 'Studio work'}</small>
+                  {piece.stat ? <StatBadge stat={piece.stat} className="mt-1.5" /> : null}
                 </div>
                 {pinned && piece.tags.length ? (
                   <div className="flex flex-wrap gap-1 px-3 pb-3">

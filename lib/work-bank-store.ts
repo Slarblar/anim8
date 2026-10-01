@@ -25,7 +25,10 @@ function isPiece(value: unknown): value is WorkPiece {
 async function readAll(): Promise<WorkPiece[]> {
   const raw = await getKv().get<unknown>(KEY);
   if (!Array.isArray(raw)) return [];
-  return raw.filter(isPiece);
+  return raw.filter(isPiece).map((piece) => ({
+    ...piece,
+    stat: typeof piece.stat === 'string' ? piece.stat : '',
+  }));
 }
 
 async function writeAll(pieces: WorkPiece[]): Promise<void> {
@@ -52,6 +55,7 @@ export async function createWorkPiece(input: WorkInput): Promise<WorkPiece> {
     imageUrl: input.imageUrl,
     gumletUrl: input.gumletUrl,
     tags: input.tags as WorkTag[],
+    stat: input.stat,
     createdAt: now,
     updatedAt: now,
   };
@@ -74,6 +78,7 @@ export async function updateWorkPiece(id: string, input: WorkInput): Promise<Wor
     imageUrl: input.imageUrl,
     gumletUrl: input.gumletUrl,
     tags: input.tags,
+    stat: input.stat,
     updatedAt: new Date().toISOString(),
   };
   pieces[index] = next;

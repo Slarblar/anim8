@@ -264,7 +264,15 @@ function collageSlots(count: number): CollageSlot[] {
   });
 }
 
-function Photo({ piece, className = '' }: { piece: InspoPiece; className?: string }) {
+function Photo({
+  piece,
+  className = '',
+  onRatio,
+}: {
+  piece: InspoPiece;
+  className?: string;
+  onRatio?: (ratio: number) => void;
+}) {
   const src = pieceStill(piece);
   if (!src) return <div className={`absolute inset-0 bg-white/5 ${className}`} />;
   return (
@@ -275,8 +283,26 @@ function Photo({ piece, className = '' }: { piece: InspoPiece; className?: strin
       alt={piece.title}
       className={`absolute inset-0 h-full w-full object-cover ${className}`}
       style={piece.position ? { objectPosition: piece.position } : undefined}
+      onLoad={(event) => {
+        const { naturalWidth, naturalHeight } = event.currentTarget;
+        if (naturalWidth > 0 && naturalHeight > 0) onRatio?.(naturalWidth / naturalHeight);
+      }}
     />
   );
+}
+
+/** Fit a print inside its collage slot without changing the image's own aspect ratio. */
+function collageFrame(slot: CollageSlot, ratio: number | undefined): React.CSSProperties {
+  const place = { left: `${slot.left}%`, top: `${slot.top}%`, zIndex: slot.z };
+  if (!ratio) {
+    return { ...place, width: `${slot.w}%`, height: `${slot.h}%` };
+  }
+  return {
+    ...place,
+    width: `min(${slot.w}cqw, calc(${slot.h}cqh * ${ratio}))`,
+    aspectRatio: String(ratio),
+    height: 'auto',
+  };
 }
 
 function ChoiceTag({
@@ -1343,8 +1369,36 @@ function previewForPrint(print: {
   return null;
 }
 
+function useGumletAspect(id: string | null): number | null {
+  const [ratio, setRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setRatio(null);
+    fetch(`/api/gumlet-playback?id=${encodeURIComponent(id)}`)
+      .then(async (res) => (res.ok ? ((await res.json()) as { aspect?: string | null }) : null))
+      .then((data) => {
+        if (cancelled) return;
+        const parts = typeof data?.aspect === 'string' ? data.aspect.split(':') : [];
+        const width = Number(parts[0]);
+        const height = Number(parts[1]);
+        setRatio(width > 0 && height > 0 ? width / height : 16 / 9);
+      })
+      .catch(() => {
+        if (!cancelled) setRatio(16 / 9);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return ratio;
+}
+
 function InspoPreview({ preview, onClose }: { preview: CanvasPreview; onClose: () => void }) {
   const titleId = useId();
+  const videoRatio = useGumletAspect(preview.kind === 'video' ? preview.id : null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -1360,7 +1414,7 @@ function InspoPreview({ preview, onClose }: { preview: CanvasPreview; onClose: (
   }, [onClose]);
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 sm:p-8" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black p-4 sm:p-8" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
@@ -1376,18 +1430,26 @@ function InspoPreview({ preview, onClose }: { preview: CanvasPreview; onClose: (
         >
           <FiX aria-hidden />
         </button>
-        <div className="overflow-hidden rounded-lg bg-black shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+        <div className="flex items-center justify-center overflow-hidden bg-black">
           {preview.kind === 'video' ? (
-            <div className="aspect-video w-full">
+            videoRatio ? (
               <iframe
                 src={`https://play.gumlet.io/embed/${preview.id}?autoplay=true&loop=false&primary_color=7cc142&start_high_res=true`}
                 title={preview.title}
                 allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                 allowFullScreen
                 referrerPolicy="origin"
-                className="h-full w-full border-0"
+                className="border-0 bg-black"
+                style={{
+                  aspectRatio: videoRatio,
+                  width: videoRatio >= 1 ? '100%' : `min(100%, calc(78vh * ${videoRatio}))`,
+                  maxHeight: '78vh',
+                  backgroundColor: '#000',
+                }}
               />
-            </div>
+            ) : (
+              <div className="aspect-video w-full bg-black" />
+            )
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview.src} alt="" className="max-h-[78vh] w-full bg-black object-contain" />
@@ -1438,6 +1500,10 @@ function InspoCanvas({
     ...pasted.map((item) => ({ kind: 'yours' as const, id: item.id, piece: null as InspoPiece | null, pasted: item })),
   ];
   const slots = collageSlots(prints.length);
+  const [ratios, setRatios] = useState<Record<string, number>>({});
+  const noteRatio = useCallback((id: string, ratio: number) => {
+    setRatios((current) => (Math.abs((current[id] ?? 0) - ratio) < 0.01 ? current : { ...current, [id]: ratio }));
+  }, []);
   const [preview, setPreview] = useState<CanvasPreview | null>(null);
   const closePreview = useCallback(() => setPreview(null), []);
 
@@ -1464,7 +1530,7 @@ function InspoCanvas({
     <aside className="min-w-0">
       <StageHead left={label ? `A starting point for ${label}` : 'A few possibilities'} right="Paste an image" />
       <div
-        className="relative h-[26rem] outline-none sm:h-[32rem]"
+        className="relative h-[26rem] outline-none [container-type:size] sm:h-[32rem]"
         tabIndex={0}
         role="region"
         aria-label="Inspiration canvas. Paste or drop an image to add it."
@@ -1493,13 +1559,7 @@ function InspoCanvas({
             <motion.figure
               key={print.id}
               className="absolute overflow-hidden shadow-[0_18px_36px_rgba(0,0,0,0.38)]"
-              style={{
-                left: `${slot.left}%`,
-                top: `${slot.top}%`,
-                width: `${slot.w}%`,
-                height: `${slot.h}%`,
-                zIndex: slot.z,
-              }}
+              style={collageFrame(slot, ratios[print.id])}
               initial={reduce ? false : { opacity: 0, scale: 0.96 }}
               animate={reduce ? { opacity: 1, rotate: slot.rotate } : { opacity: 1, rotate: slot.rotate, y: [0, -6, 0] }}
               transition={
@@ -1508,11 +1568,19 @@ function InspoCanvas({
                   : { y: { duration: 6.4 + index * 0.4, repeat: Infinity, ease: 'easeInOut' }, opacity: stepEase, rotate: stepEase }
               }
             >
-              {print.piece ? <Photo piece={print.piece} /> : null}
+              {print.piece ? <Photo piece={print.piece} onRatio={(ratio) => noteRatio(print.id, ratio)} /> : null}
               {print.piece?.stat ? <StatBadge stat={print.piece.stat} className="absolute left-2 top-2 z-[1]" /> : null}
               {print.pasted ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={print.pasted.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <img
+                  src={print.pasted.url}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onLoad={(event) => {
+                    const { naturalWidth, naturalHeight } = event.currentTarget;
+                    if (naturalWidth > 0 && naturalHeight > 0) noteRatio(print.id, naturalWidth / naturalHeight);
+                  }}
+                />
               ) : null}
               <figcaption className="pointer-events-none absolute bottom-2 left-2 z-[1] max-w-[80%] truncate font-mono text-[9px] uppercase tracking-wide text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
                 {caption}

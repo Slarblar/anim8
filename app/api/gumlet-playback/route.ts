@@ -7,6 +7,15 @@ function decodeHtmlAttrUrl(url: string) {
   return url.replace(/&amp;/gi, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
 }
 
+function extractAspect(html: string): string | null {
+  const match = html.match(/aspectratio="(\d+):(\d+)"/i)
+  if (!match) return null
+  const width = Number(match[1])
+  const height = Number(match[2])
+  if (!width || !height) return null
+  return `${width}:${height}`
+}
+
 function extractHlsFromJsonLd(raw: string): string | null {
   try {
     const data = JSON.parse(raw.trim()) as Record<string, unknown>
@@ -47,26 +56,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ hls: null })
   }
 
+  const aspect = extractAspect(html)
+  const payload = (hls: string | null) =>
+    NextResponse.json(
+      { hls, aspect },
+      { headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' } },
+    )
+
   const ldBlocks = [
     ...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi),
   ]
   for (const m of ldBlocks) {
     const hls = extractHlsFromJsonLd(m[1])
-    if (hls) {
-      return NextResponse.json(
-        { hls },
-        { headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' } },
-      )
-    }
+    if (hls) return payload(hls)
   }
 
   const loose = html.match(/https:\/\/video\.gumlet\.io\/[a-zA-Z0-9]+\/[a-zA-Z0-9]+\/main\.m3u8/)
-  if (loose?.[0]) {
-    return NextResponse.json(
-      { hls: loose[0] },
-      { headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' } },
-    )
-  }
+  if (loose?.[0]) return payload(loose[0])
 
   const og =
     html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/)?.[1]
@@ -74,13 +80,8 @@ export async function GET(request: NextRequest) {
   if (og) {
     const decoded = decodeHtmlAttrUrl(og)
     const prefix = decoded.match(/^(https:\/\/video\.gumlet\.io\/[a-zA-Z0-9]+\/[a-zA-Z0-9]+)\//)
-    if (prefix) {
-      return NextResponse.json(
-        { hls: `${prefix[1]}/main.m3u8` },
-        { headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' } },
-      )
-    }
+    if (prefix) return payload(`${prefix[1]}/main.m3u8`)
   }
 
-  return NextResponse.json({ hls: null })
+  return payload(null)
 }

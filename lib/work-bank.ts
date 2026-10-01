@@ -59,74 +59,49 @@ export type WorkInput = {
   stat: string;
 };
 
-/** Shown until the bank has real pieces, so the session is never a blank stage. */
-export const PLACEHOLDER_INSPO: InspoPiece[] = [
-  {
-    id: 'sao',
-    title: 'Sao House',
-    client: 'Anim8',
-    year: '',
-    imageUrl: '/brief-session/sao.webp',
-    gumletUrl: '',
-    tags: ['concepts', 'modeling', 'animation'],
-    position: '58% 25%',
-  },
-  {
-    id: 'reiya',
-    title: 'Reiya',
-    client: 'Anim8',
-    year: '',
-    imageUrl: '/brief-session/reiya.webp',
-    gumletUrl: '',
-    tags: ['design', 'typography', 'product-design', 'lifestyle'],
-    position: '48% 20%',
-  },
-  {
-    id: 'goods',
-    title: 'Good Goods',
-    client: 'Anim8',
-    year: '',
-    imageUrl: '/brief-session/goods.webp',
-    gumletUrl: '',
-    tags: ['graphics', 'design', 'typography', 'editing', 'video'],
-    position: '50% 48%',
-  },
-  {
-    id: 'brad',
-    title: "Phin's world",
-    client: 'Anim8',
-    year: '',
-    imageUrl: '/brief-session/brad.webp',
-    gumletUrl: '',
-    tags: ['animation', 'modeling', 'concepts', 'textures'],
-    position: '23% 25%',
-  },
-];
-
-/** Service → tags. Extra category tags are tried first when a format is chosen. */
+/** Service → tags that should show up more often for that discipline. */
 export const SERVICE_INSPO_TAGS: Record<string, WorkTag[]> = {
   video: ['editing', 'video', 'vfx'],
   graphic: ['graphics', 'design', 'typography', 'product-design'],
-  animation: ['animation', 'modeling', 'vfx', 'materials', 'textures'],
+  animation: ['animation', 'modeling', 'materials', 'textures', 'vfx'],
   brand: ['design', 'typography', 'concepts', 'lifestyle'],
   ip: ['concepts', 'modeling', 'animation'],
 };
 
+/** Category → tags that should show up most often once a format is chosen. */
 const CATEGORY_INSPO_TAGS: Record<string, WorkTag[]> = {
   'video:social': ['editing', 'video'],
-  'video:longform': ['editing', 'video'],
+  'video:ads': ['editing', 'video'],
   'video:podcast': ['editing', 'video'],
-  'graphic:packaging': ['product-design'],
-  'graphic:print': ['graphics', 'design'],
+  'video:longform': ['editing', 'video'],
+  'video:event': ['editing', 'video', 'lifestyle'],
+  'video:versions': ['editing', 'video'],
   'graphic:social': ['graphics', 'design'],
-  'animation:vfx': ['vfx'],
-  'animation:character': ['modeling', 'animation'],
-  'animation:product': ['product-design', 'animation'],
-  'brand:logo': ['typography', 'design'],
+  'graphic:ads': ['graphics', 'design'],
+  'graphic:deck': ['design', 'typography'],
+  'graphic:print': ['graphics', 'design'],
+  'graphic:packaging': ['product-design', 'design'],
+  'graphic:digital': ['graphics', 'design'],
+  'animation:product': ['animation', 'product-design', 'modeling'],
+  'animation:character': ['animation', 'modeling'],
+  'animation:explainer': ['animation'],
+  'animation:environment': ['animation', 'textures', 'materials', 'concepts'],
+  'animation:vfx': ['vfx', 'animation'],
+  'animation:loop': ['animation'],
   'brand:identity': ['design', 'typography', 'concepts'],
-  'ip:character': ['concepts', 'modeling'],
-  'ip:world': ['concepts', 'animation'],
+  'brand:refresh': ['design', 'typography'],
+  'brand:logo': ['typography', 'design'],
+  'brand:guidelines': ['design', 'typography'],
+  'brand:rollout': ['design', 'graphics', 'lifestyle'],
+  'ip:character': ['concepts', 'modeling', 'animation'],
+  'ip:world': ['concepts', 'animation', 'textures'],
+  'ip:story': ['concepts', 'animation'],
+  'ip:bible': ['concepts', 'design', 'typography'],
+  'ip:existing': ['concepts', 'modeling', 'animation'],
 };
+
+const CATEGORY_TAG_WEIGHT = 8;
+const SERVICE_TAG_WEIGHT = 3;
 
 export function workTagLabel(id: string): string {
   return WORK_TAGS.find((tag) => tag.id === id)?.label ?? id;
@@ -157,6 +132,13 @@ export function pieceStill(piece: Pick<InspoPiece, 'imageUrl' | 'gumletUrl'>): s
   if (piece.imageUrl) return piece.imageUrl;
   const id = gumletIdFromUrl(piece.gumletUrl);
   return id ? `/api/thumb?id=${encodeURIComponent(id)}` : '';
+}
+
+/** Studio samples only. Local stand-in stills are never part of the canvas. */
+export function isStudioPiece(piece: InspoPiece): boolean {
+  const still = pieceStill(piece);
+  if (!still || still.startsWith('/brief-session/')) return false;
+  return true;
 }
 
 export function pieceCaption(piece: Pick<InspoPiece, 'client' | 'year'>): string {
@@ -243,14 +225,43 @@ function shuffle<T>(items: T[], seed: number): T[] {
   return copy;
 }
 
-/** Tagged matches first. An empty tag list, or no matches, uses the whole bank. */
+function weightedSample(
+  pieces: InspoPiece[],
+  weightOf: (piece: InspoPiece) => number,
+  limit: number,
+  seed: number
+): InspoPiece[] {
+  const random = mulberry32(seed);
+  const pool = pieces.map((piece) => ({ piece, weight: Math.max(0, weightOf(piece)) }));
+  const picked: InspoPiece[] = [];
+  const take = Math.max(0, limit);
+  while (picked.length < take && pool.length) {
+    const total = pool.reduce((sum, item) => sum + item.weight, 0);
+    let index = total <= 0 ? Math.floor(random() * pool.length) : 0;
+    if (total > 0) {
+      let mark = random() * total;
+      for (; index < pool.length; index++) {
+        mark -= pool[index].weight;
+        if (mark <= 0) break;
+      }
+      if (index >= pool.length) index = pool.length - 1;
+    }
+    picked.push(pool.splice(index, 1)[0].piece);
+  }
+  return picked;
+}
+
+/** A fair sample of the bank. An empty tag list uses every piece. */
 export function piecesForTags(pieces: InspoPiece[], tags: WorkTag[], limit: number, seed: number): InspoPiece[] {
   const matched = tags.length ? pieces.filter((piece) => piece.tags.some((tag) => tags.includes(tag))) : pieces;
   const pool = matched.length ? matched : pieces;
   return shuffle(pool, seed).slice(0, Math.max(0, limit));
 }
 
-/** Category tags win when any piece matches. Otherwise the service tags. */
+/**
+ * Work-bank pieces only. A tag linked to the chosen category is drawn most often,
+ * a tag linked to the service next, and the rest of the bank only fills the gaps.
+ */
 export function piecesForRequest(
   pieces: InspoPiece[],
   serviceId: string,
@@ -258,10 +269,19 @@ export function piecesForRequest(
   limit: number,
   seed: number
 ): InspoPiece[] {
-  const extra = CATEGORY_INSPO_TAGS[`${serviceId}:${categoryId}`] ?? [];
-  if (extra.length) {
-    const tight = pieces.filter((piece) => piece.tags.some((tag) => extra.includes(tag)));
-    if (tight.length) return shuffle(tight, seed).slice(0, Math.max(0, limit));
-  }
-  return piecesForTags(pieces, SERVICE_INSPO_TAGS[serviceId] ?? [], limit, seed);
+  const categoryTags = CATEGORY_INSPO_TAGS[`${serviceId}:${categoryId}`] ?? [];
+  const serviceTags = SERVICE_INSPO_TAGS[serviceId] ?? [];
+  return weightedSample(
+    pieces,
+    (piece) => {
+      let weight = 1;
+      for (const tag of piece.tags) {
+        if (categoryTags.includes(tag)) weight += CATEGORY_TAG_WEIGHT;
+        else if (serviceTags.includes(tag)) weight += SERVICE_TAG_WEIGHT;
+      }
+      return weight;
+    },
+    limit,
+    seed
+  );
 }

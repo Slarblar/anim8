@@ -499,3 +499,116 @@ export function parseApprovedBrief(value: unknown): ClientReviewBrief | null {
     suggested_subtasks: subtasks,
   };
 }
+
+const SESSION_QUESTIONS_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    ready: { type: 'boolean' },
+    questions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string' },
+          prompt: { type: 'string' },
+        },
+        required: ['id', 'prompt'],
+      },
+    },
+  },
+  required: ['ready', 'questions'],
+} as const;
+
+const SESSION_BRIEF_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    brief: { type: 'string' },
+  },
+  required: ['brief'],
+} as const;
+
+export type SessionFollowUp = { prompt: string; answer: string };
+export type SessionBriefQuestion = { id: string; prompt: string };
+
+function clipSessionQuestions(questions: SessionBriefQuestion[]): SessionBriefQuestion[] {
+  const seen = new Set<string>();
+  const next: SessionBriefQuestion[] = [];
+  for (const question of questions) {
+    const prompt = question.prompt.replace(/\s+/g, ' ').trim().slice(0, 220);
+    if (!prompt) continue;
+    let id = question.id.replace(/[^\w-]/g, '').slice(0, 40);
+    if (!id || seen.has(id)) id = `q${next.length + 1}`;
+    seen.add(id);
+    next.push({ id, prompt });
+    if (next.length >= 3) break;
+  }
+  return next;
+}
+
+/** Turn the creative-session answers into a production brief, asking only for facts that would change the work. */
+export async function shapeSessionBrief(input: {
+  facts: string;
+  followUps: SessionFollowUp[];
+}): Promise<{ questions: SessionBriefQuestion[]; brief: string }> {
+  const facts = input.facts.trim().slice(0, 8000);
+  const followUps = input.followUps
+    .map((item) => ({
+      prompt: item.prompt.replace(/\s+/g, ' ').trim().slice(0, 220),
+      answer: item.answer.replace(/\s+/g, ' ').trim().slice(0, 800),
+    }))
+    .filter((item) => item.prompt)
+    .slice(0, 3);
+
+  if (!followUps.length) {
+    const check = await anthropicJson<{ ready: boolean; questions: SessionBriefQuestion[] }>({
+      model: HAIKU_MODEL,
+      maxTokens: 500,
+      schema: SESSION_QUESTIONS_SCHEMA,
+      system: `You are a producer at Anim8. Read the client's answers and decide if a team could start the work.
+
+Ask up to 3 follow-up questions only when a missing fact would change what gets made: how many pieces, finished length, aspect ratio, what they are starting from, or a must-have or must-avoid. Do not ask about budget, price, the client's name, or anything already answered. Do not ask "tell us more."
+
+If the answers are already specific enough to start, set ready to true and questions to an empty array.
+
+Write like a producer texting a client. One clear question each.`,
+      user: facts,
+    });
+    const questions = check.ready ? [] : clipSessionQuestions(check.questions ?? []);
+    if (questions.length) return { questions, brief: '' };
+  }
+
+  const payload = followUps.length
+    ? `${facts}\n\nFollow-up answers:\n${followUps.map((item) => `${item.prompt}\n${item.answer || '(left open)'}`).join('\n\n')}`
+    : facts;
+
+  const written = await anthropicJson<{ brief: string }>({
+    model: SONNET_MODEL,
+    maxTokens: 1800,
+    schema: SESSION_BRIEF_SCHEMA,
+    system: `You write the production brief Anim8 will use to do the work. Use only facts in the payload. Do not invent a budget, a price, a date, a quantity, a format, or a deliverable the client did not state.
+
+Write short labeled sections, in this order:
+
+The job
+What we're making
+Specs
+Creative direction
+References
+Still open
+
+The job: one or two sentences on the outcome, from their idea and goal.
+What we're making: each service and category, with the exact counts, lengths, and outputs they named.
+Specs: every answered question, phrased as a production note.
+Creative direction: their tone, borrowed qualities, and constraints. Drop filler.
+References: pinned studio work, their images, and their links. Include what they asked to borrow when they said so.
+Still open: only gaps that would change the work. If nothing material is missing, write "None. Ready to scope."
+
+Plain sentences. No marketing language. No invented shot list.`,
+    user: payload,
+  });
+
+  return { questions: [], brief: written.brief.replace(/\r\n/g, '\n').trim().slice(0, 6000) };
+}

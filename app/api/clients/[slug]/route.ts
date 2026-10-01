@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientBySlug, getClientPortalRedirect } from '@/lib/client-registry';
-import { createClientSubmission, getClientPortalTasks } from '@/lib/asana';
+import { createClientSubmission, enableCustomFieldEnumOption, getClientPortalTasks } from '@/lib/asana';
 import {
   CLIENT_STATUS_NEW_SUBMISSION,
   FIELD_CLIENT_STATUS,
@@ -25,6 +25,15 @@ function isVercelBlobUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+function singleLine(value: string, max: number): string {
+  return value.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+function rejectedEnumOption(err: unknown): string | null {
+  const message = err instanceof Error ? err.message : '';
+  return message.match(/not:\s*(\d+)/)?.[1] ?? null;
 }
 
 function parseAttachmentUrls(raw: FormDataEntryValue | null): string[] {
@@ -143,7 +152,7 @@ export async function POST(
     const linkText =
       typeof referenceLinks === 'string' ? referenceLinks.trim() : '';
     const attachmentUrls = parseAttachmentUrls(attachmentUrlsRaw);
-    const primary = (linkText || attachmentUrls[0] || '').slice(0, 1024);
+    const primary = singleLine(linkText || attachmentUrls[0] || '', 1024);
     if (primary) {
       customFields[FIELD_PRIMARY_LINK] = primary;
     }
@@ -159,14 +168,45 @@ export async function POST(
       noteParts.push(`Client Drive folder:\n${client.driveFolderUrl}`);
     }
 
-    await createClientSubmission({
-      name: `[${client.displayName}] ${name.trim()}`,
-      notes: noteParts.join('\n\n'),
-      dueOn: typeof dueOn === 'string' && dueOn ? dueOn : undefined,
-      projectGid: client.intakeProjectGid,
-      sectionGid: INTAKE_SECTION_NEW_SUBMISSIONS,
-      customFields,
-    });
+    let fields = customFields;
+    let created = false;
+    const reenabled = new Set<string>();
+    for (let attempt = 0; attempt < 4 && !created; attempt += 1) {
+      try {
+        await createClientSubmission({
+          name: `[${client.displayName}] ${name.trim()}`,
+          notes: noteParts.join('\n\n'),
+          dueOn: typeof dueOn === 'string' && dueOn ? dueOn : undefined,
+          projectGid: client.intakeProjectGid,
+          sectionGid: INTAKE_SECTION_NEW_SUBMISSIONS,
+          customFields: fields,
+        });
+        created = true;
+      } catch (err) {
+        const rejected = rejectedEnumOption(err);
+        const fieldGid = rejected
+          ? Object.entries(fields).find(([, value]) => value === rejected)?.[0]
+          : undefined;
+        if (!rejected || !fieldGid) throw err;
+
+        const ownsOption = client.filters.some((filter) => filter.optionGid === rejected);
+        if (ownsOption && !reenabled.has(rejected)) {
+          reenabled.add(rejected);
+          try {
+            await enableCustomFieldEnumOption(rejected);
+            continue;
+          } catch (enableErr) {
+            console.error(`Could not re-enable Asana option ${rejected}`, enableErr);
+          }
+        }
+
+        const next = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== rejected));
+        if (Object.keys(next).length === Object.keys(fields).length) throw err;
+        console.error(`Asana rejected option ${rejected}; retrying without it`);
+        fields = next;
+      }
+    }
+    if (!created) throw new Error('Could not create the Asana task');
 
     recentSubmissions.set(client.slug, Date.now());
 

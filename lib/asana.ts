@@ -782,6 +782,14 @@ export async function createCustomFieldEnumOption(
 ): Promise<AsanaEnumOption> {
   return asanaFetch<AsanaEnumOption>(`/custom_fields/${fieldGid}/enum_options`, {
     method: 'POST',
-    body: JSON.stringify({ data: { name } }),
+    body: JSON.stringify({ data: { name, enabled: true } }),
+  });
+}
+
+/** Turn a client option back on so a portal submission can be tagged with it. */
+export async function enableCustomFieldEnumOption(optionGid: string): Promise<void> {
+  await asanaFetch(`/enum_options/${optionGid}`, {
+    method: 'PUT',
+    body: JSON.stringify({ data: { enabled: true } }),
   });
 }

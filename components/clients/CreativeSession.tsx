@@ -72,8 +72,8 @@ import {
   type SessionStep,
 } from '@/lib/creative-session';
 import {
-  PLACEHOLDER_INSPO,
   gumletIdFromUrl,
+  isStudioPiece,
   mixSeed,
   pieceCaption,
   pieceStill,
@@ -82,6 +82,9 @@ import {
   workTagLabel,
   type InspoPiece,
 } from '@/lib/work-bank';
+
+/** Changing this reloads the studio sample even when the client slug stays the same. */
+const STUDIO_SAMPLE = 2;
 
 type CreativeSessionProps = {
   slug: string;
@@ -312,7 +315,7 @@ function Photo({
   onRatio?: (ratio: number) => void;
 }) {
   const src = pieceStill(piece);
-  if (!src) return <div className={`absolute inset-0 bg-white/5 ${className}`} />;
+  if (!src || src.startsWith('/brief-session/')) return <div className={`absolute inset-0 bg-white/5 ${className}`} />;
   return (
     // Blob stills and Gumlet thumbnails are not in the next/image allowlist.
     // eslint-disable-next-line @next/next/no-img-element
@@ -421,7 +424,12 @@ export function CreativeSession({
   pastedRef.current = pasted;
   const [bank, setBank] = useState<InspoPiece[] | null>(null);
   const [seed, setSeed] = useState(1);
-  const [link, setLink] = useState('');
+  const [links, setLinks] = useState<{ id: string; value: string }[]>([{ id: 'link-1', value: '' }]);
+  const linkSeq = useRef(1);
+  const link = links
+    .map((item) => item.value.trim())
+    .filter(Boolean)
+    .join('\n');
   const [goal, setGoal] = useState('');
   const [audience, setAudience] = useState('');
   const [date, setDate] = useState('');
@@ -431,6 +439,12 @@ export function CreativeSession({
   const [fileMessage, setFileMessage] = useState('');
   const [customDraft, setCustomDraft] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [briefPass, setBriefPass] = useState<'idle' | 'shaping' | 'questions' | 'ready' | 'fallback'>('idle');
+  const [followQuestions, setFollowQuestions] = useState<{ id: string; prompt: string }[]>([]);
+  const [followAnswers, setFollowAnswers] = useState<Record<string, string>>({});
+  const [briefNote, setBriefNote] = useState<string | null>(null);
+  const briefStarted = useRef(false);
+  const snapshotRef = useRef<SessionSnapshot | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitLabel, setSubmitLabel] = useState('Sending…');
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -440,7 +454,7 @@ export function CreativeSession({
     () => (allowPreview && previewId ? resolveProfile(previewId) : profileForClient(clientName, engagement)),
     [allowPreview, previewId, clientName, engagement]
   );
-  const catalog = useMemo(() => (bank && bank.length ? bank : PLACEHOLDER_INSPO), [bank]);
+  const catalog = useMemo(() => (bank ?? []).filter(isStudioPiece), [bank]);
 
   useEffect(() => {
     setSeed(Math.floor(Math.random() * 1_000_000_000) || 1);
@@ -455,7 +469,7 @@ export function CreativeSession({
         return Array.isArray(data.pieces) ? data.pieces : [];
       })
       .then((pieces) => {
-        if (!cancelled) setBank(pieces);
+        if (!cancelled) setBank(pieces.filter(isStudioPiece));
       })
       .catch(() => {
         if (!cancelled) setBank([]);
@@ -463,7 +477,7 @@ export function CreativeSession({
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, STUDIO_SAMPLE]);
 
   useEffect(() => {
     const ids = new Set(catalog.map((piece) => piece.id));
@@ -571,6 +585,61 @@ export function CreativeSession({
   const accentPiece = catalog.find((piece) => piece.id === pins[0]) ?? requestPiece ?? collage[0] ?? null;
   const generated = assembleBrief(snapshot);
   const draft = customDraft ?? generated;
+  snapshotRef.current = snapshot;
+
+  const shapeBrief = useCallback(
+    async (followUps: { prompt: string; answer: string }[]) => {
+      const current = snapshotRef.current;
+      if (!current) return;
+      setBriefPass('shaping');
+      setBriefNote(null);
+      const lines = [assembleBrief(current)];
+      if (current.date) lines.push(`Requested timing: ${current.date}`);
+      if (needsBudget(current)) lines.push(`Budget range they selected: ${current.budget}`);
+      try {
+        const res = await fetch(`/api/clients/${encodeURIComponent(slug)}/session-brief`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ facts: lines.join('\n\n'), followUps }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          brief?: string;
+          questions?: { id: string; prompt: string }[];
+        };
+        if (!res.ok) throw new Error(data.error || 'Could not shape the brief.');
+        const questions = Array.isArray(data.questions) ? data.questions.filter((item) => item.prompt) : [];
+        if (questions.length && followUps.length === 0) {
+          setFollowQuestions(questions);
+          setFollowAnswers({});
+          setBriefPass('questions');
+          return;
+        }
+        if (typeof data.brief === 'string' && data.brief.trim()) {
+          setCustomDraft(data.brief.trim());
+          setFollowQuestions([]);
+          setEditing(false);
+          setBriefPass('ready');
+          return;
+        }
+        throw new Error('Could not shape the brief.');
+      } catch {
+        setBriefPass('fallback');
+        setBriefNote('We kept your answers as written. You can still send them.');
+      }
+    },
+    [slug]
+  );
+
+  useEffect(() => {
+    if (step !== 4) {
+      briefStarted.current = false;
+      return;
+    }
+    if (briefStarted.current) return;
+    briefStarted.current = true;
+    void shapeBrief([]);
+  }, [step, shapeBrief]);
   const count = briefCount(snapshot);
   const names = selected.map((id) => serviceLabel(profile, id));
 
@@ -707,6 +776,15 @@ export function CreativeSession({
 
   function goNext() {
     if (step === 4) {
+      if (briefPass === 'questions') {
+        void shapeBrief(
+          followQuestions.map((question) => ({
+            prompt: question.prompt,
+            answer: followAnswers[question.id] ?? '',
+          }))
+        );
+        return;
+      }
       void submit();
       return;
     }
@@ -793,6 +871,8 @@ export function CreativeSession({
   const focus = focusedService(profile);
   const nextIndex = activeId ? selected.indexOf(activeId) : -1;
   let nextLabel = ['Shape the request', 'Find your direction', 'Shape the details', 'Build my brief', 'Send brief'][step];
+  if (step === 4 && briefPass === 'shaping') nextLabel = 'Writing the brief…';
+  if (step === 4 && briefPass === 'questions') nextLabel = 'Write the brief';
   if (step === 1 && nextIndex >= 0 && nextIndex < selected.length - 1) {
     nextLabel = `Next: ${serviceLabel(profile, selected[nextIndex + 1])}`;
   }
@@ -801,7 +881,8 @@ export function CreativeSession({
     submitting ||
     (step === 0 && Boolean(focus) && !focusCategory) ||
     (step === 0 && !focus && !selected.length && !unsure && !idea.trim()) ||
-    (step === 1 && Boolean(activeId) && !serviceRequest(snapshot, activeId as ServiceId).category);
+    (step === 1 && Boolean(activeId) && !serviceRequest(snapshot, activeId as ServiceId).category) ||
+    (step === 4 && briefPass === 'shaping');
 
   const footerTitle = [
     'Your idea, taking shape.',
@@ -991,7 +1072,21 @@ export function CreativeSession({
                 gallery={gallery}
                 reduce={reduce}
                 onVibe={(value) => setVibes((current) => toggleValue(current, value))}
-                onLink={setLink}
+                links={links}
+                onChangeLink={(id, value) =>
+                  setLinks((current) => current.map((item) => (item.id === id ? { ...item, value } : item)))
+                }
+                onAddLink={() => {
+                  if (links.length >= 8) return;
+                  linkSeq.current += 1;
+                  setLinks((current) => [...current, { id: `link-${linkSeq.current}`, value: '' }]);
+                }}
+                onRemoveLink={(id) =>
+                  setLinks((current) => {
+                    const next = current.filter((item) => item.id !== id);
+                    return next.length ? next : [{ id: 'link-1', value: '' }];
+                  })
+                }
                 onPin={togglePin}
                 onBorrow={(id, tag) =>
                   setBorrow((current) => ({ ...current, [id]: toggleValue(current[id] ?? [], tag) }))
@@ -1048,9 +1143,16 @@ export function CreativeSession({
                   setEditing((value) => !value);
                 }}
                 onDraft={setCustomDraft}
+                briefPass={briefPass}
+                briefNote={briefNote}
+                followQuestions={followQuestions}
+                followAnswers={followAnswers}
+                onFollowAnswer={(id, value) => setFollowAnswers((current) => ({ ...current, [id]: value }))}
                 onRewrite={() => {
                   setCustomDraft(null);
                   setEditing(false);
+                  setFollowQuestions([]);
+                  void shapeBrief([]);
                 }}
               />
             ) : null}
@@ -1968,16 +2070,22 @@ function DirectionStep({
   snapshot,
   gallery,
   reduce,
+  links,
   onVibe,
-  onLink,
+  onChangeLink,
+  onAddLink,
+  onRemoveLink,
   onPin,
   onBorrow,
 }: {
   snapshot: SessionSnapshot;
   gallery: InspoPiece[];
   reduce: boolean;
+  links: { id: string; value: string }[];
   onVibe: (value: string) => void;
-  onLink: (value: string) => void;
+  onChangeLink: (id: string, value: string) => void;
+  onAddLink: () => void;
+  onRemoveLink: (id: string) => void;
   onPin: (id: string) => void;
   onBorrow: (id: string, tag: string) => void;
 }) {
@@ -2001,20 +2109,50 @@ function DirectionStep({
             </ChoiceTag>
           ))}
         </div>
-        <label className="mb-4 block text-xs" htmlFor="session-link">
-          Or bring something you love
-          <span className="mt-2 flex items-center gap-2 border-b border-white/15">
-            <FiLink className="text-white/40" aria-hidden />
-            <input
-              id="session-link"
-              type="url"
-              className="min-w-0 flex-1 bg-transparent py-2 text-xs text-white outline-none placeholder:text-white/35"
-              placeholder="Paste a reference link"
-              value={snapshot.link}
-              onChange={(event) => onLink(event.target.value)}
-            />
-          </span>
-        </label>
+        <div className="mb-4">
+          <p className="text-xs">Or bring something you love</p>
+          <ul className="mt-2 space-y-2">
+            {links.map((item, index) => (
+              <li key={item.id} className="flex items-center gap-2 border-b border-white/15">
+                <FiLink className="shrink-0 text-white/40" aria-hidden />
+                <input
+                  id={index === 0 ? 'session-link' : undefined}
+                  type="text"
+                  inputMode="url"
+                  className="min-w-0 flex-1 bg-transparent py-2 text-xs text-white outline-none placeholder:text-white/35"
+                  placeholder="Paste a reference link"
+                  value={item.value}
+                  onChange={(event) => onChangeLink(item.id, event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      onAddLink();
+                    }
+                  }}
+                />
+                {links.length > 1 ? (
+                  <button
+                    type="button"
+                    aria-label="Remove link"
+                    onClick={() => onRemoveLink(item.id)}
+                    className="grid h-6 w-6 shrink-0 place-items-center text-white/45 hover:text-white"
+                  >
+                    <FiX aria-hidden />
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {links.length < 8 ? (
+            <button
+              type="button"
+              onClick={onAddLink}
+              className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white"
+            >
+              <FiPlus aria-hidden /> Add another link
+            </button>
+          ) : null}
+        </div>
         <div className="rounded-lg bg-brand-lime/15 px-4 py-3 text-xs leading-relaxed text-brand-lime">
           <strong className="mb-1 block font-medium">Borrow the feeling. Make it yours.</strong>
           You might love one project&apos;s color and another&apos;s character. Mix them. That&apos;s where it gets interesting.
@@ -2290,6 +2428,11 @@ function ReviewStep({
   customDraft,
   editing,
   reduce,
+  briefPass,
+  briefNote,
+  followQuestions,
+  followAnswers,
+  onFollowAnswer,
   onEdit,
   onDraft,
   onRewrite,
@@ -2300,6 +2443,11 @@ function ReviewStep({
   customDraft: string | null;
   editing: boolean;
   reduce: boolean;
+  briefPass: 'idle' | 'shaping' | 'questions' | 'ready' | 'fallback';
+  briefNote: string | null;
+  followQuestions: { id: string; prompt: string }[];
+  followAnswers: Record<string, string>;
+  onFollowAnswer: (id: string, value: string) => void;
   onEdit: () => void;
   onDraft: (value: string) => void;
   onRewrite: () => void;
@@ -2323,8 +2471,28 @@ function ReviewStep({
           <Em>Coming together.</Em>
         </Title>
         <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
-          Here&apos;s the shape of it. Your engagement, each service, and the details that matter, in one place.
+          {briefPass === 'questions'
+            ? 'A few specifics are still missing. Answer what you can, then we write the brief your team will make from.'
+            : briefPass === 'shaping'
+              ? 'Pulling the specifics out of your answers.'
+              : 'This is the brief your team will use to do the work. Edit anything that should read differently.'}
         </p>
+        {briefPass === 'questions' ? (
+          <div className="mb-5 grid gap-3">
+            {followQuestions.map((question) => (
+              <label key={question.id} className="block text-xs" htmlFor={`follow-${question.id}`}>
+                {question.prompt}
+                <textarea
+                  id={`follow-${question.id}`}
+                  className={`${fieldClass} mt-2 min-h-[72px] resize-y`}
+                  value={followAnswers[question.id] ?? ''}
+                  onChange={(event) => onFollowAnswer(question.id, event.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+        ) : null}
+        {briefNote ? <p className="mb-4 text-[11px] text-white/45">{briefNote}</p> : null}
         <ul className="mb-5 grid gap-3">
           <ReviewRow icon={FiFolder} title={snapshot.profile.name} detail={engagementLabel(snapshot)} />
           <ReviewRow icon={FiCheck} title="Your creative direction" detail={direction} />
@@ -2339,9 +2507,11 @@ function ReviewStep({
             detail={missing.join(' · ') || 'Our team will confirm the plan with you.'}
           />
         </ul>
-        <button type="button" onClick={onEdit} className="border-b border-white text-xs">
-          {editing ? 'Done editing' : 'Make an edit'} ↗
-        </button>
+        {briefPass === 'ready' || briefPass === 'fallback' ? (
+          <button type="button" onClick={onEdit} className="border-b border-white text-xs">
+            {editing ? 'Done editing' : 'Make an edit'} ↗
+          </button>
+        ) : null}
         {customDraft !== null ? (
           <button type="button" onClick={onRewrite} className="ml-4 border-b border-white/30 text-xs text-white/60">
             Rewrite from your answers
@@ -2379,6 +2549,12 @@ function ReviewStep({
                 onChange={(event) => onDraft(event.target.value)}
               />
             </label>
+          ) : briefPass === 'shaping' || briefPass === 'idle' ? (
+            <p className="text-xs leading-7 text-[#667353]">Writing a brief from what you told us…</p>
+          ) : briefPass === 'questions' ? (
+            <p className="text-xs leading-7 text-[#667353]">
+              Answer the questions, then write the brief. Anything you leave blank stays listed as open.
+            </p>
           ) : (
             <div className="whitespace-pre-line text-xs leading-7">{draft}</div>
           )}

@@ -43,7 +43,6 @@ export type ReferenceDef = {
   alt: string;
   position: string;
   tags: string[];
-  src: string;
 };
 
 export type ClientProfile = {
@@ -120,7 +119,6 @@ export const REFERENCES: Record<RefId, ReferenceDef> = {
     alt: 'Sao House techwear character exploration',
     position: '58% 25%',
     tags: ['Character', 'World', 'Styling'],
-    src: '/brief-session/sao.webp',
   },
   reiya: {
     id: 'reiya',
@@ -129,7 +127,6 @@ export const REFERENCES: Record<RefId, ReferenceDef> = {
     alt: 'Reiya scalp care product and packaging exploration',
     position: '48% 20%',
     tags: ['Palette', 'Typography', 'Material'],
-    src: '/brief-session/reiya.webp',
   },
   goods: {
     id: 'goods',
@@ -138,7 +135,6 @@ export const REFERENCES: Record<RefId, ReferenceDef> = {
     alt: 'Bright yellow Good Goods packaging exploration',
     position: '50% 48%',
     tags: ['Color', 'Typography', 'Composition'],
-    src: '/brief-session/goods.webp',
   },
   brad: {
     id: 'brad',
@@ -147,7 +143,6 @@ export const REFERENCES: Record<RefId, ReferenceDef> = {
     alt: 'Brad the bearded dragon character exploration',
     position: '23% 25%',
     tags: ['Character', 'Expression', 'Texture'],
-    src: '/brief-session/brad.webp',
   },
 };
 
@@ -856,7 +851,12 @@ export function assembleBrief(snapshot: SessionSnapshot): string {
   if (snapshot.pastedNames.length) {
     parts.push(`Your inspiration images: ${snapshot.pastedNames.join(', ')}.`);
   }
-  if (snapshot.link.trim()) parts.push(`Additional reference: ${snapshot.link.trim()}`);
+  const references = snapshot.link
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (references.length === 1) parts.push(`Additional reference: ${references[0]}`);
+  else if (references.length) parts.push(`Additional references:\n${references.join('\n')}`);
   if (snapshot.fileNames.length) parts.push(`Supporting files: ${snapshot.fileNames.join(', ')}.`);
   return parts.join('\n\n');
 }

@@ -396,7 +396,7 @@ export function AdminWorkBank() {
             })}
           </ul>
         ) : loading ? null : (
-          <p className={adminBody}>Nothing in the bank yet. The brief builder keeps using placeholder stills until you add a piece.</p>
+          <p className={adminBody}>Nothing in the bank yet. The brief builder stays empty until a piece is added.</p>
         )}
       </section>
     </div>

@@ -195,11 +195,11 @@ type PastedInspo = {
   url: string;
 };
 
-type CollageSlot = {
+type CollageFrame = {
   left: number;
   top: number;
-  w: number;
-  h: number;
+  width: number;
+  height: number;
   rotate: number;
   z: number;
 };
@@ -221,47 +221,85 @@ function imageFilesFromTransfer(data: DataTransfer | null): File[] {
   return Array.from(data.files).filter((file) => file.type.startsWith('image/'));
 }
 
-/** Overlapping prints. Later images sit higher, so pasted work stacks on the studio set. */
-function collageSlots(count: number): CollageSlot[] {
-  const presets: Record<number, CollageSlot[]> = {
-    1: [{ left: 16, top: 10, w: 66, h: 76, rotate: -3, z: 1 }],
-    2: [
-      { left: 4, top: 8, w: 54, h: 62, rotate: -7, z: 1 },
-      { left: 38, top: 30, w: 56, h: 56, rotate: 6, z: 2 },
-    ],
-    3: [
-      { left: 2, top: 6, w: 50, h: 56, rotate: -8, z: 1 },
-      { left: 44, top: 4, w: 50, h: 42, rotate: 7, z: 2 },
-      { left: 22, top: 48, w: 60, h: 42, rotate: -3, z: 3 },
-    ],
-    4: [
-      { left: 0, top: 4, w: 46, h: 46, rotate: -8, z: 1 },
-      { left: 42, top: 0, w: 50, h: 40, rotate: 6, z: 2 },
-      { left: 6, top: 46, w: 48, h: 42, rotate: -3, z: 3 },
-      { left: 46, top: 42, w: 48, h: 46, rotate: 5, z: 4 },
-    ],
-    5: [
-      { left: 0, top: 2, w: 42, h: 42, rotate: -7, z: 1 },
-      { left: 34, top: 0, w: 40, h: 36, rotate: 5, z: 2 },
-      { left: 60, top: 26, w: 36, h: 40, rotate: 8, z: 3 },
-      { left: 4, top: 46, w: 44, h: 42, rotate: -4, z: 4 },
-      { left: 40, top: 50, w: 42, h: 40, rotate: 3, z: 5 },
-    ],
-  };
-  if (count <= 5) return presets[count] ?? [];
-  const rows = Math.ceil(count / 3);
-  return Array.from({ length: count }, (_, index) => {
-    const col = index % 3;
-    const row = Math.floor(index / 3);
-    return {
-      left: col * 30 + (row % 2) * 4,
-      top: row * (76 / rows),
-      w: 36,
-      h: Math.max(26, 68 / rows),
-      rotate: (index % 2 === 0 ? -6 : 5) + (index % 3),
-      z: index + 1,
-    };
+const COLLAGE_TILT = [-2.2, 1.8, -1.4, 2.4, -1.8, 1.2, -2, 1.6];
+
+function collageRowSize(count: number): number {
+  if (count <= 1) return 1;
+  if (count <= 4) return 2;
+  return 3;
+}
+
+/** Rows that fill the width, then grow a little when more pieces arrive. Portrait rows get extra height. */
+function packCollage(ratios: number[], canvasW: number, canvasH: number): CollageFrame[] {
+  const count = ratios.length;
+  if (!count || canvasW < 8 || canvasH < 8) return [];
+  const padX = canvasW * 0.035;
+  const padY = canvasH * 0.04;
+  const gap = Math.min(canvasW, canvasH) * 0.04;
+  const innerW = canvasW - padX * 2;
+  const innerH = canvasH - padY * 2;
+  const perRow = collageRowSize(count);
+  const rows: number[][] = [];
+  for (let index = 0; index < count; index += perRow) {
+    rows.push(Array.from({ length: Math.min(perRow, count - index) }, (_, offset) => index + offset));
+  }
+
+  const rowWidth = (row: number[], height: number) =>
+    row.reduce((sum, index) => sum + height * ratios[index], 0) + gap * (row.length - 1);
+
+  let heights = rows.map((row) => {
+    const sum = row.reduce((total, index) => total + ratios[index], 0);
+    const justified = (innerW - gap * (row.length - 1)) / Math.max(sum, 0.01);
+    const portraitRow = row.every((index) => ratios[index] < 0.85);
+    return Math.min(justified, innerH * (portraitRow ? 0.78 : 0.56));
   });
+
+  const gapTotal = gap * Math.max(0, rows.length - 1);
+  let used = heights.reduce((sum, height) => sum + height, 0);
+  if (used + gapTotal > innerH) {
+    const fit = (innerH - gapTotal) / used;
+    heights = heights.map((height) => height * fit);
+  } else {
+    let extra = innerH - used - gapTotal;
+    rows.forEach((row, index) => {
+      if (extra <= 0 || !row.every((item) => ratios[item] < 0.85)) return;
+      const cap = innerH * 0.78;
+      const add = Math.min(extra, Math.max(0, cap - heights[index]));
+      heights[index] += add;
+      extra -= add;
+    });
+  }
+
+  heights = heights.map((height, index) => {
+    const fitted = (innerW - gap * (rows[index].length - 1)) / Math.max(
+      rows[index].reduce((sum, item) => sum + ratios[item], 0),
+      0.01
+    );
+    return Math.min(height, fitted);
+  });
+
+  used = heights.reduce((sum, height) => sum + height, 0);
+  const frames: CollageFrame[] = new Array(count);
+  let y = padY + Math.max(0, innerH - used - gapTotal) / 2;
+  rows.forEach((row, rowIndex) => {
+    const height = heights[rowIndex];
+    const width = rowWidth(row, height);
+    let x = padX + Math.max(0, (innerW - width) / 2);
+    row.forEach((index) => {
+      const itemWidth = height * ratios[index];
+      frames[index] = {
+        left: (x / canvasW) * 100,
+        top: (y / canvasH) * 100,
+        width: (itemWidth / canvasW) * 100,
+        height: (height / canvasH) * 100,
+        rotate: COLLAGE_TILT[index % COLLAGE_TILT.length],
+        z: index + 1,
+      };
+      x += itemWidth + gap;
+    });
+    y += height + gap;
+  });
+  return frames;
 }
 
 function Photo({
@@ -289,20 +327,6 @@ function Photo({
       }}
     />
   );
-}
-
-/** Fit a print inside its collage slot without changing the image's own aspect ratio. */
-function collageFrame(slot: CollageSlot, ratio: number | undefined): React.CSSProperties {
-  const place = { left: `${slot.left}%`, top: `${slot.top}%`, zIndex: slot.z };
-  if (!ratio) {
-    return { ...place, width: `${slot.w}%`, height: `${slot.h}%` };
-  }
-  return {
-    ...place,
-    width: `min(${slot.w}cqw, calc(${slot.h}cqh * ${ratio}))`,
-    aspectRatio: String(ratio),
-    height: 'auto',
-  };
 }
 
 function ChoiceTag({
@@ -1499,12 +1523,28 @@ function InspoCanvas({
     ...studio.map((piece) => ({ kind: 'studio' as const, id: piece.id, piece, pasted: null as PastedInspo | null })),
     ...pasted.map((item) => ({ kind: 'yours' as const, id: item.id, piece: null as InspoPiece | null, pasted: item })),
   ];
-  const slots = collageSlots(prints.length);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [board, setBoard] = useState({ w: 0, h: 0 });
   const [ratios, setRatios] = useState<Record<string, number>>({});
   const noteRatio = useCallback((id: string, ratio: number) => {
     setRatios((current) => (Math.abs((current[id] ?? 0) - ratio) < 0.01 ? current : { ...current, [id]: ratio }));
   }, []);
+  const frames = packCollage(
+    prints.map((print) => ratios[print.id] ?? 1.2),
+    board.w,
+    board.h
+  );
   const [preview, setPreview] = useState<CanvasPreview | null>(null);
+
+  useEffect(() => {
+    const node = boardRef.current;
+    if (!node) return;
+    const measure = () => setBoard({ w: node.clientWidth, h: node.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   const closePreview = useCallback(() => setPreview(null), []);
 
   useEffect(() => {
@@ -1530,7 +1570,9 @@ function InspoCanvas({
     <aside className="min-w-0">
       <StageHead left={label ? `A starting point for ${label}` : 'A few possibilities'} right="Paste an image" />
       <div
-        className="relative h-[26rem] outline-none [container-type:size] sm:h-[32rem]"
+        ref={boardRef}
+        className="relative outline-none"
+        style={{ height: prints.length > 4 ? 'clamp(26rem, 78vh, 42rem)' : 'clamp(22rem, 68vh, 32rem)' }}
         tabIndex={0}
         role="region"
         aria-label="Inspiration canvas. Paste or drop an image to add it."
@@ -1549,23 +1591,38 @@ function InspoCanvas({
         }}
       >
         {prints.map((print, index) => {
-          const slot = slots[index];
-          if (!slot) return null;
+          const frame = frames[index];
+          if (!frame) return null;
           const caption = print.piece
             ? [print.piece.title, print.piece.client].filter(Boolean).join(' / ')
             : 'Yours';
           const pinned = print.piece ? pins.includes(print.piece.id) : false;
+          const place = {
+            left: `${frame.left}%`,
+            top: `${frame.top}%`,
+            width: `${frame.width}%`,
+            height: `${frame.height}%`,
+            rotate: frame.rotate,
+          };
           return (
             <motion.figure
               key={print.id}
               className="absolute overflow-hidden shadow-[0_18px_36px_rgba(0,0,0,0.38)]"
-              style={collageFrame(slot, ratios[print.id])}
-              initial={reduce ? false : { opacity: 0, scale: 0.96 }}
-              animate={reduce ? { opacity: 1, rotate: slot.rotate } : { opacity: 1, rotate: slot.rotate, y: [0, -6, 0] }}
+              style={{ zIndex: frame.z }}
+              initial={reduce ? false : { opacity: 0, scale: 0.98, ...place }}
+              animate={reduce ? { opacity: 1, ...place } : { opacity: 1, scale: 1, y: [0, -4, 0], ...place }}
               transition={
                 reduce
                   ? { duration: 0.2 }
-                  : { y: { duration: 6.4 + index * 0.4, repeat: Infinity, ease: 'easeInOut' }, opacity: stepEase, rotate: stepEase }
+                  : {
+                      opacity: stepEase,
+                      left: { duration: 0.55, ease: portalMotionEase },
+                      top: { duration: 0.55, ease: portalMotionEase },
+                      width: { duration: 0.55, ease: portalMotionEase },
+                      height: { duration: 0.55, ease: portalMotionEase },
+                      rotate: { duration: 0.55, ease: portalMotionEase },
+                      y: { duration: 6.4 + index * 0.4, repeat: Infinity, ease: 'easeInOut' },
+                    }
               }
             >
               {print.piece ? <Photo piece={print.piece} onRatio={(ratio) => noteRatio(print.id, ratio)} /> : null}

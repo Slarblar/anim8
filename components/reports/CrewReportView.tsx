@@ -1,7 +1,7 @@
 'use client';
 
 import type { CrewReportData } from '@/lib/crew-report';
-import { performanceBandLabel } from '@/lib/kpi-shared';
+import { lastCompleteKpiMonth, performanceBandLabel } from '@/lib/kpi-shared';
 
 const EMPLOYMENT_TYPE_LABELS: Record<CrewReportData['member']['employmentType'], string> = {
   full_time: 'Full-time',
@@ -43,12 +43,33 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-export function CrewReportView({ data }: { data: CrewReportData }) {
+export function PrintReportButton({ label = 'Print / Save as PDF' }: { label?: string }) {
+  return (
+    <button
+      type="button"
+      className="inline-flex shrink-0 items-center justify-center rounded-lg border border-brand-cyan/50 bg-brand-cyan px-4 py-2.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(56,194,214,0.25)] transition hover:brightness-110"
+      onClick={() => window.print()}
+    >
+      {label}
+    </button>
+  );
+}
+
+export function CrewReportView({
+  data,
+  embedded = false,
+}: {
+  data: CrewReportData;
+  /** Hide the per-person print button when this report is part of the staff batch. */
+  embedded?: boolean;
+}) {
   const { member, pto, attendance, kpi, generatedAt } = data;
+  const reported = lastCompleteKpiMonth();
+  const reportedMonth = kpi?.monthly.find((entry) => entry.month === reported.key);
 
   return (
     <div className="crew-report mx-auto max-w-3xl space-y-8 print:max-w-none">
-      <div className="flex items-start justify-between gap-4 print:hidden">
+      <div className={`flex items-start justify-between gap-4 print:hidden ${embedded ? 'hidden' : ''}`}>
         <div />
         <button
           type="button"
@@ -148,12 +169,12 @@ export function CrewReportView({ data }: { data: CrewReportData }) {
         ) : (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <StatCard label="YTD score" value={kpi.ytdScore.toFixed(1)} sub={`${kpi.ytdTasks} scored tasks`} />
               <StatCard
-                label="Current month"
-                value={kpi.currentMonthScore.toFixed(1)}
-                sub={performanceBandLabel(kpi.currentMonthBand)}
+                label={`${reported.label} KPI`}
+                value={reportedMonth ? reportedMonth.score.toFixed(1) : '—'}
+                sub={reportedMonth && reportedMonth.score > 0 ? performanceBandLabel(reportedMonth.band) : 'No score'}
               />
+              <StatCard label="YTD score" value={kpi.ytdScore.toFixed(1)} sub={`${kpi.ytdTasks} scored tasks`} />
               <StatCard label="FTE ratio" value={kpi.fteRatio.toFixed(2)} sub={`${kpi.weeklyContractedHours}h/wk`} />
             </div>
 

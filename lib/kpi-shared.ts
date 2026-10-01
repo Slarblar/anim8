@@ -74,6 +74,33 @@ export const KPI_BONUS_MIN_SCORE = PERFORMANCE_BAND_MIN.good;
 /** Fixed chart ceiling (~1.2× Great threshold; doc §4 high-performer example: 105). */
 export const KPI_CHART_SCALE_MAX = 105;
 
+/**
+ * Last fully closed calendar month in the admin reporting timezone (Denver).
+ * On Sep 30 that is August; on Oct 1 it becomes September. Directory badges
+ * and staff reports use this instead of the in-progress current month.
+ */
+export function lastCompleteKpiMonth(
+  now: Date = new Date(),
+  timeZone = 'America/Denver'
+): { key: string; label: string; shortLabel: string } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(now);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const key = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+  const anchor = new Date(Date.UTC(prevYear, prevMonth - 1, 15));
+  return {
+    key,
+    label: new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(anchor),
+    shortLabel: new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(anchor),
+  };
+}
+
 export function performanceBand(score: number): PerformanceBand {
   if (score >= PERFORMANCE_BAND_MIN.great) return 'great';
   if (score >= PERFORMANCE_BAND_MIN.good) return 'good';

@@ -2266,6 +2266,11 @@ html.careers-lang-vn :is(h1, h2, h3, h4, h5, h6, .font-heading, .font-black, .fo
  * strip the inherited admin/crew nav + dark background so "Print / Save as
  * PDF" produces a clean, ink-friendly page instead of white text on black.
  */
+.crew-report-batch > .crew-report + .crew-report {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 4rem;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -2273,6 +2278,13 @@ html.careers-lang-vn :is(h1, h2, h3, h4, h5, h6, .font-heading, .font-black, .fo
 
   .crew-report {
     color: #000000;
+    break-inside: avoid;
+  }
+
+  .crew-report-batch > .crew-report + .crew-report {
+    break-before: page;
+    border-top: 0;
+    padding-top: 0;
   }
 }
 

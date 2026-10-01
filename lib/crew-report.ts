@@ -3,6 +3,7 @@ import {
   annualLeaveEntitlementDays,
   currentMeetingAttendance,
   getCrewMember,
+  listCrewMembers,
   type CrewLocation,
   type EmploymentType,
 } from './crew-directory';
@@ -80,4 +81,13 @@ export async function buildCrewReport(email: string): Promise<CrewReportData | n
     kpi,
     generatedAt: new Date().toISOString(),
   };
+}
+
+/** Active crew, alphabetical — one report each for the admin staff batch. */
+export async function buildAllCrewReports(): Promise<CrewReportData[]> {
+  const members = (await listCrewMembers())
+    .filter((member) => member.active)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const reports = await Promise.all(members.map((member) => buildCrewReport(member.email)));
+  return reports.filter((report): report is CrewReportData => report !== null);
 }

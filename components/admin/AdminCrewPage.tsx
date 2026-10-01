@@ -17,6 +17,7 @@ import { computeAccruedPtoDays, monthKeyInTimeZone } from '@/lib/pto-accrual-sha
 import type { CrewStatusEntry } from '@/lib/crew-status-cache';
 import { studioTodayDateString } from '@/lib/studio-date';
 import {
+  lastCompleteKpiMonth,
   performanceBandLabel,
   type AdminKpiPerson,
   type PerformanceBand,
@@ -141,21 +142,30 @@ function CrewKpiBandBadge({ score, band }: { score: number; band?: PerformanceBa
 }
 
 function CrewKpiIndicator({ summary }: { summary?: PersonKPISummary | null }) {
-  const score = summary?.currentMonthScore ?? 0;
-  const band = summary?.currentMonthBand;
+  const reported = lastCompleteKpiMonth();
+  const month = summary?.monthly.find((entry) => entry.month === reported.key);
+  const score = month?.score ?? 0;
+  const band = month?.band;
   if (score <= 0 || !band) {
-    return <span className="text-right text-[10px] font-mono text-text-muted">No KPI yet</span>;
+    return (
+      <span className="text-right text-[10px] font-mono text-text-muted">No {reported.shortLabel} KPI</span>
+    );
   }
   const styleBand = getScoreBand(score);
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
-      <span
-        className="font-mono text-sm font-bold tabular-nums leading-none"
-        style={{ color: styleBand.color }}
-      >
-        {score.toFixed(1)}
+    <div className="flex flex-col items-end gap-1">
+      <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-muted">
+        {reported.shortLabel}
       </span>
-      <CrewKpiBandBadge score={score} band={band} />
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <span
+          className="font-mono text-sm font-bold tabular-nums leading-none"
+          style={{ color: styleBand.color }}
+        >
+          {score.toFixed(1)}
+        </span>
+        <CrewKpiBandBadge score={score} band={band} />
+      </div>
     </div>
   );
 }
@@ -1514,11 +1524,16 @@ export function AdminCrewPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-black uppercase tracking-tight text-white">Crew directory</h1>
-        <p className={`${adminBody} mt-1`}>
-          Anyone listed here (and active) can sign in to /crew with their Google account.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-white">Crew directory</h1>
+          <p className={`${adminBody} mt-1`}>
+            Anyone listed here (and active) can sign in to /crew with their Google account.
+          </p>
+        </div>
+        <Link href="/admin/crew/report" className={adminBtnPrimary}>
+          Staff report
+        </Link>
       </div>
 
       <AddCrewForm onCreated={load} />

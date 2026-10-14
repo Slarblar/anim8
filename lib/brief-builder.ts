@@ -543,7 +543,7 @@ function clipSessionQuestions(questions: SessionBriefQuestion[]): SessionBriefQu
     if (!id || seen.has(id)) id = `q${next.length + 1}`;
     seen.add(id);
     next.push({ id, prompt });
-    if (next.length >= 3) break;
+    if (next.length >= 2) break;
   }
   return next;
 }
@@ -552,6 +552,8 @@ function clipSessionQuestions(questions: SessionBriefQuestion[]): SessionBriefQu
 export async function shapeSessionBrief(input: {
   facts: string;
   followUps: SessionFollowUp[];
+  /** Skip extra questions and write from what they already gave. */
+  writeNow?: boolean;
 }): Promise<{ questions: SessionBriefQuestion[]; brief: string }> {
   const facts = input.facts.trim().slice(0, 8000);
   const followUps = input.followUps
@@ -560,20 +562,20 @@ export async function shapeSessionBrief(input: {
       answer: item.answer.replace(/\s+/g, ' ').trim().slice(0, 800),
     }))
     .filter((item) => item.prompt)
-    .slice(0, 3);
+    .slice(0, 2);
 
-  if (!followUps.length) {
+  if (!followUps.length && !input.writeNow) {
     const check = await anthropicJson<{ ready: boolean; questions: SessionBriefQuestion[] }>({
       model: HAIKU_MODEL,
       maxTokens: 500,
       schema: SESSION_QUESTIONS_SCHEMA,
       system: `You are a producer at Anim8. Read the client's answers and decide if a team could start the work.
 
-Ask up to 3 follow-up questions only when a missing fact would change what gets made: how many pieces, finished length, aspect ratio, what they are starting from, or a must-have or must-avoid. Do not ask about budget, price, the client's name, or anything already answered. Do not ask "tell us more."
+Ask at most 2 follow-up questions, and only when a missing fact would change the work: count, length, ratio, source, or a must-have. Skip budget, price, name, billing cycle, queue, and anything already answered. The request date already places the work.
 
-If the answers are already specific enough to start, set ready to true and questions to an empty array.
+If they gave enough to start, set ready to true and questions to an empty array.
 
-Write like a producer texting a client. One clear question each.`,
+Each question is one short direct sentence, 12 words or fewer. No preamble.`,
       user: facts,
     });
     const questions = check.ready ? [] : clipSessionQuestions(check.questions ?? []);

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 type PageProps = {
   params: { slug: string };
-  searchParams: { submitted?: string };
+  searchParams: { submitted?: string; name?: string };
 };
 
 export default async function ClientPortalPage({ params, searchParams }: PageProps) {
@@ -44,6 +44,7 @@ export default async function ClientPortalPage({ params, searchParams }: PagePro
       pastProjects={pastProjects}
       tasksError={tasksError}
       showSubmittedSuccess={searchParams.submitted === '1'}
+      submittedName={typeof searchParams.name === 'string' ? searchParams.name : ''}
     />
   );
 }

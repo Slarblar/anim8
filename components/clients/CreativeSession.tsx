@@ -34,7 +34,6 @@ import {
   CATEGORIES,
   DEMO_PROFILES,
   GOALS,
-  QUEUE,
   SERVICES,
   VIBES,
   applyAnswer,
@@ -64,6 +63,7 @@ import {
   serviceLabel,
   serviceRequest,
   servicesForPicker,
+  questionsForInput,
   visibleQuestions,
   type ClientProfile,
   type ServiceId,
@@ -94,6 +94,11 @@ type CreativeSessionProps = {
   engagement?: string;
   /** Local-only profile switcher. The live option uses the assigned engagement. */
   allowPreview?: boolean;
+  /** Where the session back link goes. Defaults to this client's portal. */
+  returnHref?: string;
+  returnLabel?: string;
+  /** Where a successful send goes. Defaults to this client's portal. */
+  doneHref?: string;
 };
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -397,11 +402,15 @@ export function CreativeSession({
   driveFolderUrl,
   engagement,
   allowPreview = false,
+  returnHref,
+  returnLabel = '← Portal',
+  doneHref,
 }: CreativeSessionProps) {
   const router = useRouter();
   const reduce = !!useReducedMotion();
   const [previewId, setPreviewId] = useState('');
   const [step, setStep] = useState<SessionStep>(0);
+  const [earlyHint, setEarlyHint] = useState(false);
   const [selected, setSelected] = useState<ServiceId[]>(() => {
     const only = soleScopedService(profileForClient(formatPortalDisplayName(displayName), engagement));
     return only ? [only] : [];
@@ -434,7 +443,6 @@ export function CreativeSession({
   const [audience, setAudience] = useState('');
   const [date, setDate] = useState('');
   const [budget, setBudget] = useState<string>(BUDGETS[0]);
-  const [priority, setPriority] = useState<string>(QUEUE[0]);
   const [files, setFiles] = useState<File[]>([]);
   const [fileMessage, setFileMessage] = useState('');
   const [customDraft, setCustomDraft] = useState<string | null>(null);
@@ -444,6 +452,7 @@ export function CreativeSession({
   const [followAnswers, setFollowAnswers] = useState<Record<string, string>>({});
   const [briefNote, setBriefNote] = useState<string | null>(null);
   const briefStarted = useRef(false);
+  const stepBeforeBrief = useRef<SessionStep>(0);
   const snapshotRef = useRef<SessionSnapshot | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitLabel, setSubmitLabel] = useState('Sending…');
@@ -565,7 +574,6 @@ export function CreativeSession({
     audience,
     date,
     budget,
-    priority,
     fileNames: files.map((file) => file.name),
     pastedNames: pasted.map((item) => item.name),
   };
@@ -588,7 +596,7 @@ export function CreativeSession({
   snapshotRef.current = snapshot;
 
   const shapeBrief = useCallback(
-    async (followUps: { prompt: string; answer: string }[]) => {
+    async (followUps: { prompt: string; answer: string }[], writeNow = false) => {
       const current = snapshotRef.current;
       if (!current) return;
       setBriefPass('shaping');
@@ -600,7 +608,7 @@ export function CreativeSession({
         const res = await fetch(`/api/clients/${encodeURIComponent(slug)}/session-brief`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ facts: lines.join('\n\n'), followUps }),
+          body: JSON.stringify({ facts: lines.join('\n\n'), followUps, writeNow }),
         });
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
@@ -609,7 +617,7 @@ export function CreativeSession({
         };
         if (!res.ok) throw new Error(data.error || 'Could not shape the brief.');
         const questions = Array.isArray(data.questions) ? data.questions.filter((item) => item.prompt) : [];
-        if (questions.length && followUps.length === 0) {
+        if (!writeNow && questions.length && followUps.length === 0) {
           setFollowQuestions(questions);
           setFollowAnswers({});
           setBriefPass('questions');
@@ -638,7 +646,7 @@ export function CreativeSession({
     }
     if (briefStarted.current) return;
     briefStarted.current = true;
-    void shapeBrief([]);
+    void shapeBrief([], true);
   }, [step, shapeBrief]);
   const count = briefCount(snapshot);
   const names = selected.map((id) => serviceLabel(profile, id));
@@ -665,7 +673,6 @@ export function CreativeSession({
     setStep(0);
     setUnsure(false);
     setBudget(BUDGETS[0]);
-    setPriority(QUEUE[0]);
     setCustomDraft(null);
     setEditing(false);
   }
@@ -774,6 +781,17 @@ export function CreativeSession({
     }
   }
 
+  function generateBrief() {
+    stepBeforeBrief.current = step;
+    briefStarted.current = true;
+    setFollowQuestions([]);
+    setBriefNote(null);
+    setCustomDraft(null);
+    setEditing(false);
+    setStep(4);
+    void shapeBrief([], true);
+  }
+
   function goNext() {
     if (step === 4) {
       if (briefPass === 'questions') {
@@ -781,7 +799,8 @@ export function CreativeSession({
           followQuestions.map((question) => ({
             prompt: question.prompt,
             answer: followAnswers[question.id] ?? '',
-          }))
+          })),
+          true
         );
         return;
       }
@@ -789,36 +808,28 @@ export function CreativeSession({
       return;
     }
     if (step === 0) {
-      setStep(1);
       setActive(selected[0] ?? null);
+      setStep(2);
       return;
     }
-    if (step === 1) {
-      const index = activeId ? selected.indexOf(activeId) : -1;
-      if (index >= 0 && index < selected.length - 1) {
-        setActive(selected[index + 1]);
-        return;
-      }
-      const missing = selected.find((id) => !serviceRequest(snapshot, id).category);
-      if (missing) {
-        setActive(missing);
-        return;
-      }
-      setStep(2);
+    if (step === 3) {
+      stepBeforeBrief.current = 3;
+      setStep(4);
       return;
     }
     setStep((current) => (current + 1) as SessionStep);
   }
 
   function goBack() {
-    const index = activeId ? selected.indexOf(activeId) : -1;
-    if (step === 1 && index > 0) {
-      setActive(selected[index - 1]);
+    if (step === 4) {
+      setStep(stepBeforeBrief.current);
       return;
     }
-    const previous = Math.max(0, step - 1) as SessionStep;
-    setStep(previous);
-    if (previous === 1) setActive(selected[selected.length - 1] ?? null);
+    if (step === 3) {
+      setStep(2);
+      return;
+    }
+    setStep(0);
   }
 
   async function submit() {
@@ -856,7 +867,15 @@ export function CreativeSession({
         setSubmitError(data.error ?? 'Submission failed. Please try again.');
         return;
       }
-      router.push(`/clients/${slug}?submitted=1`);
+      const sentName = requestTitle(snapshot);
+      if (doneHref) {
+        const url = new URL(doneHref, 'http://localhost');
+        url.searchParams.set('name', sentName);
+        router.push(`${url.pathname}${url.search}`);
+      } else {
+        const params = new URLSearchParams({ submitted: '1', name: sentName });
+        router.push(`/clients/${slug}?${params}`);
+      }
     } catch (err) {
       const fallback = driveFolderUrl
         ? 'We could not attach those files. Remove them and send, or use Your Drive.'
@@ -870,12 +889,13 @@ export function CreativeSession({
 
   const focus = focusedService(profile);
   const nextIndex = activeId ? selected.indexOf(activeId) : -1;
-  let nextLabel = ['Shape the request', 'Find your direction', 'Shape the details', 'Build my brief', 'Send brief'][step];
-  if (step === 4 && briefPass === 'shaping') nextLabel = 'Writing the brief…';
-  if (step === 4 && briefPass === 'questions') nextLabel = 'Write the brief';
+  let nextLabel = ['Continue', 'Keep going', 'Keep going', 'Keep going', 'Send brief'][step];
   if (step === 1 && nextIndex >= 0 && nextIndex < selected.length - 1) {
     nextLabel = `Next: ${serviceLabel(profile, selected[nextIndex + 1])}`;
   }
+  if (step === 4 && briefPass === 'shaping') nextLabel = 'Writing the brief…';
+  if (step === 4 && briefPass === 'questions') nextLabel = 'Generate brief';
+  const canGenerate = Boolean(idea.trim() || selected.length || unsure);
   const focusCategory = focus ? (requests[focus]?.category ?? '') : '';
   const nextDisabled =
     submitting ||
@@ -884,17 +904,23 @@ export function CreativeSession({
     (step === 1 && Boolean(activeId) && !serviceRequest(snapshot, activeId as ServiceId).category) ||
     (step === 4 && briefPass === 'shaping');
 
-  const footerTitle = [
-    'Your idea, taking shape.',
-    'The right questions for your request.',
-    'A shared visual language.',
-    'The useful details.',
-    'Your creative starting point.',
-  ][step];
+  const sendingAs = requestTitle(snapshot);
+  const footerTitle =
+    step === 4
+      ? sendingAs
+      : [
+          'Your idea, taking shape.',
+          'The right questions for your request.',
+          'A shared visual language.',
+          'The useful details.',
+          'Your creative starting point.',
+        ][step];
   const footerSub =
-    [names.join(' + '), pasted.length || pins.length ? `${pasted.length + pins.length} on the canvas` : engagementLabel(snapshot)]
-      .filter(Boolean)
-      .join(' · ') || "Start anywhere. We'll connect the dots.";
+    step === 4
+      ? 'This name goes to the team with the brief.'
+      : [names.join(' + '), pasted.length || pins.length ? `${pasted.length + pins.length} on the canvas` : engagementLabel(snapshot)]
+          .filter(Boolean)
+          .join(' · ') || "Start anywhere. We'll connect the dots.";
 
   const contextIcon = profile.kind === 'new' ? FiZap : profile.kind === 'retainer' ? FiRepeat : FiFolder;
   const ContextIcon = contextIcon;
@@ -902,7 +928,7 @@ export function CreativeSession({
     profile.kind === 'retainer' ? 'Your ongoing creative team' : profile.kind === 'project' ? "Let's keep building" : 'Your creative starting point';
 
   return (
-    <ClientPortalShell slug={slug} backHref={`/clients/${slug}`} backLabel="← Portal" session>
+    <ClientPortalShell slug={slug} backHref={returnHref ?? `/clients/${slug}`} backLabel={returnLabel} session>
       <div className="relative mt-2">
         <span className="brief-aurora" aria-hidden />
         <div className="brief-card relative">
@@ -972,41 +998,83 @@ export function CreativeSession({
           </div>
         </div>
 
-        <nav className="flex items-center border-b border-white/10 px-4 py-4 sm:px-8" aria-label="Your creative session">
-          {['The idea', 'The request', 'The direction', 'The details', 'Your brief'].map((label, index) => {
-            const current = step === index;
-            return (
-              <div key={label} className="flex min-w-0 flex-1 items-start">
-                <button
-                  type="button"
-                  className={`flex min-h-8 flex-col items-center gap-1 bg-transparent text-[10px] sm:text-xs min-[720px]:flex-row min-[720px]:gap-2 ${
-                    current ? 'text-white' : 'text-white/40 hover:text-white/70'
-                  }`}
-                  aria-current={current ? 'step' : undefined}
-                  onClick={() => setStep(index as SessionStep)}
-                >
-                  <span className="relative grid h-6 w-6 shrink-0 place-items-center text-[10px]">
-                    {current ? (
-                      <motion.span
-                        layoutId={reduce ? undefined : 'session-step-fill'}
-                        className="absolute inset-0 rounded-full bg-brand-lime"
-                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                      />
-                    ) : (
-                      <span className="absolute inset-0 rounded-full border border-white/15" />
-                    )}
-                    <span className={`relative ${current ? 'font-bold text-brand-black' : ''}`}>
-                      {String(index + 1).padStart(2, '0')}
+        <nav className="border-b border-white/10 px-4 py-4 sm:px-8" aria-label="Your creative session">
+          <div className="flex items-center">
+            {(
+              [
+                { id: 0 as SessionStep, label: 'The idea', n: '01' },
+                { id: 4 as SessionStep, label: 'Your brief', n: '02' },
+              ] as const
+            ).map((item, index) => {
+              const current = item.id === 0 ? step === 0 : step === 4;
+              const done = item.id === 0 && step > 0;
+              return (
+                <div key={item.label} className="flex min-w-0 flex-1 items-start">
+                  <button
+                    type="button"
+                    className={`flex min-h-8 flex-col items-center gap-1 bg-transparent text-[10px] sm:text-xs min-[720px]:flex-row min-[720px]:gap-2 ${
+                      current ? 'text-white' : 'text-white/40 hover:text-white/70'
+                    }`}
+                    aria-current={current ? 'step' : undefined}
+                    onClick={() => {
+                      if (item.id === 4 && step !== 4) stepBeforeBrief.current = step;
+                      setStep(item.id);
+                    }}
+                  >
+                    <span className="relative grid h-6 w-6 shrink-0 place-items-center text-[10px]">
+                      {current ? (
+                        <motion.span
+                          layoutId={reduce ? undefined : 'session-step-fill'}
+                          className="absolute inset-0 rounded-full bg-brand-lime"
+                          transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                        />
+                      ) : (
+                        <span className={`absolute inset-0 rounded-full border ${done ? 'border-brand-lime bg-brand-lime/20' : 'border-white/15'}`} />
+                      )}
+                      <span className={`relative ${current ? 'font-bold text-brand-black' : ''}`}>{item.n}</span>
                     </span>
-                  </span>
-                  <span className="max-w-[4.5rem] text-center text-[9px] leading-tight min-[720px]:max-w-none min-[720px]:text-left min-[720px]:text-xs">
-                    {label}
-                  </span>
-                </button>
-                {index < 4 ? <span className="mx-1.5 mt-3 h-px min-w-2 flex-1 bg-white/10 sm:mx-3" /> : null}
-              </div>
-            );
-          })}
+                    <span className="max-w-[4.5rem] text-center text-[9px] leading-tight min-[720px]:max-w-none min-[720px]:text-left min-[720px]:text-xs">
+                      {item.label}
+                    </span>
+                  </button>
+                  {index === 0 ? (
+                    <span className="relative mx-1.5 mt-3 h-px min-w-2 flex-1 overflow-hidden sm:mx-3">
+                      <span className="absolute inset-0 bg-white/10" />
+                      {step === 4 ? (
+                        <motion.span
+                          className="absolute inset-0 origin-left bg-brand-lime"
+                          initial={reduce ? false : { scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.45, ease: portalMotionEase }}
+                        />
+                      ) : null}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-white/40">
+            <span className="font-mono uppercase tracking-[0.14em]">Optional</span>
+            {(
+              [
+                { id: 2 as SessionStep, label: 'Direction' },
+                { id: 3 as SessionStep, label: 'Details' },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                aria-current={step === item.id ? 'step' : undefined}
+                onClick={() => setStep(item.id)}
+                className={`rounded-full border px-2.5 py-1 ${
+                  step === item.id ? 'border-white/30 text-white' : 'border-white/10 hover:border-white/25 hover:text-white/70'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </nav>
 
         <AnimatePresence mode="wait" initial={false}>
@@ -1044,6 +1112,13 @@ export function CreativeSession({
                 onFormat={(categoryId) => {
                   if (focus) chooseFormat(focus, categoryId);
                 }}
+                snapshot={snapshot}
+                activeId={activeId}
+                showOther={showOther}
+                onBranch={setActive}
+                onCategory={chooseCategory}
+                onAnswer={updateAnswer}
+                onOther={(id) => setShowOther((current) => ({ ...current, [id]: !current[id] }))}
               />
             ) : null}
             {step === 1 ? (
@@ -1105,7 +1180,6 @@ export function CreativeSession({
                 onAudience={setAudience}
                 onDate={setDate}
                 onBudget={setBudget}
-                onPriority={setPriority}
                 onOutput={(id, output) => {
                   const category = getCategory(id, serviceRequest(snapshot, id).category);
                   if (!category?.outputs.includes(output)) return;
@@ -1122,7 +1196,8 @@ export function CreativeSession({
                 }}
                 onChoose={(id) => {
                   setActive(id);
-                  setStep(1);
+                  setLast(id);
+                  setStep(0);
                 }}
                 onFiles={(next, message, accepted) => {
                   setFileMessage(message);
@@ -1152,14 +1227,52 @@ export function CreativeSession({
                   setCustomDraft(null);
                   setEditing(false);
                   setFollowQuestions([]);
-                  void shapeBrief([]);
+                  void shapeBrief([], true);
                 }}
               />
             ) : null}
           </motion.div>
         </AnimatePresence>
 
-        <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 px-5 py-4 sm:px-8">
+        <footer className="border-t border-white/10 px-5 py-4 sm:px-8">
+          {canGenerate && step < 4 ? (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <label className="inline-flex items-center gap-2 text-[11px] text-white/55" htmlFor="early-date">
+                Needed by
+                <input
+                  id="early-date"
+                  type="date"
+                  className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-white outline-none"
+                  value={date}
+                  onChange={(event) => setDate(event.target.value)}
+                />
+              </label>
+              <label className="inline-flex min-h-9 cursor-pointer items-center rounded-md border border-white/15 px-3 text-[11px] text-white/80 hover:border-white/35">
+                Add a file
+                <input
+                  className="sr-only"
+                  type="file"
+                  multiple
+                  onChange={(event) => {
+                    const next = Array.from(event.target.files ?? []);
+                    const message = validateAttachments(next);
+                    if (message) {
+                      event.target.value = '';
+                      setFileMessage(message);
+                      return;
+                    }
+                    setFiles(next);
+                    setFileMessage(next.length ? 'Added to this request.' : '');
+                  }}
+                />
+              </label>
+              {files.length ? (
+                <span className="min-w-0 truncate text-[11px] text-brand-lime">{files.map((file) => file.name).join(' · ')}</span>
+              ) : null}
+              {fileMessage ? <span className="text-[11px] text-white/55">{fileMessage}</span> : null}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-lime/15 text-brand-lime">
               <FiZap aria-hidden />
@@ -1179,10 +1292,53 @@ export function CreativeSession({
             >
               Back
             </button>
-            <GoButton disabled={nextDisabled} onClick={goNext}>
-              <span>{submitting ? submitLabel : nextLabel}</span>
-              <FiArrowRight aria-hidden />
-            </GoButton>
+            {canGenerate && step < 4 ? (
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={nextDisabled}
+                className="min-h-11 rounded-full border border-white/15 px-4 text-xs text-white/70 transition hover:border-white/40 hover:text-white disabled:opacity-40"
+              >
+                {step === 3 ? 'See the brief' : 'Add more detail'}
+              </button>
+            ) : null}
+            {canGenerate && step < 4 ? (
+              <span
+                className="relative"
+                onMouseEnter={() => setEarlyHint(true)}
+                onMouseLeave={() => setEarlyHint(false)}
+                onFocus={() => setEarlyHint(true)}
+                onBlur={() => setEarlyHint(false)}
+              >
+                <AnimatePresence>
+                  {earlyHint && step === 0 ? (
+                    <motion.span
+                      id="early-brief-note"
+                      role="tooltip"
+                      className="absolute bottom-full right-0 z-10 block w-64 pb-2"
+                      initial={reduce ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={reduce ? undefined : { opacity: 0, y: 6 }}
+                      transition={{ duration: 0.22, ease: portalMotionEase }}
+                    >
+                      <span className="block rounded-lg border border-white/10 bg-[#161a14] px-3 py-2 text-[11px] leading-relaxed text-white/80 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
+                        The more you tell us, the sooner we can start, and the closer the first version will be to what you had in mind.
+                      </span>
+                    </motion.span>
+                  ) : null}
+                </AnimatePresence>
+                <GoButton disabled={submitting || briefPass === 'shaping'} onClick={generateBrief}>
+                  <span>Generate brief</span>
+                  <FiArrowRight aria-hidden />
+                </GoButton>
+              </span>
+            ) : (
+              <GoButton disabled={nextDisabled} onClick={goNext}>
+                <span>{submitting ? submitLabel : nextLabel}</span>
+                <FiArrowRight aria-hidden />
+              </GoButton>
+            )}
+          </div>
           </div>
         </footer>
         <AnimatePresence>
@@ -1250,6 +1406,13 @@ function IdeaStep({
   onRemovePasted,
   formatId,
   onFormat,
+  snapshot,
+  activeId,
+  showOther,
+  onBranch,
+  onCategory,
+  onAnswer,
+  onOther,
 }: {
   profile: ClientProfile;
   selected: ServiceId[];
@@ -1271,10 +1434,25 @@ function IdeaStep({
   onRemovePasted: (id: string) => void;
   formatId: string;
   onFormat: (categoryId: string) => void;
+  snapshot: SessionSnapshot;
+  activeId: ServiceId | null;
+  showOther: Partial<Record<ServiceId, boolean>>;
+  onBranch: (id: ServiceId) => void;
+  onCategory: (id: ServiceId, categoryId: string) => void;
+  onAnswer: (id: ServiceId, fieldId: string, value: string) => void;
+  onOther: (id: ServiceId) => void;
 }) {
   const focused = focusedService(profile);
   const formats = focused ? formatsFor(profile, focused) : [];
   const available = servicesForPicker(profile, showExtras, selected);
+  const questionService = focused ?? activeId;
+  const questionRequest = questionService ? serviceRequest(snapshot, questionService) : null;
+  const questionList =
+    questionService && questionRequest && questionRequest.category && questionRequest.category !== 'unsure'
+      ? questionsForInput(questionService, questionRequest, idea)
+      : [];
+  const categoryChoices =
+    !focused && questionService ? formatsFor(profile, questionService, Boolean(showOther[questionService])) : [];
   return (
     <>
       <section>
@@ -1286,11 +1464,21 @@ function IdeaStep({
         </Title>
         <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
           {focused
-            ? "Pick the request. We'll ask just what this one needs."
+            ? "Tell us the idea, pick the request, and answer whatever is useful. The rest can stay open."
             : profile.kind === 'new'
-              ? "A rough idea is all you need. Pick a starting point, and we'll figure out the shape of it together."
-              : `Start with the services in your ${profile.kind === 'retainer' ? 'retainer' : 'project'}. We'll ask just what this request needs.`}
+              ? "A rough idea is enough. Pick a starting point and we'll ask only what that request still needs."
+              : `Start with the idea, then the services in your ${profile.kind === 'retainer' ? 'retainer' : 'project'}. We'll ask just what this request needs.`}
         </p>
+        <label className="mb-5 block text-xs" htmlFor="session-idea">
+          Got a spark? Tell us in a sentence. <span className="text-white/40">Optional</span>
+          <textarea
+            id="session-idea"
+            className={`${fieldClass} min-h-[92px] resize-y`}
+            placeholder="We're launching something new and want to make some noise…"
+            value={idea}
+            onChange={(event) => onIdea(event.target.value)}
+          />
+        </label>
         {focused ? (
           <motion.div
             className="mb-3 grid grid-cols-2 gap-2"
@@ -1436,16 +1624,90 @@ function IdeaStep({
         ) : null}
           </>
         )}
-        <label className="mt-5 block text-xs" htmlFor="session-idea">
-          Got a spark? Tell us in a sentence. <span className="text-white/40">Optional</span>
-          <textarea
-            id="session-idea"
-            className={`${fieldClass} min-h-[92px] resize-y`}
-            placeholder="We're launching something new and want to make some noise…"
-            value={idea}
-            onChange={(event) => onIdea(event.target.value)}
-          />
-        </label>
+        {questionService && questionRequest && !focused && selected.includes(questionService) ? (
+          <div className="mt-5">
+            {selected.length > 1 ? (
+              <div className="mb-3 flex flex-wrap gap-1.5" aria-label="Services in this request">
+                {selected.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={id === questionService}
+                    onClick={() => onBranch(id)}
+                    className={`min-h-9 rounded-md border px-2.5 text-[11px] ${
+                      id === questionService
+                        ? 'border-brand-lime/70 bg-brand-lime/15 text-brand-lime'
+                        : 'border-white/10 bg-white/[0.04] text-white/55'
+                    }`}
+                  >
+                    {serviceLabel(profile, id)}
+                    {serviceRequest(snapshot, id).category ? ' ✓' : ''}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <p className="mb-2 text-xs">What kind of {serviceLabel(profile, questionService).toLowerCase()}?</p>
+            <div className="mb-2 grid grid-cols-2 gap-2">
+              {categoryChoices.map((item) => {
+                const on = questionRequest.category === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => onCategory(questionService, item.id)}
+                    className={`min-h-[72px] rounded-lg border px-3 py-3 text-left ${
+                      on ? 'border-brand-lime/70 bg-brand-lime/15' : 'border-white/10 bg-white/[0.04]'
+                    }`}
+                  >
+                    <strong className="block text-xs font-medium">
+                      {categoryLabel(profile, questionService, item.id) || item.name}
+                      {on ? ' ✓' : ''}
+                    </strong>
+                    <small className="mt-1 block text-[10px] text-white/45">{item.note}</small>
+                  </button>
+                );
+              })}
+            </div>
+            {hasHiddenCategories(profile, questionService) ? (
+              <button
+                type="button"
+                onClick={() => onOther(questionService)}
+                className="inline-flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white"
+              >
+                {showOther[questionService] ? 'Hide unselected extra categories' : 'Explore other requests'}
+                {showOther[questionService] ? <FiMinus aria-hidden /> : <FiPlus aria-hidden />}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => onCategory(questionService, 'unsure')}
+              className="mt-1 block text-left text-[11px] text-white/50 hover:text-white"
+            >
+              {questionRequest.category === 'unsure' ? "✓ Let's Figure it Out" : "Let's Figure it Out"}
+            </button>
+          </div>
+        ) : null}
+        {questionService && questionRequest && questionList.length ? (
+          <div className="mt-5 rounded-lg bg-white/[0.04] p-5">
+            <h2 className="font-heading text-xl font-medium tracking-tight">What this request still needs.</h2>
+            <p className="mb-4 mt-1 text-[11px] text-white/45">
+              {idea.trim()
+                ? 'Anything your note already covered stays off this list. Leave the rest open if you want.'
+                : 'Leave anything open that you want to figure out with us.'}
+            </p>
+            {questionList.map((field) => (
+              <QuestionField
+                key={field.id}
+                serviceId={questionService}
+                request={questionRequest}
+                fieldId={field.id}
+                reduce={reduce}
+                onAnswer={onAnswer}
+              />
+            ))}
+          </div>
+        ) : null}
       </section>
       <InspoCanvas
         label={last ? serviceLabel(profile, last) : ''}
@@ -1891,7 +2153,7 @@ function RequestStep({
     ? [serviceLabel(snapshot.profile, activeId), picked || 'your request.']
     : service.title;
   const extra = isSeparateScope(snapshot.profile, activeId, request);
-  const questions = visibleQuestions(activeId, request);
+  const questions = questionsForInput(activeId, request, snapshot.idea);
 
   return (
     <>
@@ -1923,7 +2185,7 @@ function RequestStep({
           <Em>{title[1]}</Em>
         </h1>
         <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
-          Pick the closest fit. We&apos;ll shape the questions around what you&apos;re actually making.
+          Pick the closest fit. We&apos;ll only ask what this request still needs.
         </p>
         <div className="mb-3 grid grid-cols-2 gap-2">
           {list.map((item) => {
@@ -1995,12 +2257,23 @@ function RequestStep({
             <div className="mb-4 flex items-center gap-3">
               <BriefQuestionVisual prompt={`${category.name} ${category.note}`} active />
               <div>
-                <h2 className="font-heading text-xl font-medium tracking-tight">A little about your {projectNoun(activeId)}.</h2>
-                <p className="mt-1 text-[11px] text-white/45">Leave anything open that you&apos;d like to discuss.</p>
+                <h2 className="font-heading text-xl font-medium tracking-tight">What this request still needs.</h2>
+                <p className="mt-1 text-[11px] text-white/45">
+                  {snapshot.idea.trim()
+                    ? 'Anything your note already covered stays off this list. Leave the rest open if you want.'
+                    : 'Leave anything open that you want to figure out with us.'}
+                </p>
               </div>
             </div>
             {questions.map((field) => (
-              <QuestionField key={field.id} serviceId={activeId} request={request} fieldId={field.id} reduce={reduce} onAnswer={onAnswer} />
+              <QuestionField
+                key={field.id}
+                serviceId={activeId}
+                request={request}
+                fieldId={field.id}
+                reduce={reduce}
+                onAnswer={onAnswer}
+              />
             ))}
           </div>
         ) : (
@@ -2023,12 +2296,14 @@ function QuestionField({
   request,
   fieldId,
   reduce,
+  hideLabel = false,
   onAnswer,
 }: {
   serviceId: ServiceId;
   request: ServiceRequest;
   fieldId: string;
   reduce: boolean;
+  hideLabel?: boolean;
   onAnswer: (id: ServiceId, fieldId: string, value: string) => void;
 }) {
   const field = visibleQuestions(serviceId, request).find((item) => item.id === fieldId);
@@ -2037,10 +2312,14 @@ function QuestionField({
   const selected = Array.isArray(value) ? value : [value];
   return (
     <div className="mb-4 last:mb-0">
-      <p className="mb-2 text-xs">
-        {field.label}
-        {field.multi ? <span className="text-white/40"> · Pick any</span> : null}
-      </p>
+      {hideLabel ? (
+        field.multi ? <p className="mb-2 text-[11px] text-white/40">Pick any</p> : null
+      ) : (
+        <p className="mb-2 text-xs">
+          {field.label}
+          {field.multi ? <span className="text-white/40"> · Pick any</span> : null}
+        </p>
+      )}
       {field.options ? (
         <div className="flex flex-wrap gap-1.5">
           {field.options.map((option) => (
@@ -2092,7 +2371,7 @@ function DirectionStep({
   return (
     <>
       <section>
-        <Eyebrow>03 / Follow your instincts</Eyebrow>
+        <Eyebrow>Optional / Direction</Eyebrow>
         <Title>
           A little more
           <br />
@@ -2237,7 +2516,6 @@ function DetailsStep({
   onAudience,
   onDate,
   onBudget,
-  onPriority,
   onOutput,
   onChoose,
   onFiles,
@@ -2252,7 +2530,6 @@ function DetailsStep({
   onAudience: (value: string) => void;
   onDate: (value: string) => void;
   onBudget: (value: string) => void;
-  onPriority: (value: string) => void;
   onOutput: (id: ServiceId, output: string) => void;
   onChoose: (id: ServiceId) => void;
   onFiles: (files: File[], message: string, accepted: boolean) => void;
@@ -2269,7 +2546,7 @@ function DetailsStep({
   return (
     <>
       <section>
-        <Eyebrow>04 / Give the idea a purpose</Eyebrow>
+        <Eyebrow>Optional / Details</Eyebrow>
         <Title>
           What does
           <br />
@@ -2353,16 +2630,6 @@ function DetailsStep({
             Requested delivery date <span className="text-white/40">· Optional</span>
             <input id="session-date" type="date" className={fieldClass} value={snapshot.date} onChange={(event) => onDate(event.target.value)} />
           </label>
-          {snapshot.profile.kind === 'retainer' ? (
-            <label className="mb-4 block text-xs" htmlFor="session-priority">
-              Where should this sit in your queue?
-              <select id="session-priority" className={fieldClass} value={snapshot.priority} onChange={(event) => onPriority(event.target.value)}>
-                {QUEUE.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-          ) : null}
           {budget ? (
             <label className="mb-4 block text-xs" htmlFor="session-budget">
               {extras ? 'Budget for the additional scope' : 'Budget comfort zone'}
@@ -2464,18 +2731,16 @@ function ReviewStep({
   return (
     <>
       <section className="max-lg:order-2">
-        <Eyebrow>05 / A shared starting point</Eyebrow>
+        <Eyebrow>02 / Your brief</Eyebrow>
         <Title>
           Your idea.
           <br />
           <Em>Coming together.</Em>
         </Title>
         <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
-          {briefPass === 'questions'
-            ? 'A few specifics are still missing. Answer what you can, then we write the brief your team will make from.'
-            : briefPass === 'shaping'
-              ? 'Pulling the specifics out of your answers.'
-              : 'This is the brief your team will use to do the work. Edit anything that should read differently.'}
+          {briefPass === 'shaping'
+            ? 'Writing the brief from what you already told us. Anything still open stays in the brief.'
+            : 'This is the brief your team will use. Anything still open is listed there. Edit it, then send it.'}
         </p>
         {briefPass === 'questions' ? (
           <div className="mb-5 grid gap-3">
@@ -2530,15 +2795,26 @@ function ReviewStep({
         <StageHead left="Your project, on one page" right="Draft / 01" />
         <motion.article
           className="relative overflow-hidden rounded-sm bg-[#fffef7] px-6 py-7 text-[#28321b] shadow-[0_16px_40px_rgba(0,0,0,0.28)] sm:px-8"
-          initial={reduce ? false : { opacity: 0, y: 16, rotate: -0.4 }}
+          initial={reduce ? false : { opacity: 0, y: 16, rotate: -0.6 }}
           animate={{ opacity: 1, y: 0, rotate: 0 }}
           transition={stepEase}
         >
+          {briefPass === 'shaping' && !reduce ? (
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-[#c6f54a]/30 to-transparent"
+              initial={{ left: '-35%' }}
+              animate={{ left: '120%' }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          ) : null}
           <div className="flex items-center justify-between gap-3 border-b border-[#b3bca0] pb-4">
             <img src="/images/logos/anim-8-completewordmark-ink.svg" alt="Anim8" className="h-7 w-auto" />
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#616d50]">Creative brief</span>
           </div>
-          <h2 className="my-4 font-heading text-[1.7rem] font-medium leading-tight tracking-tight">{briefHeadline(snapshot.goal)}</h2>
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-[#616d50]">Sending as</p>
+          <h2 className="mt-1 font-heading text-[1.7rem] font-medium leading-tight tracking-tight">{requestTitle(snapshot)}</h2>
+          <p className="mb-4 mt-1 text-sm text-[#616d50]">{briefHeadline(snapshot.goal)}</p>
           {editing ? (
             <label className="block text-xs" htmlFor="session-editor">
               Refine your brief
@@ -2550,13 +2826,28 @@ function ReviewStep({
               />
             </label>
           ) : briefPass === 'shaping' || briefPass === 'idle' ? (
-            <p className="text-xs leading-7 text-[#667353]">Writing a brief from what you told us…</p>
-          ) : briefPass === 'questions' ? (
-            <p className="text-xs leading-7 text-[#667353]">
-              Answer the questions, then write the brief. Anything you leave blank stays listed as open.
-            </p>
+            <div className="space-y-2.5 py-1" aria-hidden>
+              {[92, 78, 84, 64].map((width, index) => (
+                <motion.span
+                  key={width}
+                  className="block h-2 origin-left rounded-full bg-[#d7dec8]"
+                  style={{ width: `${width}%` }}
+                  initial={reduce ? false : { scaleX: 0.2, opacity: 0.35 }}
+                  animate={reduce ? { opacity: 0.7 } : { scaleX: 1, opacity: [0.35, 1, 0.45] }}
+                  transition={{ duration: 1.15, delay: index * 0.12, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              ))}
+              <p className="pt-2 text-xs leading-7 text-[#667353]">Writing a brief from what you told us…</p>
+            </div>
           ) : (
-            <div className="whitespace-pre-line text-xs leading-7">{draft}</div>
+            <motion.div
+              className="whitespace-pre-line text-xs leading-7"
+              initial={reduce ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: portalMotionEase }}
+            >
+              {draft}
+            </motion.div>
           )}
           <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-[#b3bca0] pt-4">
             <div>

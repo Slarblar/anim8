@@ -50,6 +50,7 @@ type ClientPortalProps = {
   pastProjects: ClientPortalPastTask[];
   tasksError: string | null;
   showSubmittedSuccess?: boolean;
+  submittedName?: string;
 };
 
 const PROGRESS_POLL_MS = 45_000;
@@ -637,6 +638,7 @@ export function ClientPortal({
   pastProjects: initialPast,
   tasksError: initialTasksError,
   showSubmittedSuccess = false,
+  submittedName = '',
 }: ClientPortalProps) {
   const [pendingProjects, setPendingProjects] = useState(initialPending);
   const [approvedProjects, setApprovedProjects] = useState(initialApproved);
@@ -779,7 +781,11 @@ export function ClientPortal({
       ) : null}
 
       <PortalDismissibleAlert
-        message="Request submitted. We will follow up soon."
+        message={
+          submittedName.trim()
+            ? `${submittedName.trim()} is in. We will follow up soon.`
+            : 'Request submitted. We will follow up soon.'
+        }
         visible={showSubmittedSuccess && !submittedDismissed}
         onDismiss={() => {
           setSubmittedDismissed(true);

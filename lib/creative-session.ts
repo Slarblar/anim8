@@ -76,7 +76,6 @@ export type SessionSnapshot = {
   audience: string;
   date: string;
   budget: string;
-  priority: string;
   fileNames: string[];
   pastedNames: string[];
 };
@@ -101,7 +100,6 @@ export const BUDGETS = [
   '$10,000–$25,000',
   '$25,000+',
 ] as const;
-export const QUEUE = ['Add to current queue', 'Plan for next cycle', 'Discuss urgent turnaround'] as const;
 
 export const SERVICES: ServiceDef[] = [
   { id: 'video', name: 'Video edits', detail: 'Stories that move', ref: 'goods', title: ['What kind of', 'video edit?'] },
@@ -158,25 +156,25 @@ function q(
 }
 
 const videoBase: Question[] = [
-  q('source', 'What are we starting with?', ['Raw footage', 'Existing edit', 'Need footage', 'Not sure']),
-  q('footage', 'How much source footage?', ['Under 30 min', '30–120 min', '2+ hours'], {
+  q('source', 'Starting from?', ['Raw footage', 'Existing edit', 'Need footage', 'Not sure']),
+  q('footage', 'How much footage?', ['Under 30 min', '30–120 min', '2+ hours'], {
     when: (answers) => answers.source === 'Raw footage',
   }),
-  q('runtime', 'Ideal finished length', ['Under 15 sec', '15–30 sec', '30–60 sec', '1–3 min', '10+ min']),
-  q('formats', 'Where does it need to fit?', ['9:16 vertical', '16:9 landscape', '1:1 square', '4:5 portrait'], {
+  q('runtime', 'Finished length?', ['Under 15 sec', '15–30 sec', '30–60 sec', '1–3 min', '10+ min']),
+  q('formats', 'Aspect ratio?', ['9:16 vertical', '16:9 landscape', '1:1 square', '4:5 portrait'], {
     multi: true,
   }),
 ];
 
 const graphicBase: Question[] = [
-  q('quantity', 'How many designs?', ['1–3', '4–10', '11+', "Let's discuss"]),
-  q('assets', 'Are the words and brand assets ready?', ['Everything ready', 'Some assets ready', 'Need help with both']),
+  q('quantity', 'How many?', ['1–3', '4–10', '11+', "Let's discuss"]),
+  q('assets', 'Copy and assets ready?', ['Everything ready', 'Some assets ready', 'Need help with both']),
 ];
 
 const animationBase: Question[] = [
-  q('models', 'Do you have 3D assets?', ['Production-ready models', 'Models need work', 'Build from scratch', 'Not sure']),
-  q('runtime', 'Approximate animation length', ['Under 10 sec', '10–30 sec', '30–60 sec', '60+ sec']),
-  q('style', 'How should it feel?', ['Photoreal', 'Stylized', 'Graphic / abstract', "Let's explore"]),
+  q('models', '3D assets?', ['Production-ready models', 'Models need work', 'Build from scratch', 'Not sure']),
+  q('runtime', 'Length?', ['Under 10 sec', '10–30 sec', '30–60 sec', '60+ sec']),
+  q('style', 'Look?', ['Photoreal', 'Stylized', 'Graphic / abstract', "Let's explore"]),
 ];
 
 export const CATEGORIES: Record<ServiceId, CategoryDef[]> = {
@@ -729,6 +727,33 @@ export function visibleQuestions(serviceId: ServiceId, request: ServiceRequest):
   return category.questions.filter((field) => !field.when || field.when(request.answers));
 }
 
+/** Choice questions the note already answers. Follow-ups still appear from `when`. */
+const COVERED_BY_INPUT: Record<string, RegExp> = {
+  source: /\b(raw footage|existing edit|need footage|footage ready|still being filmed|need filming)\b/i,
+  footage: /\b(\d+\s*(min|mins|minutes|hours)|under 30|2\+ hours)\b/i,
+  runtime: /\b\d+\s*(s|sec|secs|seconds|min|mins|minutes)\b/i,
+  length: /\b\d+\s*(s|sec|secs|seconds|min|mins|minutes|slides)\b/i,
+  formats: /\b(9:16|16:9|1:1|4:5|vertical|landscape|square)\b/i,
+  format: /\b(static posts|carousels?|stories|powerpoint|google slides|keynote)\b/i,
+  quantity: /\b\d+\s*(designs?|posts?|versions?|loops?|slides?|skus?|pieces?|shots?)\b/i,
+  models: /\b(production-ready models|from scratch|assets ready|no models)\b/i,
+  style: /\b(photoreal|stylized|abstract)\b/i,
+  hooks: /\b(\d+\s*hooks|one concept|hook variations)\b/i,
+  cameras: /\b(\d+\s*cameras|audio only)\b/i,
+  shots: /\b\d+\s*shots?\b/i,
+  skus: /\b\d+\s*skus?\b/i,
+  pages: /\b\d+\s*pages?\b/i,
+};
+
+export function questionsForInput(serviceId: ServiceId, request: ServiceRequest, idea: string): Question[] {
+  const note = idea.trim();
+  return visibleQuestions(serviceId, request).filter((field) => {
+    if (!field.options || !note) return true;
+    const pattern = COVERED_BY_INPUT[field.id];
+    return !pattern || !pattern.test(note);
+  });
+}
+
 export function applyAnswer(serviceId: ServiceId, request: ServiceRequest, fieldId: string, value: string): ServiceRequest {
   const field = visibleQuestions(serviceId, request).find((item) => item.id === fieldId);
   if (!field) return request;
@@ -830,7 +855,6 @@ export function assembleBrief(snapshot: SessionSnapshot): string {
   } else {
     parts.push('Creative approach and deliverables to be discussed.');
   }
-  if (snapshot.profile.kind === 'retainer') parts.push(`Queue preference: ${snapshot.priority}.`);
   if (hasSeparateScope(snapshot)) {
     parts.push('Additional scope requires a separate estimate and approval before work starts.');
   }

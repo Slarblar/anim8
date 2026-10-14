@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientRecord } from '@/lib/client-registry';
 import { CLIENT_ENGAGEMENTS, type ClientEngagementId } from '@/lib/creative-session';
@@ -889,6 +890,8 @@ export function AdminClientsPage() {
   const [clients, setClients] = useState<ClientRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [justCreated, setJustCreated] = useState(false);
+  const [justRequested, setJustRequested] = useState(false);
+  const [requestedName, setRequestedName] = useState('');
 
   const load = useCallback(async () => {
     setError(null);
@@ -909,15 +912,26 @@ export function AdminClientsPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setJustRequested(params.get('requested') === '1');
+    setRequestedName(params.get('name') ?? '');
+  }, []);
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-black uppercase tracking-tight text-white">Clients</h1>
-        <p className={`${adminBody} mt-1`}>
-          Manage client portal links and their Asana &quot;Design Clients&quot; mapping.
-          Clients can also open <span className="font-mono text-white/80">/clients</span> and
-          enter their contact email to get a sign-in link. Direct slug links still work.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-white">Clients</h1>
+          <p className={`${adminBody} mt-1 max-w-2xl`}>
+            Manage client portal links and their Asana &quot;Design Clients&quot; mapping.
+            Clients can also open <span className="font-mono text-white/80">/clients</span> and
+            enter their contact email to get a sign-in link. Direct slug links still work.
+          </p>
+        </div>
+        <Link href="/admin/request" className={adminBtnPrimary}>
+          Admin request
+        </Link>
       </div>
 
       <AddClientForm
@@ -928,6 +942,13 @@ export function AdminClientsPage() {
       />
 
       {justCreated ? <p className={adminAlertSuccess}>Client created.</p> : null}
+      {justRequested ? (
+        <p className={adminAlertSuccess}>
+          {requestedName.trim()
+            ? `${requestedName.trim()} is in Asana under that client.`
+            : 'Request sent. It is in Asana under that client.'}
+        </p>
+      ) : null}
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
       {clients === null ? (

@@ -34,6 +34,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                 PTO requests
                 <PendingRequestsBadge />
               </Link>
+              <Link
+                href="/admin/request"
+                className="inline-flex items-center rounded-lg border border-brand-lime/70 bg-brand-lime px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-brand-black transition hover:brightness-110"
+              >
+                Admin request
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3 text-xs text-text-muted">

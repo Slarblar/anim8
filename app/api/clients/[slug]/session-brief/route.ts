@@ -47,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
   try {
     recent.set(client.slug, Date.now());
-    const shaped = await shapeSessionBrief({ facts, followUps });
+    const shaped = await shapeSessionBrief({ facts, followUps, writeNow: raw.writeNow === true });
     return NextResponse.json(shaped);
   } catch (err) {
     console.error('Session brief failed', err);

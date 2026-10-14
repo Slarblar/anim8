@@ -117,7 +117,7 @@ const SERVICE_ICONS: Record<ServiceId, typeof FiVideo> = {
 };
 
 const fieldClass =
-  'brief-field mt-2 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-3 text-sm text-white outline-none placeholder:text-white/35';
+  'brief-field mt-2 w-full rounded-lg border border-white/15 bg-white/[0.04] px-4 py-3.5 text-base text-white outline-none placeholder:text-white/50';
 
 function profileForClient(displayName: string, engagement?: string): ClientProfile {
   const base = resolveProfile(engagement);
@@ -353,7 +353,7 @@ function ChoiceTag({
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={`rounded-md border px-3 py-2 text-left text-xs transition-colors ${
+      className={`min-h-11 rounded-lg border px-4 py-2.5 text-left text-[15px] leading-snug transition-colors ${
         pressed
           ? 'border-brand-lime/80 bg-brand-lime/15 text-brand-lime'
           : 'border-white/10 bg-white/[0.04] text-white/80 hover:border-white/25 hover:bg-white/[0.07]'
@@ -384,7 +384,7 @@ function GoButton({
       disabled={disabled}
       onClick={onClick}
       data-ready={!disabled ? 'true' : undefined}
-      className="brief-go relative inline-flex min-h-11 items-center justify-center gap-3 overflow-hidden rounded-md px-5 py-3 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
+      className="brief-go relative inline-flex min-h-12 items-center justify-center gap-3 overflow-hidden rounded-md px-5 py-3 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
       initial="rest"
       whileHover={live ? { scale: 1.03, y: -2 } : undefined}
       whileTap={live ? { scale: 0.98 } : undefined}
@@ -1012,7 +1012,7 @@ export function CreativeSession({
                 <div key={item.label} className="flex min-w-0 flex-1 items-start">
                   <button
                     type="button"
-                    className={`flex min-h-8 flex-col items-center gap-1 bg-transparent text-[10px] sm:text-xs min-[720px]:flex-row min-[720px]:gap-2 ${
+                    className={`flex min-h-10 flex-col items-center gap-1.5 bg-transparent text-sm min-[720px]:flex-row min-[720px]:gap-2 ${
                       current ? 'text-white' : 'text-white/40 hover:text-white/70'
                     }`}
                     aria-current={current ? 'step' : undefined}
@@ -1033,7 +1033,7 @@ export function CreativeSession({
                       )}
                       <span className={`relative ${current ? 'font-bold text-brand-black' : ''}`}>{item.n}</span>
                     </span>
-                    <span className="max-w-[4.5rem] text-center text-[9px] leading-tight min-[720px]:max-w-none min-[720px]:text-left min-[720px]:text-xs">
+                    <span className="max-w-[5.5rem] text-center text-sm leading-tight min-[720px]:max-w-none min-[720px]:text-left">
                       {item.label}
                     </span>
                   </button>
@@ -1054,7 +1054,7 @@ export function CreativeSession({
               );
             })}
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-white/40">
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-white/60">
             <span className="font-mono uppercase tracking-[0.14em]">Optional</span>
             {(
               [
@@ -1067,7 +1067,7 @@ export function CreativeSession({
                 type="button"
                 aria-current={step === item.id ? 'step' : undefined}
                 onClick={() => setStep(item.id)}
-                className={`rounded-full border px-2.5 py-1 ${
+                className={`rounded-full border px-3 py-1.5 ${
                   step === item.id ? 'border-white/30 text-white' : 'border-white/10 hover:border-white/25 hover:text-white/70'
                 }`}
               >
@@ -1237,17 +1237,17 @@ export function CreativeSession({
         <footer className="border-t border-white/10 px-5 py-4 sm:px-8">
           {canGenerate && step < 4 ? (
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <label className="inline-flex items-center gap-2 text-[11px] text-white/55" htmlFor="early-date">
+              <label className="inline-flex items-center gap-2 text-sm text-white/80" htmlFor="early-date">
                 Needed by
                 <input
                   id="early-date"
                   type="date"
-                  className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-white outline-none"
+                  className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-base text-white outline-none"
                   value={date}
                   onChange={(event) => setDate(event.target.value)}
                 />
               </label>
-              <label className="inline-flex min-h-9 cursor-pointer items-center rounded-md border border-white/15 px-3 text-[11px] text-white/80 hover:border-white/35">
+              <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-white/15 px-4 text-sm text-white/90 hover:border-white/35">
                 Add a file
                 <input
                   className="sr-only"
@@ -1267,9 +1267,9 @@ export function CreativeSession({
                 />
               </label>
               {files.length ? (
-                <span className="min-w-0 truncate text-[11px] text-brand-lime">{files.map((file) => file.name).join(' · ')}</span>
+                <span className="min-w-0 truncate text-sm text-brand-lime">{files.map((file) => file.name).join(' · ')}</span>
               ) : null}
-              {fileMessage ? <span className="text-[11px] text-white/55">{fileMessage}</span> : null}
+              {fileMessage ? <span className="text-sm text-white/70">{fileMessage}</span> : null}
             </div>
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1278,8 +1278,8 @@ export function CreativeSession({
               <FiZap aria-hidden />
             </div>
             <div className="min-w-0">
-              <div className="text-xs text-white">{footerTitle}</div>
-              <div className="mt-0.5 text-[11px] text-white/45" aria-live="polite">
+              <div className="text-base text-white">{footerTitle}</div>
+              <div className="mt-0.5 text-sm text-white/70" aria-live="polite">
                 {footerSub}
               </div>
             </div>
@@ -1288,7 +1288,7 @@ export function CreativeSession({
             <button
               type="button"
               onClick={goBack}
-              className={`min-h-11 px-2 text-xs text-white/50 hover:text-white ${step === 0 ? 'invisible' : ''}`}
+              className={`min-h-12 px-2 text-base text-white/70 hover:text-white ${step === 0 ? 'invisible' : ''}`}
             >
               Back
             </button>
@@ -1297,7 +1297,7 @@ export function CreativeSession({
                 type="button"
                 onClick={goNext}
                 disabled={nextDisabled}
-                className="min-h-11 rounded-full border border-white/15 px-4 text-xs text-white/70 transition hover:border-white/40 hover:text-white disabled:opacity-40"
+                className="min-h-12 rounded-full border border-white/20 px-5 text-base text-white/85 transition hover:border-white/40 hover:text-white disabled:opacity-40"
               >
                 {step === 3 ? 'See the brief' : 'Add more detail'}
               </button>
@@ -1321,7 +1321,7 @@ export function CreativeSession({
                       exit={reduce ? undefined : { opacity: 0, y: 6 }}
                       transition={{ duration: 0.22, ease: portalMotionEase }}
                     >
-                      <span className="block rounded-lg border border-white/10 bg-[#161a14] px-3 py-2 text-[11px] leading-relaxed text-white/80 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
+                      <span className="block rounded-lg border border-white/10 bg-[#161a14] px-3 py-2.5 text-sm leading-relaxed text-white/90 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
                         The more you tell us, the sooner we can start, and the closer the first version will be to what you had in mind.
                       </span>
                     </motion.span>
@@ -1354,7 +1354,7 @@ export function CreativeSession({
             </motion.p>
           ) : null}
         </AnimatePresence>
-        <div className="flex items-center justify-between gap-3 bg-white/[0.03] px-5 py-3 font-mono text-[9px] uppercase tracking-[0.16em] text-white/35 sm:px-8">
+        <div className="flex items-center justify-between gap-3 bg-white/[0.03] px-5 py-3 text-sm text-white/55 sm:px-8">
           <span>A creative session with Anim8</span>
           <span className="hidden sm:inline">Human ideas. A clearer brief.</span>
         </div>
@@ -1366,7 +1366,7 @@ export function CreativeSession({
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-brand-lime">
+    <p className="mb-3 flex items-center gap-2 text-sm font-medium text-brand-lime">
       <span className="h-px w-4 bg-current" aria-hidden />
       {children}
     </p>
@@ -1375,7 +1375,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 function Title({ children }: { children: React.ReactNode }) {
   return (
-    <h1 className="mb-4 max-w-[18rem] font-heading text-[clamp(2.15rem,4.4vw,3.35rem)] font-medium leading-[1.02] tracking-[-0.045em] text-white">
+    <h1 className="mb-4 max-w-xl font-heading text-[clamp(2rem,4vw,2.85rem)] font-medium leading-[1.08] tracking-[-0.03em] text-white">
       {children}
     </h1>
   );
@@ -1462,14 +1462,14 @@ function IdeaStep({
           <br />
           bringing <Em>to life?</Em>
         </Title>
-        <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
+        <p className="mb-6 max-w-prose text-base leading-relaxed text-white/80">
           {focused
             ? "Tell us the idea, pick the request, and answer whatever is useful. The rest can stay open."
             : profile.kind === 'new'
               ? "A rough idea is enough. Pick a starting point and we'll ask only what that request still needs."
               : `Start with the idea, then the services in your ${profile.kind === 'retainer' ? 'retainer' : 'project'}. We'll ask just what this request needs.`}
         </p>
-        <label className="mb-5 block text-xs" htmlFor="session-idea">
+        <label className="mb-5 block text-base" htmlFor="session-idea">
           Got a spark? Tell us in a sentence. <span className="text-white/40">Optional</span>
           <textarea
             id="session-idea"
@@ -1502,8 +1502,8 @@ function IdeaStep({
                   whileTap={reduce ? undefined : { scale: 0.98 }}
                 >
                   <span className="min-w-0 pr-4">
-                    <strong className="block text-[13px] font-medium leading-snug">{format.name}</strong>
-                    <small className="mt-1 block text-[10px] text-white/45">{format.note}</small>
+                    <strong className="block text-base font-medium leading-snug">{format.name}</strong>
+                    <small className="mt-1 block text-sm leading-snug text-white/70">{format.note}</small>
                   </span>
                   <AnimatePresence>
                     {on ? (
@@ -1533,8 +1533,8 @@ function IdeaStep({
             >
               <FiZap className="shrink-0 text-white/40" aria-hidden />
               <span>
-                <strong className="block text-[13px] font-medium">Let&apos;s Figure it Out</strong>
-                <small className="mt-1 block text-[10px] text-white/45">I have an idea, though.</small>
+                <strong className="block text-base font-medium">Let&apos;s Figure it Out</strong>
+                <small className="mt-1 block text-sm leading-snug text-white/70">I have an idea, though.</small>
               </span>
             </motion.button>
           </motion.div>
@@ -1564,12 +1564,12 @@ function IdeaStep({
               >
                 <Icon className={`shrink-0 ${on ? 'text-brand-lime' : 'text-white/40'}`} aria-hidden />
                 <span className="min-w-0 pr-3">
-                  <strong className="block text-[13px] font-medium leading-snug">{service.name}</strong>
+                  <strong className="block text-base font-medium leading-snug">{service.name}</strong>
                   {profile.kind === 'new' ? (
-                    <small className="mt-1 block text-[10px] text-white/45">{service.detail}</small>
+                    <small className="mt-1 block text-sm leading-snug text-white/70">{service.detail}</small>
                   ) : (
                     <small
-                      className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] ${
+                      className={`mt-1 inline-block rounded px-1.5 py-0.5 text-xs ${
                         covered ? 'bg-brand-lime/15 text-brand-lime' : 'bg-[#3b3021] text-[#e9c78d]'
                       }`}
                     >
@@ -1605,19 +1605,19 @@ function IdeaStep({
           >
             <FiZap className="shrink-0 text-white/40" aria-hidden />
             <span>
-              <strong className="block text-[13px] font-medium">Let&apos;s Figure it Out</strong>
-              <small className="mt-1 block text-[10px] text-white/45">I have an idea, though.</small>
+              <strong className="block text-base font-medium">Let&apos;s Figure it Out</strong>
+              <small className="mt-1 block text-sm leading-snug text-white/70">I have an idea, though.</small>
             </span>
           </motion.button>
         </motion.div>
         )}
         {focused ? null : (
           <>
-        <p className="flex items-center gap-1.5 text-[11px] text-white/45">
+        <p className="flex items-center gap-1.5 text-sm text-white/70">
           <FiPlus aria-hidden /> More than one? Great. Pick a mix.
         </p>
         {profile.kind !== 'new' ? (
-          <button type="button" onClick={onExtras} className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white">
+          <button type="button" onClick={onExtras} className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/75 hover:text-white">
             {showExtras ? 'Hide unselected extra services' : 'Need another service? Explore the studio'}
             {showExtras ? <FiMinus aria-hidden /> : <FiArrowUpRight aria-hidden />}
           </button>
@@ -1634,7 +1634,7 @@ function IdeaStep({
                     type="button"
                     aria-pressed={id === questionService}
                     onClick={() => onBranch(id)}
-                    className={`min-h-9 rounded-md border px-2.5 text-[11px] ${
+                    className={`min-h-11 rounded-lg border px-3 text-sm ${
                       id === questionService
                         ? 'border-brand-lime/70 bg-brand-lime/15 text-brand-lime'
                         : 'border-white/10 bg-white/[0.04] text-white/55'
@@ -1646,7 +1646,7 @@ function IdeaStep({
                 ))}
               </div>
             ) : null}
-            <p className="mb-2 text-xs">What kind of {serviceLabel(profile, questionService).toLowerCase()}?</p>
+            <p className="mb-3 text-base font-medium">What kind of {serviceLabel(profile, questionService).toLowerCase()}?</p>
             <div className="mb-2 grid grid-cols-2 gap-2">
               {categoryChoices.map((item) => {
                 const on = questionRequest.category === item.id;
@@ -1660,11 +1660,11 @@ function IdeaStep({
                       on ? 'border-brand-lime/70 bg-brand-lime/15' : 'border-white/10 bg-white/[0.04]'
                     }`}
                   >
-                    <strong className="block text-xs font-medium">
+                    <strong className="block text-base font-medium leading-snug">
                       {categoryLabel(profile, questionService, item.id) || item.name}
                       {on ? ' ✓' : ''}
                     </strong>
-                    <small className="mt-1 block text-[10px] text-white/45">{item.note}</small>
+                    <small className="mt-1 block text-sm leading-snug text-white/70">{item.note}</small>
                   </button>
                 );
               })}
@@ -1673,7 +1673,7 @@ function IdeaStep({
               <button
                 type="button"
                 onClick={() => onOther(questionService)}
-                className="inline-flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white"
+                className="inline-flex items-center gap-1.5 text-sm text-white/75 hover:text-white"
               >
                 {showOther[questionService] ? 'Hide unselected extra categories' : 'Explore other requests'}
                 {showOther[questionService] ? <FiMinus aria-hidden /> : <FiPlus aria-hidden />}
@@ -1682,7 +1682,7 @@ function IdeaStep({
             <button
               type="button"
               onClick={() => onCategory(questionService, 'unsure')}
-              className="mt-1 block text-left text-[11px] text-white/50 hover:text-white"
+              className="mt-2 block text-left text-base text-white/80 hover:text-white"
             >
               {questionRequest.category === 'unsure' ? "✓ Let's Figure it Out" : "Let's Figure it Out"}
             </button>
@@ -1690,8 +1690,8 @@ function IdeaStep({
         ) : null}
         {questionService && questionRequest && questionList.length ? (
           <div className="mt-5 rounded-lg bg-white/[0.04] p-5">
-            <h2 className="font-heading text-xl font-medium tracking-tight">What this request still needs.</h2>
-            <p className="mb-4 mt-1 text-[11px] text-white/45">
+            <h2 className="font-heading text-2xl font-medium tracking-tight">What this request still needs.</h2>
+            <p className="mb-4 mt-1 text-base leading-relaxed text-white/75">
               {idea.trim()
                 ? 'Anything your note already covered stays off this list. Leave the rest open if you want.'
                 : 'Leave anything open that you want to figure out with us.'}
@@ -1933,13 +1933,18 @@ function InspoCanvas({
   return (
     <aside className="min-w-0">
       <StageHead left={label ? `A starting point for ${label}` : 'A few possibilities'} right="Paste an image" />
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#10140e] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <div className="flex items-center gap-2.5 border-b border-white/10 bg-white/[0.03] px-3 py-2.5">
+          <img src="/images/logos/anim-8-completewordmark-white-01.svg" alt="Anim8" className="h-4 w-auto shrink-0" />
+          <span className="text-base text-white/90">made these</span>
+        </div>
       <div
         ref={boardRef}
         className="relative outline-none"
         style={{ height: prints.length > 4 ? 'clamp(26rem, 78vh, 42rem)' : 'clamp(22rem, 68vh, 32rem)' }}
         tabIndex={0}
         role="region"
-        aria-label="Inspiration canvas. Paste or drop an image to add it."
+        aria-label="Anim8 studio work. These pieces were made by Anim8. Paste or drop an image to add your own."
         onPaste={(event) => {
           const images = imageFilesFromTransfer(event.clipboardData);
           if (!images.length) return;
@@ -1954,6 +1959,21 @@ function InspoCanvas({
           take(event.dataTransfer);
         }}
       >
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(198,245,74,0.14),transparent_62%)]" />
+          <div
+            className="absolute inset-0 opacity-70"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
+              backgroundSize: '32px 32px',
+            }}
+          />
+          <span className="absolute left-3 top-3 h-3.5 w-3.5 border-l border-t border-brand-lime/70" />
+          <span className="absolute right-3 top-3 h-3.5 w-3.5 border-r border-t border-brand-lime/70" />
+          <span className="absolute bottom-3 left-3 h-3.5 w-3.5 border-b border-l border-brand-lime/70" />
+          <span className="absolute bottom-3 right-3 h-3.5 w-3.5 border-b border-r border-brand-lime/70" />
+        </div>
         {prints.map((print, index) => {
           const frame = frames[index];
           if (!frame) return null;
@@ -1971,7 +1991,7 @@ function InspoCanvas({
           return (
             <motion.figure
               key={print.id}
-              className="absolute overflow-hidden shadow-[0_18px_36px_rgba(0,0,0,0.38)]"
+              className="absolute rounded-[3px] bg-[#f4f1e6] p-1 shadow-[0_18px_36px_rgba(0,0,0,0.5)]"
               style={{ zIndex: frame.z }}
               initial={reduce ? false : { opacity: 0, scale: 0.98, ...place }}
               animate={reduce ? { opacity: 1, ...place } : { opacity: 1, scale: 1, y: [0, -4, 0], ...place }}
@@ -1989,6 +2009,7 @@ function InspoCanvas({
                     }
               }
             >
+              <div className="relative h-full w-full overflow-hidden bg-[#1a1e16]">
               {print.piece ? <Photo piece={print.piece} onRatio={(ratio) => noteRatio(print.id, ratio)} /> : null}
               {print.piece?.stat ? <StatBadge stat={print.piece.stat} className="absolute left-2 top-2 z-[1]" /> : null}
               {print.pasted ? (
@@ -2003,8 +2024,13 @@ function InspoCanvas({
                   }}
                 />
               ) : null}
-              <figcaption className="pointer-events-none absolute bottom-2 left-2 z-[1] max-w-[80%] truncate font-mono text-[9px] uppercase tracking-wide text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
-                {caption}
+              <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] flex items-end justify-between gap-2 bg-gradient-to-t from-black/75 to-transparent px-2 pb-1.5 pt-6">
+                <span className="min-w-0 truncate text-xs font-medium text-white">{caption}</span>
+                {print.piece ? (
+                  <span className="shrink-0 rounded-sm bg-brand-lime px-1 py-0.5 font-mono text-[8px] font-bold uppercase tracking-wide text-brand-black">
+                    Anim8
+                  </span>
+                ) : null}
               </figcaption>
               {previewForPrint(print) ? (
                 <button
@@ -2045,14 +2071,16 @@ function InspoCanvas({
                   ×
                 </button>
               )}
+              </div>
             </motion.figure>
           );
         })}
       </div>
-      <p className="mt-3 text-[11px] text-white/40">
+      </div>
+      <p className="mt-3 text-base leading-relaxed text-white/80">
         {pasted.length
-          ? 'Click a piece to open it. Your images sit with the studio work for this request.'
-          : 'Click a piece to open it. Paste or drop an image and it lands with the studio work.'}
+          ? 'These pieces were made by Anim8. Your images sit with them. Click one to open it.'
+          : 'These pieces were made by Anim8. Click one to open it, pin what feels close, or paste your own.'}
       </p>
       {preview ? <InspoPreview preview={preview} onClose={closePreview} /> : null}
     </aside>
@@ -2061,7 +2089,7 @@ function InspoCanvas({
 
 function StageHead({ left, right }: { left: string; right: string }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.14em] text-white/40">
+    <div className="mb-3 flex items-center justify-between gap-3 text-sm font-medium text-white/75">
       <span>{left}</span>
       <span>{right}</span>
     </div>
@@ -2113,7 +2141,7 @@ function RequestStep({
             <br />
             <Em>the right shape.</Em>
           </Title>
-          <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
+          <p className="mb-6 max-w-prose text-base leading-relaxed text-white/80">
             No need to pick a production category yet. Bring your idea and a few visual references; we&apos;ll recommend an approach.
           </p>
           <button type="button" onClick={onEditServices} className="border-b border-white text-xs">
@@ -2184,7 +2212,7 @@ function RequestStep({
           <br />
           <Em>{title[1]}</Em>
         </h1>
-        <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
+        <p className="mb-6 max-w-prose text-base leading-relaxed text-white/80">
           Pick the closest fit. We&apos;ll only ask what this request still needs.
         </p>
         <div className="mb-3 grid grid-cols-2 gap-2">
@@ -2313,15 +2341,15 @@ function QuestionField({
   return (
     <div className="mb-4 last:mb-0">
       {hideLabel ? (
-        field.multi ? <p className="mb-2 text-[11px] text-white/40">Pick any</p> : null
+        field.multi ? <p className="mb-2 text-sm text-white/70">Pick any</p> : null
       ) : (
-        <p className="mb-2 text-xs">
+        <p className="mb-2 text-base font-medium">
           {field.label}
-          {field.multi ? <span className="text-white/40"> · Pick any</span> : null}
+          {field.multi ? <span className="font-normal text-white/60"> · Pick any</span> : null}
         </p>
       )}
       {field.options ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {field.options.map((option) => (
             <ChoiceTag
               key={option}
@@ -2377,11 +2405,11 @@ function DirectionStep({
           <br />
           <Em>your kind</Em> of good.
         </Title>
-        <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
+        <p className="mb-6 max-w-prose text-base leading-relaxed text-white/80">
           You don&apos;t have to speak &quot;creative.&quot; Pin what catches your eye, then tell us what you like about it.
         </p>
-        <p className="mb-2 text-xs">What should it feel like?</p>
-        <div className="mb-5 flex flex-wrap gap-1.5">
+        <p className="mb-3 text-base font-medium text-white">What should it feel like?</p>
+        <div className="mb-6 flex flex-wrap gap-2">
           {VIBES.map((vibe) => (
             <ChoiceTag key={vibe} pressed={snapshot.vibes.includes(vibe)} reduce={reduce} onClick={() => onVibe(vibe)}>
               {vibe}
@@ -2389,16 +2417,16 @@ function DirectionStep({
           ))}
         </div>
         <div className="mb-4">
-          <p className="text-xs">Or bring something you love</p>
-          <ul className="mt-2 space-y-2">
+          <p className="text-base font-medium text-white">Or bring something you love</p>
+          <ul className="mt-3 space-y-2">
             {links.map((item, index) => (
-              <li key={item.id} className="flex items-center gap-2 border-b border-white/15">
-                <FiLink className="shrink-0 text-white/40" aria-hidden />
+              <li key={item.id} className="flex items-center gap-3 rounded-lg border border-white/15 bg-white/[0.04] px-3">
+                <FiLink className="shrink-0 text-white/55" aria-hidden />
                 <input
                   id={index === 0 ? 'session-link' : undefined}
                   type="text"
                   inputMode="url"
-                  className="min-w-0 flex-1 bg-transparent py-2 text-xs text-white outline-none placeholder:text-white/35"
+                  className="min-h-12 min-w-0 flex-1 bg-transparent py-3 text-base text-white outline-none placeholder:text-white/50"
                   placeholder="Paste a reference link"
                   value={item.value}
                   onChange={(event) => onChangeLink(item.id, event.target.value)}
@@ -2414,7 +2442,7 @@ function DirectionStep({
                     type="button"
                     aria-label="Remove link"
                     onClick={() => onRemoveLink(item.id)}
-                    className="grid h-6 w-6 shrink-0 place-items-center text-white/45 hover:text-white"
+                    className="grid h-10 w-10 shrink-0 place-items-center text-white/60 hover:text-white"
                   >
                     <FiX aria-hidden />
                   </button>
@@ -2426,17 +2454,17 @@ function DirectionStep({
             <button
               type="button"
               onClick={onAddLink}
-              className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm text-white/75 hover:text-white"
             >
               <FiPlus aria-hidden /> Add another link
             </button>
           ) : null}
         </div>
-        <div className="rounded-lg bg-brand-lime/15 px-4 py-3 text-xs leading-relaxed text-brand-lime">
+        <div className="rounded-lg bg-brand-lime/15 px-4 py-4 text-base leading-relaxed text-brand-lime">
           <strong className="mb-1 block font-medium">Borrow the feeling. Make it yours.</strong>
           You might love one project&apos;s color and another&apos;s character. Mix them. That&apos;s where it gets interesting.
         </div>
-        <div className="mt-5 flex items-center gap-2 text-[11px] text-white/45">
+        <div className="mt-5 flex items-center gap-3 text-sm text-white/75">
           {snapshot.pins.map((id) => {
             const piece = snapshot.inspo.find((item) => item.id === id);
             if (!piece) return null;
@@ -2472,14 +2500,14 @@ function DirectionStep({
                     {pinned ? '✓' : '+'}
                   </motion.button>
                 </div>
-                <div className="px-3 py-2.5">
-                  <strong className="block text-xs font-medium">{piece.title}</strong>
-                  <small className="mt-0.5 block text-[10px] text-white/45">{caption || 'Studio work'}</small>
+                <div className="px-3 py-3">
+                  <strong className="block text-base font-medium leading-snug">{piece.title}</strong>
+                  <small className="mt-1 block text-sm text-white/70">{caption || 'Studio work'}</small>
                   {piece.stat ? <StatBadge stat={piece.stat} className="mt-1.5" /> : null}
                 </div>
                 {pinned && piece.tags.length ? (
                   <div className="flex flex-wrap gap-1 px-3 pb-3">
-                    <p className="mb-1 w-full text-[10px] text-white/45">What should we borrow?</p>
+                    <p className="mb-2 w-full text-sm text-white/75">What should we borrow?</p>
                     {piece.tags.map((tag) => {
                       const label = workTagLabel(tag);
                       return (
@@ -2499,7 +2527,7 @@ function DirectionStep({
             );
           })}
         </div>
-        <p className="mt-3 text-[11px] text-white/40">Visual explorations · inspiration, not a template</p>
+        <p className="mt-3 text-sm leading-relaxed text-white/70">Visual explorations. Inspiration, not a template. Anim8 made these.</p>
       </aside>
     </>
   );
@@ -2552,18 +2580,18 @@ function DetailsStep({
           <br />
           <Em>great</Em> look like?
         </Title>
-        <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
+        <p className="mb-6 max-w-prose text-base leading-relaxed text-white/80">
           A little context helps us make the right thing. Leave anything open that you&apos;d like to figure out with us.
         </p>
-        <p className="mb-2 text-xs">The big goal</p>
-        <div className="mb-5 flex flex-wrap gap-1.5">
+        <p className="mb-3 text-base font-medium text-white">The big goal</p>
+        <div className="mb-6 flex flex-wrap gap-2">
           {GOALS.map((item) => (
             <ChoiceTag key={item} pressed={snapshot.goal === item} reduce={reduce} onClick={() => onGoal(item)}>
               {item}
             </ChoiceTag>
           ))}
         </div>
-        <label className="mb-4 block text-xs" htmlFor="session-audience">
+        <label className="mb-5 block text-base" htmlFor="session-audience">
           Who&apos;s it for, and what should they feel or do?
           <textarea
             id="session-audience"
@@ -2573,7 +2601,7 @@ function DetailsStep({
             onChange={(event) => onAudience(event.target.value)}
           />
         </label>
-        <p className="mb-2 text-xs">What should we deliver?</p>
+        <p className="mb-3 text-base font-medium text-white">What should we deliver?</p>
         {snapshot.selected.length ? (
           snapshot.selected.map((id) => {
             const category = getCategory(id, serviceRequest(snapshot, id).category);
@@ -2581,11 +2609,11 @@ function DetailsStep({
             return (
               <div key={id} className="mb-4 border-b border-white/10 pb-4">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <strong className="text-xs font-medium">
+                  <strong className="text-base font-medium">
                     {serviceLabel(snapshot.profile, id)}
                     {category ? ` / ${category.name}` : ''}
                   </strong>
-                  <span className={`rounded px-1.5 py-0.5 text-[9px] ${isSeparateScope(snapshot.profile, id, request) ? 'bg-[#3b3021] text-[#e9c78d]' : 'bg-brand-lime/15 text-brand-lime'}`}>
+                  <span className={`rounded px-2 py-0.5 text-sm ${isSeparateScope(snapshot.profile, id, request) ? 'bg-[#3b3021] text-[#e9c78d]' : 'bg-brand-lime/15 text-brand-lime'}`}>
                     {scopeLabel(snapshot, id)}
                   </span>
                 </div>
@@ -2603,7 +2631,7 @@ function DetailsStep({
                     ))}
                   </div>
                 ) : (
-                  <button type="button" onClick={() => onChoose(id)} className="text-[11px] text-white/50 hover:text-white">
+                  <button type="button" onClick={() => onChoose(id)} className="text-base text-white/80 hover:text-white">
                     Choose a request type to tailor deliverables ↗
                   </button>
                 )}
@@ -2611,27 +2639,27 @@ function DetailsStep({
             );
           })
         ) : (
-          <p className="text-[11px] text-white/45">We&apos;ll recommend deliverables once we&apos;ve explored your idea.</p>
+          <p className="text-base text-white/75">We&apos;ll recommend deliverables once we&apos;ve explored your idea.</p>
         )}
       </section>
       <aside>
         <StageHead left="Give it a little shape" right="Flexible is fine" />
         <div className="rounded-xl bg-white/[0.04] p-5">
-          <h3 className="mb-4 font-heading text-xl font-medium tracking-tight">The practical bits.</h3>
+          <h3 className="mb-4 font-heading text-2xl font-medium tracking-tight">The practical bits.</h3>
           {snapshot.profile.kind !== 'new' ? (
-            <div className={`mb-4 rounded-md px-3 py-3 text-[11px] leading-relaxed ${extras ? 'bg-[#3b3021] text-[#e9c78d]' : 'bg-brand-lime/15 text-brand-lime'}`}>
-              <strong className="mb-0.5 block text-xs font-medium">{engagementLabel(snapshot)}</strong>
+            <div className={`mb-4 rounded-lg px-4 py-4 text-base leading-relaxed ${extras ? 'bg-[#3b3021] text-[#e9c78d]' : 'bg-brand-lime/15 text-brand-lime'}`}>
+              <strong className="mb-1 block font-medium">{engagementLabel(snapshot)}</strong>
               {extras
                 ? 'The additional scope will need its own estimate. Work within the existing engagement stays identified separately.'
                 : "We'll confirm this request against your agreement and available production capacity."}
             </div>
           ) : null}
-          <label className="mb-4 block text-xs" htmlFor="session-date">
+          <label className="mb-4 block text-base" htmlFor="session-date">
             Requested delivery date <span className="text-white/40">· Optional</span>
             <input id="session-date" type="date" className={fieldClass} value={snapshot.date} onChange={(event) => onDate(event.target.value)} />
           </label>
           {budget ? (
-            <label className="mb-4 block text-xs" htmlFor="session-budget">
+            <label className="mb-4 block text-base" htmlFor="session-budget">
               {extras ? 'Budget for the additional scope' : 'Budget comfort zone'}
               <select id="session-budget" className={fieldClass} value={snapshot.budget} onChange={(event) => onBudget(event.target.value)}>
                 {BUDGETS.map((item) => (
@@ -2640,10 +2668,10 @@ function DetailsStep({
               </select>
             </label>
           ) : null}
-          <label className="block rounded-md border border-dashed border-white/15 bg-white/[0.03] p-3 text-[11px] text-white/50">
+          <label className="block rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-4 text-base leading-relaxed text-white/75">
             {uploadHint}
             <input
-              className="mt-2 block w-full text-[11px] text-white/70"
+              className="mt-3 block w-full text-base text-white/80"
               type="file"
               multiple
               onChange={(event) => {
@@ -2660,12 +2688,12 @@ function DetailsStep({
             {files.length ? <span className="mt-2 block text-brand-lime">{files.map((file) => file.name).join(' · ')}</span> : null}
           </label>
           {driveFolderUrl ? (
-            <a href={driveFolderUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-[11px] text-brand-cyan hover:text-brand-lime">
+            <a href={driveFolderUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-base text-brand-cyan hover:text-brand-lime">
               <FiHardDrive aria-hidden />
               Bigger files? Use your Drive folder.
             </a>
           ) : null}
-          <p className="mt-2 min-h-4 text-[11px] text-brand-lime" aria-live="polite">
+          <p className="mt-2 min-h-6 text-base text-brand-lime" aria-live="polite">
             {fileMessage}
           </p>
         </div>
@@ -2674,11 +2702,11 @@ function DetailsStep({
             {accent ? <Photo piece={accent} /> : null}
           </span>
           <div>
-            <strong className="block text-xs font-medium">{namesLabel(snapshot) || 'An idea with potential'}</strong>
-            <p className="mt-1 text-[11px] text-white/45">{snapshot.vibes.join(' · ') || 'Room to explore together'}</p>
+            <strong className="block text-base font-medium">{namesLabel(snapshot) || 'An idea with potential'}</strong>
+            <p className="mt-1 text-sm text-white/70">{snapshot.vibes.join(' · ') || 'Room to explore together'}</p>
           </div>
         </div>
-        <p className="mt-3 text-[11px] text-white/40">We&apos;ll confirm scope and timing with you.</p>
+        <p className="mt-3 text-base text-white/75">We&apos;ll confirm scope and timing with you.</p>
       </aside>
     </>
   );
@@ -2737,7 +2765,7 @@ function ReviewStep({
           <br />
           <Em>Coming together.</Em>
         </Title>
-        <p className="mb-5 max-w-sm text-[13px] leading-relaxed text-white/50">
+        <p className="mb-6 max-w-prose text-base leading-relaxed text-white/80">
           {briefPass === 'shaping'
             ? 'Writing the brief from what you already told us. Anything still open stays in the brief.'
             : 'This is the brief your team will use. Anything still open is listed there. Edit it, then send it.'}
@@ -2745,7 +2773,7 @@ function ReviewStep({
         {briefPass === 'questions' ? (
           <div className="mb-5 grid gap-3">
             {followQuestions.map((question) => (
-              <label key={question.id} className="block text-xs" htmlFor={`follow-${question.id}`}>
+              <label key={question.id} className="block text-base" htmlFor={`follow-${question.id}`}>
                 {question.prompt}
                 <textarea
                   id={`follow-${question.id}`}
@@ -2757,7 +2785,7 @@ function ReviewStep({
             ))}
           </div>
         ) : null}
-        {briefNote ? <p className="mb-4 text-[11px] text-white/45">{briefNote}</p> : null}
+        {briefNote ? <p className="mb-4 text-base text-white/75">{briefNote}</p> : null}
         <ul className="mb-5 grid gap-3">
           <ReviewRow icon={FiFolder} title={snapshot.profile.name} detail={engagementLabel(snapshot)} />
           <ReviewRow icon={FiCheck} title="Your creative direction" detail={direction} />
@@ -2773,16 +2801,16 @@ function ReviewStep({
           />
         </ul>
         {briefPass === 'ready' || briefPass === 'fallback' ? (
-          <button type="button" onClick={onEdit} className="border-b border-white text-xs">
+          <button type="button" onClick={onEdit} className="border-b border-white text-base">
             {editing ? 'Done editing' : 'Make an edit'} ↗
           </button>
         ) : null}
         {customDraft !== null ? (
-          <button type="button" onClick={onRewrite} className="ml-4 border-b border-white/30 text-xs text-white/60">
+          <button type="button" onClick={onRewrite} className="ml-4 border-b border-white/30 text-base text-white/70">
             Rewrite from your answers
           </button>
         ) : null}
-        <div className="mt-4 rounded-lg bg-brand-lime/15 px-4 py-3 text-xs leading-relaxed text-brand-lime">
+        <div className="mt-4 rounded-lg bg-brand-lime/15 px-4 py-4 text-base leading-relaxed text-brand-lime">
           <strong className="mb-1 block font-medium">
             {extras ? 'A clear path for additional scope.' : 'Great work starts with alignment.'}
           </strong>
@@ -2810,17 +2838,17 @@ function ReviewStep({
           ) : null}
           <div className="flex items-center justify-between gap-3 border-b border-[#b3bca0] pb-4">
             <img src="/images/logos/anim-8-completewordmark-ink.svg" alt="Anim8" className="h-7 w-auto" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#616d50]">Creative brief</span>
+            <span className="text-sm font-medium text-[#616d50]">Creative brief</span>
           </div>
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-[#616d50]">Sending as</p>
-          <h2 className="mt-1 font-heading text-[1.7rem] font-medium leading-tight tracking-tight">{requestTitle(snapshot)}</h2>
-          <p className="mb-4 mt-1 text-sm text-[#616d50]">{briefHeadline(snapshot.goal)}</p>
+          <p className="mt-4 text-sm font-medium text-[#616d50]">Sending as</p>
+          <h2 className="mt-1 font-heading text-[1.85rem] font-medium leading-tight tracking-tight">{requestTitle(snapshot)}</h2>
+          <p className="mb-4 mt-1 text-base text-[#4e5840]">{briefHeadline(snapshot.goal)}</p>
           {editing ? (
-            <label className="block text-xs" htmlFor="session-editor">
+            <label className="block text-base" htmlFor="session-editor">
               Refine your brief
               <textarea
                 id="session-editor"
-                className="mt-2 min-h-60 w-full rounded border border-[#9eac8a] bg-[#fffef7] p-3 text-xs leading-relaxed text-[#28321b]"
+                className="mt-2 min-h-60 w-full rounded border border-[#9eac8a] bg-[#fffef7] p-4 text-base leading-relaxed text-[#28321b]"
                 value={draft}
                 onChange={(event) => onDraft(event.target.value)}
               />
@@ -2837,11 +2865,11 @@ function ReviewStep({
                   transition={{ duration: 1.15, delay: index * 0.12, repeat: Infinity, ease: 'easeInOut' }}
                 />
               ))}
-              <p className="pt-2 text-xs leading-7 text-[#667353]">Writing a brief from what you told us…</p>
+              <p className="pt-2 text-base leading-7 text-[#4e5840]">Writing a brief from what you told us…</p>
             </div>
           ) : (
             <motion.div
-              className="whitespace-pre-line text-xs leading-7"
+              className="whitespace-pre-line text-base leading-7"
               initial={reduce ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, ease: portalMotionEase }}
@@ -2851,14 +2879,14 @@ function ReviewStep({
           )}
           <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-[#b3bca0] pt-4">
             <div>
-              <dt className="mb-1 font-mono text-[9px] uppercase tracking-wider text-[#667353]">Requested timing</dt>
-              <dd className="text-[11px]">{formatBriefDate(snapshot.date)}</dd>
+              <dt className="mb-1 text-sm font-medium text-[#4e5840]">Requested timing</dt>
+              <dd className="text-base">{formatBriefDate(snapshot.date)}</dd>
             </div>
             <div>
-              <dt className="mb-1 font-mono text-[9px] uppercase tracking-wider text-[#667353]">
+              <dt className="mb-1 text-sm font-medium text-[#4e5840]">
                 {budget ? (extras ? 'Additional-scope budget' : 'Budget') : 'Agreement'}
               </dt>
-              <dd className="text-[11px]">{budget ? snapshot.budget : `${snapshot.profile.name} · scope to verify`}</dd>
+              <dd className="text-base">{budget ? snapshot.budget : `${snapshot.profile.name} · scope to verify`}</dd>
             </div>
           </dl>
           {snapshot.pins.length || pasted.length ? (
@@ -2880,7 +2908,7 @@ function ReviewStep({
               ))}
             </div>
           ) : null}
-          <div className="mt-6 flex justify-between border-t border-[#b3bca0] pt-3 font-mono text-[9px] text-[#616d50]">
+          <div className="mt-6 flex justify-between gap-3 border-t border-[#b3bca0] pt-3 text-sm text-[#4e5840]">
             <span>Made together. Made to move forward.</span>
             <span>Creative request</span>
           </div>
@@ -2900,11 +2928,11 @@ function ReviewRow({
   detail: string;
 }) {
   return (
-    <li className="flex items-start gap-2.5 text-xs">
-      <Icon className="mt-0.5 shrink-0 text-brand-lime" aria-hidden />
+    <li className="flex items-start gap-3 text-base">
+      <Icon className="mt-1 shrink-0 text-brand-lime" aria-hidden />
       <span>
         {title}
-        <small className="mt-0.5 block text-[11px] text-white/45">{detail}</small>
+        <small className="mt-0.5 block text-sm leading-relaxed text-white/70">{detail}</small>
       </span>
     </li>
   );

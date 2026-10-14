@@ -84,7 +84,6 @@ import {
 } from '@/lib/work-bank';
 
 /** Changing this reloads the studio sample even when the client slug stays the same. */
-const STUDIO_SAMPLE = 2;
 
 type CreativeSessionProps = {
   slug: string;
@@ -99,6 +98,9 @@ type CreativeSessionProps = {
   returnLabel?: string;
   /** Where a successful send goes. Defaults to this client's portal. */
   doneHref?: string;
+  /** Studio pieces rendered with the page, so the board does not wait on a second request. */
+  initialPieces?: InspoPiece[];
+  initialSeed?: number;
 };
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -313,10 +315,12 @@ function packCollage(ratios: number[], canvasW: number, canvasH: number): Collag
 function Photo({
   piece,
   className = '',
+  priority = false,
   onRatio,
 }: {
   piece: InspoPiece;
   className?: string;
+  priority?: boolean;
   onRatio?: (ratio: number) => void;
 }) {
   const src = pieceStill(piece);
@@ -329,6 +333,9 @@ function Photo({
       alt={piece.title}
       className={`absolute inset-0 h-full w-full object-cover ${className}`}
       style={piece.position ? { objectPosition: piece.position } : undefined}
+      decoding="async"
+      loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : 'auto'}
       onLoad={(event) => {
         const { naturalWidth, naturalHeight } = event.currentTarget;
         if (naturalWidth > 0 && naturalHeight > 0) onRatio?.(naturalWidth / naturalHeight);
@@ -405,6 +412,8 @@ export function CreativeSession({
   returnHref,
   returnLabel = '← Portal',
   doneHref,
+  initialPieces = [],
+  initialSeed = 1,
 }: CreativeSessionProps) {
   const router = useRouter();
   const reduce = !!useReducedMotion();
@@ -431,8 +440,8 @@ export function CreativeSession({
   const [pasted, setPasted] = useState<PastedInspo[]>([]);
   const pastedRef = useRef(pasted);
   pastedRef.current = pasted;
-  const [bank, setBank] = useState<InspoPiece[] | null>(null);
-  const [seed, setSeed] = useState(1);
+  const [bank] = useState<InspoPiece[]>(initialPieces);
+  const [seed] = useState(initialSeed);
   const [links, setLinks] = useState<{ id: string; value: string }[]>([{ id: 'link-1', value: '' }]);
   const linkSeq = useRef(1);
   const link = links
@@ -464,29 +473,6 @@ export function CreativeSession({
     [allowPreview, previewId, clientName, engagement]
   );
   const catalog = useMemo(() => (bank ?? []).filter(isStudioPiece), [bank]);
-
-  useEffect(() => {
-    setSeed(Math.floor(Math.random() * 1_000_000_000) || 1);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/clients/${encodeURIComponent(slug)}/inspo`)
-      .then(async (res) => {
-        if (!res.ok) return [] as InspoPiece[];
-        const data = (await res.json()) as { pieces?: InspoPiece[] };
-        return Array.isArray(data.pieces) ? data.pieces : [];
-      })
-      .then((pieces) => {
-        if (!cancelled) setBank(pieces.filter(isStudioPiece));
-      })
-      .catch(() => {
-        if (!cancelled) setBank([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [slug, STUDIO_SAMPLE]);
 
   useEffect(() => {
     const ids = new Set(catalog.map((piece) => piece.id));
@@ -1935,8 +1921,7 @@ function InspoCanvas({
       <StageHead left={label ? `A starting point for ${label}` : 'A few possibilities'} right="Paste an image" />
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#10140e] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
         <div className="flex items-center gap-2.5 border-b border-white/10 bg-white/[0.03] px-3 py-2.5">
-          <img src="/images/logos/anim-8-completewordmark-white-01.svg" alt="Anim8" className="h-4 w-auto shrink-0" />
-          <span className="text-base text-white/90">made these</span>
+          <span className="text-base text-white">Made by Anim8 :)</span>
         </div>
       <div
         ref={boardRef}
@@ -1944,7 +1929,7 @@ function InspoCanvas({
         style={{ height: prints.length > 4 ? 'clamp(26rem, 78vh, 42rem)' : 'clamp(22rem, 68vh, 32rem)' }}
         tabIndex={0}
         role="region"
-        aria-label="Anim8 studio work. These pieces were made by Anim8. Paste or drop an image to add your own."
+        aria-label="Made by Anim8. Paste or drop an image to add your own."
         onPaste={(event) => {
           const images = imageFilesFromTransfer(event.clipboardData);
           if (!images.length) return;
@@ -2010,7 +1995,9 @@ function InspoCanvas({
               }
             >
               <div className="relative h-full w-full overflow-hidden bg-[#1a1e16]">
-              {print.piece ? <Photo piece={print.piece} onRatio={(ratio) => noteRatio(print.id, ratio)} /> : null}
+              {print.piece ? (
+                <Photo piece={print.piece} priority={index < 3} onRatio={(ratio) => noteRatio(print.id, ratio)} />
+              ) : null}
               {print.piece?.stat ? <StatBadge stat={print.piece.stat} className="absolute left-2 top-2 z-[1]" /> : null}
               {print.pasted ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -2079,8 +2066,8 @@ function InspoCanvas({
       </div>
       <p className="mt-3 text-base leading-relaxed text-white/80">
         {pasted.length
-          ? 'These pieces were made by Anim8. Your images sit with them. Click one to open it.'
-          : 'These pieces were made by Anim8. Click one to open it, pin what feels close, or paste your own.'}
+          ? 'Your images sit with the studio work. Click one to open it.'
+          : 'Click one to open it, pin what feels close, or paste your own.'}
       </p>
       {preview ? <InspoPreview preview={preview} onClose={closePreview} /> : null}
     </aside>
@@ -2527,7 +2514,7 @@ function DirectionStep({
             );
           })}
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-white/70">Visual explorations. Inspiration, not a template. Anim8 made these.</p>
+        <p className="mt-3 text-sm leading-relaxed text-white/70">Made by Anim8 :) Inspiration, not a template.</p>
       </aside>
     </>
   );

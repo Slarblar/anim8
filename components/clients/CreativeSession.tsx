@@ -3,7 +3,7 @@
 import { put } from '@vercel/blob/client';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FiAperture,
@@ -624,6 +624,15 @@ export function CreativeSession({
     },
     [slug]
   );
+
+  const skipStepScroll = useRef(true);
+  useLayoutEffect(() => {
+    if (skipStepScroll.current) {
+      skipStepScroll.current = false;
+      return;
+    }
+    window.scrollTo(0, 0);
+  }, [step]);
 
   useEffect(() => {
     if (step !== 4) {

@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <span className="text-sm font-black uppercase tracking-tight text-white">
               Anim-8 <span className="text-brand-cyan">Admin</span>
             </span>
-            <nav className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-wider text-text-muted">
+            <nav className="flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-wider text-text-muted">
               <Link href="/admin/clients" className="transition hover:text-brand-cyan">
                 Clients
               </Link>

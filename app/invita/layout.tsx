@@ -1,16 +1,29 @@
 import type { Metadata } from 'next'
-import { Cormorant, DM_Sans } from 'next/font/google'
+import localFont from 'next/font/local'
 
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500'],
+// Bundled files, so the production build does not fetch Google Fonts.
+const dmSans = localFont({
+  src: './fonts/dm-sans-latin.woff2',
+  weight: '300 500',
+  style: 'normal',
+  display: 'swap',
   variable: '--font-invita-dm',
 })
 
-const cormorant = Cormorant({
-  subsets: ['latin'],
-  weight: ['300', '400'],
-  style: ['normal', 'italic'],
+const cormorant = localFont({
+  src: [
+    {
+      path: './fonts/cormorant-latin.woff2',
+      weight: '300 400',
+      style: 'normal',
+    },
+    {
+      path: './fonts/cormorant-latin-italic.woff2',
+      weight: '300 400',
+      style: 'italic',
+    },
+  ],
+  display: 'swap',
   variable: '--font-invita-cormorant',
 })
 

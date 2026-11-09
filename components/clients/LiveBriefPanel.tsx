@@ -16,6 +16,7 @@ import {
   type OutputKind,
 } from '@/lib/conversational-brief';
 import type { ConversationDraft } from '@/lib/conversational-brief-store';
+import { AdminDatePicker } from '@/components/admin/AdminDatePicker';
 
 type Props = {
   draft: ConversationDraft;
@@ -33,6 +34,13 @@ const labelClass = 'block text-xs font-semibold uppercase tracking-[0.14em] text
 
 const quietButton =
   'inline-flex min-h-11 items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.08] focus-lime disabled:opacity-40';
+
+function todayIso(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
 
 function impactLabel(impact: OpenItem['impact']): string {
   switch (impact) {
@@ -552,18 +560,25 @@ export function LiveBriefPanel({ draft, busy, onEdit, onReview, onApprove, onSub
           </button>
         </div>
 
-        <label className="block">
+        <div>
           <span className={labelClass}>Requested date</span>
-          <input
-            type="date"
-            className={fieldClass}
+          <AdminDatePicker
             value={brief.requestedDelivery.value?.date ?? ''}
-            onChange={(event) => {
-              if (!event.target.value) return;
+            onChange={(date) => {
+              if (!date) {
+                void onEdit({
+                  requestedDelivery: {
+                    value: null,
+                    provenance: 'client_statement',
+                    resolution: 'unresolved',
+                  },
+                });
+                return;
+              }
               void onEdit({
                 requestedDelivery: {
                   value: {
-                    date: event.target.value,
+                    date,
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
                   },
                   provenance: 'client_statement',
@@ -571,11 +586,15 @@ export function LiveBriefPanel({ draft, busy, onEdit, onReview, onApprove, onSub
                 },
               });
             }}
+            min={todayIso()}
+            placeholder="Pick a date"
+            aria-label="Requested date"
+            triggerClassName={fieldClass}
           />
           <span className="mt-1.5 block text-xs leading-relaxed text-white/40">
             A request for the team, not a confirmed deadline.
           </span>
-        </label>
+        </div>
         <label className="block">
           <span className={labelClass}>Requested priority</span>
           <EditableText

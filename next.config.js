@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async rewrites() {
+    return [{ source: '/scoop', destination: '/scoop/index.html' }];
+  },
   async redirects() {
     return [
       {

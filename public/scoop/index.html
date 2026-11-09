@@ -1,0 +1,1668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SLC Scoop Post Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400..900;1,400..900&family=Archivo+Black&family=Barlow+Condensed:ital,wght@0,400;0,600;0,800;1,400;1,600;1,800&family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;600;800&family=Oswald:wght@400;600;700&family=Permanent+Marker&family=Roboto+Condensed:ital,wght@0,300..900;1,300..900&display=swap">
+<style>
+body{margin:0}
+img{max-width:100%}
+/* Layout: three-column editor — shared library left, artboard center, quick-fill / layer controls right.
+   Single dark theme on purpose: a neutral dark surround keeps color judgment honest while composing posts. */
+:root{
+  --bg:#0e0e0f; --panel:#161617; --panel2:#1d1d1f; --raise:#262628; --line:#302f2d;
+  --text:#efeee9; --muted:#a09d95; --faint:#6b6964;
+  --red:#ED2224; --red-hi:#ff4447; --paper:#F4F5F0; --ok:#5fbf7a;
+  --f-ui:"Archivo",ui-sans-serif,system-ui,sans-serif;
+  --f-logo:"Anton","Archivo Black",Impact,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--text);font-family:var(--f-ui);font-size:13px;overflow:hidden}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red-hi);outline-offset:1px}
+#app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line)}
+.mark{display:flex;align-items:baseline;gap:8px;margin-right:6px;white-space:nowrap}
+.mark b{font-family:var(--f-logo);font-weight:400;font-style:italic;font-size:22px;letter-spacing:.01em;color:var(--paper);-webkit-text-stroke:.5px #000}
+.mark b span{color:var(--red)}
+.mark small{font-size:10px;font-weight:800;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.docname{background:transparent;border:1px solid transparent;border-radius:4px;padding:5px 8px;width:200px;max-width:40vw;font-weight:600}
+.docname:hover,.docname:focus{border-color:var(--line);background:var(--panel2)}
+.grp{display:flex;gap:4px;align-items:center}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;white-space:nowrap;font-weight:600;font-size:12px}
+.btn:hover{background:var(--raise);border-color:#46443f}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.icon{width:30px;padding:0;justify-content:center}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff}
+.btn.primary:hover{background:var(--red-hi)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.ghost:hover{background:var(--raise)}
+.btn svg{width:15px;height:15px;flex:none}
+.btn.on{background:var(--red);border-color:var(--red);color:#fff}
+.zoomlbl{font-family:var(--f-mono);font-size:11px;min-width:48px;justify-content:center}
+select.btn{padding-right:6px}
+
+.ws{display:grid;grid-template-columns:272px minmax(0,1fr) 320px;min-height:0}
+.panel{background:var(--panel);min-height:0;display:flex;flex-direction:column}
+.left{border-right:1px solid var(--line)}
+.right{border-left:1px solid var(--line)}
+.tabs{display:flex;border-bottom:1px solid var(--line);flex:none}
+.tabs button{flex:1;background:none;border:0;padding:11px 6px 9px;font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--red)}
+.pbody{overflow:auto;min-height:0;flex:1;padding:12px 14px 20px;display:flex;flex-direction:column;gap:12px}
+.note{color:var(--muted);font-size:12px;line-height:1.45}
+.note.warn{color:#f0b35a}
+.h{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-top:4px}
+details.ps{margin-top:10px}
+details.ps>summary{cursor:pointer;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+details.ps[open]>summary{margin-bottom:8px}
+
+/* library */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tcard{position:relative;display:flex;flex-direction:column;gap:5px;background:none;border:0;padding:0;text-align:left;cursor:pointer}
+.tcard .th{background:var(--panel2);border:1px solid var(--line);border-radius:4px;overflow:hidden;aspect-ratio:3/4;display:grid;place-items:center}
+.tcard .th img{width:100%;height:100%;object-fit:contain}
+.tcard:hover .th{border-color:var(--red)}
+.tcard .nm{font-weight:700;font-size:12px;line-height:1.25;overflow-wrap:anywhere}
+.tcard .meta{font-size:10.5px;color:var(--faint);font-family:var(--f-mono)}
+.tcard .del{position:absolute;top:5px;right:5px;opacity:0}
+.tcard:hover .del,.acard:hover .del,.del:focus-visible{opacity:1}
+.del{width:24px;height:24px;border-radius:4px;border:1px solid var(--line);background:rgba(14,14,15,.85);display:grid;place-items:center;cursor:pointer}
+.del svg{width:13px;height:13px}
+.del.confirm{width:auto;padding:0 8px;background:var(--red);border-color:var(--red);color:#fff;font-size:11px;font-weight:700;opacity:1}
+.agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.acard{position:relative;display:flex;flex-direction:column;gap:4px;cursor:grab}
+.acard .th{aspect-ratio:1;border-radius:4px;border:1px solid var(--line);overflow:hidden;display:grid;place-items:center;
+  background-color:#2a2a2c;background-image:linear-gradient(45deg,#333 25%,transparent 25%,transparent 75%,#333 75%),linear-gradient(45deg,#333 25%,transparent 25%,transparent 75%,#333 75%);background-size:12px 12px;background-position:0 0,6px 6px}
+.acard .th img{max-width:100%;max-height:100%;object-fit:contain}
+.acard:hover .th{border-color:var(--red)}
+.acard .nm{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acard .del{position:absolute;top:3px;right:3px;opacity:0}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:11px;font-weight:600;background:none;cursor:pointer;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--paper);color:#151616;border-color:var(--paper)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row > *{min-width:0}
+.inp,.sel,textarea.inp{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%;min-width:0}
+.inp:focus,.sel:focus{border-color:#55524c;outline:none}
+textarea.inp{resize:vertical;min-height:58px;line-height:1.4}
+.fontrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--panel2)}
+.fontrow .pv{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fontrow .tag{font-size:10px;color:var(--faint);font-family:var(--f-mono);flex:none}
+
+/* stage */
+.stagewrap{position:relative;min-height:0;min-width:0;background-color:#0b0b0c;background-image:radial-gradient(#232325 1px,transparent 1px);background-size:22px 22px}
+.stage{position:absolute;inset:0;overflow:auto;touch-action:none}
+.board{min-width:100%;min-height:100%;display:grid;place-items:center;padding:56px}
+#main{display:block;box-shadow:0 12px 50px rgba(0,0,0,.55),0 0 0 1px #2b2b2d;background:#fff}
+#ov{position:absolute;inset:0;pointer-events:none;width:100%;height:100%}
+.stagehint{position:absolute;left:12px;bottom:10px;font-size:11px;color:var(--faint);pointer-events:none;font-family:var(--f-mono)}
+.cropbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;border-radius:4px;padding:6px 10px;font-weight:700;font-size:12px;display:flex;gap:10px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.cropbar button{background:#fff;color:#151616;border:0;border-radius:3px;padding:3px 8px;font-weight:700;cursor:pointer;font-size:11px}
+.dropmask{position:absolute;inset:10px;border:2px dashed var(--red);border-radius:6px;background:rgba(237,34,36,.06);display:grid;place-items:center;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:var(--paper);pointer-events:none}
+
+/* right panel fields */
+.fld{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;align-items:center}
+.fld > label,.lbl{font-size:11px;color:var(--muted);font-weight:600}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mini{display:flex;flex-direction:column;gap:3px;min-width:0}
+.mini span{font-size:10px;color:var(--faint);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.num{font-family:var(--f-mono);font-size:12px}
+.rng{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px;align-items:center}
+.rng input[type=range]{width:100%;accent-color:var(--red)}
+.rng output{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right}
+.colr{display:grid;grid-template-columns:30px minmax(0,1fr);gap:6px}
+.colr input[type=color]{width:30px;height:30px;padding:0;border:1px solid var(--line);border-radius:4px;background:none;cursor:pointer}
+.sw{display:flex;gap:4px;flex-wrap:wrap;grid-column:2}
+.sw button{width:18px;height:18px;border-radius:3px;border:1px solid rgba(255,255,255,.18);cursor:pointer;padding:0}
+.sw .add{background:none;border-style:dashed;color:var(--muted);font-size:12px;line-height:1;display:grid;place-items:center}
+.chk{display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer}
+.chk input{accent-color:var(--red);width:15px;height:15px}
+.seg{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{flex:1;background:var(--panel2);border:0;border-right:1px solid var(--line);height:28px;cursor:pointer;display:grid;place-items:center;font-size:11px;font-weight:700}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--paper);color:#151616}
+.seg svg{width:14px;height:14px}
+.section{display:flex;flex-direction:column;gap:9px;padding-top:12px;border-top:1px solid var(--line)}
+.section:first-child{border-top:0;padding-top:0}
+.slotcard{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line);border-radius:5px;background:var(--panel2)}
+.slotcard.sel{border-color:var(--red)}
+.slotcard .lab{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase}
+.slotcard .lab em{font-style:normal;color:var(--faint);font-weight:600;letter-spacing:0;text-transform:none;font-family:var(--f-mono);font-size:10px}
+.imgslot{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center}
+.excerpt{border-color:#4a3a39;background:linear-gradient(180deg,rgba(237,34,36,.08),transparent 70%),var(--panel2)}
+.excerpt textarea{min-height:96px}
+.imgslot canvas{width:64px;height:64px;border-radius:4px;background:#2a2a2c;border:1px solid var(--line)}
+.imgslot .row{gap:5px}
+
+/* layers */
+.layers{flex:none;max-height:42%;display:flex;flex-direction:column;border-top:1px solid var(--line);min-height:0}
+.layers .lh{display:flex;justify-content:space-between;align-items:center;padding:9px 14px 6px}
+.llist{overflow:auto;padding:0 8px 10px;display:flex;flex-direction:column;gap:2px;min-height:0}
+.lrow{display:grid;grid-template-columns:20px minmax(0,1fr) auto auto auto;gap:6px;align-items:center;padding:5px 6px;border-radius:4px;cursor:pointer;border:1px solid transparent}
+.lrow:hover{background:var(--panel2)}
+.lrow.sel{background:var(--raise);border-color:#4a4843}
+.lrow.dim{opacity:.45}
+.lrow.over{box-shadow:inset 0 2px 0 var(--red)}
+.lrow .ic{width:20px;height:20px;display:grid;place-items:center;color:var(--muted)}
+.lrow .ic svg{width:14px;height:14px}
+.lrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.lrow .slotb{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--red-hi);border:1px solid rgba(237,34,36,.5);border-radius:3px;padding:1px 4px}
+.lrow .tb{width:22px;height:22px;display:grid;place-items:center;border:0;background:none;border-radius:3px;cursor:pointer;color:var(--faint)}
+.lrow .tb:hover{color:var(--text);background:var(--line)}
+.lrow .tb.act{color:var(--text)}
+.lrow .tb svg{width:13px;height:13px}
+.lrow input{background:var(--bg);border:1px solid var(--red);border-radius:3px;padding:1px 4px;width:100%;font-size:12px}
+
+/* modal + toast */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:8px;width:min(480px,100%);max-height:calc(100% - 32px);overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal h2{margin:0;font-size:18px;font-weight:900;letter-spacing:-.01em}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.modal .preview{background:#0b0b0c;border-radius:4px;display:grid;place-items:center;padding:10px}
+.modal .preview img{max-height:46vh;width:auto;max-width:100%}
+.sizes{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.sizes button{display:flex;flex-direction:column;gap:6px;align-items:center;padding:12px 8px;background:var(--panel2);border:1px solid var(--line);border-radius:5px;cursor:pointer}
+.sizes button:hover{border-color:var(--red)}
+.sizes i{display:block;border:2px solid var(--muted);border-radius:2px}
+.sizes b{font-size:12px}
+.sizes small{font-family:var(--f-mono);font-size:10px;color:var(--faint)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--paper);color:#151616;font-weight:700;padding:9px 14px;border-radius:5px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:calc(100% - 32px)}
+.toast.err{background:var(--red);color:#fff}
+.kbd{font-family:var(--f-mono);font-size:10.5px;color:var(--faint)}
+.empty{border:1px dashed var(--line);border-radius:5px;padding:14px;color:var(--muted);font-size:12px;line-height:1.5}
+
+@media (max-width:1100px){ .ws{grid-template-columns:236px minmax(0,1fr) 290px} }
+@media (max-width:900px){
+  body{overflow:auto}
+  #app{height:auto;min-height:100%}
+  .ws{grid-template-columns:minmax(0,1fr);grid-auto-rows:auto}
+  .stagewrap{order:-1;height:64vh}
+  .left,.right{border:0;border-top:1px solid var(--line)}
+  .pbody{max-height:none}
+  .layers{max-height:none}
+  .docname{width:140px}
+  .top{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="top">
+    <div class="mark"><b><span>SLC</span>SCOOP</b><small>Post Builder</small></div>
+    <input id="docname" class="docname" aria-label="Post name" value="Untitled post">
+    <div class="grp">
+      <button class="btn" data-act="add-text" title="Add text (T)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3.5h10M8 3.5v10"/></svg>Text</button>
+      <button class="btn" data-act="add-image" title="Add image"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1"/><circle cx="6" cy="6.5" r="1.2"/><path d="M2.5 12l3.5-3.5 2.5 2.5 2-2 3 3"/></svg>Image</button>
+      <select id="addshape" class="btn sel" aria-label="Add shape" style="width:auto">
+        <option value="">+ Shape</option>
+        <option value="rect">Rectangle</option>
+        <option value="ellipse">Ellipse</option>
+        <option value="torn">Torn paper strip</option>
+        <option value="fade">Photo fade (gradient)</option>
+        <option value="pin">Location pin</option>
+        <option value="arrow">Arrow</option>
+      </select>
+    </div>
+    <span class="sep"></span>
+    <div class="grp">
+      <button class="btn icon ghost" data-act="undo" id="bUndo" aria-label="Undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4L2 7l3 3"/><path d="M2.5 7H10a4 4 0 010 8H7"/></svg></button>
+      <button class="btn icon ghost" data-act="redo" id="bRedo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 4l3 3-3 3"/><path d="M13.5 7H6a4 4 0 000 8h3"/></svg></button>
+    </div>
+    <div class="grp">
+      <button class="btn icon ghost" data-act="zoom-out" aria-label="Zoom out">−</button>
+      <button class="btn ghost zoomlbl" data-act="zoom-fit" id="zoomlbl" title="Fit to screen">Fit</button>
+      <button class="btn icon ghost" data-act="zoom-in" aria-label="Zoom in">+</button>
+    </div>
+    <span class="spacer"></span>
+    <div class="grp">
+      <button class="btn" data-act="new">New</button>
+      <button class="btn" data-act="save-tpl">Save template</button>
+      <button class="btn primary" data-act="export"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 2v8M4.5 6.5L8 10l3.5-3.5M3 13.5h10"/></svg>Export</button>
+    </div>
+  </header>
+
+  <div class="ws">
+    <aside class="panel left" aria-label="Library">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-ltab="templates" aria-selected="true">Templates</button>
+        <button role="tab" data-ltab="assets" aria-selected="false">Assets</button>
+        <button role="tab" data-ltab="fonts" aria-selected="false">Fonts</button>
+      </div>
+      <div class="pbody" id="lib"></div>
+    </aside>
+
+    <section class="stagewrap" id="stagewrap">
+      <div class="stage" id="stage"><div class="board" id="board"><canvas id="main" width="1080" height="1440"></canvas></div></div>
+      <canvas id="ov"></canvas>
+      <div class="cropbar" id="cropbar" hidden>Adjusting photo: drag to reposition, scroll to zoom <button data-act="crop-done">Done</button></div>
+      <div class="dropmask" id="dropmask" hidden>Drop to add · drop on a photo slot to fill it</div>
+      <div class="stagehint" id="hint">Double-click a photo to reposition it · drop PNG or WebP anywhere</div>
+    </section>
+
+    <aside class="panel right" aria-label="Properties">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-rtab="fill" aria-selected="true">Quick fill</button>
+        <button role="tab" data-rtab="layer" aria-selected="false">Layer</button>
+        <button role="tab" data-rtab="canvas" aria-selected="false">Canvas</button>
+      </div>
+      <div class="pbody" id="props"></div>
+      <div class="layers">
+        <div class="lh"><span class="h" style="margin:0">Layers</span><span class="kbd" id="lcount"></span></div>
+        <div class="llist" id="llist"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+<input type="file" id="fileImg" accept="image/png,image/webp,image/jpeg,image/svg+xml" multiple hidden>
+<input type="file" id="fileSlot" accept="image/png,image/webp,image/jpeg" hidden>
+<input type="file" id="fileAsset" accept="image/png,image/webp,image/svg+xml,image/jpeg" multiple hidden>
+<input type="file" id="fileFont" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" multiple hidden>
+<div id="modalRoot"></div>
+
+<script>
+(() => {
+'use strict';
+/* ---------- constants ---------- */
+const BRAND = ['#ED2224','#151616','#F4F5F0','#FFFFFF','#000000','#444444'];
+const SIZES = [
+  ['Instagram 3:4',1080,1440],['Instagram 4:5',1080,1350],['Square',1080,1080],
+  ['Story / Reel',1080,1920],['Web 16:9',1920,1080],['YouTube thumb',1280,720],['X / link card',1600,900]
+];
+const BLENDS = [['source-over','Normal'],['multiply','Multiply'],['screen','Screen'],['overlay','Overlay'],['darken','Darken'],['lighten','Lighten'],['color-dodge','Color dodge'],['color-burn','Color burn'],['hard-light','Hard light'],['soft-light','Soft light'],['difference','Difference'],['luminosity','Luminosity']];
+const BRAND_FONTS = [
+  {family:'Integral CF',file:'IntegralCF-Bold.woff2'},
+  {family:'Arial Narrow',file:'ArialNarrow.woff2'},
+  {family:'Arial Narrow Italic',file:'ArialNarrow-Italic.woff2'},
+];
+const BRAND_FONT_FAMILIES = new Set(BRAND_FONTS.map(f=>f.family));
+const BUILTIN_FONTS = [
+  {family:'Integral CF',weights:[400]},
+  {family:'Arial Narrow',weights:[400]},
+  {family:'Arial Narrow Italic',weights:[400]},
+  {family:'Archivo',weights:[400,500,600,700,800,900]},
+  {family:'Archivo Black',weights:[400]},
+  {family:'Anton',weights:[400]},
+  {family:'Bebas Neue',weights:[400]},
+  {family:'Barlow Condensed',weights:[400,600,800]},
+  {family:'Roboto Condensed',weights:[300,400,500,700,900]},
+  {family:'Oswald',weights:[400,600,700]},
+  {family:'Inter',weights:[400,600,800]},
+  {family:'Permanent Marker',weights:[400]},
+];
+const CATS = ['Logos','Textures','Frames','Icons','Backgrounds','Other'];
+const LS_OK = typeof CanvasRenderingContext2D!=='undefined' && 'letterSpacing' in CanvasRenderingContext2D.prototype;
+const FILTER_OK = typeof CanvasRenderingContext2D!=='undefined' && 'filter' in CanvasRenderingContext2D.prototype;
+
+const $ = (s,el=document)=>el.querySelector(s);
+const uid = ()=>Math.random().toString(36).slice(2,10);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const esc = s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const slug = s=>String(s||'post').toLowerCase().replace(/['’]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'post';
+function hexA(hex,a){const h=(hex||'#000').replace('#','');const f=h.length===3?h.split('').map(c=>c+c).join(''):h.padEnd(6,'0');const n=parseInt(f.slice(0,6),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+/* ---------- layer factories ---------- */
+const BASE = ()=>({id:uid(),name:'',x:0,y:0,w:200,h:100,rot:0,opacity:1,blend:'source-over',visible:true,locked:false,slot:'',shadow:false,shadowColor:'#000000',shadowBlur:16,shadowX:0,shadowY:4});
+const T = o=>Object.assign(BASE(),{type:'text',text:'Text',font:'Archivo',weight:800,italic:false,size:48,lh:1.1,ls:0,color:'#FFFFFF',align:'left',upper:false,hscale:1,strokeW:0,stroke:'#000000',bg:'none',bgColor:'#ED2224',padX:18,padY:8},o);
+const SH = o=>Object.assign(BASE(),{type:'shape',shape:'rect',fill:'#ED2224',grad:false,fill2:'#000000',fill2Alpha:0,gradAngle:90,stroke:'#000000',strokeW:0,radius:0,rough:18,seed:7,edges:'both'},o);
+const IM = o=>Object.assign(BASE(),{type:'image',src:null,nw:0,nh:0,fit:'cover',fx:.5,fy:.5,zoom:1,flipX:false,flipY:false,bright:100,contrast:100,sat:100,gray:0,blur:0},o);
+
+function starterDoc(){
+  return {name:'News post', w:1080, h:1440, bg:'#151616', templateId:null, layers:[
+    IM({name:'Photo',slot:'Photo',x:34,y:34,w:1012,h:884}),
+    SH({name:'Photo fade',shape:'rect',grad:true,fill:'#000000',fill2:'#000000',fill2Alpha:0,gradAngle:270,x:34,y:600,w:1012,h:318,opacity:.55,locked:true}),
+    T({name:'Photo credit',slot:'Source',text:'Source: Name Here',font:'Arial Narrow',weight:400,italic:false,size:25,lh:1.2,ls:0,hscale:1.1,upper:false,color:'#FFFFFF',align:'right',x:620,y:836,w:400,shadow:true,shadowBlur:10,shadowY:2}),
+    T({name:'Logo SLC',text:'SLC',font:'Anton',weight:400,italic:true,size:96,color:'#ED2224',strokeW:3,stroke:'#000000',align:'right',x:20,y:46,w:158}),
+    T({name:'Logo SCOOP',text:'SCOOP',font:'Anton',weight:400,italic:true,size:96,color:'#FFFFFF',strokeW:3,stroke:'#000000',x:182,y:46,w:260}),
+    T({name:'Tagline',text:'REPROGRAMMING\nTHE NEWS',font:'Archivo',weight:800,size:26,ls:2,lh:1.15,x:62,y:158,w:320,shadow:true,shadowBlur:8,shadowY:2}),
+    SH({name:'Paper',shape:'torn',fill:'#F4F5F0',x:-30,y:872,w:1140,h:450,rough:22,seed:11,locked:true,shadow:true,shadowColor:'#000000',shadowBlur:30,shadowY:-6}),
+    T({name:'Category tag',slot:'Category',text:'NEWS',font:'Archivo',weight:900,size:36,align:'center',bg:'box',bgColor:'#ED2224',padX:24,padY:2,x:62,y:904,w:160}),
+    T({name:'Tags',slot:'Tags',text:'UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP',font:'Archivo',weight:700,size:23,color:'#151616',x:250,y:913,w:800}),
+    T({name:'Headline',slot:'Headline',text:'Write the headline here in two or three lines',font:'Integral CF',weight:400,italic:false,size:66.77,lh:0.94,ls:0.67,hscale:1,upper:true,color:'#000000',x:60,y:968,w:960}),
+    T({name:'Dek',slot:'Dek',text:'One or two sentences on what happened, where it happened and why readers should care.',font:'Arial Narrow Italic',weight:400,italic:false,size:35.42,lh:1,ls:0,hscale:1,upper:false,color:'#515151',x:62,y:1168,w:960}),
+    SH({name:'Footer strip',shape:'torn',fill:'#151616',edges:'top',x:-30,y:1306,w:1140,h:180,rough:18,seed:3,locked:true}),
+    SH({name:'Pin',shape:'pin',fill:'#ED2224',x:60,y:1342,w:42,h:58}),
+    T({name:'Location',slot:'Location',text:'Salt Lake City, UT',upper:true,font:'Archivo',weight:800,size:28,x:116,y:1358,w:440}),
+    T({name:'Follow line',text:'FOLLOW FOR REAL-TIME UPDATES',font:'Roboto Condensed',weight:400,size:24,ls:2,align:'right',x:540,y:1366,w:410}),
+    SH({name:'Arrow',shape:'arrow',fill:'#FFFFFF',strokeW:3,x:964,y:1366,w:60,h:24}),
+  ]};
+}
+function blankDoc(w,h){ return {name:'Untitled post',w,h,bg:'#151616',templateId:null,layers:[]}; }
+
+/* ---------- state ---------- */
+const S = {doc:null, sel:null, zoom:'fit', k:1, crop:false, guides:[], tabL:'templates', tabR:'fill', hist:[], hi:-1, clip:null, dirty:false, hover:null};
+const main = $('#main'), mctx = main.getContext('2d');
+const ov = $('#ov'), stage = $('#stage'), stagewrap = $('#stagewrap');
+const sel = ()=>S.doc.layers.find(l=>l.id===S.sel)||null;
+
+/* ---------- capabilities ---------- */
+const cap = {db:null, assets:null, user:null, downloads:null, sample:null, me:null, ready:false, failed:false};
+let LIB = [], TPLS = [], SWATCH = [], NAMES = {};
+
+/* ---------- local blobs (IndexedDB) ---------- */
+const localBlobs = new Map();
+let idbP=null;
+function idb(){ if(!idbP) idbP=new Promise((res,rej)=>{try{const r=indexedDB.open('scoop-builder',1);r.onupgradeneeded=()=>r.result.createObjectStore('blobs');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}}); return idbP; }
+async function idbPut(k,v){try{const d=await idb();await new Promise((res,rej)=>{const t=d.transaction('blobs','readwrite');t.objectStore('blobs').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
+async function idbGet(k){try{const d=await idb();return await new Promise((res,rej)=>{const r=d.transaction('blobs').objectStore('blobs').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}catch(e){return null;}}
+
+/* ---------- images ---------- */
+const imgCache = new Map();
+const assetUrl = a => { const x=LIB.find(l=>l.assetId===a); return x?(x.displayUrl||x.url):''; };
+function srcKey(src){ return !src?null: src.kind==='asset'?'a:'+src.assetId:'l:'+src.key; }
+function loadEntry(src){
+  const k=srcKey(src); if(!k) return null;
+  let e=imgCache.get(k);
+  if(!e){
+    e={img:null,state:'loading'};
+    imgCache.set(k,e);
+    e.p = (async()=>{
+      let url;
+      if(src.kind==='local'){
+        let b=localBlobs.get(src.key); if(!b){ b=await idbGet(src.key); if(b) localBlobs.set(src.key,b); }
+        if(!b) throw new Error('missing');
+        url=URL.createObjectURL(b);
+      } else {
+        const b=await Backend.fetchFile(src.url||assetUrl(src.assetId));
+        url=URL.createObjectURL(b);
+      }
+      const img=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=url;});
+      return img;
+    })().then(img=>{e.img=img;e.state='ok';scheduleRender();refreshFillThumbs();return img;})
+       .catch(()=>{e.state='err';scheduleRender();return null;});
+  }
+  return e;
+}
+function getImg(src){ const e=loadEntry(src); return e&&e.img; }
+async function allImagesReady(doc){ await Promise.all(doc.layers.filter(l=>l.type==='image'&&l.src).map(l=>loadEntry(l.src).p)); }
+
+/* ---------- fonts ---------- */
+const fontStr = L=>{
+  const brand=BRAND_FONT_FAMILIES.has(L.font);
+  const italic=!brand && L.italic;
+  const weight=brand?400:L.weight;
+  return `${italic?'italic ':''}${weight} ${L.size}px "${L.font}", "Archivo", sans-serif`;
+};
+function allFonts(){ return BUILTIN_FONTS.concat(LIB.filter(a=>a.kind==='font').map(a=>({family:a.family,weights:[400,700],custom:true}))); }
+const loadedCustom = new Set();
+function loadCustomFonts(){
+  for(const a of LIB.filter(a=>a.kind==='font')){
+    if(loadedCustom.has(a.assetId)) continue; loadedCustom.add(a.assetId);
+    (async()=>{
+      const src=URL.createObjectURL(await Backend.fetchFile(a.url));
+      const ff=new FontFace(a.family,`url(${src})`);
+      await ff.load(); document.fonts.add(ff); scheduleRender(); if(S.tabL==='fonts') renderLib();
+    })().catch(()=>{});
+  }
+}
+function ensureFonts(layers){
+  const ts=(layers||S.doc.layers).filter(l=>l.type==='text');
+  return Promise.all(ts.map(L=>document.fonts.load(fontStr(L),'AaBb019').catch(()=>{}))).then(()=>scheduleRender());
+}
+if(document.fonts) document.fonts.addEventListener?.('loadingdone',()=>scheduleRender());
+
+/* ---------- text layout ---------- */
+function setLS(ctx,ls){ if(LS_OK) ctx.letterSpacing=(ls||0)+'px'; }
+function measure(ctx,t,ls){
+  if(!ls||LS_OK) return Math.max(0, ctx.measureText(t).width - (LS_OK&&ls? ls:0));
+  let w=0; for(const ch of t) w+=ctx.measureText(ch).width; return w+ls*Math.max(0,[...t].length-1);
+}
+function drawLine(ctx,t,ls,stroke){
+  if(!ls||LS_OK){ stroke?ctx.strokeText(t,0,0):ctx.fillText(t,0,0); return; }
+  let x=0; for(const ch of t){ stroke?ctx.strokeText(ch,x,0):ctx.fillText(ch,x,0); x+=ctx.measureText(ch).width+ls; }
+}
+function layoutText(ctx,L){
+  ctx.font=fontStr(L); setLS(ctx,L.ls);
+  const hs=L.hscale||1, box=L.bg==='box';
+  const padX=box?L.padX:0, padY=box?L.padY:0;
+  const maxW=Math.max(1,L.w-2*padX)/hs;
+  const lines=[];
+  const raw=(L.upper?String(L.text).toUpperCase():String(L.text)).split('\n');
+  for(const para of raw){
+    const words=para.split(' '); let cur=null;
+    for(const wd of words){
+      const t = cur===null? wd : cur+' '+wd;
+      if(cur!==null && cur!=='' && measure(ctx,t,L.ls)>maxW){ lines.push(cur); cur=wd; } else cur=t;
+    }
+    lines.push(cur??'');
+  }
+  const lineH=L.size*L.lh;
+  return {lines:lines.map(t=>({t,w:measure(ctx,t,L.ls)})), lineH, h:Math.max(lineH,lines.length*lineH)+2*padY, padX, padY, hs};
+}
+
+/* ---------- drawing ---------- */
+function shapePath(ctx,L){
+  const w=L.w,h=L.h; ctx.beginPath();
+  if(L.shape==='ellipse'){ ctx.ellipse(w/2,h/2,Math.abs(w/2),Math.abs(h/2),0,0,Math.PI*2); }
+  else if(L.shape==='torn'){
+    const r=mulberry(L.seed||1), R=L.rough||0, step=Math.max(5,R*.8);
+    const top=L.edges!=='bottom', bot=L.edges!=='top';
+    const jt=()=>top? r()*R : 0, jb=()=>bot? h-r()*R : h;
+    ctx.moveTo(0,jt());
+    for(let x=step*(.5+r()); x<w; x+=step*(.4+r()*.9)) ctx.lineTo(x,jt());
+    ctx.lineTo(w,jt()); ctx.lineTo(w,jb());
+    for(let x=w-step*(.5+r()); x>0; x-=step*(.4+r()*.9)) ctx.lineTo(x,jb());
+    ctx.lineTo(0,jb()); ctx.closePath();
+  }
+  else if(L.shape==='pin'){
+    const rr=w/2, cx=w/2, cy=rr, d=Math.max(h-rr, rr*1.05), a=Math.acos(rr/d);
+    ctx.moveTo(cx,cy+d); ctx.arc(cx,cy,rr,Math.PI/2+a,Math.PI/2-a,false); ctx.closePath();
+    const ri=rr*.42; ctx.moveTo(cx+ri,cy); ctx.arc(cx,cy,ri,0,Math.PI*2,true);
+  }
+  else { const rad=Math.min(L.radius||0,Math.abs(w)/2,Math.abs(h)/2); if(rad>0&&ctx.roundRect) ctx.roundRect(0,0,w,h,rad); else ctx.rect(0,0,w,h); }
+}
+function fillStyleFor(ctx,L){
+  if(!L.grad) return L.fill;
+  const a=(L.gradAngle||0)*Math.PI/180, dx=Math.cos(a)*L.w/2, dy=Math.sin(a)*L.h/2;
+  const g=ctx.createLinearGradient(L.w/2-dx,L.h/2-dy,L.w/2+dx,L.h/2+dy);
+  g.addColorStop(0,hexA(L.fill,1)); g.addColorStop(1,hexA(L.fill2,L.fill2Alpha)); return g;
+}
+function coverDims(L,img){
+  const nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height;
+  if(L.fit==='stretch') return {dw:L.w,dh:L.h,dx:0,dy:0};
+  const s=(L.fit==='contain'?Math.min(L.w/nw,L.h/nh):Math.max(L.w/nw,L.h/nh))*(L.zoom||1);
+  const dw=nw*s, dh=nh*s; return {dw,dh,dx:(L.w-dw)*L.fx,dy:(L.h-dh)*L.fy};
+}
+function drawPlaceholder(ctx,L,sc){
+  ctx.fillStyle='#2b2b2e'; ctx.fillRect(0,0,L.w,L.h);
+  ctx.save(); ctx.beginPath(); ctx.rect(0,0,L.w,L.h); ctx.clip();
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=10;
+  for(let i=-L.h;i<L.w;i+=34){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+L.h,L.h); ctx.stroke(); }
+  ctx.restore();
+  const fs=Math.max(14,Math.min(L.w,L.h)*.06);
+  ctx.fillStyle='rgba(244,245,240,.75)'; ctx.font=`800 ${fs}px "Archivo",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  if(LS_OK) ctx.letterSpacing=(fs*.12)+'px';
+  ctx.fillText(('Drop photo'+(L.slot?' · '+L.slot:'')).toUpperCase(),L.w/2,L.h/2);
+  ctx.textAlign='left';
+}
+function drawLayer(ctx,L,opt){
+  if(!L.visible) return;
+  ctx.save();
+  let lay=null;
+  if(L.type==='text'){ lay=layoutText(ctx,L); L.h=lay.h; }
+  ctx.globalAlpha=L.opacity??1;
+  ctx.globalCompositeOperation=L.blend||'source-over';
+  const cx=L.x+L.w/2, cy=L.y+L.h/2;
+  ctx.translate(cx,cy); ctx.rotate((L.rot||0)*Math.PI/180); ctx.translate(-L.w/2,-L.h/2);
+  if(L.shadow){ const s=opt.scale||1; ctx.shadowColor=L.shadowColor; ctx.shadowBlur=L.shadowBlur*s; ctx.shadowOffsetX=L.shadowX*s; ctx.shadowOffsetY=L.shadowY*s; }
+  if(L.type==='shape'){
+    if(L.shape==='arrow'){
+      const t=L.strokeW||4, hl=Math.min(L.h/2,L.w*.45);
+      ctx.strokeStyle=L.fill; ctx.lineWidth=t; ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.beginPath(); ctx.moveTo(t/2,L.h/2); ctx.lineTo(L.w-t/2,L.h/2); ctx.moveTo(L.w-hl-t/2,t/2); ctx.lineTo(L.w-t/2,L.h/2); ctx.lineTo(L.w-hl-t/2,L.h-t/2); ctx.stroke();
+    } else {
+      shapePath(ctx,L); ctx.fillStyle=fillStyleFor(ctx,L); ctx.fill(L.shape==='pin'?'evenodd':'nonzero');
+      if(L.strokeW>0){ ctx.shadowColor='transparent'; ctx.strokeStyle=L.stroke; ctx.lineWidth=L.strokeW; ctx.stroke(); }
+    }
+  }
+  else if(L.type==='image'){
+    const img=getImg(L.src);
+    if(!img){ if(opt.editor) drawPlaceholder(ctx,L,opt.scale||1); ctx.restore(); return; }
+    if(L.shadow){ ctx.fillStyle='#000'; ctx.fillRect(0,0,L.w,L.h); ctx.shadowColor='transparent'; }
+    ctx.beginPath(); ctx.rect(0,0,L.w,L.h); ctx.clip();
+    const f=[]; if(L.bright!==100) f.push(`brightness(${L.bright}%)`); if(L.contrast!==100) f.push(`contrast(${L.contrast}%)`); if(L.sat!==100) f.push(`saturate(${L.sat}%)`); if(L.gray) f.push(`grayscale(${L.gray}%)`); if(L.blur) f.push(`blur(${L.blur*(opt.scale||1)}px)`);
+    if(FILTER_OK && f.length) ctx.filter=f.join(' ');
+    if(L.flipX||L.flipY){ ctx.translate(L.flipX?L.w:0,L.flipY?L.h:0); ctx.scale(L.flipX?-1:1,L.flipY?-1:1); }
+    const d=coverDims(L,img);
+    ctx.drawImage(img,d.dx,d.dy,d.dw,d.dh);
+  }
+  else if(L.type==='text'){
+    const {lines,lineH,padX,padY,hs}=lay;
+    if(L.bg==='box'){ ctx.fillStyle=L.bgColor; ctx.fillRect(0,0,L.w,lay.h); ctx.shadowColor='transparent'; }
+    ctx.font=fontStr(L); setLS(ctx,L.ls); ctx.textBaseline='alphabetic';
+    const m=ctx.measureText('Hg');
+    const asc=m.fontBoundingBoxAscent||L.size*.8, desc=m.fontBoundingBoxDescent||L.size*.22;
+    const innerW=L.w-2*padX;
+    lines.forEach((ln,i)=>{
+      const tw=ln.w*hs;
+      const x=padX+(L.align==='center'?(innerW-tw)/2:L.align==='right'?innerW-tw:0);
+      const top=padY+i*lineH, base=top+(lineH-(asc+desc))/2+asc;
+      if(L.bg==='lines'&&ln.t.trim()){ ctx.fillStyle=L.bgColor; ctx.fillRect(x-L.padX,top-L.padY*.5,tw+2*L.padX,lineH+L.padY); }
+      ctx.save(); ctx.translate(x,base); ctx.scale(hs,1);
+      if(L.strokeW>0){ ctx.lineJoin='round'; ctx.miterLimit=2; ctx.strokeStyle=L.stroke; ctx.lineWidth=L.strokeW*2; drawLine(ctx,ln.t,L.ls,true); ctx.shadowColor='transparent'; }
+      ctx.fillStyle=L.color; drawLine(ctx,ln.t,L.ls,false);
+      ctx.restore();
+    });
+  }
+  ctx.restore();
+}
+function renderDoc(ctx,doc,opt={}){
+  const s=opt.scale||1;
+  ctx.save(); ctx.setTransform(s,0,0,s,0,0);
+  ctx.clearRect(0,0,doc.w,doc.h);
+  ctx.fillStyle=doc.bg||'#000'; ctx.fillRect(0,0,doc.w,doc.h);
+  for(const L of doc.layers) drawLayer(ctx,L,opt);
+  ctx.restore();
+}
+let rq=false;
+function scheduleRender(){ if(rq) return; rq=true; requestAnimationFrame(()=>{rq=false; renderMain(); drawOverlay();}); }
+function renderMain(){
+  if(main.width!==S.doc.w||main.height!==S.doc.h){ main.width=S.doc.w; main.height=S.doc.h; fitView(); }
+  renderDoc(mctx,S.doc,{editor:true,scale:1});
+}
+
+/* ---------- geometry ---------- */
+function rotP(L,lx,ly){ const a=(L.rot||0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a),cx=L.x+L.w/2,cy=L.y+L.h/2; return [cx+lx*c-ly*s, cy+lx*s+ly*c]; }
+function toLocal(L,x,y){ const a=(L.rot||0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a),dx=x-(L.x+L.w/2),dy=y-(L.y+L.h/2); return [dx*c+dy*s, -dx*s+dy*c]; }
+function inside(L,x,y){ const [lx,ly]=toLocal(L,x,y); return Math.abs(lx)<=Math.abs(L.w)/2 && Math.abs(ly)<=Math.abs(L.h)/2; }
+function view(){ const r=ov.getBoundingClientRect(), c=main.getBoundingClientRect(); const k=c.width/S.doc.w; return {r,c,k,ox:c.left-r.left,oy:c.top-r.top}; }
+function handlesFor(L,v){
+  const hw=L.w/2, hh=L.h/2, list=[];
+  const pts = L.type==='text' ? [[-1,-1],[1,-1],[1,1],[-1,1],[-1,0],[1,0]] : [[-1,-1],[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0]];
+  for(const [hx,hy] of pts){ const [x,y]=rotP(L,hx*hw,hy*hh); list.push({hx,hy,sx:v.ox+x*v.k,sy:v.oy+y*v.k}); }
+  const [rx,ry]=rotP(L,0,-hh-28/v.k); list.push({rot:true,sx:v.ox+rx*v.k,sy:v.oy+ry*v.k});
+  return list;
+}
+
+/* ---------- overlay ---------- */
+function drawOverlay(){
+  const dpr=window.devicePixelRatio||1, r=ov.getBoundingClientRect();
+  const W=Math.round(r.width*dpr), H=Math.round(r.height*dpr);
+  if(ov.width!==W||ov.height!==H){ ov.width=W; ov.height=H; }
+  const c=ov.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,r.width,r.height);
+  const v=view(); const T=(x,y)=>[v.ox+x*v.k, v.oy+y*v.k];
+  const poly=(L)=>{ c.beginPath(); [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b],i)=>{const [x,y]=rotP(L,a*L.w/2,b*L.h/2);const [sx,sy]=T(x,y); i?c.lineTo(sx,sy):c.moveTo(sx,sy);}); c.closePath(); };
+  // guides
+  c.strokeStyle='#ff3df0'; c.lineWidth=1; c.setLineDash([]);
+  for(const g of S.guides){ c.beginPath(); if(g.x!=null){const [sx]=T(g.x,0); c.moveTo(sx+.5,v.oy); c.lineTo(sx+.5,v.oy+S.doc.h*v.k);} else {const [,sy]=T(0,g.y); c.moveTo(v.ox,sy+.5); c.lineTo(v.ox+S.doc.w*v.k,sy+.5);} c.stroke(); }
+  const H2=S.doc.layers.find(l=>l.id===S.hover);
+  if(H2 && H2.id!==S.sel && H2.visible){ poly(H2); c.strokeStyle='rgba(237,34,36,.6)'; c.lineWidth=1; c.stroke(); }
+  const L=sel(); if(!L||!L.visible) return;
+  if(S.crop && L.type==='image' && L.src){
+    const img=getImg(L.src);
+    if(img){ const d=coverDims(L,img); c.save(); c.setLineDash([5,4]); c.strokeStyle='rgba(255,255,255,.7)';
+      c.beginPath(); [[d.dx,d.dy],[d.dx+d.dw,d.dy],[d.dx+d.dw,d.dy+d.dh],[d.dx,d.dy+d.dh]].forEach(([lx,ly],i)=>{const [x,y]=rotP(L,lx-L.w/2,ly-L.h/2);const [sx,sy]=T(x,y);i?c.lineTo(sx,sy):c.moveTo(sx,sy);}); c.closePath(); c.stroke(); c.restore(); }
+  }
+  poly(L); c.strokeStyle=L.locked?'rgba(244,245,240,.6)':'#ED2224'; c.lineWidth=1.5; c.setLineDash(L.locked?[4,3]:[]); c.stroke(); c.setLineDash([]);
+  if(L.locked||S.crop) return;
+  const hs=handlesFor(L,v); const top=hs.find(h=>h.hx===0&&h.hy===-1)||(()=>{const [x,y]=rotP(L,0,-L.h/2);const [sx,sy]=T(x,y);return{sx,sy};})();
+  const rh=hs.find(h=>h.rot);
+  c.beginPath(); c.moveTo(top.sx,top.sy); c.lineTo(rh.sx,rh.sy); c.strokeStyle='#ED2224'; c.lineWidth=1; c.stroke();
+  for(const h of hs){
+    c.beginPath();
+    if(h.rot) c.arc(h.sx,h.sy,5.5,0,Math.PI*2); else c.rect(h.sx-4.5,h.sy-4.5,9,9);
+    c.fillStyle='#fff'; c.fill(); c.strokeStyle='#ED2224'; c.lineWidth=1.5; c.stroke();
+  }
+}
+
+/* ---------- history ---------- */
+function snap(){ return JSON.stringify(S.doc); }
+function commit(){ const s=snap(); if(s===S.hist[S.hi]) return; S.hist=S.hist.slice(0,S.hi+1); S.hist.push(s); if(S.hist.length>80) S.hist.shift(); S.hi=S.hist.length-1; S.dirty=true; saveDraft(); updUndo(); }
+function resetHist(){ S.hist=[snap()]; S.hi=0; updUndo(); }
+function undo(){ if(S.hi<=0) return; S.hi--; restore(S.hist[S.hi]); }
+function redo(){ if(S.hi>=S.hist.length-1) return; S.hi++; restore(S.hist[S.hi]); }
+function restore(s){ const keep=S.sel; S.doc=JSON.parse(s); if(!sel()) S.sel=null; else S.sel=keep; S.crop=false; $('#cropbar').hidden=true; afterLoad(false); saveDraft(); updUndo(); }
+function updUndo(){ $('#bUndo').disabled=S.hi<=0; $('#bRedo').disabled=S.hi>=S.hist.length-1; }
+let draftT=0;
+function saveDraft(){ clearTimeout(draftT); draftT=setTimeout(()=>{ try{ localStorage.setItem('scoop-builder:draft',snap()); }catch(e){} },300); }
+
+/* ---------- doc load ---------- */
+function loadDoc(doc,{fresh=true}={}){
+  S.doc=doc; S.sel=null; S.crop=false; $('#cropbar').hidden=true;
+  afterLoad(true);
+  if(fresh){ resetHist(); S.dirty=false; saveDraft(); }
+}
+function afterLoad(structural){
+  $('#docname').value=S.doc.name||'Untitled post';
+  ensureFonts();
+  S.doc.layers.filter(l=>l.type==='image'&&l.src).forEach(l=>loadEntry(l.src));
+  if(main.width!==S.doc.w||main.height!==S.doc.h){ main.width=S.doc.w; main.height=S.doc.h; }
+  fitView(); scheduleRender(); renderLayers(); renderProps(true);
+}
+
+/* ---------- view / zoom ---------- */
+function fitView(){
+  const r=stagewrap.getBoundingClientRect();
+  const fit=Math.max(.05,Math.min((r.width-80)/S.doc.w,(r.height-80)/S.doc.h));
+  const k=S.zoom==='fit'?fit:S.zoom;
+  S.k=k; main.style.width=Math.round(S.doc.w*k)+'px'; main.style.height=Math.round(S.doc.h*k)+'px';
+  $('#zoomlbl').textContent=S.zoom==='fit'?'Fit · '+Math.round(fit*100)+'%':Math.round(k*100)+'%';
+  $('#board').style.padding=S.zoom==='fit'?'40px':'56px';
+  scheduleRender();
+}
+function zoomBy(f){ const cur=S.zoom==='fit'?S.k:S.zoom; S.zoom=clamp(cur*f,.1,4); fitView(); }
+new ResizeObserver(()=>fitView()).observe(stagewrap);
+stage.addEventListener('scroll',()=>drawOverlay(),{passive:true});
+window.addEventListener('resize',()=>drawOverlay());
+
+/* ---------- adding layers ---------- */
+function addLayer(L,{select=true}={}){ S.doc.layers.push(L); if(select) S.sel=L.id; commit(); scheduleRender(); renderLayers(); renderProps(true); return L; }
+function centerIn(L,cx,cy){ L.x=Math.round((cx??S.doc.w/2)-L.w/2); L.y=Math.round((cy??S.doc.h/2)-L.h/2); return L; }
+function addText(){
+  const L=T({text:'New text',size:Math.round(S.doc.w*.06),w:Math.round(S.doc.w*.7),color:'#FFFFFF'});
+  L.h=L.size*1.1; centerIn(L); addLayer(L); ensureFonts([L]); setTab('layer');
+  setTimeout(()=>{const t=$('#props textarea[data-p="text"]'); if(t){t.focus(); t.select();}},30);
+}
+function addShape(kind){
+  const W=S.doc.w,H=S.doc.h; let L;
+  if(kind==='torn') L=SH({shape:'torn',fill:'#F4F5F0',w:W+60,h:Math.round(H*.25),rough:20,seed:1+Math.floor(Math.random()*999)});
+  else if(kind==='fade') L=SH({shape:'rect',grad:true,fill:'#000000',fill2:'#000000',fill2Alpha:0,gradAngle:270,w:W,h:Math.round(H*.35),opacity:.7,name:'Photo fade'});
+  else if(kind==='pin') L=SH({shape:'pin',fill:'#ED2224',w:48,h:66});
+  else if(kind==='arrow') L=SH({shape:'arrow',fill:'#FFFFFF',strokeW:4,w:90,h:32});
+  else if(kind==='ellipse') L=SH({shape:'ellipse',fill:'#ED2224',w:240,h:240});
+  else L=SH({shape:'rect',fill:'#ED2224',w:Math.round(W*.4),h:Math.round(H*.08)});
+  centerIn(L); if(kind==='fade') L.y=H-L.h; addLayer(L); setTab('layer');
+}
+async function blobDims(blob){ const u=URL.createObjectURL(blob); try{ return await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res({w:i.naturalWidth||i.width||400,h:i.naturalHeight||i.height||400});i.onerror=rej;i.src=u;}); } finally{ setTimeout(()=>URL.revokeObjectURL(u),2000);} }
+async function localSrc(file){ const key='loc_'+uid(); localBlobs.set(key,file); idbPut(key,file); return {kind:'local',key}; }
+function slotAt(x,y){ for(let i=S.doc.layers.length-1;i>=0;i--){ const L=S.doc.layers[i]; if(L.type==='image'&&L.slot&&L.visible&&inside(L,x,y)) return L; } return null; }
+function fillSlot(L,src,dims){ L.src=src; L.nw=dims.w; L.nh=dims.h; L.fit='cover'; L.fx=.5; L.fy=.5; L.zoom=1; S.sel=L.id; commit(); loadEntry(src); scheduleRender(); renderLayers(); renderProps(true); }
+function placeImage(src,dims,name,at){
+  const W=S.doc.w,H=S.doc.h, s=Math.min(1,(W*.8)/dims.w,(H*.8)/dims.h);
+  const L=IM({src,nw:dims.w,nh:dims.h,w:Math.round(dims.w*s),h:Math.round(dims.h*s),fit:'stretch',name:name||'Image'});
+  centerIn(L,at?.x,at?.y); loadEntry(src); addLayer(L);
+}
+async function handleFiles(files,at){
+  const imgs=[...files].filter(f=>/^image\/(png|webp|jpeg|svg\+xml)$/.test(f.type));
+  if(!imgs.length){ toast('Use PNG, WebP, JPG or SVG files.',true); return; }
+  for(const f of imgs){
+    const dims=await blobDims(f).catch(()=>({w:800,h:800})); const src=await localSrc(f);
+    const target = at? slotAt(at.x,at.y) : null;
+    if(target) fillSlot(target,src,dims); else placeImage(src,dims,f.name.replace(/\.[^.]+$/,''),at);
+  }
+}
+function addAsset(a,at){
+  const src={kind:'asset',assetId:a.assetId,url:a.url||''}; const dims={w:a.w||600,h:a.h||600};
+  const target = at? slotAt(at.x,at.y) : null;
+  if(target) fillSlot(target,src,dims); else placeImage(src,dims,a.name,at);
+}
+
+/* ---------- pointer interaction ---------- */
+let drag=null;
+function evDoc(e){ const v=view(); const sx=e.clientX-v.r.left, sy=e.clientY-v.r.top; return {x:(sx-v.ox)/v.k, y:(sy-v.oy)/v.k, sx, sy, v}; }
+function hitTest(x,y){ for(let i=S.doc.layers.length-1;i>=0;i--){ const L=S.doc.layers[i]; if(!L.visible||L.locked) continue; if(inside(L,x,y)) return L; } return null; }
+stage.addEventListener('pointerdown',e=>{
+  if(e.button!==0) return;
+  const p=evDoc(e); const L=sel();
+  if(L && !L.locked && !S.crop && L.visible){
+    for(const h of handlesFor(L,p.v)){
+      if(Math.hypot(h.sx-p.sx,h.sy-p.sy)<=10){
+        drag={mode:h.rot?'rotate':'resize',h,L,start:JSON.parse(JSON.stringify(L)),p0:p};
+        stage.setPointerCapture(e.pointerId); e.preventDefault(); return;
+      }
+    }
+  }
+  if(S.crop && L && L.type==='image' && inside(L,p.x,p.y)){
+    drag={mode:'pan',L,start:{fx:L.fx,fy:L.fy},p0:p}; stage.setPointerCapture(e.pointerId); e.preventDefault(); return;
+  }
+  if(S.crop){ exitCrop(); }
+  const hit=hitTest(p.x,p.y);
+  if(hit){
+    if(S.sel!==hit.id){ S.sel=hit.id; renderLayers(); renderProps(true); }
+    drag={mode:'move',L:hit,start:{x:hit.x,y:hit.y},p0:p};
+    stage.setPointerCapture(e.pointerId); e.preventDefault();
+  } else if(e.target===main || e.target===$('#board') || e.target===stage){
+    if(S.sel){ S.sel=null; renderLayers(); renderProps(true); }
+  }
+  scheduleRender();
+});
+stage.addEventListener('pointermove',e=>{
+  const p=evDoc(e);
+  if(!drag){ const h=hitTest(p.x,p.y); const id=h?h.id:null; if(id!==S.hover){ S.hover=id; drawOverlay(); } stage.style.cursor=h?'move':'default'; return; }
+  const L=drag.L, s=drag.start, dx=p.x-drag.p0.x, dy=p.y-drag.p0.y;
+  if(drag.mode==='move'){
+    let nx=s.x+dx, ny=s.y+dy; S.guides=[];
+    if(!e.altKey){
+      const thr=7/p.v.k, W=S.doc.w, H=S.doc.h;
+      const xs=[[nx,0],[nx+L.w/2,L.w/2],[nx+L.w,L.w]], ys=[[ny,0],[ny+L.h/2,L.h/2],[ny+L.h,L.h]];
+      const tx=[0,W/2,W], ty=[0,H/2,H];
+      let bx=null; for(const [v,o] of xs) for(const t of tx){ const d=Math.abs(v-t); if(d<thr&&(!bx||d<bx.d)) bx={d,x:t-o,g:t}; }
+      let by=null; for(const [v,o] of ys) for(const t of ty){ const d=Math.abs(v-t); if(d<thr&&(!by||d<by.d)) by={d,y:t-o,g:t}; }
+      if(bx){ nx=bx.x; S.guides.push({x:bx.g}); } if(by){ ny=by.y; S.guides.push({y:by.g}); }
+    }
+    L.x=Math.round(nx); L.y=Math.round(ny);
+  }
+  else if(drag.mode==='resize'){
+    const {hx,hy}=drag.h, a=(s.rot||0)*Math.PI/180, c=Math.cos(a), sn=Math.sin(a);
+    const cx0=s.x+s.w/2, cy0=s.y+s.h/2;
+    const ax=-hx*s.w/2, ay=-hy*s.h/2;
+    const ddx=p.x-cx0, ddy=p.y-cy0, px=ddx*c+ddy*sn, py=-ddx*sn+ddy*c;
+    let w=hx? Math.max(8,(px-ax)*hx) : s.w;
+    let h=hy? Math.max(8,(py-ay)*hy) : s.h;
+    const corner=hx&&hy;
+    if(L.type==='text'){
+      if(corner){ const f=w/s.w; L.size=Math.max(4,Math.round(s.size*f*10)/10); L.padX=s.padX*f; L.padY=s.padY*f; L.strokeW=s.strokeW*f; h=s.h*f; }
+      else h=s.h;
+    } else {
+      const lock = corner && (L.type==='image' ? !e.shiftKey : e.shiftKey);
+      if(lock){ const f=Math.max(w/s.w,h/s.h); w=s.w*f; h=s.h*f; }
+    }
+    const clx=hx? ax+hx*w/2 : 0, cly=hy? ay+hy*h/2 : 0;
+    const ncx=cx0+clx*c-cly*sn, ncy=cy0+clx*sn+cly*c;
+    L.w=Math.round(w); L.h=Math.round(h); L.x=Math.round(ncx-w/2); L.y=Math.round(ncy-h/2);
+  }
+  else if(drag.mode==='rotate'){
+    const cx=L.x+L.w/2, cy=L.y+L.h/2;
+    let ang=Math.atan2(p.y-cy,p.x-cx)*180/Math.PI+90;
+    if(e.shiftKey) ang=Math.round(ang/15)*15; else { const r9=Math.round(ang/90)*90; if(Math.abs(ang-r9)<4) ang=r9; }
+    ang=((ang+180)%360+360)%360-180; L.rot=Math.round(ang*10)/10;
+  }
+  else if(drag.mode==='pan'){
+    const img=getImg(L.src); if(img){
+      const a=(L.rot||0)*Math.PI/180, lx=dx*Math.cos(a)+dy*Math.sin(a), ly=-dx*Math.sin(a)+dy*Math.cos(a);
+      const d=coverDims(Object.assign({},L,{fx:.5,fy:.5}),img);
+      if(Math.abs(L.w-d.dw)>.5) L.fx=clamp(s.fx+lx/(L.w-d.dw),0,1);
+      if(Math.abs(L.h-d.dh)>.5) L.fy=clamp(s.fy+ly/(L.h-d.dh),0,1);
+    }
+  }
+  scheduleRender(); syncProps();
+});
+function endDrag(){ if(!drag) return; drag=null; S.guides=[]; commit(); scheduleRender(); syncProps(); }
+stage.addEventListener('pointerup',endDrag); stage.addEventListener('pointercancel',endDrag);
+stage.addEventListener('pointerleave',()=>{ if(!drag&&S.hover){S.hover=null;drawOverlay();} });
+stage.addEventListener('dblclick',e=>{
+  const p=evDoc(e); const hit=hitTest(p.x,p.y); if(!hit) return;
+  S.sel=hit.id; renderLayers();
+  if(hit.type==='image'){ if(hit.src) enterCrop(); else { pendingSlot=hit.id; $('#fileSlot').click(); } }
+  else if(hit.type==='text'){ setTab('layer'); setTimeout(()=>{const t=$('#props textarea[data-p="text"]'); if(t){t.focus();}},20); }
+});
+stage.addEventListener('wheel',e=>{
+  const L=sel();
+  if(S.crop && L && L.type==='image'){ e.preventDefault(); L.zoom=clamp((L.zoom||1)*Math.exp(-e.deltaY*.0015),1,6); scheduleRender(); syncProps(); clearTimeout(wheelT); wheelT=setTimeout(commit,300); return; }
+  if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoomBy(Math.exp(-e.deltaY*.002)); }
+},{passive:false});
+let wheelT=0;
+function enterCrop(){ const L=sel(); if(!L||L.type!=='image'||!L.src) return; if(L.fit==='stretch') L.fit='cover'; S.crop=true; $('#cropbar').hidden=false; scheduleRender(); renderProps(true); }
+function exitCrop(){ S.crop=false; $('#cropbar').hidden=true; scheduleRender(); renderProps(true); }
+
+/* ---------- drag & drop ---------- */
+let dragDepth=0;
+stagewrap.addEventListener('dragenter',e=>{ e.preventDefault(); dragDepth++; $('#dropmask').hidden=false; });
+stagewrap.addEventListener('dragleave',()=>{ dragDepth=Math.max(0,dragDepth-1); if(!dragDepth) $('#dropmask').hidden=true; });
+stagewrap.addEventListener('dragover',e=>{ e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+stagewrap.addEventListener('drop',e=>{
+  e.preventDefault(); dragDepth=0; $('#dropmask').hidden=true;
+  const p=evDoc(e);
+  const aid=e.dataTransfer.getData('application/x-scoop-asset');
+  if(aid){ const a=LIB.find(x=>x.id===aid); if(a) addAsset(a,{x:p.x,y:p.y}); return; }
+  if(e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files,{x:p.x,y:p.y});
+});
+window.addEventListener('paste',e=>{
+  if(isTyping()) return;
+  const files=[...(e.clipboardData?.files||[])].filter(f=>f.type.startsWith('image/'));
+  if(files.length){
+    e.preventDefault();
+    const L=sel();
+    if(L&&L.type==='image'&&(L.slot||!L.src)){ (async()=>{ const f=files[0]; fillSlot(L,await localSrc(f),await blobDims(f)); })(); }
+    else handleFiles(files);
+    return;
+  }
+  if(S.clip){ e.preventDefault(); pasteLayer(); }
+});
+function pasteLayer(){ const L=JSON.parse(S.clip); L.id=uid(); L.x+=24; L.y+=24; L.locked=false; addLayer(L); }
+
+/* ---------- keyboard ---------- */
+const isTyping=()=>{ const a=document.activeElement; return a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable); };
+window.addEventListener('keydown',e=>{
+  const mod=e.ctrlKey||e.metaKey;
+  if(mod && e.key.toLowerCase()==='z' && !isTyping()){ e.preventDefault(); e.shiftKey?redo():undo(); return; }
+  if(mod && e.key.toLowerCase()==='y' && !isTyping()){ e.preventDefault(); redo(); return; }
+  if(isTyping()) { if(e.key==='Escape') document.activeElement.blur(); return; }
+  if($('#modalRoot').firstChild) { if(e.key==='Escape') closeModal(); return; }
+  const L=sel();
+  if(e.key==='Escape'){ if(S.crop) exitCrop(); else if(S.sel){ S.sel=null; renderLayers(); renderProps(true); scheduleRender(); } return; }
+  if(mod && e.key.toLowerCase()==='c' && L){ S.clip=JSON.stringify(L); toast('Layer copied'); return; }
+  if(mod && e.key.toLowerCase()==='d' && L){ e.preventDefault(); act('dup'); return; }
+  if(mod && e.key.toLowerCase()==='s'){ e.preventDefault(); openSaveTemplate(); return; }
+  if(mod && e.key.toLowerCase()==='e'){ e.preventDefault(); openExport(); return; }
+  if(!mod && e.key.toLowerCase()==='t'){ addText(); return; }
+  if(!L) return;
+  if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); act('del'); return; }
+  if(e.key===']'){ act(e.shiftKey?'front':'fwd'); return; }
+  if(e.key==='['){ act(e.shiftKey?'bottom':'back'); return; }
+  if(e.key==='Enter' && L.type==='image' && L.src){ S.crop?exitCrop():enterCrop(); return; }
+  const n=e.shiftKey?10:1, mv={ArrowLeft:[-n,0],ArrowRight:[n,0],ArrowUp:[0,-n],ArrowDown:[0,n]}[e.key];
+  if(mv && !L.locked){ e.preventDefault(); L.x+=mv[0]; L.y+=mv[1]; scheduleRender(); syncProps(); clearTimeout(nudgeT); nudgeT=setTimeout(commit,250); }
+});
+let nudgeT=0;
+
+/* ---------- actions ---------- */
+function act(a,el){
+  const L=sel(), ls=S.doc.layers, i=L?ls.indexOf(L):-1;
+  switch(a){
+    case 'add-text': addText(); break;
+    case 'add-image': $('#fileImg').click(); break;
+    case 'undo': undo(); break; case 'redo': redo(); break;
+    case 'zoom-in': zoomBy(1.25); break; case 'zoom-out': zoomBy(.8); break;
+    case 'zoom-fit': S.zoom='fit'; fitView(); break;
+    case 'crop-done': exitCrop(); break;
+    case 'crop': S.crop?exitCrop():enterCrop(); break;
+    case 'new': openNew(); break;
+    case 'save-tpl': openSaveTemplate(); break;
+    case 'export': openExport(); break;
+    case 'dup': if(L){ const c=JSON.parse(JSON.stringify(L)); c.id=uid(); c.x+=24; c.y+=24; c.locked=false; ls.splice(i+1,0,c); S.sel=c.id; commit(); scheduleRender(); renderLayers(); renderProps(true);} break;
+    case 'del': if(L){ ls.splice(i,1); S.sel=null; S.crop=false; $('#cropbar').hidden=true; commit(); scheduleRender(); renderLayers(); renderProps(true);} break;
+    case 'fwd': if(L&&i<ls.length-1){ ls.splice(i,1); ls.splice(i+1,0,L); commit(); scheduleRender(); renderLayers(); } break;
+    case 'back': if(L&&i>0){ ls.splice(i,1); ls.splice(i-1,0,L); commit(); scheduleRender(); renderLayers(); } break;
+    case 'front': if(L){ ls.splice(i,1); ls.push(L); commit(); scheduleRender(); renderLayers(); } break;
+    case 'bottom': if(L){ ls.splice(i,1); ls.unshift(L); commit(); scheduleRender(); renderLayers(); } break;
+    case 'al-l': case 'al-c': case 'al-r': case 'al-t': case 'al-m': case 'al-b':
+      if(L){ const W=S.doc.w,H=S.doc.h; if(a==='al-l') L.x=0; if(a==='al-c') L.x=Math.round(W/2-L.w/2); if(a==='al-r') L.x=W-L.w; if(a==='al-t') L.y=0; if(a==='al-m') L.y=Math.round(H/2-L.h/2); if(a==='al-b') L.y=H-L.h; commit(); scheduleRender(); syncProps(); } break;
+    case 'flipx': if(L){ L.flipX=!L.flipX; commit(); scheduleRender(); renderProps(true);} break;
+    case 'flipy': if(L){ L.flipY=!L.flipY; commit(); scheduleRender(); renderProps(true);} break;
+    case 'reset-fx': if(L){ Object.assign(L,{bright:100,contrast:100,sat:100,gray:0,blur:0}); commit(); scheduleRender(); renderProps(true);} break;
+    case 'clear-img': if(L){ L.src=null; commit(); scheduleRender(); renderProps(true); renderLayers(); } break;
+    case 'replace-img': pendingSlot=el?.dataset.id||S.sel; $('#fileSlot').click(); break;
+    case 'reseed': if(L){ L.seed=1+Math.floor(Math.random()*9999); commit(); scheduleRender(); } break;
+    case 'natural': if(L&&L.type==='image'&&L.nw){ const cx=L.x+L.w/2, cy=L.y+L.h/2; const r=L.nw/L.nh; L.h=Math.round(L.w/r); L.x=Math.round(cx-L.w/2); L.y=Math.round(cy-L.h/2); L.fit='stretch'; commit(); scheduleRender(); renderProps(true);} break;
+    case 'save-swatch': saveSwatch(el.dataset.for); break;
+  }
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(b){ e.preventDefault(); act(b.dataset.act,b); } });
+$('#addshape').addEventListener('change',e=>{ const v=e.target.value; e.target.value=''; if(v) addShape(v); });
+$('#docname').addEventListener('change',e=>{ S.doc.name=e.target.value.trim()||'Untitled post'; commit(); });
+$('#fileImg').addEventListener('change',e=>{ handleFiles(e.target.files); e.target.value=''; });
+let pendingSlot=null;
+$('#fileSlot').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  const L=S.doc.layers.find(l=>l.id===pendingSlot); pendingSlot=null; if(!L) return;
+  fillSlot(L,await localSrc(f),await blobDims(f).catch(()=>({w:800,h:800})));
+});
+
+/* ---------- layers panel ---------- */
+const ICON = {
+  text:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3.5h10M8 3.5v10"/></svg>',
+  image:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M2.5 12l3.5-3.5 2.5 2.5 2-2 3 3"/></svg>',
+  shape:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 11l3-6 3 3 2-4 4 7z"/></svg>',
+  eye:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>',
+  eyeoff:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 2l12 12M6.5 4C7 3.7 7.5 3.5 8 3.5c4 0 6.5 4.5 6.5 4.5s-.7 1.3-2 2.5M4 5.5C2.4 6.7 1.5 8 1.5 8S4 12.5 8 12.5c.9 0 1.7-.2 2.4-.6"/></svg>',
+  lock:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>',
+  unlock:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 014.8-1"/></svg>',
+  trash:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9"/></svg>',
+};
+function layerLabel(L){ if(L.name) return L.name; if(L.type==='text') return String(L.text).split('\n')[0].slice(0,30)||'Text'; if(L.type==='shape') return ({rect:'Rectangle',ellipse:'Ellipse',torn:'Torn paper',pin:'Pin',arrow:'Arrow'})[L.shape]||'Shape'; return 'Image'; }
+function renderLayers(){
+  const box=$('#llist'); const ls=S.doc.layers;
+  $('#lcount').textContent=ls.length+' layer'+(ls.length===1?'':'s');
+  box.innerHTML = ls.slice().reverse().map(L=>`
+    <div class="lrow ${L.id===S.sel?'sel':''} ${L.visible?'':'dim'}" data-lid="${L.id}" draggable="true">
+      <span class="ic">${ICON[L.type]}</span>
+      <span class="nm" title="Double-click to rename">${esc(layerLabel(L))}</span>
+      ${L.slot?`<span class="slotb">Slot</span>`:'<span></span>'}
+      <button class="tb ${L.visible?'':'act'}" data-vis="${L.id}" aria-label="${L.visible?'Hide':'Show'} layer">${L.visible?ICON.eye:ICON.eyeoff}</button>
+      <button class="tb ${L.locked?'act':''}" data-lock="${L.id}" aria-label="${L.locked?'Unlock':'Lock'} layer">${L.locked?ICON.lock:ICON.unlock}</button>
+    </div>`).join('') || '<div class="empty">No layers yet. Add text, drop an image or pick a template.</div>';
+}
+const llist=$('#llist');
+llist.addEventListener('click',e=>{
+  const v=e.target.closest('[data-vis]'), k=e.target.closest('[data-lock]');
+  if(v){ const L=S.doc.layers.find(l=>l.id===v.dataset.vis); L.visible=!L.visible; commit(); scheduleRender(); renderLayers(); return; }
+  if(k){ const L=S.doc.layers.find(l=>l.id===k.dataset.lock); L.locked=!L.locked; commit(); scheduleRender(); renderLayers(); renderProps(true); return; }
+  const row=e.target.closest('[data-lid]'); if(!row||e.target.tagName==='INPUT') return;
+  S.sel=row.dataset.lid; S.crop=false; $('#cropbar').hidden=true; renderLayers(); renderProps(true); scheduleRender();
+});
+llist.addEventListener('dblclick',e=>{
+  const row=e.target.closest('[data-lid]'); if(!row) return;
+  const L=S.doc.layers.find(l=>l.id===row.dataset.lid); const nm=row.querySelector('.nm');
+  const inp=document.createElement('input'); inp.value=layerLabel(L); inp.id='rename-'+L.id; nm.replaceWith(inp); inp.focus(); inp.select();
+  const done=()=>{ L.name=inp.value.trim(); commit(); renderLayers(); renderProps(true); };
+  inp.addEventListener('blur',done); inp.addEventListener('keydown',ev=>{ if(ev.key==='Enter') inp.blur(); if(ev.key==='Escape'){ inp.value=layerLabel(L); inp.blur(); } });
+});
+llist.addEventListener('mouseover',e=>{ const r=e.target.closest('[data-lid]'); const id=r?r.dataset.lid:null; if(id!==S.hover){S.hover=id;drawOverlay();} });
+llist.addEventListener('mouseleave',()=>{S.hover=null;drawOverlay();});
+let dragLid=null;
+llist.addEventListener('dragstart',e=>{ const r=e.target.closest('[data-lid]'); if(!r) return; dragLid=r.dataset.lid; e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',dragLid); });
+llist.addEventListener('dragover',e=>{ if(!dragLid) return; e.preventDefault(); llist.querySelectorAll('.over').forEach(x=>x.classList.remove('over')); const r=e.target.closest('[data-lid]'); if(r) r.classList.add('over'); });
+llist.addEventListener('drop',e=>{
+  if(!dragLid) return; e.preventDefault(); e.stopPropagation();
+  const r=e.target.closest('[data-lid]'); const ls=S.doc.layers;
+  const from=ls.findIndex(l=>l.id===dragLid); const L=ls[from];
+  if(r && r.dataset.lid!==dragLid){ ls.splice(from,1); const to=ls.findIndex(l=>l.id===r.dataset.lid); ls.splice(to+1,0,L); commit(); scheduleRender(); }
+  dragLid=null; renderLayers();
+});
+llist.addEventListener('dragend',()=>{ dragLid=null; llist.querySelectorAll('.over').forEach(x=>x.classList.remove('over')); });
+
+/* ---------- right panel ---------- */
+function setTab(t){ S.tabR=t; document.querySelectorAll('[data-rtab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.rtab===t)); renderProps(true); }
+document.querySelectorAll('[data-rtab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.rtab)));
+const F = {
+  num:(lab,p,o={})=>`<label class="mini"><span>${lab}</span><input class="inp num" type="number" id="f-${p}" data-p="${p}" data-t="${o.t||'num'}" step="${o.step||1}" ${o.min!=null?`min="${o.min}"`:''} ${o.max!=null?`max="${o.max}"`:''} ${o.dis?'disabled':''}></label>`,
+  rng:(lab,p,min,max,step,t='num')=>`<div class="fld"><label for="f-${p}">${lab}</label><div class="rng"><input type="range" id="f-${p}" data-p="${p}" data-t="${t}" min="${min}" max="${max}" step="${step}"><output data-o="${p}"></output></div></div>`,
+  sel:(lab,p,opts,t='str')=>`<div class="fld"><label for="f-${p}">${lab}</label><select class="sel" id="f-${p}" data-p="${p}" data-t="${t}">${opts.map(([v,n])=>`<option value="${esc(v)}">${esc(n)}</option>`).join('')}</select></div>`,
+  chk:(lab,p)=>`<label class="chk"><input type="checkbox" id="f-${p}" data-p="${p}" data-t="bool">${lab}</label>`,
+  color:(lab,p)=>`<div class="fld"><label for="f-${p}">${lab}</label><div class="colr"><input type="color" id="f-${p}" data-p="${p}" data-t="color" aria-label="${lab}"><input class="inp num" id="f-${p}-hex" data-p="${p}" data-t="hex" aria-label="${lab} hex"><div class="sw">${swatchBtns(p)}</div></div></div>`,
+  seg:(p,opts)=>`<div class="seg" data-seg="${p}">${opts.map(([v,n])=>`<button type="button" data-segv="${esc(v)}" aria-label="${esc(v)}">${n}</button>`).join('')}</div>`,
+};
+function swatchBtns(p){ const all=[...new Set(BRAND.concat(SWATCH))]; return all.map(c=>`<button type="button" style="background:${c}" data-swatch="${c}" data-for="${p}" title="${c}" aria-label="Use ${c}"></button>`).join('')+(cap.db?`<button type="button" class="add" data-act="save-swatch" data-for="${p}" title="Save this color to the team palette" aria-label="Save color to team palette">+</button>`:''); }
+const AL='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">';
+const alignBtns=`<div class="seg">
+  <button type="button" data-act="al-l" aria-label="Align left">${AL}<path d="M2.5 2v12M5 5h8M5 11h5"/></svg></button>
+  <button type="button" data-act="al-c" aria-label="Align center">${AL}<path d="M8 2v12M3.5 5h9M5.5 11h5"/></svg></button>
+  <button type="button" data-act="al-r" aria-label="Align right">${AL}<path d="M13.5 2v12M3 5h8M6 11h5"/></svg></button>
+  <button type="button" data-act="al-t" aria-label="Align top">${AL}<path d="M2 2.5h12M5 5v8M11 5v5"/></svg></button>
+  <button type="button" data-act="al-m" aria-label="Align middle">${AL}<path d="M2 8h12M5 3.5v9M11 5.5v5"/></svg></button>
+  <button type="button" data-act="al-b" aria-label="Align bottom">${AL}<path d="M2 13.5h12M5 3v8M11 6v5"/></svg></button></div>`;
+
+function renderProps(structural){
+  const box=$('#props');
+  if(S.tabR==='fill') box.innerHTML=fillHTML();
+  else if(S.tabR==='canvas') box.innerHTML=canvasHTML();
+  else box.innerHTML=layerHTML();
+  syncProps(true);
+  refreshFillThumbs();
+}
+function fillHTML(){
+  const slots=S.doc.layers.filter(l=>l.slot).slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
+  if(!slots.length) return `<div class="empty">This canvas has no quick-fill slots yet.<br><br>Select a layer, open the <b>Layer</b> tab and turn on <b>Quick-fill slot</b>. Slots show up here so the team can swap the photo and copy without touching the layout.</div>`;
+  const empty=slots.filter(l=>l.type==='image'&&!l.src).length;
+  return excerptHTML(slots)+`<div class="note">Fill these in and export. Layout, fonts and brand layers stay put.${empty?` <span class="note warn">${empty} photo slot${empty>1?'s':''} still empty.</span>`:''}</div>`+
+  slots.map(L=>{
+    if(L.type==='image') return `<div class="slotcard ${L.id===S.sel?'sel':''}" data-slotcard="${L.id}">
+      <div class="lab">${esc(L.slot)}<em>${Math.round(L.w)}×${Math.round(L.h)}</em></div>
+      <div class="imgslot"><canvas width="128" height="128" data-thumb="${L.id}"></canvas>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+        <div class="row"><button class="btn" data-act="replace-img" data-id="${L.id}">${L.src?'Replace':'Choose photo'}</button>${L.src?`<button class="btn ${S.crop&&S.sel===L.id?'on':''}" data-act="crop" data-sel="${L.id}">Reposition</button>`:''}</div>
+        ${L.src?`<div class="rng"><input type="range" min="1" max="4" step="0.01" data-fz="${L.id}" value="${L.zoom||1}" aria-label="Photo zoom"><output>${Math.round((L.zoom||1)*100)}%</output></div>`:'<span class="note">Or drop a PNG / WebP on the photo.</span>'}
+      </div></div></div>`;
+    return `<div class="slotcard ${L.id===S.sel?'sel':''}" data-slotcard="${L.id}">
+      <div class="lab"><label for="fill-${L.id}">${esc(L.slot)}</label><em>${esc(L.font)} ${L.weight}${L.upper?' · caps':''}</em></div>
+      <textarea class="inp" id="fill-${L.id}" data-fill="${L.id}" rows="${Math.min(5,Math.max(2,Math.ceil(String(L.text).length/38)))}">${esc(L.text)}</textarea>
+      <div class="rng"><input type="range" min="8" max="200" step="1" data-fs="${L.id}" value="${L.size}" aria-label="${esc(L.slot)} size"><output>${Math.round(L.size)}px</output></div>
+    </div>`;
+  }).join('');
+}
+let EX={text:'',busy:false,msg:'',err:false,ctrl:null};
+function excerptHTML(slots){
+  if(!cap.sample) return '';
+  const n=slots.filter(l=>l.type==='text').length; if(!n) return '';
+  return `<div class="slotcard excerpt">
+    <div class="lab"><label for="exIn">Draft from excerpt</label><em>Claude</em></div>
+    <textarea class="inp" id="exIn" placeholder="Paste the article, press release or reporter notes. Claude writes the ${n} text slots from it." ${EX.busy?'disabled':''}>${esc(EX.text)}</textarea>
+    <div class="row"><button class="btn primary" id="exGo" ${EX.busy?'disabled':''}>${EX.busy?'Drafting…':'Draft post'}</button>${EX.busy?'<button class="btn" id="exStop">Stop</button>':''}</div>
+    ${EX.msg?`<div class="note ${EX.err?'warn':''}">${EX.msg}</div>`:'<div class="note">Uses only what the excerpt says. Check every line against the source before posting.</div>'}
+  </div>`;
+}
+function slotBrief(L){
+  const lab=L.slot.toLowerCase(), hs=L.hscale||1;
+  const perLine=Math.max(8,Math.floor(L.w/(L.size*.56*hs)));
+  const lines=/headline|title/.test(lab)?3:/dek|sub|summary|body/.test(lab)?3:1;
+  return {slot:L.slot,maxChars:perLine*lines,caps:!!L.upper,example:String(L.text).slice(0,160)};
+}
+async function draftFromExcerpt(){
+  const text=EX.text.trim();
+  if(text.length<40){ EX.msg='Paste a longer excerpt: a few sentences at least.'; EX.err=true; renderProps(true); return; }
+  const slots=S.doc.layers.filter(l=>l.slot&&l.type==='text');
+  const briefs=slots.map(slotBrief);
+  EX.busy=true; EX.msg=''; EX.err=false; EX.ctrl=new AbortController(); renderProps(true);
+  try{
+    const out=await cap.sample.draft({excerpt:text.slice(0,12000),slots:briefs},EX.ctrl.signal);
+    const f=(out&&out.fields)||{}; let n=0;
+    for(const L of slots){ const v=f[L.slot]; if(typeof v==='string'&&v.trim()){ L.text=v.trim(); n++; } }
+    if(n){ commit(); ensureFonts(slots); scheduleRender(); renderLayers(); }
+    EX.msg=n?`Filled ${n} of ${slots.length} slots.`+(out.notes?` <b>Note:</b> ${esc(out.notes)}`:'')+' Fix anything with the boxes below, or undo with Ctrl+Z.':'The excerpt didn\'t have enough to fill the slots.';
+    EX.err=!n;
+  }catch(err){
+    EX.err=true;
+    EX.msg= err?.name==='AbortError'||err?.code==='aborted' ? 'Stopped.' :
+      err?.code==='rate_limited' ? 'Too many drafts at once. Wait a minute and try again.' :
+      err?.code==='not_configured' ? 'Drafting isn\'t set up on the server yet (missing ANTHROPIC_API_KEY).' :
+      err?.code==='invalid_json' ? 'Claude\'s answer came back malformed. Try again.' :
+      'Couldn\'t reach Claude. Try again in a moment.';
+  }
+  EX.busy=false; EX.ctrl=null; renderProps(true);
+}
+$('#props').addEventListener('input',e=>{ if(e.target.id==='exIn') EX.text=e.target.value; });
+$('#props').addEventListener('click',e=>{
+  if(e.target.closest('#exGo')){ e.preventDefault(); draftFromExcerpt(); }
+  else if(e.target.closest('#exStop')){ e.preventDefault(); EX.ctrl?.abort(); }
+});
+function canvasHTML(){
+  const d=S.doc;
+  const cur=SIZES.find(s=>s[1]===d.w&&s[2]===d.h);
+  return `<div class="section">
+    <div class="h">Size</div>
+    ${F.sel('Preset','_size',[['','Custom']].concat(SIZES.map(s=>[s[1]+'x'+s[2],`${s[0]} · ${s[1]}×${s[2]}`])))}
+    <div class="g2">${F.num('Width','_w',{min:100,max:4000})}${F.num('Height','_h',{min:100,max:4000})}</div>
+    <div class="note">Resizing keeps every layer where it is. Use the align buttons to re-center.</div>
+  </div>
+  <div class="section"><div class="h">Background</div>${F.color('Color','_bg')}</div>
+  <div class="section"><div class="h">Shortcuts</div>
+    <div class="note" style="font-family:var(--f-mono);font-size:11px;line-height:1.8">T add text · Del remove · ⌘/Ctrl D duplicate<br>⌘/Ctrl C / V copy &amp; paste layer · paste an image to add it<br>[ ] move layer down / up · arrows nudge (Shift ×10)<br>Enter or double-click photo to reposition<br>⌘/Ctrl Z undo · ⌘/Ctrl S save template · ⌘/Ctrl E export<br>Alt while dragging turns off snapping</div>
+  </div>`;
+}
+function layerHTML(){
+  const L=sel();
+  if(!L) return `<div class="empty">Select a layer on the canvas or in the list below to edit it.</div>`;
+  let h=`<div class="section">
+    <div class="fld"><label for="f-name">Name</label><input class="inp" id="f-name" data-p="name" data-t="str" placeholder="${esc(layerLabel(L))}"></div>
+    <label class="chk"><input type="checkbox" id="f-_slot" data-p="_slot" data-t="bool">Quick-fill slot</label>
+    ${L.slot?`<div class="fld"><label for="f-slot">Slot label</label><input class="inp" id="f-slot" data-p="slot" data-t="str"></div>`:''}
+  </div>`;
+  if(L.type==='text') h+=`<div class="section">
+    <div class="h">Text</div>
+    <textarea class="inp" id="f-text" data-p="text" data-t="str" rows="3" aria-label="Text"></textarea>
+    ${F.sel('Font','font',allFonts().map(f=>[f.family,f.family+(f.custom?' (uploaded)':'')]))}
+    <div class="g4">${F.num('Size','size',{min:4,step:1})}${F.num('Weight','weight',{min:100,max:900,step:100})}${F.num('Line','lh',{step:.01,min:.5})}${F.num('Track','ls',{step:.5})}</div>
+    <div class="row" style="flex-wrap:nowrap">${F.seg('align',[['left',AL+'<path d="M2 4h12M2 8h8M2 12h10"/></svg>'],['center',AL+'<path d="M2 4h12M4 8h8M3 12h10"/></svg>'],['right',AL+'<path d="M2 4h12M6 8h8M4 12h10"/></svg>']])}
+      <button type="button" class="btn" style="flex:none" data-tog="italic" aria-pressed="${L.italic}"><i>I</i></button>
+      <button type="button" class="btn" style="flex:none" data-tog="upper" aria-pressed="${L.upper}">AA</button></div>
+    ${F.rng('Width scale','hscale',.6,1.6,.01)}
+    <details class="ps">
+      <summary>From Photoshop</summary>
+      <div class="g2">
+        <label class="mini"><span>Size (px)</span><input class="inp num" id="ps-size" inputmode="decimal" value="${psRound(L.size)}"></label>
+        <label class="mini"><span>Leading (px)</span><input class="inp num" id="ps-lead" inputmode="decimal" placeholder="Auto" value="${psRound(L.size*(L.lh||1))}"></label>
+        <label class="mini"><span>Tracking</span><input class="inp num" id="ps-track" inputmode="decimal" value="${psRound((L.ls||0)*1000/(L.size||1))}"></label>
+        <label class="mini"><span>Horizontal scale %</span><input class="inp num" id="ps-hscale" inputmode="decimal" value="${psRound((L.hscale||1)*100)}"></label>
+      </div>
+      <div class="row"><button type="button" class="btn" id="ps-apply">Apply</button></div>
+      <div class="note">Leading “Auto” uses 1.2. Tracking is Photoshop’s units.</div>
+    </details>
+    ${F.color('Color','color')}
+    ${F.sel('Background','bg',[['none','None'],['box','Box behind text'],['lines','Highlight each line']])}
+    ${L.bg!=='none'?F.color('Box color','bgColor')+`<div class="g2">${F.num('Pad X','padX',{min:0})}${F.num('Pad Y','padY',{min:0})}</div>`:''}
+    <div class="g2">${F.num('Outline','strokeW',{min:0,step:.5})}<div></div></div>
+    ${L.strokeW>0?F.color('Outline color','stroke'):''}
+  </div>`;
+  if(L.type==='image') h+=`<div class="section">
+    <div class="h">Image</div>
+    <div class="row"><button class="btn" data-act="replace-img" data-id="${L.id}">${L.src?'Replace':'Choose image'}</button>
+      ${L.src?`<button class="btn ${S.crop?'on':''}" data-act="crop">Reposition</button><button class="btn" data-act="natural" title="Match the frame to the image's proportions">Fit frame</button>`:''}</div>
+    ${F.sel('Fit','fit',[['cover','Fill frame (crop)'],['contain','Fit inside'],['stretch','Stretch']])}
+    ${L.fit!=='stretch'?F.rng('Zoom','zoom',1,4,.01):''}
+    <div class="row"><button class="btn" data-act="flipx" aria-pressed="${L.flipX}">Flip ↔</button><button class="btn" data-act="flipy" aria-pressed="${L.flipY}">Flip ↕</button>${L.src&&L.slot?`<button class="btn" data-act="clear-img">Empty slot</button>`:''}</div>
+    ${F.rng('Brightness','bright',0,200,1)}${F.rng('Contrast','contrast',0,200,1)}${F.rng('Saturation','sat',0,200,1)}${F.rng('Grayscale','gray',0,100,1)}${F.rng('Blur','blur',0,40,.5)}
+    <div class="row"><button class="btn ghost" data-act="reset-fx">Reset adjustments</button></div>
+    ${FILTER_OK?'':'<div class="note warn">This browser can\'t show image adjustments. They still save with the post.</div>'}
+  </div>`;
+  if(L.type==='shape') h+=`<div class="section">
+    <div class="h">${esc(layerLabel(Object.assign({},L,{name:''})))}</div>
+    ${F.color(L.shape==='arrow'?'Color':'Fill','fill')}
+    ${L.shape!=='arrow'?F.chk('Gradient to second color','grad'):''}
+    ${L.grad&&L.shape!=='arrow'?F.color('Color 2','fill2')+F.rng('Color 2 alpha','fill2Alpha',0,1,.01)+F.rng('Angle','gradAngle',0,360,1):''}
+    ${L.shape==='rect'?F.rng('Corner radius','radius',0,300,1):''}
+    ${L.shape==='torn'?F.rng('Roughness','rough',0,80,1)+F.sel('Torn edges','edges',[['both','Top and bottom'],['top','Top only'],['bottom','Bottom only']])+`<div class="row"><button class="btn" data-act="reseed">Shuffle tear</button></div>`:''}
+    ${L.shape==='arrow'?F.rng('Thickness','strokeW',1,30,.5):`<div class="g2">${F.num('Outline','strokeW',{min:0,step:.5})}<div></div></div>${L.strokeW>0?F.color('Outline color','stroke'):''}`}
+  </div>`;
+  h+=`<div class="section">
+    <div class="h">Position</div>
+    <div class="g4">${F.num('X','x')}${F.num('Y','y')}${F.num('W','w',{min:1})}${F.num('H','h',{min:1,dis:L.type==='text'})}</div>
+    <div class="g2">${F.num('Rotate°','rot',{step:.5})}${F.num('Opacity %','opacity',{t:'pct',min:0,max:100})}</div>
+    ${alignBtns}
+    ${F.sel('Blend','blend',BLENDS)}
+  </div>
+  <div class="section">
+    ${F.chk('Drop shadow','shadow')}
+    ${L.shadow?F.color('Shadow','shadowColor')+`<div class="g4">${F.num('Blur','shadowBlur',{min:0})}${F.num('X','shadowX')}${F.num('Y','shadowY')}<div></div></div>`:''}
+  </div>
+  <div class="section"><div class="row">
+    <button class="btn" data-act="dup">Duplicate</button><button class="btn" data-act="fwd" title="]">Forward</button><button class="btn" data-act="back" title="[">Backward</button>
+    <button class="btn" data-act="del" style="margin-left:auto">${ICON.trash}Delete</button></div>
+    ${L.locked?'<div class="note">This layer is locked: it can\'t be clicked on the canvas. Unlock it in the layer list to move it.</div>':''}
+  </div>`;
+  return h;
+}
+function psRound(n){ return Math.round(n*100)/100; }
+function applyFromPhotoshop(){
+  const L=sel(); if(!L||L.type!=='text') return;
+  const size=parseFloat($('#ps-size').value);
+  if(!(size>0)){ toast('Enter a size in pixels.',true); return; }
+  const leadRaw=($('#ps-lead').value||'').trim();
+  let lh=1.2;
+  if(leadRaw && !/^auto$/i.test(leadRaw)){
+    const lead=parseFloat(leadRaw);
+    if(!(lead>0)){ toast('Leading needs a pixel value, or Auto.',true); return; }
+    lh=lead/size;
+  }
+  const trackRaw=($('#ps-track').value||'').trim();
+  const track=trackRaw===''?0:parseFloat(trackRaw);
+  if(!isFinite(track)){ toast('Tracking needs a number.',true); return; }
+  const hsRaw=($('#ps-hscale').value||'').trim();
+  const hs=hsRaw===''?100:parseFloat(hsRaw);
+  if(!(hs>0)){ toast('Horizontal scale needs a percent.',true); return; }
+  L.size=size; L.lh=lh; L.ls=track*size/1000; L.hscale=hs/100;
+  if(BRAND_FONT_FAMILIES.has(L.font)){ L.weight=400; L.italic=false; }
+  commit(); ensureFonts([L]); scheduleRender(); syncProps(true);
+}
+function fieldVal(L,p){
+  if(p==='_slot') return !!L.slot;
+  if(p==='_w') return S.doc.w; if(p==='_h') return S.doc.h; if(p==='_bg') return S.doc.bg;
+  if(p==='_size') return S.doc.w+'x'+S.doc.h;
+  return L?L[p]:undefined;
+}
+function syncProps(force){
+  const box=$('#props'); const L=sel();
+  box.querySelectorAll('[data-p]').forEach(el=>{
+    if(!force && el===document.activeElement) return;
+    const p=el.dataset.p, t=el.dataset.t; const isDoc=p.startsWith('_')&&p!=='_slot';
+    if(!isDoc && !L) return;
+    let v=fieldVal(isDoc?null:L,p);
+    if(t==='bool') el.checked=!!v;
+    else if(t==='pct') el.value=Math.round((v??1)*100);
+    else if(t==='color'){ el.value=/^#[0-9a-f]{6}$/i.test(v)?v:'#000000'; }
+    else if(t==='num'){ el.value= typeof v==='number'? Math.round(v*100)/100 : (v??''); }
+    else if(el.tagName==='SELECT'){ el.value = v??''; if(p==='_size' && el.selectedIndex<0) el.value=''; }
+    else el.value=v??'';
+    const o=box.querySelector(`[data-o="${p}"]`); if(o) o.textContent=fmtOut(p,v);
+  });
+  box.querySelectorAll('[data-seg]').forEach(s=>{ const p=s.dataset.seg; s.querySelectorAll('[data-segv]').forEach(b=>b.setAttribute('aria-pressed',L&&String(L[p])===b.dataset.segv)); });
+}
+function fmtOut(p,v){ if(p==='hscale'||p==='zoom') return Math.round(v*100)+'%'; if(p==='fill2Alpha') return Math.round(v*100)+'%'; if(['bright','contrast','sat','gray'].includes(p)) return Math.round(v)+'%'; if(p==='gradAngle') return Math.round(v)+'°'; return String(Math.round(v*10)/10); }
+const REBUILD=new Set(['bg','grad','strokeW','shadow','fit','_slot','font','slot']);
+function applyField(el,isChange){
+  const p=el.dataset.p, t=el.dataset.t; let v;
+  if(t==='bool') v=el.checked; else if(t==='num'||t==='pct'){ v=parseFloat(el.value); if(isNaN(v)) return; if(t==='pct') v=clamp(v/100,0,1); }
+  else if(t==='hex'){ v=el.value.trim(); if(!v.startsWith('#')) v='#'+v; if(!/^#[0-9a-f]{6}$/i.test(v)) return; v=v.toUpperCase(); }
+  else if(t==='color') v=el.value.toUpperCase(); else v=el.value;
+  if(p==='_w'||p==='_h'){ S.doc[p==='_w'?'w':'h']=clamp(Math.round(v),100,4000); if(isChange){ fitView(); renderProps(true);} scheduleRender(); return; }
+  if(p==='_bg'){ S.doc.bg=v; scheduleRender(); return; }
+  if(p==='_size'){ if(v){ const [w,h]=v.split('x').map(Number); S.doc.w=w; S.doc.h=h; scheduleRender(); fitView(); renderProps(true);} return; }
+  const L=sel(); if(!L) return;
+  if(p==='_slot'){ L.slot = v ? (L.slot || L.name || (L.type==='image'?'Photo':layerLabel(L).slice(0,18))) : ''; }
+  else if(p==='font'){ L.font=v; const f=allFonts().find(x=>x.family===v); if(BRAND_FONT_FAMILIES.has(v)){ L.weight=400; L.italic=false; } else if(f&&!f.weights.includes(L.weight)) L.weight=f.weights.reduce((a,b)=>Math.abs(b-L.weight)<Math.abs(a-L.weight)?b:a); ensureFonts([L]); }
+  else L[p]=v;
+  if(BRAND_FONT_FAMILIES.has(L.font)){ L.weight=400; L.italic=false; if(isChange && p==='weight') el.value=400; }
+  if(p==='weight'||p==='italic'||p==='size') ensureFonts([L]);
+  if(p==='text' && L.slot){ const f=$(`[data-fill="${L.id}"]`); if(f&&f!==document.activeElement) f.value=L.text; }
+  scheduleRender();
+  if(t==='color'||t==='hex'){ const other=$('#props').querySelector(`[data-p="${p}"][data-t="${t==='color'?'hex':'color'}"]`); if(other) other.value=v; }
+  const o=$('#props').querySelector(`[data-o="${p}"]`); if(o) o.textContent=fmtOut(p,v);
+  if(p==='name'||p==='slot'||p==='_slot'||p==='text') renderLayers();
+  if(isChange && REBUILD.has(p)) renderProps(true);
+}
+const props=$('#props');
+props.addEventListener('input',e=>{
+  const el=e.target;
+  if(el.dataset.p){ applyField(el,false); return; }
+  if(el.dataset.fill){ const L=S.doc.layers.find(l=>l.id===el.dataset.fill); L.text=el.value; scheduleRender(); renderLayers(); clearTimeout(fillT); fillT=setTimeout(commit,500); return; }
+  if(el.dataset.fs){ const L=S.doc.layers.find(l=>l.id===el.dataset.fs); L.size=+el.value; el.nextElementSibling.textContent=Math.round(L.size)+'px'; ensureFonts([L]); scheduleRender(); return; }
+  if(el.dataset.fz){ const L=S.doc.layers.find(l=>l.id===el.dataset.fz); L.zoom=+el.value; el.nextElementSibling.textContent=Math.round(L.zoom*100)+'%'; scheduleRender(); return; }
+});
+let fillT=0;
+props.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.dataset.p){ if(el.dataset.p==='_size'&&!el.value) return; applyField(el,true); if(!el.dataset.p.startsWith('_')||el.dataset.p==='_slot') commit(); else { S.dirty=true; commit(); } return; }
+  if(el.dataset.fs||el.dataset.fz) commit();
+});
+props.addEventListener('focusin',e=>{
+  const card=e.target.closest('[data-slotcard]');
+  if(card && S.sel!==card.dataset.slotcard){ S.sel=card.dataset.slotcard; props.querySelectorAll('.slotcard').forEach(c=>c.classList.toggle('sel',c===card)); renderLayers(); scheduleRender(); }
+});
+props.addEventListener('click',e=>{
+  if(e.target.closest('#ps-apply')){ e.preventDefault(); applyFromPhotoshop(); return; }
+  const sw=e.target.closest('[data-swatch]');
+  if(sw){ const p=sw.dataset.for; const col=sw.querySelector?null:null; const el=props.querySelector(`[data-p="${p}"][data-t="hex"]`); if(el){ el.value=sw.dataset.swatch; applyField(el,true); syncProps(true); commit(); } return; }
+  const seg=e.target.closest('[data-segv]');
+  if(seg){ const L=sel(); if(!L) return; const p=seg.parentElement.dataset.seg; L[p]=seg.dataset.segv; commit(); scheduleRender(); syncProps(true); return; }
+  const tg=e.target.closest('[data-tog]');
+  if(tg){ const L=sel(); if(!L) return; const p=tg.dataset.tog; L[p]=!L[p]; if(BRAND_FONT_FAMILIES.has(L.font)){ L.weight=400; L.italic=false; } tg.setAttribute('aria-pressed',L[p]); if(p==='italic') ensureFonts([L]); commit(); scheduleRender(); return; }
+  const crop=e.target.closest('[data-act="crop"][data-sel]');
+  if(crop){ S.sel=crop.dataset.sel; }
+  const card=e.target.closest('[data-slotcard]');
+  if(card && !e.target.closest('button,textarea,input') && S.sel!==card.dataset.slotcard){ S.sel=card.dataset.slotcard; renderLayers(); props.querySelectorAll('.slotcard').forEach(c=>c.classList.toggle('sel',c===card)); scheduleRender(); }
+},true);
+function refreshFillThumbs(){
+  document.querySelectorAll('canvas[data-thumb]').forEach(cv=>{
+    const L=S.doc.layers.find(l=>l.id===cv.dataset.thumb); const c=cv.getContext('2d'); c.clearRect(0,0,128,128);
+    c.fillStyle='#2b2b2e'; c.fillRect(0,0,128,128);
+    const img=L&&getImg(L.src); if(!img) { c.fillStyle='#6b6964'; c.font='600 15px Archivo, sans-serif'; c.textAlign='center'; c.fillText('Empty',64,70); return; }
+    const s=Math.max(128/img.naturalWidth,128/img.naturalHeight); const w=img.naturalWidth*s,h=img.naturalHeight*s; c.drawImage(img,(128-w)/2,(128-h)/2,w,h);
+  });
+}
+
+/* ---------- library panel ---------- */
+let assetFilter='All', assetQuery='', uploadCat='Logos', armedDel=null;
+function setLTab(t){ S.tabL=t; document.querySelectorAll('[data-ltab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.ltab===t)); renderLib(); }
+document.querySelectorAll('[data-ltab]').forEach(b=>b.addEventListener('click',()=>setLTab(b.dataset.ltab)));
+function libStatus(){
+  if(cap.failed) return `<div class="note warn">Couldn't reach the team library server. You can still build and export posts; templates and assets will load once it's back.</div>`;
+  if(!cap.ready) return `<div class="note">Loading the team library…</div>`;
+  if(Backend.mode==='local') return `<div class="note warn">Offline mode: no library server found, so templates and assets are saved in this browser only. Drafting from an excerpt needs the server.</div>`;
+  return '';
+}
+const builtinThumb={url:null};
+function renderLib(){
+  const box=$('#lib'); let h=libStatus();
+  if(S.tabL==='templates'){
+    h+=`<div class="row"><button class="btn primary" data-act="save-tpl" style="flex:1;justify-content:center">Save current as template</button></div>`;
+    h+=`<div class="h">Built in</div><div class="tgrid"><button class="tcard" data-builtin="news"><div class="th"><img alt="" src="${builtinThumb.url||''}"></div><span class="nm">SLC Scoop News · 3:4</span><span class="meta">1080×1440</span></button></div>`;
+    h+=`<div class="h">Team templates</div>`;
+    if(cap.ready && !TPLS.length) h+=`<div class="empty">No team templates yet. Build a layout, mark the photo and copy layers as quick-fill slots, then <b>Save current as template</b>.</div>`;
+    h+=`<div class="tgrid">`+TPLS.map(t=>`<div class="tcard" role="button" tabindex="0" data-tpl="${t.id}">
+      <div class="th">${t.thumb?`<img alt="" src="${esc(t.thumb)}">`:''}</div>
+      <span class="nm">${esc(t.name||'Untitled')}</span>
+      <span class="meta">${t.w}×${t.h}${t.updatedAt?' · '+new Date(t.updatedAt).toLocaleDateString(undefined,{month:'short',day:'numeric'}):''}${t.updatedBy&&NAMES[t.updatedBy]?' · '+esc(NAMES[t.updatedBy].split(' ')[0]):''}</span>
+      ${cap.db?`<button class="del ${armedDel==='t:'+t.id?'confirm':''}" data-deltpl="${t.id}" aria-label="Delete template">${armedDel==='t:'+t.id?'Delete?':ICON.trash}</button>`:''}
+    </div>`).join('')+`</div>`;
+  }
+  else if(S.tabL==='assets'){
+    const imgs=LIB.filter(a=>a.kind==='image');
+    if(cap.assets) h+=`<div class="row"><select class="sel" id="upcat" aria-label="Category for upload" style="flex:1">${CATS.map(c=>`<option ${c===uploadCat?'selected':''}>${c}</option>`).join('')}</select><button class="btn primary" id="upbtn">Upload</button></div><div class="note">PNG, WebP or SVG. Uploads go to the shared team library.</div>`;
+    else if(cap.ready) h+=`<div class="note">Uploads are turned off on this server.</div>`;
+    h+=`<input class="inp" id="aq" placeholder="Search assets" value="${esc(assetQuery)}" aria-label="Search assets">`;
+    h+=`<div class="chips">${['All'].concat(CATS).map(c=>`<button class="chip" data-cat="${c}" aria-pressed="${c===assetFilter}">${c}</button>`).join('')}</div>`;
+    const list=imgs.filter(a=>(assetFilter==='All'||a.category===assetFilter)&&(!assetQuery||String(a.name).toLowerCase().includes(assetQuery.toLowerCase())));
+    if(cap.ready && !list.length) h+=`<div class="empty">${imgs.length?'Nothing matches.':'No brand assets yet. Upload the logo, torn-paper textures, pin and arrow icons so everyone builds from the same files.'}</div>`;
+    h+=`<div class="agrid">`+list.map(a=>`<div class="acard" draggable="true" data-asset="${a.id}" title="${esc(a.name)} · click to add, drag onto a photo slot to fill it">
+      <div class="th"><img alt="" loading="lazy" src="${esc(a.displayUrl||a.url)}"></div><span class="nm">${esc(a.name)}</span>
+      ${cap.assets?`<button class="del ${armedDel==='a:'+a.id?'confirm':''}" data-delasset="${a.id}" aria-label="Delete asset">${armedDel==='a:'+a.id?'Delete?':ICON.trash}</button>`:''}</div>`).join('')+`</div>`;
+  }
+  else {
+    if(cap.assets) h+=`<div class="row"><button class="btn primary" id="upfont" style="flex:1;justify-content:center">Upload brand font</button></div><div class="note">TTF, OTF, WOFF or WOFF2. Name the family after uploading if the file name isn't right.</div>`;
+    const custom=LIB.filter(a=>a.kind==='font');
+    if(custom.length) h+=`<div class="h">Team fonts</div>`+custom.map(a=>`<div class="fontrow"><span class="pv" style="font-family:'${esc(a.family)}',sans-serif">${esc(a.family)}</span>
+      ${cap.assets?`<button class="del ${armedDel==='a:'+a.id?'confirm':''}" style="opacity:1;position:static" data-delasset="${a.id}" aria-label="Delete font">${armedDel==='a:'+a.id?'Delete?':ICON.trash}</button>`:'<span class="tag">uploaded</span>'}</div>`).join('');
+    h+=`<div class="h">Built in</div>`+BUILTIN_FONTS.map(f=>`<div class="fontrow"><span class="pv" style="font-family:'${f.family}',sans-serif;font-weight:${f.weights[f.weights.length-1]}">${f.family}</span><span class="tag">${f.weights.join(' ')}</span></div>`).join('');
+  }
+  box.innerHTML=h;
+  const up=$('#upbtn'); if(up) up.onclick=()=>{ uploadCat=$('#upcat').value; $('#fileAsset').click(); };
+  const uf=$('#upfont'); if(uf) uf.onclick=()=>$('#fileFont').click();
+  const aq=$('#aq'); if(aq) aq.oninput=()=>{ assetQuery=aq.value; const pos=aq.selectionStart; renderLib(); const n=$('#aq'); n.focus(); n.setSelectionRange(pos,pos); };
+}
+const lib=$('#lib');
+lib.addEventListener('click',async e=>{
+  const chip=e.target.closest('[data-cat]'); if(chip){ assetFilter=chip.dataset.cat; renderLib(); return; }
+  const dt=e.target.closest('[data-deltpl]');
+  if(dt){ e.stopPropagation(); const id=dt.dataset.deltpl; if(armedDel!=='t:'+id){ armedDel='t:'+id; renderLib(); setTimeout(()=>{ if(armedDel==='t:'+id){armedDel=null;renderLib();} },3500); return; }
+    armedDel=null; try{ await cap.db.doc('templates/'+id).delete(); toast('Template deleted'); }catch(err){ toast('Couldn\'t delete the template. You may not have permission.',true); } return; }
+  const da=e.target.closest('[data-delasset]');
+  if(da){ e.stopPropagation(); const id=da.dataset.delasset; if(armedDel!=='a:'+id){ armedDel='a:'+id; renderLib(); setTimeout(()=>{ if(armedDel==='a:'+id){armedDel=null;renderLib();} },3500); return; }
+    armedDel=null; const a=LIB.find(x=>x.id===id); try{ await cap.db.doc('library/'+id).delete(); if(a&&cap.assets) cap.assets.delete(a.url).catch(()=>{}); toast('Removed from library'); }catch(err){ toast('Couldn\'t remove it. You may not have permission.',true); } return; }
+  const bi=e.target.closest('[data-builtin]'); if(bi){ if(await guardDirty()) loadDoc(starterDoc()); return; }
+  const tp=e.target.closest('[data-tpl]'); if(tp){ const t=TPLS.find(x=>x.id===tp.dataset.tpl); if(t && await guardDirty()) loadTemplate(t); return; }
+  const ac=e.target.closest('[data-asset]'); if(ac){ const a=LIB.find(x=>x.id===ac.dataset.asset); if(a) addAsset(a); }
+});
+lib.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const tp=e.target.closest('[data-tpl]'); if(tp) tp.click(); } });
+lib.addEventListener('dragstart',e=>{ const ac=e.target.closest('[data-asset]'); if(!ac) return; e.dataTransfer.setData('application/x-scoop-asset',ac.dataset.asset); e.dataTransfer.effectAllowed='copy'; });
+
+function loadTemplate(t){
+  const d={name:t.name||'Untitled post',w:t.w,h:t.h,bg:t.bg||'#151616',templateId:t.id,templateName:t.name,layers:JSON.parse(JSON.stringify(t.layers||[]))};
+  d.layers.forEach(l=>{ l.id=l.id||uid(); });
+  loadDoc(d); setTab('fill'); toast('Loaded “'+(t.name||'template')+'”');
+}
+$('#fileAsset').addEventListener('change',async e=>{
+  const files=[...e.target.files]; e.target.value=''; if(!files.length||!cap.assets||!cap.db) return;
+  toast(`Uploading ${files.length} file${files.length>1?'s':''}…`);
+  let ok=0;
+  for(const f of files){
+    try{
+      const dims=await blobDims(f).catch(()=>({w:600,h:600}));
+      const r=await cap.assets.upload(f);
+      await cap.db.collection('library').add({kind:'image',name:f.name.replace(/\.[^.]+$/,''),category:uploadCat,assetId:r.id,url:r.url||'',w:dims.w,h:dims.h,contentType:r.contentType||f.type,createdAt:Date.now(),createdBy:cap.me||''});
+      ok++;
+    }catch(err){ toast(err?.code==='too_large'||err?.error==='too_large'||err?.status===413?`${f.name} is over 25 MB.`:err?.code==='unsupported_type'||err?.error==='unsupported_type'||err?.status===415?`${f.name} isn't a supported image type.`:`Couldn't upload ${f.name}.`,true); }
+  }
+  if(ok) toast(`Added ${ok} asset${ok>1?'s':''} to ${uploadCat}`);
+});
+$('#fileFont').addEventListener('change',async e=>{
+  const files=[...e.target.files]; e.target.value=''; if(!files.length||!cap.assets||!cap.db) return;
+  for(const f of files){
+    try{
+      const fam=f.name.replace(/\.[^.]+$/,'').replace(/[-_](Regular|Bold|Black|Italic|Medium|Heavy|Light)$/i,'').replace(/[-_]+/g,' ').trim();
+      const r=await cap.assets.upload(f,{type:f.type||undefined});
+      await cap.db.collection('library').add({kind:'font',name:f.name,family:fam,assetId:r.id,url:r.url||'',createdAt:Date.now(),createdBy:cap.me||''});
+      toast(`Added font “${fam}”`);
+    }catch(err){ toast(err?.code==='too_large'||err?.error==='too_large'||err?.status===413?`${f.name} is over 25 MB.`:`Couldn't upload ${f.name}. Fonts must be TTF, OTF, WOFF or WOFF2.`,true); }
+  }
+});
+
+/* ---------- swatches ---------- */
+async function saveSwatch(p){
+  const el=props.querySelector(`[data-p="${p}"][data-t="hex"]`); if(!el||!cap.db) return;
+  const c=el.value.toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(c)) return;
+  if(BRAND.includes(c)||SWATCH.includes(c)){ toast('That color is already in the palette'); return; }
+  try{ await cap.db.doc('brand/settings').set({swatches:SWATCH.concat(c).slice(-16)}); toast('Saved '+c+' to the team palette'); }catch(err){ toast('Couldn\'t save the color.',true); }
+}
+
+/* ---------- modals ---------- */
+function openModal(html){ const r=$('#modalRoot'); r.innerHTML=`<div class="scrim" id="scrim"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`; $('#scrim').addEventListener('mousedown',e=>{ if(e.target.id==='scrim') closeModal(); }); const f=r.querySelector('input,button'); f&&f.focus(); return r.firstChild; }
+function closeModal(){ $('#modalRoot').innerHTML=''; }
+function confirmBox(msg,ok='Continue'){ return new Promise(res=>{ const m=openModal(`<h2>Replace the canvas?</h2><div class="note">${msg}</div><div class="acts"><button class="btn" id="cNo">Cancel</button><button class="btn primary" id="cYes">${ok}</button></div>`); $('#cNo',m).onclick=()=>{closeModal();res(false);}; $('#cYes',m).onclick=()=>{closeModal();res(true);}; $('#cYes',m).focus(); }); }
+async function guardDirty(){ if(!S.dirty) return true; return confirmBox('Your current post has changes that aren\'t saved as a template. Its draft will be replaced. Export it first if you still need it.','Replace'); }
+function openNew(){
+  const m=openModal(`<h2>New post</h2><div class="note">Pick a size to start from a blank canvas, or load a template from the library.</div>
+    <div class="sizes">${SIZES.map((s,i)=>{const r=s[1]/s[2];const w=r>=1?40:Math.round(40*r),h=r>=1?Math.round(40/r):40;return `<button data-size="${i}"><i style="width:${w}px;height:${h}px"></i><b>${s[0]}</b><small>${s[1]}×${s[2]}</small></button>`;}).join('')}</div>
+    <div class="acts"><button class="btn" data-close>Cancel</button></div>`);
+  m.querySelector('[data-close]').onclick=closeModal;
+  m.querySelectorAll('[data-size]').forEach(b=>b.onclick=async()=>{ const s=SIZES[+b.dataset.size]; closeModal(); if(await guardDirty()){ loadDoc(blankDoc(s[1],s[2])); setTab('canvas'); } });
+}
+function thumbData(doc,maxW=300){
+  const s=Math.min(maxW/doc.w,maxW/doc.h), c=document.createElement('canvas'); c.width=Math.round(doc.w*s); c.height=Math.round(doc.h*s);
+  try{ renderDoc(c.getContext('2d'),doc,{editor:true,scale:s}); return c.toDataURL('image/jpeg',.72); }catch(e){ return ''; }
+}
+function openSaveTemplate(){
+  if(!cap.db){ toast(cap.ready||cap.failed?'Saving templates needs the team library server, and it isn\'t reachable right now.':'The library is still loading. Try again in a moment.',true); return; }
+  const existing=S.doc.templateId && TPLS.find(t=>t.id===S.doc.templateId);
+  const slots=S.doc.layers.filter(l=>l.slot).length;
+  const m=openModal(`<h2>Save as template</h2>
+    <div class="fld"><label for="tName">Name</label><input class="inp" id="tName" value="${esc(existing?existing.name:(S.doc.name||'New template'))}"></div>
+    ${existing?`<div class="seg" id="tMode"><button type="button" data-m="update" aria-pressed="true">Update “${esc(existing.name)}”</button><button type="button" data-m="new" aria-pressed="false">Save as new</button></div>`:''}
+    <label class="chk"><input type="checkbox" id="tClear" checked>Empty the photo slots so each post starts fresh</label>
+    <div class="note">${slots?`${slots} quick-fill slot${slots>1?'s':''} will appear in the Quick fill tab.`:'<span class="note warn">No quick-fill slots yet. Mark the photo, headline and other changing layers as slots in the Layer tab so the team can fill them fast.</span>'} Photos you added from your computer are uploaded to the team library with the template.</div>
+    <div class="note" id="tProg"></div>
+    <div class="acts"><button class="btn" data-close>Cancel</button><button class="btn primary" id="tSave">Save template</button></div>`);
+  let mode=existing?'update':'new';
+  m.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ mode=b.dataset.m; m.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); });
+  m.querySelector('[data-close]').onclick=closeModal;
+  $('#tSave',m).onclick=async()=>{
+    const btn=$('#tSave',m); btn.disabled=true; const prog=$('#tProg',m);
+    try{
+      const name=$('#tName',m).value.trim()||'Untitled template', clear=$('#tClear',m).checked;
+      const layers=JSON.parse(JSON.stringify(S.doc.layers));
+      for(const L of layers){
+        if(L.type!=='image'||!L.src) continue;
+        if(clear && L.slot){ L.src=null; continue; }
+        if(L.src.kind==='local'){
+          if(!cap.assets) throw {code:'need_assets'};
+          prog.textContent='Uploading '+(L.name||'image')+'…';
+          const b=localBlobs.get(L.src.key)||await idbGet(L.src.key); if(!b){ L.src=null; continue; }
+          const r=await cap.assets.upload(b); L.src={kind:'asset',assetId:r.id,url:r.url||''};
+        }
+      }
+      prog.textContent='Saving…';
+      const tdoc={name,w:S.doc.w,h:S.doc.h,bg:S.doc.bg,layers};
+      const thumb=thumbData(Object.assign({},tdoc));
+      const data={name,w:tdoc.w,h:tdoc.h,bg:tdoc.bg,layers,thumb,updatedAt:Date.now(),updatedBy:cap.me||''};
+      let id;
+      if(mode==='update'&&existing){ await cap.db.doc('templates/'+existing.id).set(Object.assign({createdAt:existing.createdAt||Date.now(),createdBy:existing.createdBy||cap.me||''},data)); id=existing.id; }
+      else { data.createdAt=Date.now(); data.createdBy=cap.me||''; const ref=await cap.db.collection('templates').add(data); id=ref.id; }
+      S.doc.templateId=id; S.dirty=false; saveDraft(); closeModal(); toast('Template “'+name+'” saved');
+    }catch(err){
+      btn.disabled=false;
+      prog.innerHTML=`<span class="note warn">${err?.code==='need_assets'?'This template uses photos from your computer, and uploads are turned off. Empty those slots and try again.':err?.code==='invalid_argument'?'The template is too large to save. Remove some layers and try again.':'Couldn\'t save the template. Check your connection and try again.'}</span>`;
+    }
+  };
+}
+
+/* ---------- export ---------- */
+async function renderBlob(fmt,q){
+  await allImagesReady(S.doc); await ensureFonts();
+  const c=document.createElement('canvas'); c.width=S.doc.w; c.height=S.doc.h;
+  renderDoc(c.getContext('2d'),S.doc,{editor:false,scale:1});
+  const mime={png:'image/png',jpg:'image/jpeg',webp:'image/webp'}[fmt];
+  return await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),mime,q); }catch(e){ rej(e); } });
+}
+function slotText(...keys){ const L=S.doc.layers.find(l=>l.type==='text'&&l.slot&&keys.some(k=>l.slot.toLowerCase().includes(k))); return L?String(L.upper?L.text.toUpperCase():L.text).replace(/\s*\n\s*/g,' ').trim():''; }
+function defaultName(){ return slug(slotText('headline','title')||S.doc.name); }
+async function saveFile(filename,data){
+  if(!cap.downloads) return false;
+  try{ await cap.downloads.save({filename,data}); return true; }
+  catch(err){ if(err?.code==='declined') { toast('Download cancelled'); return 'declined'; } throw err; }
+}
+function openExport(){
+  const empty=S.doc.layers.filter(l=>l.type==='image'&&l.slot&&!l.src&&l.visible).map(l=>l.slot);
+  let fmt='png';
+  const m=openModal(`<h2>Export post</h2>
+    <div class="preview"><img id="xPrev" alt="Export preview"></div>
+    ${empty.length?`<div class="note warn">Empty photo slot${empty.length>1?'s':''}: ${empty.map(esc).join(', ')}. They export as blank.</div>`:''}
+    <div class="seg" id="xFmt"><button type="button" data-f="png" aria-pressed="true">PNG</button><button type="button" data-f="jpg" aria-pressed="false">JPG</button><button type="button" data-f="webp" aria-pressed="false">WebP</button></div>
+    <div class="fld" id="xQrow" hidden><label for="xQ">Quality</label><div class="rng"><input type="range" id="xQ" min="0.5" max="1" step="0.01" value="0.92"><output id="xQo">92%</output></div></div>
+    <div class="fld"><label for="xName">File name</label><input class="inp" id="xName" value="${esc(defaultName())}"></div>
+    <div class="note" style="font-family:var(--f-mono);font-size:11px">${S.doc.w}×${S.doc.h}px</div>
+    <div class="note" id="xMsg"></div>
+    <div class="acts">
+      <button class="btn" id="xCopy">Copy image</button>
+      <button class="btn" id="xBundle" title="A .webp image and a matching .txt with the headline, dek, location, tags and source for the website import">Article bundle</button>
+      <button class="btn primary" id="xGo">Download</button>
+    </div>`);
+  const prev=$('#xPrev',m), msg=$('#xMsg',m);
+  renderBlob('jpg',.8).then(b=>{ prev.src=URL.createObjectURL(b); }).catch(()=>{ msg.innerHTML='<span class="note warn">One of the images can\'t be exported from this browser. Re-upload it from your computer and try again.</span>'; });
+  m.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ fmt=b.dataset.f; m.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b)); $('#xQrow',m).hidden=fmt==='png'; });
+  $('#xQ',m).oninput=e=>{ $('#xQo',m).textContent=Math.round(e.target.value*100)+'%'; };
+  const fallback=(blob,name)=>{ prev.src=URL.createObjectURL(blob); msg.innerHTML=`Downloads aren't available in this view. Right-click or long-press the preview and save it as <b>${esc(name)}</b>.`; };
+  $('#xGo',m).onclick=async()=>{
+    const btn=$('#xGo',m); btn.disabled=true; msg.textContent='Rendering…';
+    try{
+      let blob=await renderBlob(fmt,+$('#xQ',m).value); let ext=fmt;
+      if(fmt==='webp'&&blob.type!=='image/webp'){ ext='png'; msg.textContent='This browser can\'t make WebP files, so this one is a PNG.'; }
+      const name=slug($('#xName',m).value)+'.'+ext;
+      const r=await saveFile(name,blob);
+      if(r===true){ msg.textContent='Saved '+name; toast('Exported '+name); }
+      else if(r===false) fallback(blob,name); else msg.textContent='';
+    }catch(err){ msg.innerHTML='<span class="note warn">Export failed. If you used an image from another website, re-upload it from your computer.</span>'; }
+    btn.disabled=false;
+  };
+  $('#xBundle',m).onclick=async()=>{
+    const btn=$('#xBundle',m); btn.disabled=true; msg.textContent='Rendering…';
+    try{
+      const stem=slug($('#xName',m).value);
+      let blob=await renderBlob('webp',.9); let ext='webp';
+      if(blob.type!=='image/webp'){ ext='png'; }
+      const txt=[
+        'HEADLINE: '+slotText('headline','title'),
+        'DEK: '+slotText('dek','sub','summary'),
+        'LOCATION: '+slotText('location','city'),
+        'CATEGORY: '+slotText('category'),
+        'TAGS: '+slotText('tag'),
+        'SOURCE: '+slotText('source','credit').replace(/^source:\s*/i,''),
+        'IMAGE: '+stem+'.'+ext,
+        'DATE: '+new Date().toISOString().slice(0,10),
+      ].join('\n')+'\n';
+      const r1=await saveFile(stem+'.'+ext,blob);
+      if(r1===false){ fallback(blob,stem+'.'+ext); msg.innerHTML+=`<br><br>Article text:<br><textarea class="inp" rows="7" readonly id="xTxt">${esc(txt)}</textarea>`; btn.disabled=false; return; }
+      if(r1==='declined'){ btn.disabled=false; msg.textContent=''; return; }
+      await saveFile(stem+'.txt',new Blob([txt],{type:'text/plain'}));
+      msg.textContent=`Saved ${stem}.${ext} and ${stem}.txt`+(ext==='png'?' (this browser can\'t make WebP)':'');
+    }catch(err){ msg.innerHTML='<span class="note warn">Export failed. Try again, or download the image on its own.</span>'; }
+    btn.disabled=false;
+  };
+  $('#xCopy',m).onclick=async()=>{
+    try{
+      if(!window.ClipboardItem||!navigator.clipboard?.write) throw 0;
+      await navigator.clipboard.write([new ClipboardItem({'image/png':renderBlob('png')})]);
+      msg.textContent='Copied. Paste it into Instagram, Slack or anywhere that takes images.';
+    }catch(e){ msg.textContent='Copying images isn\'t allowed here. Use Download instead.'; }
+  };
+}
+
+/* ---------- toast ---------- */
+let toastT=0;
+function toast(t,err){ let el=$('#toast'); if(!el){ el=document.createElement('div'); el.id='toast'; el.setAttribute('role','status'); document.body.appendChild(el); } el.className='toast'+(err?' err':''); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{el.hidden=true;},err?4500:2200); }
+
+/* ---------- backend ----------
+   Two modes, picked at boot:
+   • "server": talks to the Next.js routes under /api/scoop (or window.SCOOP_API).
+   • "local":  no server reachable, so templates/assets live in this browser's IndexedDB.
+   The rest of the app only sees cap.db / cap.assets / cap.downloads / cap.sample,
+   so swapping storage later (Sanity, Supabase…) means rewriting this block only. */
+const API = String(window.SCOOP_API ?? '/api/scoop').replace(/\/$/,'');
+const Backend = { mode:'local', fetchFile:null };
+
+function getPass(){ try{ return localStorage.getItem('scoop-builder:pass')||''; }catch(e){ return ''; } }
+function askPass(wrong){
+  return new Promise(res=>{
+    const m=openModal(`<h2>Team passcode</h2><div class="note">${wrong?'That passcode didn\'t work. ':''}Enter the SLC Scoop team passcode to use the shared library.</div>
+      <input class="inp" id="pcIn" type="password" autocomplete="current-password" aria-label="Team passcode">
+      <div class="acts"><button class="btn" id="pcNo">Work offline</button><button class="btn primary" id="pcYes">Unlock</button></div>`);
+    const go=()=>{ const v=$('#pcIn',m).value.trim(); try{ localStorage.setItem('scoop-builder:pass',v); }catch(e){} closeModal(); res(!!v); };
+    $('#pcYes',m).onclick=go; $('#pcIn',m).addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
+    $('#pcNo',m).onclick=()=>{ closeModal(); res(false); };
+    $('#pcIn',m).focus();
+  });
+}
+let passTries=0;
+async function api(path,opts={}){
+  const headers=Object.assign({},opts.headers||{}); const p=getPass(); if(p) headers['x-scoop-pass']=p;
+  const r=await fetch(API+path,Object.assign({},opts,{headers}));
+  if(r.status===401){
+    if(passTries++<3 && await askPass(!!p)) return api(path,opts);
+    throw {code:'unauthorized'};
+  }
+  passTries=0;
+  if(!r.ok){ let j={}; try{ j=await r.json(); }catch(e){} throw Object.assign({code:'http_'+r.status,status:r.status},j); }
+  return (r.headers.get('content-type')||'').includes('json') ? r.json() : r;
+}
+
+/* IndexedDB for local mode */
+let ldbP=null;
+function ldb(){ if(!ldbP) ldbP=new Promise((res,rej)=>{ const r=indexedDB.open('scoop-standalone',1); r.onupgradeneeded=()=>{ r.result.createObjectStore('docs'); r.result.createObjectStore('files'); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); return ldbP; }
+async function ltx(store,mode,fn){ const d=await ldb(); return new Promise((res,rej)=>{ const t=d.transaction(store,mode); const out=fn(t.objectStore(store)); t.oncomplete=()=>res(out&&'result' in out?out.result:undefined); t.onerror=()=>rej(t.error); }); }
+const fileUrlCache=new Map();
+async function localFileUrl(id){ if(fileUrlCache.has(id)) return fileUrlCache.get(id); const b=await ltx('files','readonly',s=>s.get(id)); if(!b) return ''; const u=URL.createObjectURL(b); fileUrlCache.set(id,u); return u; }
+
+/* collection store with snapshot listeners (polled in server mode) */
+function makeDb(){
+  const subs=new Map(), cache=new Map();
+  async function fetchCol(col){
+    if(Backend.mode==='server') return await api('/store/'+col);
+    const all=await ltx('docs','readonly',s=>s.getAll());
+    const docs=(all||[]).filter(d=>d.col===col).map(d=>Object.assign({id:d.id},d.data));
+    if(col==='library') for(const d of docs) if(String(d.url).startsWith('idb:')) d.displayUrl=await localFileUrl(d.url.slice(4));
+    return docs;
+  }
+  function emit(col){ const docs=cache.get(col)||[]; for(const s of subs.get(col)||[]) s.cb({docs:docs.map(d=>({id:d.id,exists:true,data:()=>{ const o=Object.assign({},d); delete o.id; return o; }}))}); }
+  async function refresh(col){ try{ cache.set(col,await fetchCol(col)); emit(col); }catch(e){ for(const s of subs.get(col)||[]) s.err&&s.err(e); } }
+  function sub(col,cb,err){ if(!subs.has(col)) subs.set(col,new Set()); const o={cb,err}; subs.get(col).add(o); refresh(col); return ()=>subs.get(col).delete(o); }
+  async function put(col,id,data){
+    if(Backend.mode==='server') await api(`/store/${col}/${id}`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
+    else await ltx('docs','readwrite',s=>s.put({col,id,data},col+'/'+id));
+    refresh(col);
+  }
+  async function remove(col,id){
+    if(Backend.mode==='server') await api(`/store/${col}/${id}`,{method:'DELETE'});
+    else await ltx('docs','readwrite',s=>s.delete(col+'/'+id));
+    refresh(col);
+  }
+  setInterval(()=>{ if(Backend.mode==='server' && document.visibilityState==='visible') for(const col of subs.keys()) refresh(col); },20000);
+  document.addEventListener('visibilitychange',()=>{ if(Backend.mode==='server' && document.visibilityState==='visible') for(const col of subs.keys()) refresh(col); });
+  return {
+    collection:col=>({ onSnapshot:(cb,err)=>sub(col,cb,err), add:async data=>{ const id=Date.now().toString(36)+uid(); await put(col,id,data); return {id}; } }),
+    doc:path=>{ const [col,id]=path.split('/'); return {
+      set:data=>put(col,id,data), delete:()=>remove(col,id),
+      onSnapshot:(cb,err)=>sub(col,snap=>{ const d=snap.docs.find(x=>x.id===id); cb({exists:!!d,data:()=>d?d.data():undefined}); },err),
+    }; },
+  };
+}
+
+const MAX_ASSET_BYTES=25*1024*1024;
+async function readBlobJson(res){
+  const text=await res.text(); let data={};
+  try{ data=text?JSON.parse(text):{}; }catch(e){}
+  const msg=typeof data.error==='string'?data.error:(data.error&&data.error.message)||'';
+  if(!res.ok){
+    if(res.status===413||/too large|maximum size/i.test(String(msg))) throw {code:'too_large'};
+    throw {code:'upload_failed',status:res.status,error:msg||'upload_failed'};
+  }
+  return data;
+}
+async function putBlob(pathname,file,clientToken,multipart){
+  const storeId=clientToken.split('_')[3]||'';
+  const type=file.type||'application/octet-stream';
+  const headers={
+    authorization:'Bearer '+clientToken,
+    'x-vercel-blob-store-id':storeId,
+    'x-api-version':'12',
+    'x-vercel-blob-access':'public',
+    'x-content-type':type,
+  };
+  const root='https://vercel.com/api/blob';
+  const q='?pathname='+encodeURIComponent(pathname);
+  if(!multipart){
+    return readBlobJson(await fetch(root+'/'+q,{method:'PUT',headers:Object.assign({'x-content-length':String(file.size)},headers),body:file}));
+  }
+  const created=await readBlobJson(await fetch(root+'/mpu'+q,{method:'POST',headers:Object.assign({'x-mpu-action':'create'},headers)}));
+  const partSize=8*1024*1024, parts=[];
+  for(let start=0,n=1; start<file.size; start+=partSize,n++){
+    const chunk=file.slice(start,Math.min(start+partSize,file.size));
+    const uploaded=await readBlobJson(await fetch(root+'/mpu'+q,{method:'POST',headers:Object.assign({
+      'x-mpu-action':'upload','x-mpu-key':encodeURIComponent(created.key),'x-mpu-upload-id':created.uploadId,
+      'x-mpu-part-number':String(n),'x-content-length':String(chunk.size),
+    },headers),body:chunk}));
+    parts.push({etag:uploaded.etag,partNumber:n});
+  }
+  return readBlobJson(await fetch(root+'/mpu'+q,{method:'POST',headers:Object.assign({
+    'x-mpu-action':'complete','x-mpu-key':encodeURIComponent(created.key),'x-mpu-upload-id':created.uploadId,
+    'content-type':'application/json',
+  },headers),body:JSON.stringify(parts)}));
+}
+function makeAssets(){
+  return {
+    async upload(blob){
+      if(blob.size>MAX_ASSET_BYTES) throw {code:'too_large'};
+      if(Backend.mode==='server'){
+        const name=(blob.name||'file').replace(/[^\w.\-]+/g,'-').slice(0,80);
+        const pathname='scoop/assets/'+name;
+        const multipart=blob.size>4.5*1024*1024;
+        const issued=await api('/assets',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'blob.generate-client-token',payload:{pathname,clientPayload:null,multipart}})});
+        if(!issued||!issued.clientToken) throw {code:'upload_failed'};
+        const saved=await putBlob(pathname,blob,issued.clientToken,multipart);
+        return {id:saved.pathname,url:saved.url,contentType:saved.contentType||blob.type||'application/octet-stream'};
+      }
+      const id='f_'+uid(); await ltx('files','readwrite',s=>s.put(blob,id));
+      return {id,url:'idb:'+id,contentType:blob.type};
+    },
+    async delete(url){
+      if(Backend.mode==='server') return api('/assets?url='+encodeURIComponent(url),{method:'DELETE'});
+      if(String(url).startsWith('idb:')) await ltx('files','readwrite',s=>s.delete(url.slice(4)));
+    },
+  };
+}
+
+/* Fetch an asset as a Blob. Server mode goes through /file so canvas export never hits CORS. */
+Backend.fetchFile = async url=>{
+  if(!url) throw new Error('no url');
+  if(String(url).startsWith('idb:')){ const b=await ltx('files','readonly',s=>s.get(url.slice(4))); if(!b) throw new Error('missing'); return b; }
+  const r = Backend.mode==='server' && /^https?:/.test(url) ? await api('/file?u='+encodeURIComponent(url)) : await fetch(url);
+  if(!r.ok) throw new Error('fetch '+r.status); return await r.blob();
+};
+
+const downloadsLocal = { async save({filename,data}){
+  const blob = data instanceof Blob ? data : new Blob([data]);
+  const u=URL.createObjectURL(blob), a=document.createElement('a'); a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),4000); return {status:'saved'};
+}};
+
+const draftApi = { async draft(body,signal){
+  if(Backend.mode!=='server') throw {code:'not_configured'};
+  try{ return await api('/draft',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal}); }
+  catch(e){ if(e?.status===429) throw {code:'rate_limited'}; if(e?.status===503) throw {code:'not_configured'}; throw e; }
+}};
+
+async function initBackend(){
+  try{ await api('/store/brand'); Backend.mode='server'; }
+  catch(e){ Backend.mode='local'; if(e?.code==='unauthorized'){ toast('Working offline: templates and assets stay in this browser.',true); } }
+  const db=makeDb();
+  Object.assign(cap,{db,assets:makeAssets(),downloads:downloadsLocal,sample:Backend.mode==='server'?draftApi:null,me:''});
+  if(Backend.mode==='local') document.title='SLC Scoop Post Builder (offline)';
+  let got=0; const timer=setTimeout(()=>{ if(!cap.ready){ cap.failed=true; renderLib(); } },10000);
+  const done=()=>{ if(++got>=2){ clearTimeout(timer); cap.ready=true; cap.failed=false; } };
+  db.collection('library').onSnapshot(snap=>{
+    LIB=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    done(); loadCustomFonts(); renderLib(); if(S.tabR==='layer') renderProps(true);
+  },()=>{ done(); cap.failed=true; renderLib(); });
+  db.collection('templates').onSnapshot(snap=>{
+    TPLS=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+    done(); renderLib();
+  },()=>{ done(); cap.failed=true; renderLib(); });
+  db.doc('brand/settings').onSnapshot(s=>{ const d=s.exists?s.data():null; SWATCH=(d&&Array.isArray(d.swatches))?d.swatches:[]; if(S.tabR==='layer'||S.tabR==='canvas') renderProps(true); },()=>{});
+  renderProps(true); renderLib();
+}
+
+/* ---------- boot ---------- */
+function loadBrandFonts(){
+  for(const f of BRAND_FONTS){
+    const face=new FontFace(f.family,`url(/scoop/fonts/${f.file})`,{weight:'normal',style:'normal'});
+    face.load().then(loaded=>{ document.fonts.add(loaded); scheduleRender(); }).catch(()=>{ toast('Missing font file: '+f.file,true); });
+  }
+}
+function boot(){
+  loadBrandFonts();
+  let doc=null;
+  try{ const s=localStorage.getItem('scoop-builder:draft'); if(s) doc=JSON.parse(s); }catch(e){}
+  if(!doc||!Array.isArray(doc.layers)) doc=starterDoc();
+  loadDoc(doc);
+  const st=starterDoc(); document.fonts.ready.then(()=>Promise.all(st.layers.filter(l=>l.type==='text').map(L=>document.fonts.load(fontStr(L),'Aa').catch(()=>{})))).then(()=>{ builtinThumb.url=thumbData(st,300); renderLib(); });
+  renderLib();
+  initBackend();
+}
+boot();
+})();
+</script>
+
+</body>
+</html>

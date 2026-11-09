@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   getStoredConsent,
   saveConsent,
@@ -11,6 +12,7 @@ import {
 } from '@/lib/cookie-consent'
 
 export function CookieBanner() {
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
 
@@ -31,7 +33,7 @@ export function CookieBanner() {
     return () => window.removeEventListener(SHOW_COOKIE_BANNER_EVENT, open)
   }, [])
 
-  if (!mounted || !visible) return null
+  if (!mounted || !visible || pathname === '/slcscoop') return null
 
   return (
     <div

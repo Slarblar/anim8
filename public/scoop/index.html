@@ -892,9 +892,26 @@ async function localSrc(file){ const key='loc_'+uid(); localBlobs.set(key,file);
 function slotAt(x,y){ for(let i=S.doc.layers.length-1;i>=0;i--){ const L=S.doc.layers[i]; if(L.type==='image'&&L.slot&&L.visible&&inside(L,x,y)) return L; } return null; }
 function fillSlot(L,src,dims){ L.src=src; L.nw=dims.w; L.nh=dims.h; L.fit='cover'; L.fx=.5; L.fy=.5; L.zoom=1; S.sel=L.id; commit(); loadEntry(src); scheduleRender(); renderLayers(); renderProps(true); }
 function placeImage(src,dims,name,at){
-  const W=S.doc.w,H=S.doc.h, s=Math.min(1,(W*.8)/dims.w,(H*.8)/dims.h);
-  const L=IM({src,nw:dims.w,nh:dims.h,w:Math.round(dims.w*s),h:Math.round(dims.h*s),fit:'stretch',name:name||'Image'});
-  centerIn(L,at?.x,at?.y); loadEntry(src); addLayer(L);
+  const W=S.doc.w,H=S.doc.h;
+  const near=(a,b)=>Math.abs(a-b)/Math.max(b,1)<0.035;
+  let w=dims.w, h=dims.h;
+  if(near(dims.w,W)&&near(dims.h,H)){ w=W; h=H; }
+  else if(near(dims.w/Math.max(1,dims.h), W/H) && dims.w>=W*0.9 && dims.h>=H*0.9){ w=W; h=H; }
+  else { const s=Math.min(1,W/dims.w,H/dims.h); w=Math.round(dims.w*s); h=Math.round(dims.h*s); }
+  let x,y;
+  if(w===W && h===H){ x=0; y=0; }
+  else {
+    x=Math.round((at?.x??W/2)-w/2); y=Math.round((at?.y??H/2)-h/2);
+    if(near(w,W)){ x=0; w=W; }
+    if(near(h,H)){ y=0; h=H; }
+    const thr=20;
+    const sx=closestTarget(x, edgeTargets('x'), thr, 0) ?? (closestTarget(x+w, edgeTargets('x'), thr, 0)!=null ? closestTarget(x+w, edgeTargets('x'), thr, 0)-w : null);
+    const sy=closestTarget(y, edgeTargets('y'), thr, 0) ?? (closestTarget(y+h, edgeTargets('y'), thr, 0)!=null ? closestTarget(y+h, edgeTargets('y'), thr, 0)-h : null);
+    if(sx!=null) x=sx;
+    if(sy!=null) y=sy;
+  }
+  const L=IM({src,nw:dims.w,nh:dims.h,w:Math.round(w),h:Math.round(h),x:Math.round(x),y:Math.round(y),fit:'stretch',name:name||'Image'});
+  loadEntry(src); addLayer(L);
 }
 async function handleFiles(files,at){
   const imgs=[...files].filter(f=>/^image\/(png|webp|jpeg|svg\+xml)$/.test(f.type));

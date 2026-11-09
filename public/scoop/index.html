@@ -160,7 +160,7 @@ textarea.inp{resize:vertical;min-height:58px;line-height:1.4}
 .layers .lh{display:flex;align-items:center;gap:8px;padding:9px 14px 6px}
 .layers .lh .kbd{margin-left:auto}
 .llist{overflow:auto;padding:0 8px 10px;display:flex;flex-direction:column;gap:2px;min-height:0}
-.lrow{display:grid;grid-template-columns:20px minmax(0,1fr) auto auto auto;gap:6px;align-items:center;padding:5px 6px;border-radius:4px;cursor:pointer;border:1px solid transparent}
+.lrow{display:grid;grid-template-columns:20px minmax(0,1fr) auto auto auto auto;gap:6px;align-items:center;padding:5px 6px;border-radius:4px;cursor:pointer;border:1px solid transparent}
 .lrow:hover{background:var(--panel2)}
 .lrow.sel{background:var(--raise);border-color:#4a4843}
 .lrow.dim{opacity:.45}
@@ -172,16 +172,20 @@ textarea.inp{resize:vertical;min-height:58px;line-height:1.4}
 .lrow .tb{width:22px;height:22px;display:grid;place-items:center;border:0;background:none;border-radius:3px;cursor:pointer;color:var(--faint)}
 .lrow .tb:hover{color:var(--text);background:var(--line)}
 .lrow .tb.act{color:var(--text)}
+.lrow .tb:disabled{opacity:1;cursor:default;color:var(--text)}
 .lrow .tb svg{width:13px;height:13px}
 .lrow input{background:var(--bg);border:1px solid var(--red);border-radius:3px;padding:1px 4px;width:100%;font-size:12px}
 
 /* modal + toast */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50;padding:16px}
 .modal{background:var(--panel);border:1px solid var(--line);border-radius:8px;width:min(480px,100%);max-height:calc(100% - 32px);overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal.wide{width:min(640px,100%)}
 .modal h2{margin:0;font-size:18px;font-weight:900;letter-spacing:-.01em}
 .modal .acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.modal .preview{background:#0b0b0c;border-radius:4px;display:grid;place-items:center;padding:10px}
-.modal .preview img{max-height:46vh;width:auto;max-width:100%}
+.modal .previews{display:grid;grid-template-columns:1.15fr .85fr;gap:8px;align-items:stretch}
+.modal .preview{background:#0b0b0c;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px;min-width:0}
+.modal .preview .cap{font-size:11px;font-weight:700;color:var(--muted);align-self:flex-start}
+.modal .preview img{max-height:34vh;width:auto;max-width:100%}
 .sizes{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
 .sizes button{display:flex;flex-direction:column;gap:6px;align-items:center;padding:12px 8px;background:var(--panel2);border:1px solid var(--line);border-radius:5px;cursor:pointer}
 .sizes button:hover{border-color:var(--red)}
@@ -328,9 +332,15 @@ function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1
 
 /* ---------- layer factories ---------- */
 const BASE = ()=>({id:uid(),name:'',parent:null,x:0,y:0,w:200,h:100,rot:0,opacity:1,blend:'source-over',visible:true,locked:false,slot:'',shadow:false,shadowColor:'#000000',shadowBlur:16,shadowX:0,shadowY:4});
-const T = o=>Object.assign(BASE(),{type:'text',text:'Text',font:'Archivo',weight:800,italic:false,size:48,lh:1.1,ls:0,color:'#FFFFFF',align:'left',upper:false,hscale:1,strokeW:0,stroke:'#000000',bg:'none',bgColor:'#ED2224',padX:18,padY:8},o);
-const SH = o=>Object.assign(BASE(),{type:'shape',shape:'rect',fill:'#ED2224',grad:false,fill2:'#000000',fill2Alpha:0,gradAngle:90,stroke:'#000000',strokeW:0,radius:0,rough:18,seed:7,edges:'both'},o);
-const IM = o=>Object.assign(BASE(),{type:'image',src:null,nw:0,nh:0,fit:'cover',fx:.5,fy:.5,zoom:1,flipX:false,flipY:false,bright:100,contrast:100,sat:100,gray:0,blur:0},o);
+const T = o=>Object.assign(BASE(),{type:'text',web:false,text:'Text',font:'Archivo',weight:800,italic:false,size:48,lh:1.1,ls:0,color:'#FFFFFF',align:'left',upper:false,hscale:1,strokeW:0,stroke:'#000000',bg:'none',bgColor:'#ED2224',padX:18,padY:8},o);
+const SH = o=>Object.assign(BASE(),{type:'shape',web:false,shape:'rect',fill:'#ED2224',grad:false,fill2:'#000000',fill2Alpha:0,gradAngle:90,stroke:'#000000',strokeW:0,radius:0,rough:18,seed:7,edges:'both'},o);
+const IM = o=>Object.assign(BASE(),{type:'image',web:true,src:null,nw:0,nh:0,fit:'cover',fx:.5,fy:.5,zoom:1,flipX:false,flipY:false,bright:100,contrast:100,sat:100,gray:0,blur:0},o);
+function defaultWeb(type){ return type==='image'||type==='redact'; }
+function ensureLayerWeb(L){
+  if(!L||L.type==='folder') return;
+  if(L.type==='redact'||typeof L.web!=='boolean') L.web=defaultWeb(L.type);
+}
+function layerWeb(L){ if(!L||L.type==='folder') return false; if(L.type==='redact') return true; return L.web===true; }
 
 const KINDS = [
   {id:'single', name:'Single post', w:1080, h:1350, pages:1, layout:'feed'},
@@ -414,7 +424,7 @@ function normalizeDoc(raw){
     p.name=p.name||('Page '+(i+1));
     p.w=+p.w||1080; p.h=+p.h||1350; p.bg=p.bg||'#151616';
     if(!Array.isArray(p.layers)) p.layers=[];
-    p.layers.forEach(l=>{ if(l.parent==null) l.parent=null; if(l.type==='folder'&&l.open==null) l.open=true; });
+    p.layers.forEach(l=>{ if(l.parent==null) l.parent=null; if(l.type==='folder'&&l.open==null) l.open=true; ensureLayerWeb(l); });
   });
   d.page=clamp(+d.page||0,0,d.pages.length-1);
   d.templateType=d.templateType||'single';
@@ -515,6 +525,73 @@ function drawLine(ctx,t,ls,stroke){
   if(!ls||LS_OK){ stroke?ctx.strokeText(t,0,0):ctx.fillText(t,0,0); return; }
   let x=0; for(const ch of t){ stroke?ctx.strokeText(ch,x,0):ctx.fillText(ch,x,0); x+=ctx.measureText(ch).width+ls; }
 }
+function hintText(ctx){ if(ctx && 'textRendering' in ctx) ctx.textRendering='optimizeLegibility'; }
+function paintText(ctx,L,lay,snap){
+  hintText(ctx);
+  const {lines,lineH,padX,padY,hs}=lay;
+  if(L.bg==='box'){ ctx.fillStyle=L.bgColor; ctx.fillRect(0,0,L.w,lay.h); ctx.shadowColor='transparent'; }
+  ctx.font=fontStr(L); setLS(ctx,L.ls); ctx.textBaseline='alphabetic';
+  const m=ctx.measureText('Hg');
+  const asc=m.fontBoundingBoxAscent||L.size*.8, desc=m.fontBoundingBoxDescent||L.size*.22;
+  const innerW=L.w-2*padX;
+  lines.forEach((ln,i)=>{
+    let x=padX+(L.align==='center'?(innerW-ln.w*hs)/2:L.align==='right'?innerW-ln.w*hs:0);
+    const top=padY+i*lineH;
+    let base=top+(lineH-(asc+desc))/2+asc;
+    if(snap){ x=Math.round(x); base=Math.round(base); }
+    if(L.bg==='lines'&&ln.t.trim()){ ctx.fillStyle=L.bgColor; ctx.fillRect(x-L.padX,top-L.padY*.5,ln.w*hs+2*L.padX,lineH+L.padY); }
+    ctx.save(); ctx.translate(x,base); if(hs!==1) ctx.scale(hs,1);
+    if(L.strokeW>0){ ctx.lineJoin='round'; ctx.miterLimit=2; ctx.strokeStyle=L.stroke; ctx.lineWidth=L.strokeW*2; drawLine(ctx,ln.t,L.ls,true); ctx.shadowColor='transparent'; }
+    ctx.fillStyle=L.color; drawLine(ctx,ln.t,L.ls,false);
+    ctx.restore();
+  });
+}
+const textBitmaps=new Map();
+function textPaintKey(L){
+  return [L.text,L.font,L.weight,L.italic?1:0,L.size,L.lh,L.ls,L.hscale,L.color,L.align,L.upper?1:0,L.strokeW,L.stroke,L.bg,L.bgColor,L.padX,L.padY,L.w,L.h].join('\u0001');
+}
+function textBitmap(L,lay){
+  const key=textPaintKey(L);
+  const hit=textBitmaps.get(L.id);
+  if(hit&&hit.key===key) return hit;
+  const stroke=L.strokeW||0;
+  const sh=L.shadow?(L.shadowBlur||0)+Math.abs(L.shadowX||0)+Math.abs(L.shadowY||0):0;
+  const pad=Math.ceil(stroke+sh)+2;
+  const S3=3;
+  const c=document.createElement('canvas');
+  c.width=Math.max(1,Math.ceil((L.w+pad*2)*S3));
+  c.height=Math.max(1,Math.ceil((lay.h+pad*2)*S3));
+  const g=c.getContext('2d');
+  hintText(g);
+  g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+  g.setTransform(S3,0,0,S3,0,0);
+  g.translate(pad,pad);
+  paintText(g,L,lay,false);
+  const entry={key,canvas:c,pad};
+  textBitmaps.set(L.id,entry);
+  return entry;
+}
+function pruneTextBitmaps(){
+  if(!S.doc||!S.doc.pages) return;
+  const ids=new Set();
+  for(const p of S.doc.pages) for(const l of p.layers) if(l.type==='text') ids.add(l.id);
+  for(const id of textBitmaps.keys()) if(!ids.has(id)) textBitmaps.delete(id);
+}
+function drawSupersampledText(ctx,L,lay,opt){
+  const bmp=textBitmap(L,lay);
+  ctx.save();
+  hintText(ctx);
+  ctx.globalAlpha=L.opacity??1;
+  ctx.globalCompositeOperation=L.blend||'source-over';
+  const x=Math.round(L.x), y=Math.round(L.y);
+  ctx.translate(x+L.w/2, y+lay.h/2);
+  ctx.rotate((L.rot||0)*Math.PI/180);
+  ctx.translate(-L.w/2, -lay.h/2);
+  if(L.shadow){ const s=opt.scale||1; ctx.shadowColor=L.shadowColor; ctx.shadowBlur=L.shadowBlur*s; ctx.shadowOffsetX=L.shadowX*s; ctx.shadowOffsetY=L.shadowY*s; }
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.drawImage(bmp.canvas, -bmp.pad, -bmp.pad, L.w+bmp.pad*2, lay.h+bmp.pad*2);
+  ctx.restore();
+}
 function layoutText(ctx,L){
   ctx.font=fontStr(L); setLS(ctx,L.ls);
   const hs=L.hscale||1, box=L.bg==='box';
@@ -606,15 +683,40 @@ function layerLocked(L){
   }
   return false;
 }
+function drawRedact(ctx,L,opt){
+  const s=opt.scale||1, cw=ctx.canvas.width, ch=ctx.canvas.height;
+  let x=Math.floor(L.x*s), y=Math.floor(L.y*s), w=Math.ceil(L.w*s), h=Math.ceil(L.h*s);
+  if(x<0){ w+=x; x=0; } if(y<0){ h+=y; y=0; }
+  if(x+w>cw) w=cw-x; if(y+h>ch) h=ch-y;
+  if(w<2||h<2) return;
+  let img; try{ img=ctx.getImageData(x,y,w,h); }catch(e){ return; }
+  const px=img.data, block=Math.max(4,Math.round(16*s));
+  for(let by=0;by<h;by+=block) for(let bx=0;bx<w;bx+=block){
+    const bw=Math.min(block,w-bx), bh=Math.min(block,h-by);
+    let r=0,g=0,b=0,a=0,n=0;
+    for(let yy=0;yy<bh;yy++) for(let xx=0;xx<bw;xx++){
+      const i=((by+yy)*w+(bx+xx))*4; r+=px[i]; g+=px[i+1]; b+=px[i+2]; a+=px[i+3]; n++;
+    }
+    r/=n; g/=n; b/=n; a/=n;
+    for(let yy=0;yy<bh;yy++) for(let xx=0;xx<bw;xx++){
+      const i=((by+yy)*w+(bx+xx))*4; px[i]=r; px[i+1]=g; px[i+2]=b; px[i+3]=a;
+    }
+  }
+  ctx.putImageData(img,x,y);
+}
 function drawLayer(ctx,L,opt){
   if(L.type==='folder'||!layerShown(L)) return;
-  ctx.save();
+  if(L.type==='redact'){ drawRedact(ctx,L,opt); return; }
   let lay=null;
   if(L.type==='text'){ lay=layoutText(ctx,L); L.h=lay.h; }
+  const rot=L.rot||0, hs=L.hscale||1;
+  if(L.type==='text' && (rot!==0 || hs!==1)){ drawSupersampledText(ctx,L,lay,opt); return; }
+  ctx.save();
+  hintText(ctx);
   ctx.globalAlpha=L.opacity??1;
   ctx.globalCompositeOperation=L.blend||'source-over';
-  const cx=L.x+L.w/2, cy=L.y+L.h/2;
-  ctx.translate(cx,cy); ctx.rotate((L.rot||0)*Math.PI/180); ctx.translate(-L.w/2,-L.h/2);
+  if(L.type==='text') ctx.translate(Math.round(L.x), Math.round(L.y));
+  else { const cx=L.x+L.w/2, cy=L.y+L.h/2; ctx.translate(cx,cy); ctx.rotate(rot*Math.PI/180); ctx.translate(-L.w/2,-L.h/2); }
   if(L.shadow){ const s=opt.scale||1; ctx.shadowColor=L.shadowColor; ctx.shadowBlur=L.shadowBlur*s; ctx.shadowOffsetX=L.shadowX*s; ctx.shadowOffsetY=L.shadowY*s; }
   if(L.type==='shape'){
     if(L.shape==='arrow'){
@@ -637,24 +739,7 @@ function drawLayer(ctx,L,opt){
     const d=coverDims(L,img);
     ctx.drawImage(img,d.dx,d.dy,d.dw,d.dh);
   }
-  else if(L.type==='text'){
-    const {lines,lineH,padX,padY,hs}=lay;
-    if(L.bg==='box'){ ctx.fillStyle=L.bgColor; ctx.fillRect(0,0,L.w,lay.h); ctx.shadowColor='transparent'; }
-    ctx.font=fontStr(L); setLS(ctx,L.ls); ctx.textBaseline='alphabetic';
-    const m=ctx.measureText('Hg');
-    const asc=m.fontBoundingBoxAscent||L.size*.8, desc=m.fontBoundingBoxDescent||L.size*.22;
-    const innerW=L.w-2*padX;
-    lines.forEach((ln,i)=>{
-      const tw=ln.w*hs;
-      const x=padX+(L.align==='center'?(innerW-tw)/2:L.align==='right'?innerW-tw:0);
-      const top=padY+i*lineH, base=top+(lineH-(asc+desc))/2+asc;
-      if(L.bg==='lines'&&ln.t.trim()){ ctx.fillStyle=L.bgColor; ctx.fillRect(x-L.padX,top-L.padY*.5,tw+2*L.padX,lineH+L.padY); }
-      ctx.save(); ctx.translate(x,base); ctx.scale(hs,1);
-      if(L.strokeW>0){ ctx.lineJoin='round'; ctx.miterLimit=2; ctx.strokeStyle=L.stroke; ctx.lineWidth=L.strokeW*2; drawLine(ctx,ln.t,L.ls,true); ctx.shadowColor='transparent'; }
-      ctx.fillStyle=L.color; drawLine(ctx,ln.t,L.ls,false);
-      ctx.restore();
-    });
-  }
+  else if(L.type==='text') paintText(ctx,L,lay,true);
   ctx.restore();
 }
 function renderDoc(ctx,doc,opt={}){
@@ -662,11 +747,45 @@ function renderDoc(ctx,doc,opt={}){
   const prev=drawList;
   drawList=doc.layers;
   ctx.save(); ctx.setTransform(s,0,0,s,0,0);
+  hintText(ctx);
   ctx.clearRect(0,0,doc.w,doc.h);
   ctx.fillStyle=doc.bg||'#000'; ctx.fillRect(0,0,doc.w,doc.h);
   for(const L of doc.layers) drawLayer(ctx,L,opt);
   ctx.restore();
   drawList=prev;
+}
+function renderWeb(ctx,doc,opt={}){
+  const s=opt.scale||1;
+  const prev=drawList;
+  drawList=doc.layers;
+  ctx.save(); ctx.setTransform(s,0,0,s,0,0);
+  hintText(ctx);
+  ctx.clearRect(0,0,doc.w,doc.h);
+  ctx.fillStyle=doc.bg||'#000'; ctx.fillRect(0,0,doc.w,doc.h);
+  for(const L of doc.layers){
+    if(L.type==='folder'||!layerShown(L)) continue;
+    if(L.type==='redact'||layerWeb(L)) drawLayer(ctx,L,{editor:false,scale:s});
+  }
+  ctx.restore();
+  drawList=prev;
+}
+function rectsOverlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+function webExportIssues(page){
+  const layers=page.layers||[];
+  const shown=L=>{
+    if(!L||L.visible===false||L.type==='folder') return false;
+    let id=L.parent, n=0;
+    while(id&&n++<24){ const p=layers.find(x=>x.id===id); if(!p) break; if(p.visible===false) return false; id=p.parent; }
+    return true;
+  };
+  const content=layers.filter(L=>shown(L)&&L.type!=='redact'&&layerWeb(L));
+  const blocked=[];
+  layers.forEach((L,i)=>{
+    if(L.type!=='redact'||!shown(L)) return;
+    const covered=layers.slice(0,i).some(B=>shown(B)&&B.type==='image'&&layerWeb(B)&&rectsOverlap(L,B));
+    if(!covered) blocked.push(L.name||'Redact');
+  });
+  return {empty:!content.length, blocked};
 }
 let rq=false;
 function scheduleRender(){ if(rq) return; rq=true; requestAnimationFrame(()=>{rq=false; renderMain(); drawOverlay();}); }
@@ -685,6 +804,7 @@ function paintArtboard(canvas,page){
 }
 function renderMain(){
   if(!S.doc) return;
+  pruneTextBitmaps();
   layoutPages(); syncArtboards();
   if(!main) return;
   S.doc.pages.forEach((p,i)=>{
@@ -928,6 +1048,78 @@ function addAsset(a,at){
   if(target) fillSlot(target,src,dims); else placeImage(src,dims,a.name,at);
 }
 
+/* ---------- artboard edge snap ---------- */
+function edgeTargets(axis, skipId){
+  const art=axis==='x'?[0,S.doc.w]:[0,S.doc.h];
+  const out=art.map(v=>({v,rank:0}));
+  for(const L of S.doc.layers){
+    if(!L.visible||L.type==='folder'||L.id===skipId||Math.abs(L.rot||0)>0.5) continue;
+    const a=axis==='x'?L.x:L.y, b=a+(axis==='x'?L.w:L.h);
+    out.push({v:a,rank:1},{v:b,rank:1});
+  }
+  return out;
+}
+function closestTarget(pos, targets, thrEdge, thrOther){
+  let best=null;
+  for(const t of targets){
+    const thr=t.rank===0?thrEdge:thrOther;
+    const d=Math.abs(pos-t.v);
+    if(d<=thr && (!best || d<best.d-0.01 || (Math.abs(d-best.d)<=0.5 && t.rank<best.rank))) best={d,v:t.v,rank:t.rank};
+  }
+  return best?best.v:null;
+}
+function pickSnap(points, targets, thrEdge, thrOther){
+  let best=null;
+  for(const p of points) for(const t of targets){
+    const thr=t.rank===0?thrEdge:thrOther;
+    const d=Math.abs(p.pos-t.v);
+    if(d<=thr && (!best || d<best.d-0.01 || (Math.abs(d-best.d)<=0.5 && t.rank<best.rank))) best={d,value:t.v-p.origin,guide:t.v,rank:t.rank};
+  }
+  return best;
+}
+function snapMove(nx,ny,w,h,id,k){
+  const edge=14/k, other=8/k;
+  S.guides=[];
+  let bx=pickSnap([{pos:nx,origin:0},{pos:nx+w,origin:w}], edgeTargets('x',id), edge, other);
+  let by=pickSnap([{pos:ny,origin:0},{pos:ny+h,origin:h}], edgeTargets('y',id), edge, other);
+  if(!bx) bx=pickSnap([{pos:nx+w/2,origin:w/2}], [{v:S.doc.w/2,rank:0}], other, other);
+  if(!by) by=pickSnap([{pos:ny+h/2,origin:h/2}], [{v:S.doc.h/2,rank:0}], other, other);
+  if(bx){ nx=bx.value; S.guides.push({x:bx.guide}); }
+  if(by){ ny=by.value; S.guides.push({y:by.guide}); }
+  return {x:nx,y:ny};
+}
+function snapResizeEdges(box){
+  const {hx,hy,lock,s}=box; let {x,y,w,h}=box;
+  const k=box.k||1, edge=14/k, other=8/k, guides=[];
+  const tx=edgeTargets('x', s.id), ty=edgeTargets('y', s.id);
+  const ratio=s.w/Math.max(1,s.h);
+  if(!lock){
+    if(hx<0){ const t=closestTarget(x,tx,edge,other); if(t!=null){ const r=x+w; x=t; w=Math.max(8,r-x); guides.push({x:t}); } }
+    else if(hx>0){ const t=closestTarget(x+w,tx,edge,other); if(t!=null){ w=Math.max(8,t-x); guides.push({x:t}); } }
+    if(hy<0){ const t=closestTarget(y,ty,edge,other); if(t!=null){ const b=y+h; y=t; h=Math.max(8,b-y); guides.push({y:t}); } }
+    else if(hy>0){ const t=closestTarget(y+h,ty,edge,other); if(t!=null){ h=Math.max(8,t-y); guides.push({y:t}); } }
+    return {x,y,w,h,guides};
+  }
+  const opts=[];
+  const add=(d,n,g)=>{ if(d<=edge && n.w>=8 && n.h>=8) opts.push({d,...n,g}); };
+  if(hx) for(const t of tx){
+    if(t.rank && Math.abs((hx<0?x:x+w)-t.v)>other) continue;
+    const nw=Math.max(0, hx<0 ? x+w-t.v : t.v-x);
+    const nh=nw/ratio;
+    add(Math.abs((hx<0?x:x+w)-t.v), {x:hx<0?t.v:x, y:hy<0?y+h-nh:y, w:nw, h:nh}, [{x:t.v}]);
+  }
+  if(hy) for(const t of ty){
+    if(t.rank && Math.abs((hy<0?y:y+h)-t.v)>other) continue;
+    const nh=Math.max(0, hy<0 ? y+h-t.v : t.v-y);
+    const nw=nh*ratio;
+    add(Math.abs((hy<0?y:y+h)-t.v), {x:hx<0?x+w-nw:x, y:hy<0?t.v:y, w:nw, h:nh}, [{y:t.v}]);
+  }
+  opts.sort((a,b)=>a.d-b.d);
+  S.guides=guides;
+  if(!opts.length) return {x,y,w,h,guides};
+  return {x:opts[0].x,y:opts[0].y,w:opts[0].w,h:opts[0].h,guides:opts[0].g};
+}
+
 /* ---------- pointer interaction ---------- */
 let drag=null, spaceDown=false;
 function evDoc(e){ const v=view(); const sx=e.clientX-v.r.left, sy=e.clientY-v.r.top; return {x:(sx-v.ox)/v.k, y:(sy-v.oy)/v.k, sx, sy, v}; }
@@ -983,17 +1175,11 @@ stage.addEventListener('pointermove',e=>{
   const L=drag.L, s=drag.start, dx=p.x-drag.p0.x, dy=p.y-drag.p0.y;
   if(drag.mode==='move'){
     let nx=s.x+dx, ny=s.y+dy; S.guides=[];
-    if(!e.altKey){
-      const thr=7/p.v.k, W=S.doc.w, H=S.doc.h;
-      const xs=[[nx,0],[nx+L.w/2,L.w/2],[nx+L.w,L.w]], ys=[[ny,0],[ny+L.h/2,L.h/2],[ny+L.h,L.h]];
-      const tx=[0,W/2,W], ty=[0,H/2,H];
-      let bx=null; for(const [v,o] of xs) for(const t of tx){ const d=Math.abs(v-t); if(d<thr&&(!bx||d<bx.d)) bx={d,x:t-o,g:t}; }
-      let by=null; for(const [v,o] of ys) for(const t of ty){ const d=Math.abs(v-t); if(d<thr&&(!by||d<by.d)) by={d,y:t-o,g:t}; }
-      if(bx){ nx=bx.x; S.guides.push({x:bx.g}); } if(by){ ny=by.y; S.guides.push({y:by.g}); }
-    }
+    if(!e.altKey){ const snapped=snapMove(nx,ny,L.w,L.h,L.id,p.v.k||S.cam.k||1); nx=snapped.x; ny=snapped.y; }
     L.x=Math.round(nx); L.y=Math.round(ny);
   }
   else if(drag.mode==='resize'){
+    S.guides=[];
     const {hx,hy}=drag.h, a=(s.rot||0)*Math.PI/180, c=Math.cos(a), sn=Math.sin(a);
     const cx0=s.x+s.w/2, cy0=s.y+s.h/2;
     const ax=-hx*s.w/2, ay=-hy*s.h/2;
@@ -1004,13 +1190,18 @@ stage.addEventListener('pointermove',e=>{
     if(L.type==='text'){
       if(corner){ const f=w/s.w; L.size=Math.max(4,Math.round(s.size*f*10)/10); L.padX=s.padX*f; L.padY=s.padY*f; L.strokeW=s.strokeW*f; h=s.h*f; }
       else h=s.h;
-    } else {
-      const lock = corner && (L.type==='image' ? !e.shiftKey : e.shiftKey);
-      if(lock){ const f=Math.max(w/s.w,h/s.h); w=s.w*f; h=s.h*f; }
+    } else if(corner && (L.type==='image'?!e.shiftKey:e.shiftKey)){
+      const f=Math.max(w/s.w,h/s.h); w=s.w*f; h=s.h*f;
     }
     const clx=hx? ax+hx*w/2 : 0, cly=hy? ay+hy*h/2 : 0;
     const ncx=cx0+clx*c-cly*sn, ncy=cy0+clx*sn+cly*c;
-    L.w=Math.round(w); L.h=Math.round(h); L.x=Math.round(ncx-w/2); L.y=Math.round(ncy-h/2);
+    let x=ncx-w/2, y=ncy-h/2;
+    const lock=corner && (L.type==='image'?!e.shiftKey:e.shiftKey);
+    if(L.type!=='text' && !e.altKey && Math.abs(s.rot||0)<0.5){
+      const snapped=snapResizeEdges({x,y,w,h,hx,hy,lock,s,k:p.v.k||S.cam.k||1});
+      x=snapped.x; y=snapped.y; w=snapped.w; h=snapped.h; S.guides=snapped.guides;
+    }
+    L.w=Math.round(w); L.h=Math.round(h); L.x=Math.round(x); L.y=Math.round(y);
   }
   else if(drag.mode==='rotate'){
     const cx=L.x+L.w/2, cy=L.y+L.h/2;
@@ -1278,10 +1469,12 @@ const ICON = {
   lock:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>',
   unlock:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 014.8-1"/></svg>',
   trash:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9"/></svg>',
+  globe:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="5.25"/><path d="M2.75 8h10.5M8 2.75c1.6 1.7 1.6 8.8 0 10.5M8 2.75c-1.6 1.7-1.6 8.8 0 10.5"/></svg>',
+  redact:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="12" height="8" rx="1"/><path d="M4 6h8M4 8h8M4 10h8"/></svg>',
   folder:'<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.2 6.2l3.8 3.8 3.8-3.8z"/></svg>',
   folderClosed:'<svg viewBox="0 0 16 16" fill="currentColor"><path d="M6.2 4.2l3.8 3.8-3.8 3.8z"/></svg>',
 };
-function layerLabel(L){ if(L.type==='folder') return L.name||'Folder'; if(L.name) return L.name; if(L.type==='text') return String(L.text).split('\n')[0].slice(0,30)||'Text'; if(L.type==='shape') return ({rect:'Rectangle',ellipse:'Ellipse',torn:'Torn paper',pin:'Pin',arrow:'Arrow'})[L.shape]||'Shape'; return 'Image'; }
+function layerLabel(L){ if(L.type==='folder') return L.name||'Folder'; if(L.name) return L.name; if(L.type==='text') return String(L.text).split('\n')[0].slice(0,30)||'Text'; if(L.type==='redact') return 'Redact'; if(L.type==='shape') return ({rect:'Rectangle',ellipse:'Ellipse',torn:'Torn paper',pin:'Pin',arrow:'Arrow'})[L.shape]||'Shape'; return 'Image'; }
 function layerRows(){
   const ls=S.doc.layers;
   const isFolder=id=>ls.some(l=>l.id===id&&l.type==='folder');
@@ -1308,6 +1501,7 @@ function renderLayers(){
       <span class="ic" ${L.type==='folder'?`data-fold="${L.id}"`:''} title="${L.type==='folder'?(L.open===false?'Expand folder':'Collapse folder'):''}">${L.type==='folder'?(L.open===false?ICON.folderClosed:ICON.folder):ICON[L.type]}</span>
       <span class="nm" title="Double-click to rename">${esc(layerLabel(L))}</span>
       ${L.type==='folder'?`<span class="slotb">${ls.filter(x=>x.parent===L.id).length}</span>`:L.slot?`<span class="slotb">Slot</span>`:'<span></span>'}
+      ${L.type==='folder'?'<span></span>':`<button class="tb ${layerWeb(L)?'act':''}" data-web="${L.id}" title="${L.type==='redact'?'Always in the website image':layerWeb(L)?'Included in the website image':'Include in web image'}" aria-label="${L.type==='redact'?'Always in the website image':'Include in web image'}" aria-pressed="${layerWeb(L)}" ${L.type==='redact'?'disabled':''}>${ICON.globe}</button>`}
       <button class="tb ${L.visible?'':'act'}" data-vis="${L.id}" aria-label="${L.visible?'Hide':'Show'} layer">${L.visible?ICON.eye:ICON.eyeoff}</button>
       <button class="tb ${L.locked?'act':''}" data-lock="${L.id}" aria-label="${L.locked?'Unlock':'Lock'} layer">${L.locked?ICON.lock:ICON.unlock}</button>
     </div>`).join('') || '<div class="empty">No layers yet. Add text, drop an image or pick a template.</div>';
@@ -1316,6 +1510,8 @@ const llist=$('#llist');
 llist.addEventListener('click',e=>{
   const fold=e.target.closest('[data-fold]');
   if(fold){ const L=S.doc.layers.find(l=>l.id===fold.dataset.fold); if(L&&L.type==='folder'){ L.open=L.open===false; commit(); renderLayers(); } return; }
+  const web=e.target.closest('[data-web]');
+  if(web){ const L=S.doc.layers.find(l=>l.id===web.dataset.web); if(L&&L.type!=='redact'&&L.type!=='folder'){ L.web=!layerWeb(L); commit(); scheduleRender(); renderLayers(); renderProps(true); } return; }
   const v=e.target.closest('[data-vis]'), k=e.target.closest('[data-lock]');
   if(v){ const L=S.doc.layers.find(l=>l.id===v.dataset.vis); L.visible=!L.visible; commit(); scheduleRender(); renderLayers(); return; }
   if(k){ const L=S.doc.layers.find(l=>l.id===k.dataset.lock); L.locked=!L.locked; commit(); scheduleRender(); renderLayers(); renderProps(true); return; }
@@ -1459,7 +1655,7 @@ function canvasHTML(){
   </div>
   <div class="section"><div class="h">Background</div>${F.color('Color','_bg')}</div>
   <div class="section"><div class="h">Shortcuts</div>
-    <div class="note" style="font-family:var(--f-mono);font-size:11px;line-height:1.8">T add text · Del remove · ⌘/Ctrl D duplicate<br>⌘/Ctrl C / V copy &amp; paste layer · paste an image to add it<br>[ ] move layer down / up · arrows nudge (Shift ×10)<br>Enter or double-click photo to reposition<br>⌘/Ctrl Z undo · ⌘/Ctrl S save template · ⌘/Ctrl E export<br>Alt while dragging turns off snapping</div>
+    <div class="note" style="font-family:var(--f-mono);font-size:11px;line-height:1.8">T add text · Del remove · ⌘/Ctrl D duplicate<br>⌘/Ctrl C / V copy &amp; paste layer · paste an image to add it<br>[ ] move layer down / up · arrows nudge (Shift ×10)<br>Enter or double-click photo to reposition<br>⌘/Ctrl Z undo · ⌘/Ctrl S save template · ⌘/Ctrl E export<br>Drag or resize snaps to the artboard edge · Alt turns snapping off</div>
   </div>`;
 }
 function layerHTML(){
@@ -1472,6 +1668,7 @@ function layerHTML(){
   let h=`<div class="section">
     <div class="fld"><label for="f-name">Name</label><input class="inp" id="f-name" data-p="name" data-t="str" placeholder="${esc(layerLabel(L))}"></div>
     <label class="chk"><input type="checkbox" id="f-_slot" data-p="_slot" data-t="bool">Quick-fill slot</label>
+    ${L.type==='redact'?'<div class="note">Always applied</div>':`<label class="chk"><input type="checkbox" id="f-web" data-p="web" data-t="bool">Include in web image</label>`}
     ${L.slot?`<div class="fld"><label for="f-slot">Slot label</label><input class="inp" id="f-slot" data-p="slot" data-t="str"></div>`:''}
   </div>`;
   if(L.type==='text') h+=`<div class="section">
@@ -1603,7 +1800,8 @@ function applyField(el,isChange){
   scheduleRender();
   if(t==='color'||t==='hex'){ const other=$('#props').querySelector(`[data-p="${p}"][data-t="${t==='color'?'hex':'color'}"]`); if(other) other.value=v; }
   const o=$('#props').querySelector(`[data-o="${p}"]`); if(o) o.textContent=fmtOut(p,v);
-  if(p==='name'||p==='slot'||p==='_slot'||p==='text') renderLayers();
+  if(L.type==='redact') L.web=true;
+  if(p==='name'||p==='slot'||p==='_slot'||p==='text'||p==='web') renderLayers();
   if(isChange && REBUILD.has(p)) renderProps(true);
 }
 const props=$('#props');
@@ -1815,14 +2013,29 @@ function openSaveTemplate(){
 }
 
 /* ---------- export ---------- */
-async function renderPageBlob(page,fmt,q){
+async function renderPageBlob(page,fmt,q,scale){
+  const mul=scale===2?2:1;
   await allImagesReady(page); await ensureFonts(page.layers);
-  const c=document.createElement('canvas'); c.width=page.w; c.height=page.h;
-  renderDoc(c.getContext('2d'),page,{editor:false,scale:1});
+  const c=document.createElement('canvas'); c.width=Math.round(page.w*mul); c.height=Math.round(page.h*mul);
+  renderDoc(c.getContext('2d'),page,{editor:false,scale:mul});
   const mime={png:'image/png',jpg:'image/jpeg',webp:'image/webp'}[fmt];
   return await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),mime,q); }catch(e){ rej(e); } });
 }
-async function renderBlob(fmt,q){ return renderPageBlob(S.doc.pages[S.doc.page],fmt,q); }
+async function renderBlob(fmt,q,scale){ return renderPageBlob(S.doc.pages[S.doc.page],fmt,q,scale); }
+async function renderWebBlob(page){
+  await allImagesReady(page); await ensureFonts(page.layers);
+  const c=document.createElement('canvas'); c.width=page.w; c.height=page.h;
+  renderWeb(c.getContext('2d'),page,{scale:1});
+  const blob=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/webp',0.9); }catch(e){ rej(e); } });
+  if(blob.type==='image/webp') return {blob,ext:'webp'};
+  const png=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/png'); }catch(e){ rej(e); } });
+  return {blob:png,ext:'png'};
+}
+function webBlockMessage(issue){
+  const names=issue.blocked.map(n=>'“'+n+'”').join(', ');
+  return names+' must sit on top of a photo that is included in the website image.';
+}
+function webEmptyMessage(){ return 'Nothing is included in the website image, so that file was not saved.'; }
 function slotText(...keys){ const L=S.doc.layers.find(l=>l.type==='text'&&l.slot&&keys.some(k=>l.slot.toLowerCase().includes(k))); return L?String(L.upper?L.text.toUpperCase():L.text).replace(/\s*\n\s*/g,' ').trim():''; }
 function defaultName(){ return slug(slotText('headline','title')||S.doc.name); }
 async function saveFile(filename,data){
@@ -1832,14 +2045,18 @@ async function saveFile(filename,data){
 }
 function openExport(){
   const empty=S.doc.pages.flatMap((p,i)=>p.layers.filter(l=>l.type==='image'&&l.slot&&!l.src&&l.visible!==false).map(l=>(S.doc.pages.length>1?'Page '+(i+1)+' · ':'')+l.slot));
-  let fmt='png';
+  let fmt='png', scale=1;
   const m=openModal(`<h2>Export post</h2>
-    <div class="preview"><img id="xPrev" alt="Export preview"></div>
+    <div class="previews">
+      <div class="preview"><span class="cap">Post</span><img id="xPrev" alt="Export preview"></div>
+      <div class="preview"><span class="cap">Website image</span><img id="xWeb" alt="Website image"><div class="note" id="xWebNote" hidden></div></div>
+    </div>
     ${empty.length?`<div class="note warn">Empty photo slot${empty.length>1?'s':''}: ${empty.map(esc).join(', ')}. They export as blank.</div>`:''}
     <div class="seg" id="xFmt"><button type="button" data-f="png" aria-pressed="true">PNG</button><button type="button" data-f="jpg" aria-pressed="false">JPG</button><button type="button" data-f="webp" aria-pressed="false">WebP</button></div>
+    <div class="fld"><label>Size</label><div class="seg" id="xSize"><button type="button" data-s="1" aria-pressed="true">1× (1080)</button><button type="button" data-s="2" aria-pressed="false">2× (2160)</button></div></div>
     <div class="fld" id="xQrow" hidden><label for="xQ">Quality</label><div class="rng"><input type="range" id="xQ" min="0.5" max="1" step="0.01" value="0.92"><output id="xQo">92%</output></div></div>
     <div class="fld"><label for="xName">File name</label><input class="inp" id="xName" value="${esc(defaultName())}"></div>
-    <div class="note" style="font-family:var(--f-mono);font-size:11px">${S.doc.w}×${S.doc.h}px · page ${S.doc.page+1} of ${S.doc.pages.length}</div>
+    <div class="note" id="xPx" style="font-family:var(--f-mono);font-size:11px"></div>
     <div class="note" id="xMsg"></div>
     <div class="acts">
       <button class="btn" id="xCopy">Copy image</button>
@@ -1847,20 +2064,50 @@ function openExport(){
       ${S.doc.pages.length>1?'<button class="btn" id="xAll">Download all pages</button>':''}
       <button class="btn primary" id="xGo">Download</button>
     </div>`);
-  const prev=$('#xPrev',m), msg=$('#xMsg',m);
+  m.querySelector('.modal').classList.add('wide');
+  const prev=$('#xPrev',m), webPrev=$('#xWeb',m), webNote=$('#xWebNote',m), msg=$('#xMsg',m);
+  const showSize=()=>{ $('#xPx',m).textContent=(S.doc.w*scale)+'×'+(S.doc.h*scale)+'px · page '+(S.doc.page+1)+' of '+S.doc.pages.length; };
+  showSize();
+  const showWebIssue=(issue)=>{
+    webPrev.hidden=true;
+    webNote.hidden=false;
+    webNote.className='note warn';
+    webNote.textContent=issue.blocked.length?webBlockMessage(issue):'Nothing is included in the website image.';
+  };
   renderBlob('jpg',.8).then(b=>{ prev.src=URL.createObjectURL(b); }).catch(()=>{ msg.innerHTML='<span class="note warn">One of the images can\'t be exported from this browser. Re-upload it from your computer and try again.</span>'; });
+  const pageIssue=webExportIssues(S.doc.pages[S.doc.page]);
+  if(pageIssue.blocked.length||pageIssue.empty) showWebIssue(pageIssue);
+  else renderWebBlob(S.doc.pages[S.doc.page]).then(w=>{ webPrev.src=URL.createObjectURL(w.blob); }).catch(()=>{ showWebIssue({blocked:[],empty:true}); });
   m.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ fmt=b.dataset.f; m.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b)); $('#xQrow',m).hidden=fmt==='png'; });
+  m.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ scale=+b.dataset.s===2?2:1; m.querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b)); showSize(); });
   $('#xQ',m).oninput=e=>{ $('#xQo',m).textContent=Math.round(e.target.value*100)+'%'; };
   const fallback=(blob,name)=>{ prev.src=URL.createObjectURL(blob); msg.innerHTML=`Downloads aren't available in this view. Right-click or long-press the preview and save it as <b>${esc(name)}</b>.`; };
   $('#xGo',m).onclick=async()=>{
     const btn=$('#xGo',m); btn.disabled=true; msg.textContent='Rendering…';
     try{
-      let blob=await renderBlob(fmt,+$('#xQ',m).value); let ext=fmt;
-      if(fmt==='webp'&&blob.type!=='image/webp'){ ext='png'; msg.textContent='This browser can\'t make WebP files, so this one is a PNG.'; }
-      const name=slug($('#xName',m).value)+'.'+ext;
+      const page=S.doc.pages[S.doc.page];
+      const issue=webExportIssues(page);
+      if(issue.blocked.length){ msg.innerHTML=`<span class="note warn">${esc(webBlockMessage(issue))}</span>`; btn.disabled=false; return; }
+      let blob=await renderBlob(fmt,+$('#xQ',m).value,scale); let ext=fmt;
+      const webpPost=fmt==='webp'&&blob.type!=='image/webp';
+      if(webpPost) ext='png';
+      const stem=slug($('#xName',m).value);
+      const name=stem+'.'+ext;
       const r=await saveFile(name,blob);
-      if(r===true){ msg.textContent='Saved '+name; toast('Exported '+name); }
-      else if(r===false) fallback(blob,name); else msg.textContent='';
+      if(r!==true){ if(r===false) fallback(blob,name); else msg.textContent=''; btn.disabled=false; return; }
+      if(issue.empty){
+        msg.innerHTML=`Saved ${esc(name)}. <span class="note warn">${esc(webEmptyMessage())}</span>`;
+        toast('Exported '+name); btn.disabled=false; return;
+      }
+      const web=await renderWebBlob(page);
+      const wname=stem+'-web.'+web.ext;
+      const r2=await saveFile(wname,web.blob);
+      const notes=[];
+      if(webpPost) notes.push('This browser can\'t make WebP files, so the post is a PNG.');
+      if(web.ext==='png') notes.push('This browser can\'t make WebP, so the website image is a PNG.');
+      if(r2===true){ msg.textContent='Saved '+name+' and '+wname+'.'+(notes.length?' '+notes.join(' '):''); toast('Exported '+name); }
+      else if(r2===false){ webPrev.src=URL.createObjectURL(web.blob); msg.innerHTML=`Saved ${esc(name)}. Downloads aren't available for the website image. Right-click it and save it as <b>${esc(wname)}</b>.`; }
+      else msg.textContent='Saved '+name+'.';
     }catch(err){ msg.innerHTML='<span class="note warn">Export failed. If you used an image from another website, re-upload it from your computer.</span>'; }
     btn.disabled=false;
   };
@@ -1869,25 +2116,40 @@ function openExport(){
     const btn=xAll; btn.disabled=true;
     const q=+$('#xQ',m).value, stem=slug($('#xName',m).value);
     try{
+      const blockedAt=S.doc.pages.findIndex(p=>webExportIssues(p).blocked.length);
+      if(blockedAt>=0){ msg.innerHTML=`<span class="note warn">Page ${blockedAt+1}: ${esc(webBlockMessage(webExportIssues(S.doc.pages[blockedAt])))}</span>`; btn.disabled=false; return; }
+      const skipped=[];
+      let pngWeb=false;
       for(let i=0;i<S.doc.pages.length;i++){
         msg.textContent='Rendering page '+(i+1)+' of '+S.doc.pages.length+'…';
-        let blob=await renderPageBlob(S.doc.pages[i],fmt,q); let ext=fmt;
+        const page=S.doc.pages[i];
+        let blob=await renderPageBlob(page,fmt,q,scale); let ext=fmt;
         if(fmt==='webp'&&blob.type!=='image/webp') ext='png';
         const name=stem+'-'+(i+1)+'.'+ext;
         const r=await saveFile(name,blob);
         if(r===false){ fallback(blob,name); btn.disabled=false; return; }
         if(r==='declined'){ msg.textContent='Download cancelled'; btn.disabled=false; return; }
+        const issue=webExportIssues(page);
+        if(issue.empty){ skipped.push(i+1); continue; }
+        const web=await renderWebBlob(page);
+        if(web.ext==='png') pngWeb=true;
+        const wr=await saveFile(stem+'-'+(i+1)+'-web.'+web.ext,web.blob);
+        if(wr===false){ webPrev.src=URL.createObjectURL(web.blob); fallback(web.blob,stem+'-'+(i+1)+'-web.'+web.ext); btn.disabled=false; return; }
+        if(wr==='declined'){ msg.textContent='Download cancelled'; btn.disabled=false; return; }
       }
-      msg.textContent='Saved '+S.doc.pages.length+' pages';
+      msg.textContent='Saved '+S.doc.pages.length+' pages'+(skipped.length?' Website image skipped for page '+skipped.join(', ')+'.':'')+(pngWeb?' This browser saved the website image as PNG.':'');
     }catch(err){ msg.innerHTML='<span class="note warn">Export failed. If you used an image from another website, re-upload it from your computer.</span>'; }
     btn.disabled=false;
   };
   $('#xBundle',m).onclick=async()=>{
     const btn=$('#xBundle',m); btn.disabled=true; msg.textContent='Rendering…';
     try{
+      const page=S.doc.pages[S.doc.page];
+      const issue=webExportIssues(page);
+      if(issue.blocked.length){ msg.innerHTML=`<span class="note warn">${esc(webBlockMessage(issue))}</span>`; btn.disabled=false; return; }
+      if(issue.empty){ msg.innerHTML=`<span class="note warn">${esc(webEmptyMessage())}</span>`; btn.disabled=false; return; }
       const stem=slug($('#xName',m).value);
-      let blob=await renderBlob('webp',.9); let ext='webp';
-      if(blob.type!=='image/webp'){ ext='png'; }
+      const web=await renderWebBlob(page); const ext=web.ext;
       const txt=[
         'HEADLINE: '+slotText('headline','title'),
         'DEK: '+slotText('dek','sub','summary'),
@@ -1898,8 +2160,8 @@ function openExport(){
         'IMAGE: '+stem+'.'+ext,
         'DATE: '+new Date().toISOString().slice(0,10),
       ].join('\n')+'\n';
-      const r1=await saveFile(stem+'.'+ext,blob);
-      if(r1===false){ fallback(blob,stem+'.'+ext); msg.innerHTML+=`<br><br>Article text:<br><textarea class="inp" rows="7" readonly id="xTxt">${esc(txt)}</textarea>`; btn.disabled=false; return; }
+      const r1=await saveFile(stem+'.'+ext,web.blob);
+      if(r1===false){ webPrev.src=URL.createObjectURL(web.blob); fallback(web.blob,stem+'.'+ext); msg.innerHTML+=`<br><br>Article text:<br><textarea class="inp" rows="7" readonly id="xTxt">${esc(txt)}</textarea>`; btn.disabled=false; return; }
       if(r1==='declined'){ btn.disabled=false; msg.textContent=''; return; }
       await saveFile(stem+'.txt',new Blob([txt],{type:'text/plain'}));
       msg.textContent=`Saved ${stem}.${ext} and ${stem}.txt`+(ext==='png'?' (this browser can\'t make WebP)':'');
@@ -1909,7 +2171,7 @@ function openExport(){
   $('#xCopy',m).onclick=async()=>{
     try{
       if(!window.ClipboardItem||!navigator.clipboard?.write) throw 0;
-      await navigator.clipboard.write([new ClipboardItem({'image/png':renderBlob('png')})]);
+      await navigator.clipboard.write([new ClipboardItem({'image/png':renderBlob('png',1,scale)})]);
       msg.textContent='Copied. Paste it into Instagram, Slack or anywhere that takes images.';
     }catch(e){ msg.textContent='Copying images isn\'t allowed here. Use Download instead.'; }
   };

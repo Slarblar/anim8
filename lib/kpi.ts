@@ -279,6 +279,7 @@ function aggregateByPerson(
     name: string;
     email: string;
     monthly: Map<string, number>;
+    tasksByMonth: Map<string, number>;
     ytdTasks: number;
     ytdScore: number;
     qualityRatings: Map<string, number>;
@@ -312,6 +313,7 @@ function aggregateByPerson(
         name: task.assignee.name,
         email,
         monthly: new Map(),
+        tasksByMonth: new Map(),
         ytdTasks: 0,
         ytdScore: 0,
         qualityRatings: new Map(),
@@ -322,6 +324,7 @@ function aggregateByPerson(
 
     const person = byPerson.get(email)!;
     person.monthly.set(monthKey, (person.monthly.get(monthKey) ?? 0) + score);
+    person.tasksByMonth.set(monthKey, (person.tasksByMonth.get(monthKey) ?? 0) + 1);
 
     if (year === currentYear) {
       person.ytdScore += score;
@@ -370,6 +373,7 @@ function aggregateByPerson(
       weeklyContractedHours: person.fte.weeklyContractedHours,
       employmentType: person.fte.employmentType,
       monthly,
+      tasksByMonth: Object.fromEntries(person.tasksByMonth),
       lastThreeMonthly: buildLastNMonths(person.monthly, now, 4),
       ytdMonthly: buildYtdMonthly(person.monthly, now),
       qualityRatingsLast3Months: buildRatingBreakdown(person.qualityRatings),
@@ -401,7 +405,7 @@ export const getAllKPIData = unstable_cache(
     const [tasks, fteByEmail] = await Promise.all([fetchAllKPITasks(), buildFteLookup()]);
     return aggregateByPerson(tasks, fteByEmail);
   },
-  ['crew-kpi-data-v7-4mo-current'],
+  ['crew-kpi-data-v8-tasks-by-month'],
   { revalidate: REVALIDATE_SECONDS, tags: ['kpi'] }
 );
 

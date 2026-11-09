@@ -2343,6 +2343,10 @@ html.careers-lang-vn :is(h1, h2, h3, h4, h5, h6, .font-heading, .font-black, .fo
     break-inside: avoid;
   }
 
+  .crew-report-summary {
+    break-after: page;
+  }
+
   .crew-report-batch > .crew-report + .crew-report {
     break-before: page;
     border-top: 0;

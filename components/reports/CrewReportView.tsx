@@ -1,7 +1,13 @@
 'use client';
 
 import type { CrewReportData } from '@/lib/crew-report';
-import { lastCompleteKpiMonth, performanceBandLabel } from '@/lib/kpi-shared';
+import {
+  lastCompleteKpiMonth,
+  performanceBandLabel,
+  staffKpiBonusLabel,
+  type StaffKpiPersonSlice,
+  type StaffKpiWindow,
+} from '@/lib/kpi-shared';
 
 const EMPLOYMENT_TYPE_LABELS: Record<CrewReportData['member']['employmentType'], string> = {
   full_time: 'Full-time',
@@ -55,13 +61,105 @@ export function PrintReportButton({ label = 'Print / Save as PDF' }: { label?: s
   );
 }
 
+function singleScoreSub(slice: StaffKpiPersonSlice): string {
+  if (slice.bonus === 'in_progress') return 'Month still open';
+  if (slice.bonus === 'yes') return 'Bonus: Good or above';
+  if (slice.bonus === 'no') return 'Below bonus (55)';
+  return 'No score';
+}
+
+function KpiPeriodSection({
+  kpi,
+  kpiWindow,
+  slice,
+}: {
+  kpi: CrewReportData['kpi'];
+  kpiWindow: StaffKpiWindow;
+  slice: StaffKpiPersonSlice;
+}) {
+  const single = kpiWindow.singleMonth;
+  return (
+    <section className="space-y-4">
+      <h2 className="text-lg font-black uppercase tracking-tight text-white print:text-black">KPI overview</h2>
+      <p className="text-xs text-text-muted print:text-black/60">
+        {kpiWindow.label}
+        {single ? (kpiWindow.closed ? ' · closed month' : ' · month still open') : null}
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          label={single ? 'KPI score' : 'Total points'}
+          value={slice.score > 0 ? slice.score.toFixed(1) : '—'}
+          sub={single ? singleScoreSub(slice) : 'Sum of monthly points'}
+        />
+        {single ? (
+          <StatCard label="Band" value={slice.band ? performanceBandLabel(slice.band) : 'No score'} />
+        ) : (
+          <StatCard
+            label="Avg scored month"
+            value={slice.averageScored != null ? slice.averageScored.toFixed(1) : '—'}
+            sub={
+              slice.monthsScored > 0
+                ? `${slice.monthsScored} month${slice.monthsScored === 1 ? '' : 's'} scored`
+                : 'No scored months'
+            }
+          />
+        )}
+        <StatCard label="Scored tasks" value={slice.tasks == null ? '—' : String(slice.tasks)} />
+        <StatCard
+          label="FTE ratio"
+          value={kpi ? kpi.fteRatio.toFixed(2) : '—'}
+          sub={kpi ? `${kpi.weeklyContractedHours}h/wk` : undefined}
+        />
+      </div>
+
+      {!single && slice.months.some((month) => month.score > 0) ? (
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-white/10 text-[10px] font-bold uppercase tracking-widest text-text-muted print:border-black/20 print:text-black/50">
+              <th className="py-2 pr-3">Month</th>
+              <th className="py-2 pr-3">Score</th>
+              <th className="py-2 pr-3">Band</th>
+              <th className="py-2 pr-3">Tasks</th>
+              <th className="py-2 pr-3">Bonus</th>
+            </tr>
+          </thead>
+          <tbody>
+            {slice.months
+              .filter((month) => month.score > 0)
+              .map((month) => (
+              <tr
+                key={month.month}
+                className="border-b border-white/5 text-text-muted print:border-black/10 print:text-black/80"
+              >
+                <td className="py-2 pr-3 text-white print:text-black">{month.label}</td>
+                <td className="py-2 pr-3 font-mono">{month.score > 0 ? month.score.toFixed(1) : '—'}</td>
+                <td className="py-2 pr-3">{month.score > 0 ? performanceBandLabel(month.band) : 'No score'}</td>
+                <td className="py-2 pr-3 font-mono">{month.tasks == null ? '—' : month.tasks}</td>
+                <td className="py-2 pr-3">{staffKpiBonusLabel(month.bonus)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+
+      {slice.score <= 0 ? (
+        <p className="text-sm text-text-muted print:text-black/60">No scored KPI tasks in this period.</p>
+      ) : null}
+    </section>
+  );
+}
+
 export function CrewReportView({
   data,
   embedded = false,
+  kpiPeriod = null,
 }: {
   data: CrewReportData;
   /** Hide the per-person print button when this report is part of the staff batch. */
   embedded?: boolean;
+  /** When set, the KPI block follows this staff-report window instead of the fixed last-month view. */
+  kpiPeriod?: { window: StaffKpiWindow; slice: StaffKpiPersonSlice } | null;
 }) {
   const { member, pto, attendance, kpi, generatedAt } = data;
   const reported = lastCompleteKpiMonth();
@@ -157,6 +255,9 @@ export function CrewReportView({
         </div>
       </section>
 
+      {kpiPeriod ? (
+        <KpiPeriodSection kpi={kpi} kpiWindow={kpiPeriod.window} slice={kpiPeriod.slice} />
+      ) : (
       <section className="space-y-4">
         <h2 className="text-lg font-black uppercase tracking-tight text-white print:text-black">
           KPI overview
@@ -236,6 +337,7 @@ export function CrewReportView({
           </>
         )}
       </section>
+      )}
     </div>
   );
 }

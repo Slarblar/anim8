@@ -626,6 +626,25 @@ export async function createBriefIntakeTask(input: {
   return task;
 }
 
+export async function createBriefSubtask(
+  parentTaskGid: string,
+  input: { name: string; notes: string }
+): Promise<{ gid: string }> {
+  return asanaFetch<{ gid: string }>(`/tasks/${parentTaskGid}/subtasks`, {
+    method: 'POST',
+    body: JSON.stringify({
+      data: { name: input.name, notes: input.notes },
+    }),
+  });
+}
+
+export async function addBriefReferenceComment(taskGid: string, text: string): Promise<void> {
+  await asanaFetch(`/tasks/${taskGid}/stories`, {
+    method: 'POST',
+    body: JSON.stringify({ data: { text } }),
+  });
+}
+
 /**
  * Streams a file straight through to Asana's attachment endpoint —
  * nothing touches our own storage or the client's browser twice.

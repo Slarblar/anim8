@@ -34,8 +34,8 @@ import {
   type FinalizedBrief,
 } from './brief-schema';
 
-const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
-const SONNET_MODEL = 'claude-sonnet-5';
+export const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+export const SONNET_MODEL = 'claude-sonnet-5';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const REFINE_SCHEMA = {
@@ -138,7 +138,30 @@ export function servicesClientOptionGid(input: {
 
 type AnthropicContent = { type: string; text?: string };
 
-async function anthropicJson<T>(input: {
+/** Anthropic's structured-output grammar rejects validation-only JSON Schema constraints. */
+function anthropicCompatibleSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(anthropicCompatibleSchema);
+  if (!value || typeof value !== 'object') return value;
+  const unsupported = new Set([
+    'minLength',
+    'maxLength',
+    'maxItems',
+    'minimum',
+    'maximum',
+    'exclusiveMinimum',
+    'exclusiveMaximum',
+    'multipleOf',
+  ]);
+  const next: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (unsupported.has(key)) continue;
+    if (key === 'minItems' && typeof item === 'number' && item > 1) continue;
+    next[key] = anthropicCompatibleSchema(item);
+  }
+  return next;
+}
+
+export async function anthropicJson<T>(input: {
   model: string;
   system: string;
   user: string;
@@ -166,7 +189,7 @@ async function anthropicJson<T>(input: {
       system,
       messages: [{ role: 'user', content: input.user }],
       output_config: {
-        format: { type: 'json_schema', schema: input.schema },
+        format: { type: 'json_schema', schema: anthropicCompatibleSchema(input.schema) },
       },
     }),
   });

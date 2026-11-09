@@ -1590,6 +1590,68 @@ html.careers-page-active {
   max-width: min(100%, 80rem);
 }
 
+/* Conversational intake fills the viewport instead of scrolling a document. */
+.client-portal-shell--workspace {
+  display: flex;
+  height: 100dvh;
+  max-height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.client-portal-shell--workspace .client-portal-header-inner {
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
+}
+
+@media (max-width: 479px) {
+  .client-portal-shell--workspace .client-portal-header-inner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .client-portal-shell--workspace .client-portal-header-inner > div:last-child {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+  }
+}
+
+.client-portal-shell--workspace .client-portal-main.container-custom {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
+.client-portal-shell--workspace .client-portal-main-inner,
+.client-portal-shell--workspace .client-portal-main-inner--session {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  max-width: min(100%, 88rem);
+}
+
+.client-portal-shell--workspace .client-portal-float-layer {
+  display: none;
+}
+
+.intake-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-height: 720px) {
+  .intake-intro-copy {
+    display: none;
+  }
+}
+
 
 /* Client portal — animated task progress fill */
 @keyframes portal-progress-flow {

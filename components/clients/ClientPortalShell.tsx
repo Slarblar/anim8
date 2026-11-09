@@ -14,6 +14,8 @@ type ClientPortalShellProps = {
   wide?: boolean;
   /** Wider canvas for the creative-session request flow. */
   session?: boolean;
+  /** Fill the screen and keep the request workspace from scrolling as a document. */
+  workspace?: boolean;
 };
 
 export function ClientPortalShell({
@@ -24,9 +26,12 @@ export function ClientPortalShell({
   children,
   wide = false,
   session = false,
+  workspace = false,
 }: ClientPortalShellProps) {
   return (
-    <div className={`client-portal-shell relative isolate min-h-screen${session ? ' client-portal-shell--session' : ''}`}>
+    <div
+      className={`client-portal-shell relative isolate min-h-screen${session ? ' client-portal-shell--session' : ''}${workspace ? ' client-portal-shell--workspace' : ''}`}
+    >
       <ClientPortalFloatingCards slug={slug} />
 
       <header className="glass-nav relative z-20">
@@ -69,9 +74,11 @@ export function ClientPortalShell({
         {children}
       </main>
 
-      <div className="relative z-10">
-        <Footer />
-      </div>
+      {workspace ? null : (
+        <div className="relative z-10">
+          <Footer />
+        </div>
+      )}
     </div>
   );
 }

@@ -3,15 +3,13 @@ import type { WeeklyDigest } from './weekly-digest';
 import { ptoDaysForRequest, requestIsMakeupLate, type PtoRequest } from './pto-requests';
 import { getCrewMember } from './crew-directory';
 import { emailButton, escapeHtml, noteBlock, renderEmailHtml, statLine, warningBanner } from './email-template';
+import { adminEmails } from './auth-roles';
 import { formatBothTimeZones } from './timezone-format';
 
 const RESEND_API = 'https://api.resend.com/emails';
 
 function adminRecipients(): string[] {
-  return (process.env.ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+  return adminEmails();
 }
 
 /** Canonical host for crew email CTAs — more globally recognizable than .xyz. */

@@ -1707,12 +1707,14 @@ export function AdminCrewPage() {
         />
       ) : null}
 
-      {members === null && !error ? (
-        <AsanaLoadingStatus
-          layout="page"
-          title="Loading crew directory"
-          detail="Opening the roster and gathering KPI scores from Asana. This can take a moment."
-        />
+      {members === null ? (
+        error ? null : (
+          <AsanaLoadingStatus
+            layout="page"
+            title="Loading crew directory"
+            detail="Opening the roster and gathering KPI scores from Asana. This can take a moment."
+          />
+        )
       ) : members.length === 0 ? (
         <p className={adminBody}>No crew members yet.</p>
       ) : filtered.length === 0 ? (

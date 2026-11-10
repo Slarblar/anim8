@@ -1,3 +1,4 @@
+import { defaultReportExempt, isTestCrewAccount } from './crew-report-eligibility';
 import { getKv } from './kv';
 import { monthKeyInTimeZone } from './pto-accrual-shared';
 import { studioTodayDateString } from './studio-date';
@@ -72,6 +73,11 @@ export type CrewMember = {
   ptoAdjustmentDays: number;
   /** Which team/office this person is based in — mostly used for timezone-aware scheduling. */
   location: CrewLocation;
+  /**
+   * Leave this person off staff reports. US-based crew and test logins are
+   * exempt even when this is false — see isExemptFromReports.
+   */
+  reportExempt: boolean;
   /** Full-time / part-time / contractor. */
   employmentType: EmploymentType;
   /**
@@ -113,6 +119,11 @@ function withDefaults(record: CrewMember): CrewMember {
   return {
     ...record,
     location: record.location ?? 'VN',
+    reportExempt: defaultReportExempt({
+      email: record.email,
+      location: record.location ?? 'VN',
+      reportExempt: record.reportExempt,
+    }),
     employmentType,
     weeklyContractedHours:
       typeof record.weeklyContractedHours === 'number' && record.weeklyContractedHours > 0
@@ -225,6 +236,7 @@ export async function addOrUpdateCrewMember(input: {
 
   const existing = await getCrewMember(email);
   const employmentType = input.employmentType ?? existing?.employmentType ?? 'full_time';
+  const location = input.location ?? existing?.location ?? 'VN';
   const weeklyContractedHours =
     typeof input.weeklyContractedHours === 'number' && input.weeklyContractedHours > 0
       ? input.weeklyContractedHours
@@ -241,7 +253,8 @@ export async function addOrUpdateCrewMember(input: {
     ptoBalanceDays: existing?.ptoBalanceDays ?? input.initialPtoBalanceDays ?? 0,
     ptoBalanceUpdatedAt: existing?.ptoBalanceUpdatedAt ?? new Date().toISOString(),
     ptoAdjustmentDays: existing?.ptoAdjustmentDays ?? 0,
-    location: input.location ?? existing?.location ?? 'VN',
+    location,
+    reportExempt: existing?.reportExempt ?? false,
     employmentType,
     weeklyContractedHours,
     fixedWfhDays: existing?.fixedWfhDays ?? [],
@@ -300,6 +313,16 @@ export async function setCrewMemberLocation(
   const existing = await getCrewMember(email);
   if (!existing) throw new Error(`No crew member found for email: ${email}`);
   const updated = { ...existing, location };
+  await getKv().set(keyFor(email), updated);
+  return updated;
+}
+
+/** Manual staff-report exemption. US-based crew and test logins stay exempt. */
+export async function setCrewMemberReportExempt(email: string, reportExempt: boolean): Promise<CrewMember> {
+  const existing = await getCrewMember(email);
+  if (!existing) throw new Error(`No crew member found for email: ${email}`);
+  if (existing.location === 'US' || isTestCrewAccount(existing.email)) return existing;
+  const updated = { ...existing, reportExempt };
   await getKv().set(keyFor(email), updated);
   return updated;
 }

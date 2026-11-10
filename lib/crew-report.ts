@@ -9,6 +9,7 @@ import {
 } from './crew-directory';
 import { listPtoRequestsForEmployee, ptoDaysForRequest, type PtoRequest } from './pto-requests';
 import { getKPIDataForUser, type PersonKPISummary } from './kpi';
+import { isExemptFromReports } from './crew-report-eligibility';
 import { studioTodayDateString } from './studio-date';
 
 export type CrewReportData = {
@@ -83,10 +84,13 @@ export async function buildCrewReport(email: string): Promise<CrewReportData | n
   };
 }
 
-/** Active crew, alphabetical — one report each for the admin staff batch. */
+/**
+ * Active crew who belong on the accountant packet, alphabetical.
+ * Test accounts, US-based crew, and anyone marked exempt are left off.
+ */
 export async function buildAllCrewReports(): Promise<CrewReportData[]> {
   const members = (await listCrewMembers())
-    .filter((member) => member.active)
+    .filter((member) => member.active && !isExemptFromReports(member))
     .sort((a, b) => a.name.localeCompare(b.name));
   const reports = await Promise.all(members.map((member) => buildCrewReport(member.email)));
   return reports.filter((report): report is CrewReportData => report !== null);

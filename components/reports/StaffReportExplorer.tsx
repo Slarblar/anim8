@@ -119,7 +119,10 @@ export function StaffReportExplorer({
             </p>
             <h1 className="mt-1 text-2xl font-black uppercase tracking-tight text-white">Staff report</h1>
             <p className={`${adminBody} mt-1`}>
-              {reports.length} active crew · {kpiWindow.label}
+              {reports.length} active crew on this report · {kpiWindow.label}
+            </p>
+            <p className="mt-1 text-xs text-text-muted">
+              Test accounts, US-based crew, and anyone marked exempt in the crew directory are left off.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

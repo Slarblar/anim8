@@ -13,6 +13,7 @@ import {
   type MeetingAttendanceKind,
   type WeekdayCode,
 } from '@/lib/crew-directory';
+import { isExemptFromReports, reportExemptLockReason } from '@/lib/crew-report-eligibility';
 import { computeAccruedPtoDays, monthKeyInTimeZone } from '@/lib/pto-accrual-shared';
 import type { CrewStatusEntry } from '@/lib/crew-status-cache';
 import { studioTodayDateString } from '@/lib/studio-date';
@@ -516,6 +517,50 @@ const WEEKDAYS: { code: WeekdayCode; label: string; full: string }[] = [
   { code: 'fri', label: 'F', full: 'Friday' },
 ];
 
+/** Leave this person off staff reports. US-based crew and test logins stay exempt. */
+function ReportExemptToggle({
+  exempt,
+  onToggle,
+  disabled,
+}: {
+  exempt: boolean;
+  onToggle: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={exempt}
+      aria-label="Exempt from reports"
+      disabled={disabled}
+      onClick={onToggle}
+      title={
+        disabled
+          ? undefined
+          : exempt
+            ? 'Left off staff reports — click to include'
+            : 'Included on staff reports — click to exempt'
+      }
+      className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-text-muted disabled:opacity-50"
+    >
+      <span className={!exempt ? 'text-white' : undefined}>Include</span>
+      <span
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-200 ease-out ${
+          exempt ? 'border-brand-pink/50 bg-brand-pink/30' : 'border-brand-lime/50 bg-brand-lime/40'
+        }`}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-200 ease-out ${
+            exempt ? 'translate-x-[1.15rem]' : 'translate-x-0.5'
+          }`}
+        />
+      </span>
+      <span className={exempt ? 'text-white' : undefined}>Exempt</span>
+    </button>
+  );
+}
+
 /** Real sliding toggle switch, since the location field is intentionally binary (US/VN). */
 function LocationToggle({
   location,
@@ -903,6 +948,34 @@ function CrewRow({
     [enqueueQuickPatch, onMemberUpdated]
   );
 
+  const toggleReportExempt = useCallback(() => {
+    const current = memberRef.current;
+    if (reportExemptLockReason(current)) return;
+    const next = !isExemptFromReports(current);
+    enqueueQuickPatch(async () => {
+      const snapshot = memberRef.current;
+      onMemberUpdated({ ...snapshot, reportExempt: next });
+      setError(null);
+      try {
+        const res = await fetch(`/api/admin/crew/${encodeURIComponent(snapshot.email)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reportExempt: next }),
+        });
+        const data = (await res.json()) as ApiErrorBody;
+        if (!res.ok) {
+          onMemberUpdated(snapshot);
+          setError(describeApiError(data, 'Could not update report exemption.'));
+          return;
+        }
+        if (data.member) onMemberUpdated(data.member);
+      } catch {
+        onMemberUpdated(snapshot);
+        setError('Could not update report exemption. Please try again.');
+      }
+    });
+  }, [enqueueQuickPatch, onMemberUpdated]);
+
   const toggleStudioPresence = useCallback(() => {
     enqueueQuickPatch(async () => {
       const current = memberRef.current;
@@ -1140,6 +1213,19 @@ function CrewRow({
             >
               {location}
             </span>
+            {isExemptFromReports(member) ? (
+              <>
+                <span className="px-1.5 text-white/20" aria-hidden>
+                  ·
+                </span>
+                <span
+                  className="rounded border border-white/15 px-1 py-px font-mono text-[10px] font-bold uppercase tracking-wide text-text-muted"
+                  title={reportExemptLockReason(member) ?? 'Marked exempt from reports'}
+                >
+                  Exempt
+                </span>
+              </>
+            ) : null}
             {!member.startDate ? (
               <>
                 <span className="px-1.5 text-white/20" aria-hidden>·</span>
@@ -1219,6 +1305,22 @@ function CrewRow({
               onToggle={togglePendingLocation}
               disabled={loading}
             />
+          </div>
+
+          <div>
+            <p className={adminLabel}>Reports</p>
+            <ReportExemptToggle
+              exempt={isExemptFromReports(member)}
+              onToggle={toggleReportExempt}
+              disabled={loading || !!reportExemptLockReason(member)}
+            />
+            {reportExemptLockReason(member) ? (
+              <p className="mt-1 text-xs text-text-muted">{reportExemptLockReason(member)}</p>
+            ) : (
+              <p className="mt-1 text-xs text-text-muted">
+                Exempt people are left off the staff report and its CSV.
+              </p>
+            )}
           </div>
 
           <div>
@@ -1317,14 +1419,16 @@ function CrewRow({
               <button type="button" className={adminBtnGhost} onClick={() => setEditingStart((v) => !v)}>
                 {member.startDate ? 'Edit start date' : 'Set start date'}
               </button>
-              <a
-                href={`/admin/crew/${encodeURIComponent(member.email)}/report`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={adminBtnGhost}
-              >
-                Generate report
-              </a>
+              {isExemptFromReports(member) ? null : (
+                <a
+                  href={`/admin/crew/${encodeURIComponent(member.email)}/report`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={adminBtnGhost}
+                >
+                  Generate report
+                </a>
+              )}
               {profileDirty ? (
                 <button
                   type="button"

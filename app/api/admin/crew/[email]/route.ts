@@ -10,6 +10,7 @@ import {
   setCrewMemberLevel,
   setCrewMemberLocation,
   setCrewMemberManualOut,
+  setCrewMemberReportExempt,
   setCrewMemberRole,
   setCrewMemberStartDate,
   setCrewMemberWeeklyHours,
@@ -44,6 +45,7 @@ type PatchBody = {
   employmentType?: EmploymentType;
   weeklyContractedHours?: number;
   fixedWfhDays?: WeekdayCode[];
+  reportExempt?: boolean;
 };
 
 export async function PATCH(req: NextRequest, { params }: { params: { email: string } }) {
@@ -77,6 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
   const hasFixedWfhDays =
     Array.isArray(body.fixedWfhDays) &&
     body.fixedWfhDays.every((day) => WEEKDAY_CODES.includes(day));
+  const hasReportExempt = typeof body.reportExempt === 'boolean';
 
   if (
     !hasActive &&
@@ -90,7 +93,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     !hasLevel &&
     !hasEmploymentType &&
     !hasWeeklyHours &&
-    !hasFixedWfhDays
+    !hasFixedWfhDays &&
+    !hasReportExempt
   ) {
     return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
   }
@@ -158,6 +162,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { email: str
     }
     if (hasLocation) {
       member = await setCrewMemberLocation(params.email, body.location as CrewLocation);
+    }
+    if (hasReportExempt) {
+      member = await setCrewMemberReportExempt(params.email, body.reportExempt as boolean);
     }
     if (hasRole) {
       member = await setCrewMemberRole(params.email, body.role as string);

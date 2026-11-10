@@ -388,6 +388,11 @@ const KINDS = [
 ];
 const kindThumbs = {};
 function kindName(id){ const k=KINDS.find(x=>x.id===id); return k?k.name:id; }
+function stockOverride(id){
+  let best=null;
+  for(const t of TPLS) if(t.stockId===id && (!best || (t.updatedAt||0)>(best.updatedAt||0))) best=t;
+  return best;
+}
 function feedLayers(category){
   const layers=[
     IM({name:'Photo',slot:'Photo',role:'photo',x:0,y:0,w:1080,h:1350}),
@@ -436,7 +441,7 @@ function makeDoc(kind){
     pages.push({id:uid(),name:n>1?(i===0?'Cover':'Page '+(i+1)):'Page 1',w:spec.w,h:spec.h,bg:spec.layout==='quote'?'#F4F5F0':'#151616',layers});
   }
   const page=pages[0];
-  return {name:spec.name,templateId:null,templateType:spec.id,page:0,pages,w:page.w,h:page.h,bg:page.bg,layers:page.layers};
+  return {name:spec.name,templateId:null,templateType:spec.id,stockId:spec.id,page:0,pages,w:page.w,h:page.h,bg:page.bg,layers:page.layers};
 }
 function blankDoc(w,h){
   const page={id:uid(),name:'Page 1',w,h,bg:'#151616',layers:[]};
@@ -620,12 +625,14 @@ function pruneTextBitmaps(){
   for(const id of textBitmaps.keys()) if(!ids.has(id)) textBitmaps.delete(id);
 }
 function setLayerShadow(ctx,L,scale){
+  if(fastPaint){ ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0; return; }
   ctx.shadowColor=L.shadowColor||'#000000';
   ctx.shadowBlur=(+L.shadowBlur||0)*scale;
   ctx.shadowOffsetX=(+L.shadowX||0)*scale;
   ctx.shadowOffsetY=(+L.shadowY||0)*scale;
 }
 function castSizedShadow(ctx,L,scale,box,grow,draw){
+  if(fastPaint) return;
   grow=Math.max(0,+grow||0);
   if(!L.shadow||!(grow>0)||!box||!(Math.abs(box.w)>0)||!(Math.abs(box.h)>0)) return;
   const FAR=100000;
@@ -1174,7 +1181,7 @@ function drawLayer(ctx,L,opt){
         ctx.fillStyle='#000'; ctx.fillRect(ix,iy,nw,nh); ctx.shadowColor='transparent';
       }
       applyImageFilter(ctx,L,sc);
-      ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+      ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality=fastPaint?'low':'high';
       ctx.drawImage(img, ix, iy);
       ctx.restore(); return;
     }
@@ -1186,10 +1193,10 @@ function drawLayer(ctx,L,opt){
     applyImageFilter(ctx,L,sc);
     if(L.flipX||L.flipY){ ctx.translate(L.flipX?L.w:0,L.flipY?L.h:0); ctx.scale(L.flipX?-1:1,L.flipY?-1:1); }
     const d=coverDims(L,img);
-    ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+    ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality=fastPaint?'low':'high';
     let src=img;
     const tw=Math.max(1,Math.round(Math.abs(d.dw)*sc)), th=Math.max(1,Math.round(Math.abs(d.dh)*sc));
-    if(nw>tw*2 || nh>th*2) src=scaledImage(img, srcKey(L.src)||'img', tw, th);
+    if(!fastPaint && (nw>tw*2 || nh>th*2)) src=scaledImage(img, srcKey(L.src)||'img', tw, th);
     ctx.drawImage(src, d.dx, d.dy, d.dw, d.dh);
   }
   else if(L.type==='text') paintText(ctx,L,lay,true);
@@ -1283,7 +1290,8 @@ function webExportIssues(page){
   });
   return {empty:!content.length, blocked};
 }
-let rq=false;
+let rq=false, fastPaint=false;
+function layerDrag(){ return drag && (drag.mode==='move'||drag.mode==='resize'||drag.mode==='rotate'); }
 function scheduleRender(){ if(rq) return; rq=true; requestAnimationFrame(()=>{rq=false; renderMain(); drawOverlay();}); }
 function backingFor(page){
   const k=S.cam.bucket==null?S.cam.k:Math.pow(2,S.cam.bucket/8);
@@ -1306,15 +1314,18 @@ function paintArtboard(canvas,page,live){
 }
 function renderMain(){
   if(!S.doc) return;
+  fastPaint=layerDrag();
   pruneTextBitmaps();
   layoutPages(); syncArtboards();
-  if(!main) return;
+  if(!main){ fastPaint=false; return; }
   S.doc.pages.forEach((p,i)=>{
     const c=artCanvas(i); if(!c) return;
     const live=i===S.doc.page;
+    if(fastPaint && !live) return;
     if(!live && !p._dirty && c._paintK===S.cam.bucket) return;
     paintArtboard(c,p,live); p._dirty=false; c._paintK=S.cam.bucket;
   });
+  fastPaint=false;
 }
 
 /* ---------- geometry ---------- */
@@ -1372,7 +1383,7 @@ function drawOverlay(){
   c.beginPath(); c.moveTo(top.sx,top.sy); c.lineTo(rh.sx,rh.sy); c.strokeStyle='#ED2224'; c.lineWidth=1; c.stroke();
   for(const h of hs){
     c.beginPath();
-    if(h.rot) c.arc(h.sx,h.sy,5.5,0,Math.PI*2); else c.rect(h.sx-4.5,h.sy-4.5,9,9);
+    if(h.rot) c.arc(h.sx,h.sy,7,0,Math.PI*2); else c.rect(h.sx-6,h.sy-6,12,12);
     c.fillStyle='#fff'; c.fill(); c.strokeStyle='#ED2224'; c.lineWidth=1.5; c.stroke();
   }
   brushCursor();
@@ -2228,7 +2239,7 @@ stage.addEventListener('pointerdown',e=>{
   }
   if(S.brush && L && L.type==='redact' && !layerLocked(L)){
     for(const h of handlesFor(L,p.v)){
-      if(Math.hypot(h.sx-p.sx,h.sy-p.sy)<=10){
+      if(Math.hypot(h.sx-p.sx,h.sy-p.sy)<=18){
         drag={mode:h.rot?'rotate':'resize',h,L,start:JSON.parse(JSON.stringify(L)),p0:p};
         holdPointer(e); e.preventDefault(); return;
       }
@@ -2245,7 +2256,7 @@ stage.addEventListener('pointerdown',e=>{
   }
   if(L && !layerLocked(L) && !S.crop && L.visible && L.type!=='folder'){
     for(const h of handlesFor(L,p.v)){
-      if(Math.hypot(h.sx-p.sx,h.sy-p.sy)<=10){
+      if(Math.hypot(h.sx-p.sx,h.sy-p.sy)<=18){
         drag={mode:h.rot?'rotate':'resize',h,L,start:JSON.parse(JSON.stringify(L)),p0:p};
         holdPointer(e); e.preventDefault(); return;
       }
@@ -2339,8 +2350,19 @@ stage.addEventListener('pointermove',e=>{
       if(Math.abs(L.h-d.dh)>.5) L.fy=clamp(s.fy+ly/(L.h-d.dh),0,1);
     }
   }
-  scheduleRender(); syncProps();
+  if(layerDrag()){ drawOverlay(); scheduleRender(); syncDragFields(); }
+  else { scheduleRender(); syncProps(); }
 });
+function syncDragFields(){
+  const L=sel(); if(!L) return;
+  const box=$('#props');
+  for(const p of ['x','y','w','h','rot','size']){
+    const el=box.querySelector(`[data-p="${p}"]`);
+    if(!el||el===document.activeElement) continue;
+    const v=L[p];
+    if(typeof v==='number') el.value=Math.round(v*100)/100;
+  }
+}
 function endDrag(){
   if(!drag) return;
   const d=drag; drag=null; S.guides=[];
@@ -3120,10 +3142,11 @@ function renderLib(){
   const box=$('#lib'); let h=libStatus();
   if(S.tabL==='templates'){
     h+=`<div class="row"><button class="btn primary" data-act="save-tpl" style="flex:1;justify-content:center">Save current as template</button><button class="btn" data-act="import-psd">Import PSD</button></div>`;
-    h+=`<div class="h">Template types</div><div class="tgrid">`+KINDS.map(k=>`<button class="tcard" data-kind="${k.id}"><div class="th"><img alt="" src="${kindThumbs[k.id]||''}"></div><span class="nm">${esc(k.name)}</span><span class="meta">${k.w}×${k.h}${k.pages>1?' · starts with '+k.pages+' pages':''}</span></button>`).join('')+`</div>`;
+    h+=`<div class="h">Template types</div><div class="tgrid">`+KINDS.map(k=>{ const over=stockOverride(k.id); const thumb=over&&over.thumb?over.thumb:(kindThumbs[k.id]||''); return `<button class="tcard" data-kind="${k.id}"><div class="th"><img alt="" src="${esc(thumb)}"></div><span class="nm">${esc(k.name)}</span><span class="meta">${k.w}×${k.h}${k.pages>1?' · starts with '+k.pages+' pages':''}${over?' · saved':''}</span></button>`; }).join('')+`</div>`;
+    const team=TPLS.filter(t=>!t.stockId);
     h+=`<div class="h">Team templates</div>`;
-    if(cap.ready && !TPLS.length) h+=`<div class="empty">No team templates yet. Build a layout, mark the photo and copy layers as quick-fill slots, then <b>Save current as template</b>.</div>`;
-    h+=`<div class="tgrid">`+TPLS.map(t=>`<div class="tcard" role="button" tabindex="0" data-tpl="${t.id}">
+    if(cap.ready && !team.length) h+=`<div class="empty">No team templates yet. Build a layout, mark the photo and copy layers as quick-fill slots, then <b>Save current as template</b>.</div>`;
+    h+=`<div class="tgrid">`+team.map(t=>`<div class="tcard" role="button" tabindex="0" data-tpl="${t.id}">
       <div class="th">${t.thumb?`<img alt="" src="${esc(t.thumb)}">`:''}</div>
       <span class="nm">${esc(t.name||'Untitled')}</span>
       <span class="meta">${t.w}×${t.h}${Array.isArray(t.pages)&&t.pages.length>1?' · '+t.pages.length+' pages':''}${t.updatedAt?' · '+new Date(t.updatedAt).toLocaleDateString(undefined,{month:'short',day:'numeric'}):''}${t.updatedBy&&NAMES[t.updatedBy]?' · '+esc(NAMES[t.updatedBy].split(' ')[0]):''}</span>
@@ -3166,7 +3189,7 @@ lib.addEventListener('click',async e=>{
   const da=e.target.closest('[data-delasset]');
   if(da){ e.stopPropagation(); const id=da.dataset.delasset; if(armedDel!=='a:'+id){ armedDel='a:'+id; renderLib(); setTimeout(()=>{ if(armedDel==='a:'+id){armedDel=null;renderLib();} },3500); return; }
     armedDel=null; const a=LIB.find(x=>x.id===id); try{ await cap.db.doc('library/'+id).delete(); if(a&&cap.assets) cap.assets.delete(a.url).catch(()=>{}); toast('Removed from library'); }catch(err){ toast('Couldn\'t remove it. You may not have permission.',true); } return; }
-  const kd=e.target.closest('[data-kind]'); if(kd){ if(await guardDirty()){ loadDoc(makeDoc(kd.dataset.kind)); setTab('fill'); toast('Loaded “'+kindName(kd.dataset.kind)+'”'); } return; }
+  const kd=e.target.closest('[data-kind]'); if(kd){ if(await guardDirty()){ const saved=stockOverride(kd.dataset.kind); if(saved) loadTemplate(saved); else { loadDoc(makeDoc(kd.dataset.kind)); setTab('fill'); toast('Loaded “'+kindName(kd.dataset.kind)+'”'); } } return; }
   const bi=e.target.closest('[data-builtin]'); if(bi){ if(await guardDirty()) loadDoc(starterDoc()); return; }
   const tp=e.target.closest('[data-tpl]'); if(tp){ const t=TPLS.find(x=>x.id===tp.dataset.tpl); if(t && await guardDirty()) loadTemplate(t); return; }
   const piece=e.target.closest('[data-piece]'); if(piece&&piece.dataset.piece==='tags'){ addTagsLayer(); return; }
@@ -3182,7 +3205,7 @@ lib.addEventListener('dragstart',e=>{
 function loadTemplate(t){
   const pages=Array.isArray(t.pages)&&t.pages.length?JSON.parse(JSON.stringify(t.pages)):[{id:uid(),name:'Page 1',w:t.w,h:t.h,bg:t.bg||'#151616',layers:JSON.parse(JSON.stringify(t.layers||[]))}];
   pages.forEach(p=>(p.layers||[]).forEach(l=>{ l.id=l.id||uid(); }));
-  loadDoc({name:t.name||'Untitled post',templateId:t.id,templateName:t.name,templateType:t.templateType||'single',page:0,pages});
+  loadDoc({name:t.name||'Untitled post',templateId:t.id,templateName:t.name,templateType:t.stockId||t.templateType||'single',stockId:t.stockId||null,page:0,pages});
   setTab('fill'); toast('Loaded “'+(t.name||'template')+'”');
 }
 $('#fileAsset').addEventListener('change',async e=>{
@@ -3241,18 +3264,31 @@ function openSaveTemplate(){
   const slots=S.doc.pages.reduce((n,p)=>n+p.layers.filter(l=>l.slot).length,0);
   const m=openModal(`<h2>Save as template</h2>
     <div class="fld"><label for="tName">Name</label><input class="inp" id="tName" value="${esc(existing?existing.name:(S.doc.name||'New template'))}"></div>
-    ${existing?`<div class="seg" id="tMode"><button type="button" data-m="update" aria-pressed="true">Update “${esc(existing.name)}”</button><button type="button" data-m="new" aria-pressed="false">Save as new</button></div>`:''}
+    ${existing&&!existing.stockId?`<div class="seg" id="tMode"><button type="button" data-m="update" aria-pressed="true">Update “${esc(existing.name)}”</button><button type="button" data-m="new" aria-pressed="false">Save as new</button></div>`:''}
+    <div class="fld"><label for="tStock">Replace a stock template</label><select class="sel" id="tStock"><option value="">Keep it as its own template</option>${KINDS.map(k=>`<option value="${k.id}" ${k.id===(S.doc.stockId||'')?'selected':''}>${esc(k.name)}</option>`).join('')}</select></div>
+    <div class="note">Any stock template can be replaced. Single post, Story, Quote card, and the rest then open as this layout.</div>
     <label class="chk"><input type="checkbox" id="tClear" checked>Empty the photo slots so each post starts fresh</label>
     <div class="note">${slots?`${slots} quick-fill slot${slots>1?'s':''} will appear in the Quick fill tab.`:'<span class="note warn">No quick-fill slots yet. Mark the photo, headline and other changing layers as slots in the Layer tab so the team can fill them fast.</span>'} Photos you added from your computer are uploaded to the team library with the template.</div>
     <div class="note" id="tProg"></div>
     <div class="acts"><button class="btn" data-close>Cancel</button><button class="btn primary" id="tSave">Save template</button></div>`);
   let mode=existing?'update':'new';
   m.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{ mode=b.dataset.m; m.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); });
+  const nameInp=$('#tName',m), stockSel=$('#tStock',m), ownName=nameInp.value;
+  function syncStockChoice(){
+    const on=!!stockSel.value;
+    nameInp.disabled=on;
+    if(on) nameInp.value=kindName(stockSel.value);
+    else nameInp.value=ownName;
+    m.querySelectorAll('[data-m]').forEach(b=>{ b.disabled=on; });
+  }
+  stockSel.addEventListener('change',syncStockChoice);
+  syncStockChoice();
   m.querySelector('[data-close]').onclick=closeModal;
   $('#tSave',m).onclick=async()=>{
     const btn=$('#tSave',m); btn.disabled=true; const prog=$('#tProg',m);
     try{
-      const name=$('#tName',m).value.trim()||'Untitled template', clear=$('#tClear',m).checked;
+      const stockId=$('#tStock',m).value;
+      const name=stockId?kindName(stockId):($('#tName',m).value.trim()||'Untitled template'), clear=$('#tClear',m).checked;
       const pages=JSON.parse(JSON.stringify(S.doc.pages));
       const problems=[];
       const uploads=[];
@@ -3302,11 +3338,15 @@ function openSaveTemplate(){
       const first=pages[0];
       const tdoc={name,w:first.w,h:first.h,bg:first.bg,layers:first.layers,pages,templateType:S.doc.templateType||'single'};
       const thumb=thumbData(tdoc);
-      const data={name,w:tdoc.w,h:tdoc.h,bg:tdoc.bg,layers:first.layers,pages,templateType:tdoc.templateType,thumb,updatedAt:Date.now(),updatedBy:cap.me||''};
+      const data={name,w:tdoc.w,h:tdoc.h,bg:tdoc.bg,layers:first.layers,pages,templateType:stockId||tdoc.templateType,thumb,updatedAt:Date.now(),updatedBy:cap.me||''};
+      if(stockId) data.stockId=stockId;
       let id;
-      if(mode==='update'&&existing){ await cap.db.doc('templates/'+existing.id).set(Object.assign({createdAt:existing.createdAt||Date.now(),createdBy:existing.createdBy||cap.me||''},data)); id=existing.id; }
+      const stockPrev=stockId?stockOverride(stockId):null;
+      if(stockId&&stockPrev){ await cap.db.doc('templates/'+stockPrev.id).set(Object.assign({createdAt:stockPrev.createdAt||Date.now(),createdBy:stockPrev.createdBy||cap.me||''},data)); id=stockPrev.id; }
+      else if(!stockId&&mode==='update'&&existing&&!existing.stockId){ await cap.db.doc('templates/'+existing.id).set(Object.assign({createdAt:existing.createdAt||Date.now(),createdBy:existing.createdBy||cap.me||''},data)); id=existing.id; }
       else { data.createdAt=Date.now(); data.createdBy=cap.me||''; const ref=await cap.db.collection('templates').add(data); id=ref.id; }
-      S.doc.templateId=id; S.dirty=false; saveDraft(); closeModal(); toast('Template “'+name+'” saved');
+      S.doc.templateId=id; S.doc.templateType=stockId||S.doc.templateType; S.doc.stockId=stockId||null; S.doc.name=name; $('#docname').value=name;
+      S.dirty=false; saveDraft(); closeModal(); toast(stockId?('Replaced the '+name+' template'):('Template “'+name+'” saved'));
     }catch(err){
       btn.disabled=false;
       prog.innerHTML=`<span class="note warn">${err?.code==='need_assets'?'This template uses photos from your computer, and uploads are turned off. Empty those slots and try again.':err?.code==='invalid_argument'?'The template is too large to save. Remove some layers and try again.':'Couldn\'t save the template. Check your connection and try again.'}</span>`;
@@ -3694,7 +3734,7 @@ function boot(){
   document.fonts.ready
     .then(()=>Promise.all(samples.flatMap(st=>st.layers.filter(l=>l.type==='text').map(L=>document.fonts.load(fontStr(L),'Aa').catch(()=>{})))))
     .then(()=>Promise.all(samples.map(st=>allImagesReady(st))))
-    .then(()=>{ samples.forEach((st,i)=>{ kindThumbs[KINDS[i].id]=thumbData(st,300); }); renderLib(); });
+    .then(()=>{ samples.forEach((st,i)=>{ if(!stockOverride(KINDS[i].id)) kindThumbs[KINDS[i].id]=thumbData(st,300); }); renderLib(); });
   renderLib();
   initBackend();
 }

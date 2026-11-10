@@ -15,6 +15,7 @@ import {
   crewSectionTitle,
   getScoreBand,
 } from '@/components/crew/kpi-ui';
+import { AsanaLoadingStatus } from './AsanaLoadingStatus';
 import {
   adminAlertError,
   adminBadgeActive,
@@ -99,7 +100,13 @@ export function AdminKpiProfile({ email }: { email: string }) {
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
-      {person === undefined && !error ? <p className={adminBody}>Loading KPI profile…</p> : null}
+      {person === undefined && !error ? (
+        <AsanaLoadingStatus
+          layout="page"
+          title="Gathering information from Asana"
+          detail="Loading this person's scored tasks from the Anim8 KPI project."
+        />
+      ) : null}
 
       {person && !summary && !error ? (
         <div className={adminCard}>

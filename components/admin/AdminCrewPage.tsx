@@ -40,6 +40,7 @@ import {
   adminSelect,
   adminSelectChevronStyle,
 } from './admin-ui';
+import { AsanaLoadingStatus } from './AsanaLoadingStatus';
 import { AdminDatePicker } from './AdminDatePicker';
 
 type ApiErrorBody = {
@@ -1571,37 +1572,57 @@ function StaffReportLink() {
 export function AdminCrewPage() {
   const [members, setMembers] = useState<CrewMember[] | null>(null);
   const [kpiByEmail, setKpiByEmail] = useState<Record<string, PersonKPISummary | null>>({});
+  const [asanaStatus, setAsanaStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [statusByEmail, setStatusByEmail] = useState<Record<string, CrewStatusEntry['status']>>({});
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setError(null);
-    try {
-      const [crewRes, kpiRes, statusRes] = await Promise.all([
-        fetch('/api/admin/crew'),
-        fetch('/api/admin/kpi'),
-        fetch('/api/crew/status'),
-      ]);
-      const crewData = (await crewRes.json()) as ApiErrorBody & { members?: CrewMember[] };
-      if (!crewRes.ok) {
-        setError(describeApiError(crewData, 'Could not load crew directory.'));
-        return;
-      }
-      setMembers(crewData.members ?? []);
+    setAsanaStatus('loading');
 
-      if (kpiRes.ok) {
+    const crewTask = (async () => {
+      try {
+        const crewRes = await fetch('/api/admin/crew');
+        const crewData = (await crewRes.json()) as ApiErrorBody & { members?: CrewMember[] };
+        if (!crewRes.ok) {
+          setError(describeApiError(crewData, 'Could not load crew directory.'));
+          return;
+        }
+        setMembers(crewData.members ?? []);
+      } catch {
+        setError('Could not load crew directory.');
+      }
+    })();
+
+    const kpiTask = (async () => {
+      try {
+        const kpiRes = await fetch('/api/admin/kpi');
+        if (!kpiRes.ok) {
+          setKpiByEmail({});
+          setAsanaStatus('error');
+          return;
+        }
         const kpiData = (await kpiRes.json()) as { people?: AdminKpiPerson[] };
         const nextKpi: Record<string, PersonKPISummary | null> = {};
         for (const person of kpiData.people ?? []) {
           nextKpi[person.email.toLowerCase()] = person.summary;
         }
         setKpiByEmail(nextKpi);
-      } else {
+        setAsanaStatus('ready');
+      } catch {
         setKpiByEmail({});
+        setAsanaStatus('error');
       }
+    })();
 
-      if (statusRes.ok) {
+    const statusTask = (async () => {
+      try {
+        const statusRes = await fetch('/api/crew/status');
+        if (!statusRes.ok) {
+          setStatusByEmail({});
+          return;
+        }
         const statusData = (await statusRes.json()) as {
           snapshot?: { entries?: CrewStatusEntry[] };
         };
@@ -1612,12 +1633,12 @@ export function AdminCrewPage() {
           }
         }
         setStatusByEmail(nextStatus);
-      } else {
+      } catch {
         setStatusByEmail({});
       }
-    } catch {
-      setError('Could not load crew directory.');
-    }
+    })();
+
+    await Promise.all([crewTask, kpiTask, statusTask]);
   }, []);
 
   const onMemberUpdated = useCallback((updated: CrewMember) => {
@@ -1666,6 +1687,16 @@ export function AdminCrewPage() {
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
+      {members !== null && asanaStatus === 'loading' ? (
+        <AsanaLoadingStatus
+          title="Gathering KPI scores from Asana"
+          detail="Each person's score will fill in when Asana responds. This can take a moment."
+        />
+      ) : null}
+      {members !== null && asanaStatus === 'error' ? (
+        <p className={adminAlertError}>KPI scores from Asana didn&apos;t load. The directory is still available.</p>
+      ) : null}
+
       {members !== null && members.length > 0 ? (
         <input
           className={adminInput}
@@ -1676,8 +1707,12 @@ export function AdminCrewPage() {
         />
       ) : null}
 
-      {members === null ? (
-        <p className={adminBody}>Loading crew directory…</p>
+      {members === null && !error ? (
+        <AsanaLoadingStatus
+          layout="page"
+          title="Loading crew directory"
+          detail="Opening the roster and gathering KPI scores from Asana. This can take a moment."
+        />
       ) : members.length === 0 ? (
         <p className={adminBody}>No crew members yet.</p>
       ) : filtered.length === 0 ? (

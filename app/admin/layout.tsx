@@ -18,14 +18,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               Anim-8 <span className="text-brand-cyan">Admin</span>
             </span>
             <nav className="flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-wider text-text-muted">
+              <Link href="/admin/crew" className="transition hover:text-brand-cyan">
+                Crew directory
+              </Link>
               <Link href="/admin/clients" className="transition hover:text-brand-cyan">
                 Clients
               </Link>
               <Link href="/admin/work" className="transition hover:text-brand-cyan">
                 Work bank
-              </Link>
-              <Link href="/admin/crew" className="transition hover:text-brand-cyan">
-                Crew directory
               </Link>
               <Link href="/admin/kpi" className="transition hover:text-brand-cyan">
                 KPI board

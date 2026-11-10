@@ -11,6 +11,7 @@ import {
   ScoreDelta,
   getScoreBand,
 } from '@/components/crew/kpi-ui';
+import { AsanaLoadingStatus } from './AsanaLoadingStatus';
 import {
   adminAlertError,
   adminBadgeInactive,
@@ -283,7 +284,20 @@ export function AdminKpiBoard() {
 
       {error ? <p className={adminAlertError}>{error}</p> : null}
 
-      {people === null && !error ? <p className={adminBody}>Loading KPI board…</p> : null}
+      {refreshing ? (
+        <AsanaLoadingStatus
+          title="Refreshing Asana"
+          detail="Pulling the latest scored tasks from the Anim8 KPI project."
+        />
+      ) : null}
+
+      {people === null && !error ? (
+        <AsanaLoadingStatus
+          layout="page"
+          title="Gathering information from Asana"
+          detail="Loading KPI scores from the Anim8 KPI project. This can take a moment."
+        />
+      ) : null}
 
       {people && filtered.length === 0 ? (
         <p className={adminBody}>No crew members match this filter.</p>

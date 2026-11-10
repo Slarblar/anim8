@@ -31,9 +31,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* top bar */
 .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line)}
-.mark{display:flex;align-items:baseline;gap:8px;margin-right:6px;white-space:nowrap}
-.mark img{height:28px;width:auto;display:block}
-.mark small{font-size:10px;font-weight:800;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.mark{margin-right:8px;white-space:nowrap;font-family:var(--f-logo);font-size:26px;line-height:1;letter-spacing:.04em;color:var(--paper);text-transform:uppercase}
 .docname{background:transparent;border:1px solid transparent;border-radius:4px;padding:5px 8px;width:200px;max-width:40vw;font-weight:600}
 .docname:hover,.docname:focus{border-color:var(--line);background:var(--panel2)}
 .grp{display:flex;gap:4px;align-items:center}
@@ -226,7 +224,7 @@ textarea.inp{resize:vertical;min-height:58px;line-height:1.4}
 
 <div id="app">
   <header class="top">
-    <div class="mark"><img src="/scoop/slcscoop-logo.png" alt="SLC Scoop" width="300" height="67"><small>Post Builder</small></div>
+    <div class="mark">Post Builder</div>
     <input id="docname" class="docname" aria-label="Post name" value="Untitled post">
     <div class="grp">
       <button class="btn" data-act="add-text" title="Add text (T)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3.5h10M8 3.5v10"/></svg>Text</button>

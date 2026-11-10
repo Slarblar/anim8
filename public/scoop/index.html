@@ -350,10 +350,10 @@ function hexA(hex,a){const h=(hex||'#000').replace('#','');const f=h.length===3?
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
 /* ---------- layer factories ---------- */
-const BASE = ()=>({id:uid(),name:'',parent:null,x:0,y:0,w:200,h:100,rot:0,opacity:1,blend:'source-over',visible:true,locked:false,slot:'',clip:false,shadow:false,shadowColor:'#000000',shadowBlur:16,shadowX:0,shadowY:4});
-const T = o=>Object.assign(BASE(),{type:'text',web:false,text:'Text',font:'Archivo',weight:800,italic:false,size:48,lh:1.1,ls:0,color:'#FFFFFF',align:'left',upper:false,hscale:1,strokeW:0,stroke:'#000000',bg:'none',bgColor:'#ED2224',padX:18,padY:8},o);
+const BASE = ()=>({id:uid(),name:'',parent:null,x:0,y:0,w:200,h:100,rot:0,opacity:1,blend:'source-over',visible:true,locked:false,slot:'',clip:false,shadow:false,shadowColor:'#000000',shadowSize:0,shadowBlur:16,shadowX:0,shadowY:4});
+const T = o=>Object.assign(BASE(),{type:'text',web:false,text:'Text',font:'Archivo',weight:800,italic:false,size:48,lh:1.1,ls:0,color:'#FFFFFF',align:'left',wrap:true,upper:false,hscale:1,strokeW:0,stroke:'#000000',bg:'none',bgColor:'#ED2224',padX:18,padY:8},o);
 const SH = o=>Object.assign(BASE(),{type:'shape',web:false,shape:'rect',fill:'#ED2224',grad:false,fill2:'#000000',fill2Alpha:0,gradAngle:90,stroke:'#000000',strokeW:0,radius:0,rough:18,seed:7,edges:'both'},o);
-const IM = o=>Object.assign(BASE(),{type:'image',web:true,src:null,nw:0,nh:0,fit:'cover',fx:.5,fy:.5,zoom:1,flipX:false,flipY:false,bright:100,contrast:100,sat:100,gray:0,blur:0},o);
+const IM = o=>Object.assign(BASE(),{type:'image',web:true,role:'design',src:null,nw:0,nh:0,fit:'cover',fx:.5,fy:.5,zoom:1,flipX:false,flipY:false,bright:100,contrast:100,sat:100,gray:0,blur:0},o);
 const RD = o=>Object.assign(BASE(),{type:'redact',web:true,name:'Redaction',mode:'mosaic',block:28,blurRadius:24,solidColor:'#000000',shape:'rect',strokes:[]},o);
 function defaultWeb(type){ return type==='image'||type==='redact'; }
 function ensureLayerWeb(L){
@@ -388,7 +388,7 @@ const kindThumbs = {};
 function kindName(id){ const k=KINDS.find(x=>x.id===id); return k?k.name:id; }
 function feedLayers(category){
   const layers=[
-    IM({name:'Photo',slot:'Photo',x:0,y:0,w:1080,h:1350}),
+    IM({name:'Photo',slot:'Photo',role:'photo',x:0,y:0,w:1080,h:1350}),
     SH({name:'Photo fade',shape:'rect',grad:true,fill:'#000000',fill2:'#000000',fill2Alpha:0,gradAngle:270,x:0,y:620,w:1080,h:280,opacity:.55,locked:true}),
     T({name:'Photo credit',slot:'Source',text:'Source: Name Here',font:'Arial Narrow',weight:400,italic:false,size:25,lh:1.2,ls:0,hscale:1.1,upper:false,color:'#FFFFFF',align:'right',x:640,y:770,w:400,shadow:true,shadowBlur:10,shadowY:2}),
     IM({name:'Logo',src:{kind:'file',url:'/scoop/slcscoop-logo.png'},fit:'contain',x:48,y:40,w:380,h:84}),
@@ -408,7 +408,7 @@ function feedLayers(category){
 }
 function storyLayers(category){
   return [
-    IM({name:'Photo',slot:'Photo',x:0,y:0,w:1080,h:1920}),
+    IM({name:'Photo',slot:'Photo',role:'photo',x:0,y:0,w:1080,h:1920}),
     SH({name:'Photo fade',shape:'rect',grad:true,fill:'#000000',fill2:'#000000',fill2Alpha:0,gradAngle:270,x:0,y:1180,w:1080,h:740,opacity:.62,locked:true}),
     IM({name:'Logo',src:{kind:'file',url:'/scoop/slcscoop-logo.png'},fit:'contain',x:56,y:80,w:360,h:80}),
     T({name:'Category tag',slot:'Category',text:category||'NEWS',font:'Archivo',weight:900,size:36,align:'center',bg:'box',bgColor:'#ED2224',padX:24,padY:2,x:56,y:1420,w:category&&category.length>6?240:160}),
@@ -452,7 +452,17 @@ function normalizeDoc(raw){
     p.name=p.name||('Page '+(i+1));
     p.w=+p.w||1080; p.h=+p.h||1350; p.bg=p.bg||'#151616';
     if(!Array.isArray(p.layers)) p.layers=[];
-    p.layers.forEach(l=>{ if(l.parent==null) l.parent=null; if(l.type==='folder'&&l.open==null) l.open=true; if(l.clip!==true) l.clip=false; ensureLayerWeb(l); });
+    p.layers.forEach(l=>{
+      if(l.parent==null) l.parent=null;
+      if(l.type==='folder'&&l.open==null) l.open=true;
+      if(l.clip!==true) l.clip=false;
+      if(l.type==='text'&&l.wrap!==false) l.wrap=true;
+      if(l.type==='image'&&!l.psdRef&&l.role!=='photo'&&l.role!=='design'){
+        const lab=((l.name||'')+' '+(l.slot||'')).toLowerCase();
+        l.role=/photo/.test(lab)?'photo':'design';
+      }
+      ensureLayerWeb(l);
+    });
     settleClips(p.layers);
   });
   d.page=clamp(+d.page||0,0,d.pages.length-1);
@@ -473,7 +483,7 @@ function activate(raw){
 }
 
 /* ---------- state ---------- */
-const S = {doc:null, sel:null, zoom:'fit', k:1, cam:{x:48,y:48,k:.35,bucket:null}, layout:[], crop:false, guides:[], tabL:'templates', tabR:'fill', hist:[], hi:-1, clip:null, dirty:false, hover:null, tool:null, brush:false, brushSize:48, brushAt:null};
+const S = {doc:null, sel:null, zoom:'fit', k:1, cam:{x:48,y:48,k:.35,bucket:null}, layout:[], crop:false, guides:[], tabL:'templates', tabR:'fill', hist:[], hi:-1, clip:null, dirty:false, hover:null, tool:null, brush:false, brushSize:48, brushAt:null, psdCompare:false};
 let main=null, mctx=null;
 const ov = $('#ov'), stage = $('#stage'), stagewrap = $('#stagewrap');
 const sel = ()=>S.doc.layers.find(l=>l.id===S.sel)||null;
@@ -578,7 +588,7 @@ function paintText(ctx,L,lay,snap){
 }
 const textBitmaps=new Map();
 function textPaintKey(L){
-  return [L.text,L.font,L.weight,L.italic?1:0,L.size,L.lh,L.ls,L.hscale,L.color,L.align,L.upper?1:0,L.strokeW,L.stroke,L.bg,L.bgColor,L.padX,L.padY,L.w,L.h].join('\u0001');
+  return [L.text,L.font,L.weight,L.italic?1:0,L.size,L.lh,L.ls,L.hscale,L.color,L.align,L.upper?1:0,L.wrap===false?0:1,L.strokeW,L.stroke,L.bg,L.bgColor,L.padX,L.padY,L.w,L.h].join('\u0001');
 }
 function textBitmap(L,lay){
   const key=textPaintKey(L);
@@ -607,6 +617,28 @@ function pruneTextBitmaps(){
   for(const p of S.doc.pages) for(const l of p.layers) if(l.type==='text') ids.add(l.id);
   for(const id of textBitmaps.keys()) if(!ids.has(id)) textBitmaps.delete(id);
 }
+function setLayerShadow(ctx,L,scale){
+  ctx.shadowColor=L.shadowColor||'#000000';
+  ctx.shadowBlur=(+L.shadowBlur||0)*scale;
+  ctx.shadowOffsetX=(+L.shadowX||0)*scale;
+  ctx.shadowOffsetY=(+L.shadowY||0)*scale;
+}
+function castSizedShadow(ctx,L,scale,box,grow,draw){
+  grow=Math.max(0,+grow||0);
+  if(!L.shadow||!(grow>0)||!box||!(Math.abs(box.w)>0)||!(Math.abs(box.h)>0)) return;
+  const FAR=100000;
+  ctx.save();
+  setLayerShadow(ctx,L,scale);
+  ctx.shadowOffsetY+=FAR;
+  const m=ctx.getTransform();
+  const det=m.a*m.d-m.b*m.c||1;
+  ctx.translate((m.c*FAR)/det, (-m.a*FAR)/det);
+  ctx.translate(box.x+box.w/2, box.y+box.h/2);
+  ctx.scale((box.w+grow*2)/box.w, (box.h+grow*2)/box.h);
+  ctx.translate(-(box.x+box.w/2), -(box.y+box.h/2));
+  draw();
+  ctx.restore();
+}
 function drawSupersampledText(ctx,L,lay,opt){
   const bmp=textBitmap(L,lay);
   ctx.save();
@@ -617,19 +649,22 @@ function drawSupersampledText(ctx,L,lay,opt){
   ctx.translate(x+L.w/2, y+lay.h/2);
   ctx.rotate((L.rot||0)*Math.PI/180);
   ctx.translate(-L.w/2, -lay.h/2);
-  if(L.shadow){ const s=opt.scale||1; ctx.shadowColor=L.shadowColor; ctx.shadowBlur=L.shadowBlur*s; ctx.shadowOffsetX=L.shadowX*s; ctx.shadowOffsetY=L.shadowY*s; }
-  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
-  ctx.drawImage(bmp.canvas, -bmp.pad, -bmp.pad, L.w+bmp.pad*2, lay.h+bmp.pad*2);
+  const place=()=>{ ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high'; ctx.drawImage(bmp.canvas, -bmp.pad, -bmp.pad, L.w+bmp.pad*2, lay.h+bmp.pad*2); };
+  const scale=opt.scale||1;
+  if(L.shadow&&(L.shadowSize||0)>0) castSizedShadow(ctx,L,scale,{x:-bmp.pad,y:-bmp.pad,w:L.w+bmp.pad*2,h:lay.h+bmp.pad*2},L.shadowSize,place);
+  else if(L.shadow) setLayerShadow(ctx,L,scale);
+  place();
   ctx.restore();
 }
-function layoutText(ctx,L){
+function layoutText(ctx,L,commit){
   ctx.font=fontStr(L); setLS(ctx,L.ls);
-  const hs=L.hscale||1, box=L.bg==='box';
+  const hs=L.hscale||1, box=L.bg==='box', wrap=L.wrap!==false;
   const padX=box?L.padX:0, padY=box?L.padY:0;
   const maxW=Math.max(1,L.w-2*padX)/hs;
   const lines=[];
   const raw=(L.upper?String(L.text).toUpperCase():String(L.text)).split('\n');
   for(const para of raw){
+    if(!wrap){ lines.push(para); continue; }
     const words=para.split(' '); let cur=null;
     for(const wd of words){
       const t = cur===null? wd : cur+' '+wd;
@@ -637,8 +672,19 @@ function layoutText(ctx,L){
     }
     lines.push(cur??'');
   }
+  const measured=lines.map(t=>({t,w:measure(ctx,t,L.ls)}));
+  if(!wrap && commit!==false){
+    const content=measured.reduce((m,ln)=>Math.max(m,ln.w),0);
+    const newW=Math.max(8, Math.round((content*hs+2*padX)*100)/100);
+    const oldW=+L.w||0;
+    if(Math.abs(newW-oldW)>0.01){
+      if(L.align==='center') L.x+=(oldW-newW)/2;
+      else if(L.align==='right') L.x+=oldW-newW;
+      L.w=newW;
+    }
+  }
   const lineH=L.size*L.lh;
-  return {lines:lines.map(t=>({t,w:measure(ctx,t,L.ls)})), lineH, h:Math.max(lineH,lines.length*lineH)+2*padY, padX, padY, hs};
+  return {lines:measured, lineH, h:Math.max(lineH,lines.length*lineH)+2*padY, padX, padY, hs};
 }
 
 /* A filled slot keeps the template size when the copy fits. A long line steps down, not past a readable floor, until it clears the next layer. */
@@ -692,7 +738,7 @@ function roomBelow(L,layers,pageW,pageH){
 }
 function measureAt(ctx,L,size){
   const prev=L.size; L.size=size; hintText(ctx);
-  const lay=layoutText(ctx,L); L.size=prev; return lay;
+  const lay=layoutText(ctx,L,false); L.size=prev; return lay;
 }
 function blockFits(ctx,L,size,maxH,cap){
   const lay=measureAt(ctx,L,size);
@@ -838,6 +884,9 @@ function scaledImage(img, key, tw, th){
   return cur;
 }
 function drawPlaceholder(ctx,L,sc){
+  if(!L||L.role!=='photo') return;
+  ctx.save();
+  ctx.globalAlpha*=0.35;
   ctx.fillStyle='#2b2b2e'; ctx.fillRect(0,0,L.w,L.h);
   ctx.save(); ctx.beginPath(); ctx.rect(0,0,L.w,L.h); ctx.clip();
   ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=10;
@@ -848,9 +897,10 @@ function drawPlaceholder(ctx,L,sc){
   if(LS_OK) ctx.letterSpacing=(fs*.12)+'px';
   ctx.fillText(('Drop photo'+(L.slot?' · '+L.slot:'')).toUpperCase(),L.w/2,L.h/2);
   ctx.textAlign='left';
+  ctx.restore();
 }
 let drawList=null;
-function layerPaintAlpha(L,opt){ return opt&&opt.flat?1:(L.opacity??1); }
+function layerPaintAlpha(L,opt){ const a=opt&&opt.flat?1:(L.opacity??1); return L&&L.psdRef?a*0.5:a; }
 function layerPaintBlend(L,opt){ return opt&&opt.flat?'source-over':(L.blend||'source-over'); }
 function canClipLayer(L){
   if(!L||!S.doc||L.type==='redact'||L.type==='folder'||L.psdRef) return false;
@@ -922,8 +972,10 @@ function moveStack(ls, where, i){
   settleClips(ls);
 }
 function layerList(){ return drawList || (S.doc?S.doc.layers:[]); }
-function layerShown(L){
-  if(!L||L.visible===false) return false;
+function layerShown(L,opt){
+  if(!L) return false;
+  if(L.psdRef) return !!(S.psdCompare && opt && opt.editor);
+  if(L.visible===false) return false;
   const ls=layerList();
   let id=L.parent, n=0;
   while(id && n++<24){
@@ -1067,12 +1119,24 @@ function drawRedact(ctx,L,opt,source){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.globalAlpha=L.opacity??1;
   ctx.globalCompositeOperation=L.blend||'source-over';
-  if(L.shadow){ ctx.shadowColor=L.shadowColor; ctx.shadowBlur=(L.shadowBlur||0)*s; ctx.shadowOffsetX=(L.shadowX||0)*s; ctx.shadowOffsetY=(L.shadowY||0)*s; }
-  ctx.drawImage(effect, b.x*s, b.y*s);
+  const stamp=()=>ctx.drawImage(effect, b.x*s, b.y*s);
+  if(L.shadow&&(L.shadowSize||0)>0) castSizedShadow(ctx,L,s,{x:b.x*s,y:b.y*s,w:dw,h:dh},(L.shadowSize||0)*s,stamp);
+  else if(L.shadow) setLayerShadow(ctx,L,s);
+  stamp();
   ctx.restore();
 }
+function paintShape(ctx,L){
+  if(L.shape==='arrow'){
+    const t=L.strokeW||4, hl=Math.min(L.h/2,L.w*.45);
+    ctx.strokeStyle=L.fill; ctx.lineWidth=t; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.beginPath(); ctx.moveTo(t/2,L.h/2); ctx.lineTo(L.w-t/2,L.h/2); ctx.moveTo(L.w-hl-t/2,t/2); ctx.lineTo(L.w-t/2,L.h/2); ctx.lineTo(L.w-hl-t/2,L.h-t/2); ctx.stroke();
+  } else {
+    shapePath(ctx,L); ctx.fillStyle=fillStyleFor(ctx,L); ctx.fill(L.shape==='pin'?'evenodd':'nonzero');
+    if(L.strokeW>0){ ctx.shadowColor='transparent'; ctx.strokeStyle=L.stroke; ctx.lineWidth=L.strokeW; ctx.stroke(); }
+  }
+}
 function drawLayer(ctx,L,opt){
-  if(L.type==='folder'||!layerShown(L)||L.type==='redact') return;
+  if(L.type==='folder'||!layerShown(L,opt)||L.type==='redact') return;
   let lay=null;
   if(L.type==='text'){ lay=layoutText(ctx,L); L.h=lay.h; }
   const rot=L.rot||0, hs=L.hscale||1;
@@ -1083,20 +1147,15 @@ function drawLayer(ctx,L,opt){
   ctx.globalCompositeOperation=layerPaintBlend(L,opt);
   if(L.type==='text') ctx.translate(Math.round(L.x), Math.round(L.y));
   else { const cx=L.x+L.w/2, cy=L.y+L.h/2; ctx.translate(cx,cy); ctx.rotate(rot*Math.PI/180); ctx.translate(-L.w/2,-L.h/2); }
-  if(L.shadow){ const s=opt.scale||1; ctx.shadowColor=L.shadowColor; ctx.shadowBlur=L.shadowBlur*s; ctx.shadowOffsetX=L.shadowX*s; ctx.shadowOffsetY=L.shadowY*s; }
-  if(L.type==='shape'){
-    if(L.shape==='arrow'){
-      const t=L.strokeW||4, hl=Math.min(L.h/2,L.w*.45);
-      ctx.strokeStyle=L.fill; ctx.lineWidth=t; ctx.lineCap='round'; ctx.lineJoin='round';
-      ctx.beginPath(); ctx.moveTo(t/2,L.h/2); ctx.lineTo(L.w-t/2,L.h/2); ctx.moveTo(L.w-hl-t/2,t/2); ctx.lineTo(L.w-t/2,L.h/2); ctx.lineTo(L.w-hl-t/2,L.h-t/2); ctx.stroke();
-    } else {
-      shapePath(ctx,L); ctx.fillStyle=fillStyleFor(ctx,L); ctx.fill(L.shape==='pin'?'evenodd':'nonzero');
-      if(L.strokeW>0){ ctx.shadowColor='transparent'; ctx.strokeStyle=L.stroke; ctx.lineWidth=L.strokeW; ctx.stroke(); }
-    }
-  }
+  const scale=opt.scale||1;
+  const sized=!!(L.shadow&&(L.shadowSize||0)>0);
+  if(sized&&L.type==='shape') castSizedShadow(ctx,L,scale,{x:0,y:0,w:L.w,h:L.h},L.shadowSize,()=>paintShape(ctx,L));
+  else if(sized&&L.type==='text') castSizedShadow(ctx,L,scale,{x:0,y:0,w:L.w,h:lay.h},L.shadowSize,()=>paintText(ctx,L,lay,true));
+  if(L.shadow&&!sized) setLayerShadow(ctx,L,scale);
+  if(L.type==='shape') paintShape(ctx,L);
   else if(L.type==='image'){
     const img=getImg(L.src);
-    if(!img){ if(opt.editor) drawPlaceholder(ctx,L,opt.scale||1); ctx.restore(); return; }
+    if(!img){ if(opt.editor&&L.role==='photo') drawPlaceholder(ctx,L,opt.scale||1); ctx.restore(); return; }
     const nw=img.naturalWidth||img.width||0, nh=img.naturalHeight||img.height||0;
     const sc=opt.scale||1;
     const one=rot===0 && (L.fit||'cover')==='stretch' && !L.flipX && !L.flipY && nw>0 && nh>0 && Math.round(L.w)===nw && Math.round(L.h)===nh;
@@ -1105,8 +1164,11 @@ function drawLayer(ctx,L,opt){
       ctx.globalAlpha=layerPaintAlpha(L,opt);
       ctx.globalCompositeOperation=layerPaintBlend(L,opt);
       const ix=Math.round(L.x), iy=Math.round(L.y);
-      if(L.shadow){
-        ctx.shadowColor=L.shadowColor; ctx.shadowBlur=(L.shadowBlur||0)*sc; ctx.shadowOffsetX=(L.shadowX||0)*sc; ctx.shadowOffsetY=(L.shadowY||0)*sc;
+      if(L.shadow&&(L.shadowSize||0)>0){
+        castSizedShadow(ctx,L,sc,{x:ix,y:iy,w:nw,h:nh},L.shadowSize,()=>{ ctx.fillStyle='#000'; ctx.fillRect(ix,iy,nw,nh); });
+        ctx.fillStyle='#000'; ctx.fillRect(ix,iy,nw,nh);
+      } else if(L.shadow){
+        setLayerShadow(ctx,L,sc);
         ctx.fillStyle='#000'; ctx.fillRect(ix,iy,nw,nh); ctx.shadowColor='transparent';
       }
       applyImageFilter(ctx,L,sc);
@@ -1114,7 +1176,10 @@ function drawLayer(ctx,L,opt){
       ctx.drawImage(img, ix, iy);
       ctx.restore(); return;
     }
-    if(L.shadow){ ctx.fillStyle='#000'; ctx.fillRect(0,0,L.w,L.h); ctx.shadowColor='transparent'; }
+    if(L.shadow&&(L.shadowSize||0)>0){
+      castSizedShadow(ctx,L,sc,{x:0,y:0,w:L.w,h:L.h},L.shadowSize,()=>{ ctx.fillStyle='#000'; ctx.fillRect(0,0,L.w,L.h); });
+      ctx.fillStyle='#000'; ctx.fillRect(0,0,L.w,L.h);
+    } else if(L.shadow){ ctx.fillStyle='#000'; ctx.fillRect(0,0,L.w,L.h); ctx.shadowColor='transparent'; }
     ctx.beginPath(); ctx.rect(0,0,L.w,L.h); ctx.clip();
     applyImageFilter(ctx,L,sc);
     if(L.flipX||L.flipY){ ctx.translate(L.flipX?L.w:0,L.flipY?L.h:0); ctx.scale(L.flipX?-1:1,L.flipY?-1:1); }
@@ -1180,8 +1245,8 @@ function paintDoc(ctx,doc,opt,pred){
   for(let i=0;i<layers.length;i++){
     const L=layers[i];
     if(L.type==='folder'||clipBaseIndex(layers, i)>=0) continue;
-    if(!layerShown(L)||!pred(L)) continue;
-    const clips=clipMembers(layers, i).filter(C=>layerShown(C)&&pred(C));
+    if(!layerShown(L,opt)||!pred(L)) continue;
+    const clips=clipMembers(layers, i).filter(C=>layerShown(C,opt)&&pred(C));
     if(clips.length){
       paintClipGroup(ctx, L, clips, opt);
       if(scratch) paintClipGroup(scratch.getContext('2d'), L, clips, opt);
@@ -1324,7 +1389,7 @@ function saveDraft(){ clearTimeout(draftT); draftT=setTimeout(()=>{ try{ localSt
 
 /* ---------- doc load ---------- */
 function loadDoc(doc,{fresh=true}={}){
-  webpWarn=false;
+  webpWarn=false; S.psdCompare=false;
   S.doc=activate(doc); S.sel=null; S.crop=false; S.tool=null; S.brush=false; S.brushAt=null; $('#cropbar').hidden=true; syncRedactTool();
   afterLoad(true);
   if(fresh){ resetHist(); S.dirty=false; saveDraft(); }
@@ -1514,10 +1579,15 @@ const PSD_BLEND={
   'color dodge':'color-dodge','color burn':'color-burn','difference':'difference','luminosity':'luminosity',
 };
 const PSD_FONT={
-  'integralcf-bold':'Integral CF',
-  'arialnarrow':'Arial Narrow',
-  'arialnarrow-italic':'Arial Narrow Italic',
+  integralcf:'Integral CF',
+  integralcfbold:'Integral CF',
+  arialnarrow:'Arial Narrow',
+  arialnarrowmt:'Arial Narrow',
+  arialnarrowitalic:'Arial Narrow Italic',
+  arialnarrowmtitalic:'Arial Narrow Italic',
 };
+const TEMPLATE_IMAGE_BYTES=4.4*1024*1024;
+function fontKey(name){ return String(name||'').toLowerCase().replace(/[\s\-_]+/g,''); }
 let agPsdP=null, psdBusy=false;
 // public/scoop/vendor/ag-psd.js is the browser build of the ag-psd dependency.
 function loadAgPsd(){
@@ -1549,6 +1619,66 @@ async function pixelsFromCanvas(canvas,name){
   if(!blob || blob.type==='image/webp' || blob.type==='image/jpeg') throw new Error('png');
   const file=new File([blob],(slug(name)||'layer')+'-'+uid()+'.png',{type:'image/png'});
   return {src:await localSrc(file), nw:canvas.width||1, nh:canvas.height||1};
+}
+function opaqueBounds(canvas){
+  const w=canvas.width, h=canvas.height;
+  if(!(w>0)||!(h>0)) return null;
+  let data;
+  try{ data=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data; }
+  catch(e){ return null; }
+  let minX=w, minY=h, maxX=-1, maxY=-1;
+  for(let y=0;y<h;y++){
+    const row=y*w*4;
+    for(let x=0;x<w;x++){
+      if(data[row+x*4+3]>0){
+        if(x<minX) minX=x;
+        if(x>maxX) maxX=x;
+        if(y<minY) minY=y;
+        if(y>maxY) maxY=y;
+      }
+    }
+  }
+  if(maxX<0) return {empty:true};
+  return {x:minX, y:minY, w:maxX-minX+1, h:maxY-minY+1};
+}
+async function canvasFromBlob(blob){
+  const bmp=await createImageBitmap(blob);
+  const c=document.createElement('canvas');
+  c.width=bmp.width; c.height=bmp.height;
+  c.getContext('2d',{willReadFrequently:true}).drawImage(bmp,0,0);
+  if(bmp.close) bmp.close();
+  return c;
+}
+async function fitLayerForUpload(L, blob){
+  if(blob.size<=TEMPLATE_IMAGE_BYTES) return {blob};
+  let canvas;
+  try{ canvas=await canvasFromBlob(blob); }
+  catch(e){ return {error:'over 4.4 MB'}; }
+  const bounds=opaqueBounds(canvas);
+  if(!bounds) return {error:'over 4.4 MB'};
+  if(bounds.empty) return {error:'the image has no visible pixels'};
+  let out=canvas;
+  if(bounds.x||bounds.y||bounds.w!==canvas.width||bounds.h!==canvas.height){
+    const c=document.createElement('canvas');
+    c.width=bounds.w; c.height=bounds.h;
+    c.getContext('2d').drawImage(canvas, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, bounds.w, bounds.h);
+    const sx=L.w/canvas.width, sy=L.h/canvas.height;
+    L.x=Math.round(L.x+bounds.x*sx);
+    L.y=Math.round(L.y+bounds.y*sy);
+    L.w=Math.max(1, Math.round(bounds.w*sx));
+    L.h=Math.max(1, Math.round(bounds.h*sy));
+    L.nw=bounds.w; L.nh=bounds.h;
+    out=c;
+  }
+  const png=await canvasBlob(out,'image/png');
+  if(png && png.type==='image/png' && png.size<=TEMPLATE_IMAGE_BYTES){
+    return {blob:new File([png], (slug(L.name)||'layer')+'.png', {type:'image/png'})};
+  }
+  const webp=await canvasBlob(out,'image/webp',1);
+  if(webp && webp.type==='image/webp' && webp.size<=TEMPLATE_IMAGE_BYTES){
+    return {blob:new File([webp], (slug(L.name)||'layer')+'.webp', {type:'image/webp'})};
+  }
+  return {error:'over 4.4 MB'};
 }
 function psdLayerWebp(L){
   if(!L||L.type!=='image'||!L.src||L.src.kind!=='local') return false;
@@ -1597,12 +1727,29 @@ function mapPsdBlend(mode,name,report){
   if(m!=='pass through') report.notes.push('Blend mode “'+m+'” on '+name);
   return 'source-over';
 }
-function mapPsdFont(psName,report){
-  const raw=String(psName||'').trim();
-  const key=raw.toLowerCase().replace(/\s+/g,'');
-  const known=PSD_FONT[key];
-  if(!report.fonts.some(f=>f.from===(raw||'Unknown'))) report.fonts.push({from:raw||'Unknown', to:known||null});
-  return known||raw||'Archivo';
+function mapPsdFont(font,report){
+  const obj=font&&typeof font==='object'?font:null;
+  const ps=obj?String(obj.name||obj.postScriptName||''):String(font||'');
+  const family=obj?String(obj.family||obj.fontFamily||''):'';
+  let known=null;
+  for(const key of [fontKey(ps), fontKey(family)]){
+    if(key&&PSD_FONT[key]){ known=PSD_FONT[key]; break; }
+  }
+  const raw=String(ps||family||'').trim();
+  const from=raw||'Unknown';
+  if(!report.fonts.some(f=>f.from===from)) report.fonts.push({from, to:known||null, psd:from});
+  return {family:known||raw||'Archivo', psd:from};
+}
+function psdImageRole(meta){
+  if(meta.slot&&meta.empty) return 'photo';
+  if(/photo/i.test(meta.name||'')) return 'photo';
+  return 'design';
+}
+function psdPointText(text){
+  if(!text) return false;
+  if(text.shapeType==='box'||text.textType==='paragraph'||text.textType==='box') return false;
+  if(text.shapeType==='point'||text.textType==='point') return true;
+  return !(Array.isArray(text.boxBounds)&&text.boxBounds.length>=4);
 }
 function psdColor(c){
   if(!c) return '#000000';
@@ -1694,14 +1841,17 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
     let hs=style.horizontalScale;
     if(hs==null||!isFinite(hs)||hs===0) hs=1;
     hs=Math.abs(hs)>3?hs/100:hs;
+    const mapped=mapPsdFont(style.font, report);
+    const point=psdPointText(layer.text);
     const L=T({
       name:meta.name, text:String(layer.text.text).replace(/\r/g,'\n'),
-      font:mapPsdFont(style.font&&style.font.name, report),
+      font:mapped.family, psdFont:mapped.psd,
       weight:400, italic:false,
       size:round2(size), lh:round2(Math.min(3,Math.max(0.6,lh))),
       ls:round2(((+style.tracking||0)*size)/1000),
       hscale:round2(Math.min(4,Math.max(0.2,hs))),
       upper:style.fontCaps===2, color:psdColor(style.fillColor), align:psdAlign(layer.text),
+      wrap:!point,
       x:round2(frame.x), y:round2(frame.y), w:Math.max(8,round2(frame.w)), h:Math.max(8,round2(frame.h)),
       opacity:Math.min(1,Math.max(0,opacity)), blend:mapPsdBlend(layer.blendMode, meta.name, report),
       visible:!hidden, locked:meta.locked, slot:meta.slot,
@@ -1731,7 +1881,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
       name:meta.name, src:px.src, nw:px.nw, nh:px.nh, fit:'stretch',
       x:Math.round(box.x||0), y:Math.round(box.y||0), w:px.nw, h:px.nh,
       opacity:Math.min(1,Math.max(0,opacity)), blend:mapPsdBlend(layer.blendMode, meta.name, report),
-      visible:!hidden, locked:meta.locked, slot:meta.slot,
+      visible:!hidden, locked:meta.locked, slot:meta.slot, role:psdImageRole(meta),
     });
     if(meta.web!==null) L.web=meta.web;
     L.clip=!!layer.clipping;
@@ -1741,7 +1891,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
   if(emptySlot){
     const framed=box.w>1&&box.h>1;
     const L=IM({
-      name:meta.name, src:null, fit:'stretch',
+      name:meta.name, src:null, fit:'stretch', role:psdImageRole(meta),
       x:framed?Math.round(box.x):0, y:framed?Math.round(box.y):0,
       w:framed?Math.max(1,Math.round(box.w)):page.w, h:framed?Math.max(1,Math.round(box.h)):page.h,
       opacity:Math.min(1,Math.max(0,opacity)), blend:mapPsdBlend(layer.blendMode, meta.name, report),
@@ -1776,23 +1926,60 @@ async function flattenPsd(layers, parentOpacity, parentHidden, report, out, page
     } else await importPsdLeaf(layer, opacity, hidden, report, out, page);
   }
 }
+function faceFamily(face){ return String(face&&face.family||'').replace(/^["']|["']$/g,'').trim(); }
+async function missingPsdFonts(layers){
+  const missing=[];
+  if(!document.fonts||!document.fonts.check) return missing;
+  await document.fonts.ready;
+  for(const L of layers){
+    if(!L||L.type!=='text') continue;
+    const family=String(L.font||'').replace(/"/g,'');
+    if(!family) continue;
+    const spec='16px "'+family+'"';
+    let listed=false;
+    try{ await document.fonts.load(spec,'Aa'); listed=document.fonts.check(spec); }
+    catch(e){ listed=false; }
+    let loaded=false;
+    if(listed){
+      for(const face of document.fonts){
+        if(face.status==='loaded' && faceFamily(face)===family){ loaded=true; break; }
+      }
+    }
+    if(!loaded) missing.push({name:L.name||'Text', psd:L.psdFont||family});
+  }
+  return missing;
+}
 function openPsdReport(report){
   const slots=report.slots.length?report.slots.map(esc).join(', '):'None. Name a layer slot:Headline in Photoshop to make a quick-fill slot.';
   const fonts=report.fonts.length?report.fonts.map(f=>f.to?esc(f.from)+' → '+esc(f.to):esc(f.from)+' kept its Photoshop name').join('<br>'):'No text layers.';
+  const missing=(report.missingFonts||[]);
+  const missingHtml=missing.length?`<div class="note warn"><b>Missing fonts.</b> These Photoshop names are not loaded. Add a mapping for the exact name.<br>${missing.map(f=>esc(f.psd)+(f.name?' on '+esc(f.name):'')).join('<br>')}</div>`:'';
   const notes=report.notes.length?report.notes.map(esc).join('<br>'):'Nothing was left out.';
   const refs=report.refs;
   const m=openModal(`<h2>Imported “${esc(report.docName)}”</h2>
     <div class="note">${report.w}×${report.h} · ${report.count} layer${report.count===1?'':'s'} · ${report.slots.length} quick-fill slot${report.slots.length===1?'':'s'}</div>
     <div class="note"><b>Slots.</b> ${slots}</div>
     <div class="note"><b>Fonts.</b><br>${fonts}</div>
+    ${missingHtml}
     <div class="note"><b>Not applied.</b> Layer effects, masks and adjustment layers stay in Photoshop.<br>${notes}</div>
     ${refs?`<div class="note">Each text layer has a hidden image above it named “(PSD reference)”, for checking position against the Photoshop type.</div>
+    <label class="chk"><input type="checkbox" id="psdCompare">Compare</label>
     <div class="acts"><button class="btn" id="psdDropRefs">Remove reference layers</button><button class="btn primary" data-close>Done</button></div>`:`<div class="acts"><button class="btn primary" data-close>Done</button></div>`}`);
   const modal=m.querySelector('.modal'); if(modal) modal.classList.add('wide');
-  m.querySelector('[data-close]').onclick=closeModal;
+  m.style.background='rgba(0,0,0,.28)';
+  m.style.alignItems='start';
+  m.style.justifyContent='end';
+  m.style.pointerEvents='none';
+  if(modal) modal.style.pointerEvents='auto';
+  const finish=()=>{ S.psdCompare=false; markArts(); scheduleRender(); closeModal(); };
+  m.querySelector('[data-close]').onclick=finish;
+  const cmp=$('#psdCompare', m);
+  if(cmp) cmp.onchange=()=>{ S.psdCompare=cmp.checked; markArts(); scheduleRender(); };
   const drop=$('#psdDropRefs', m);
   if(drop) drop.onclick=()=>{
     let n=0;
+    S.psdCompare=false;
+    if(cmp){ cmp.checked=false; cmp.disabled=true; }
     S.doc.pages.forEach(p=>{ const next=p.layers.filter(l=>!l.psdRef); n+=p.layers.length-next.length; p.layers=next; settleClips(p.layers); });
     if(S.sel&&!S.doc.layers.some(l=>l.id===S.sel)) S.sel=null;
     drop.disabled=true; drop.textContent=n?`Removed ${n} reference layer${n===1?'':'s'}`:'No reference layers';
@@ -1825,6 +2012,7 @@ async function importPsdFile(file){
     const page={id:uid(),name:'Page 1',w,h,bg:'#151616',layers};
     loadDoc({name:report.docName, templateId:null, templateType:'single', page:0, pages:[page]});
     S.dirty=true;
+    report.missingFonts=await missingPsdFonts(layers);
     setTab('fill');
     openPsdReport(report);
   }catch(err){
@@ -2539,11 +2727,27 @@ const alignBtns=`<div class="seg">
   <button type="button" data-act="al-m" aria-label="Align middle">${AL}<path d="M2 8h12M5 3.5v9M11 5.5v5"/></svg></button>
   <button type="button" data-act="al-b" aria-label="Align bottom">${AL}<path d="M2 13.5h12M5 3v8M11 6v5"/></svg></button></div>`;
 
+function missingImageNames(){
+  if(!S.doc) return [];
+  const names=[];
+  for(const p of S.doc.pages) for(const L of p.layers||[]){
+    if(L.type!=='image'||L.psdRef||L.src||L.role==='photo') continue;
+    names.push(L.name||'Untitled');
+  }
+  return names;
+}
+function missingImageNote(){
+  const names=missingImageNames();
+  if(!names.length) return '';
+  return `<div class="note warn"><b>Missing images.</b> ${names.map(esc).join(', ')}. Re-import the Photoshop file or replace each image.</div>`;
+}
 function renderProps(structural){
   const box=$('#props');
   if(S.tabR==='fill') box.innerHTML=fillHTML();
   else if(S.tabR==='canvas') box.innerHTML=canvasHTML();
   else box.innerHTML=layerHTML();
+  const warn=missingImageNote();
+  if(warn) box.insertAdjacentHTML('afterbegin', warn);
   syncProps(true);
   refreshFillThumbs();
 }
@@ -2551,7 +2755,7 @@ function fillHTML(){
   const slots=S.doc.layers.filter(l=>l.slot).slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
   const webpNote=webpWarn?`<div class="note warn">${esc(WEBP_REIMPORT)}</div>`:'';
   if(!slots.length) return webpNote+`<div class="empty">This canvas has no quick-fill slots yet.<br><br>Select a layer, open the <b>Layer</b> tab and turn on <b>Quick-fill slot</b>. Slots show up here so the team can swap the photo and copy without touching the layout.</div>`;
-  const empty=slots.filter(l=>l.type==='image'&&!l.src).length;
+  const empty=slots.filter(l=>l.type==='image'&&!l.src&&l.role==='photo').length;
   return webpNote+excerptHTML(slots)+`<div class="note">Fill these in and export. The layout stays put. Draft post eases a long line down so it stays clear of the next one.${empty?` <span class="note warn">${empty} photo slot${empty>1?'s':''} still empty.</span>`:''}</div>`+
   slots.map(L=>{
     if(L.type==='image') return `<div class="slotcard ${L.id===S.sel?'sel':''}" data-slotcard="${L.id}">
@@ -2643,6 +2847,7 @@ function layerHTML(){
   let h=`<div class="section">
     <div class="fld"><label for="f-name">Name</label><input class="inp" id="f-name" data-p="name" data-t="str" placeholder="${esc(layerLabel(L))}"></div>
     <label class="chk"><input type="checkbox" id="f-_slot" data-p="_slot" data-t="bool">Quick-fill slot</label>
+    ${L.type==='image'&&!L.psdRef?`<label class="chk"><input type="checkbox" id="f-role" data-p="role" data-t="bool">Photo slot (cleared when saving templates)</label>`:''}
     ${L.type==='redact'?'<div class="note">Always applied</div>':`<label class="chk"><input type="checkbox" id="f-web" data-p="web" data-t="bool">Include in web image</label>`}
     ${L.type==='folder'?'':`<label class="chk"><input type="checkbox" id="f-clip" data-p="clip" data-t="bool" ${canClipLayer(L)?'':'disabled'}>Clip to layer below</label>`}
     ${L.slot?`<div class="fld"><label for="f-slot">Slot label</label><input class="inp" id="f-slot" data-p="slot" data-t="str"></div>`:''}
@@ -2657,6 +2862,7 @@ function layerHTML(){
   if(L.type==='text') h+=`<div class="section">
     <div class="h">Text</div>
     <textarea class="inp" id="f-text" data-p="text" data-t="str" rows="3" aria-label="Text"></textarea>
+    <label class="chk"><input type="checkbox" id="f-wrap" data-p="wrap" data-t="bool">Wrap text in box</label>
     ${F.sel('Font','font',allFonts().map(f=>[f.family,f.family+(f.custom?' (uploaded)':'')]))}
     <div class="g4">${F.num('Size','size',{min:4,step:1})}${F.num('Weight','weight',{min:100,max:900,step:100})}${F.num('Line','lh',{step:.01,min:.5})}${F.num('Track','ls',{step:.5})}</div>
     <div class="row" style="flex-wrap:nowrap">${F.seg('align',[['left',AL+'<path d="M2 4h12M2 8h8M2 12h10"/></svg>'],['center',AL+'<path d="M2 4h12M4 8h8M3 12h10"/></svg>'],['right',AL+'<path d="M2 4h12M6 8h8M4 12h10"/></svg>']])}
@@ -2702,14 +2908,14 @@ function layerHTML(){
   </div>`;
   h+=`<div class="section">
     <div class="h">Position</div>
-    <div class="g4">${F.num('X','x')}${F.num('Y','y')}${F.num('W','w',{min:1})}${F.num('H','h',{min:1,dis:L.type==='text'})}</div>
+    <div class="g4">${F.num('X','x')}${F.num('Y','y')}${F.num('W','w',{min:1,dis:L.type==='text'&&L.wrap===false})}${F.num('H','h',{min:1,dis:L.type==='text'})}</div>
     <div class="g2">${F.num('Rotate°','rot',{step:.5})}${F.num('Opacity %','opacity',{t:'pct',min:0,max:100})}</div>
     ${alignBtns}
     ${F.sel('Blend','blend',BLENDS)}
   </div>
   <div class="section">
     ${F.chk('Drop shadow','shadow')}
-    ${L.shadow?F.color('Shadow','shadowColor')+`<div class="g4">${F.num('Blur','shadowBlur',{min:0})}${F.num('X','shadowX')}${F.num('Y','shadowY')}<div></div></div>`:''}
+    ${L.shadow?F.color('Shadow','shadowColor')+`<div class="g4">${F.num('Size','shadowSize',{min:0})}${F.num('Blur','shadowBlur',{min:0})}${F.num('X','shadowX')}${F.num('Y','shadowY')}</div>`:''}
   </div>
   <div class="section"><div class="row">
     <button class="btn" data-act="dup">Duplicate</button><button class="btn" data-act="fwd" title="]">Forward</button><button class="btn" data-act="back" title="[">Backward</button>
@@ -2742,6 +2948,9 @@ function applyFromPhotoshop(){
 }
 function fieldVal(L,p){
   if(p==='_slot') return !!L.slot;
+  if(p==='role') return !!(L&&L.role==='photo');
+  if(p==='wrap') return !L||L.wrap!==false;
+  if(p==='shadowSize') return L?(+L.shadowSize||0):0;
   if(p==='_w') return S.doc.w; if(p==='_h') return S.doc.h; if(p==='_bg') return S.doc.bg;
   if(p==='_size') return S.doc.w+'x'+S.doc.h;
   return L?L[p]:undefined;
@@ -2764,7 +2973,7 @@ function syncProps(force){
   box.querySelectorAll('[data-seg]').forEach(s=>{ const p=s.dataset.seg; s.querySelectorAll('[data-segv]').forEach(b=>b.setAttribute('aria-pressed',L&&String(L[p])===b.dataset.segv)); });
 }
 function fmtOut(p,v){ if(p==='hscale'||p==='zoom') return Math.round(v*100)+'%'; if(p==='fill2Alpha') return Math.round(v*100)+'%'; if(['bright','contrast','sat','gray'].includes(p)) return Math.round(v)+'%'; if(p==='gradAngle') return Math.round(v)+'°'; return String(Math.round(v*10)/10); }
-const REBUILD=new Set(['bg','grad','strokeW','shadow','fit','_slot','font','slot','mode','shape']);
+const REBUILD=new Set(['bg','grad','strokeW','shadow','fit','_slot','font','slot','mode','shape','wrap']);
 function applyField(el,isChange){
   const p=el.dataset.p, t=el.dataset.t; let v;
   if(t==='bool') v=el.checked; else if(t==='num'||t==='pct'){ v=parseFloat(el.value); if(isNaN(v)) return; if(t==='pct') v=clamp(v/100,0,1); }
@@ -2775,6 +2984,7 @@ function applyField(el,isChange){
   if(p==='_size'){ if(v){ const [w,h]=v.split('x').map(Number); S.doc.w=w; S.doc.h=h; scheduleRender(); fitView(); renderProps(true);} return; }
   const L=sel(); if(!L) return;
   if(p==='_slot'){ L.slot = v ? (L.slot || L.name || (L.type==='image'?'Photo':layerLabel(L).slice(0,18))) : ''; }
+  else if(p==='role'){ L.role = v ? 'photo' : 'design'; }
   else if(p==='font'){ L.font=v; const f=allFonts().find(x=>x.family===v); if(BRAND_FONT_FAMILIES.has(v)){ L.weight=400; L.italic=false; } else if(f&&!f.weights.includes(L.weight)) L.weight=f.weights.reduce((a,b)=>Math.abs(b-L.weight)<Math.abs(a-L.weight)?b:a); ensureFonts([L]); }
   else L[p]=v;
   if(L.type==='redact'){ L.web=true; if(p==='block') L.block=Math.max(12,Math.round(+L.block||28)); if(p==='blurRadius') L.blurRadius=Math.max(1,Math.round(+L.blurRadius||24)); }
@@ -2968,17 +3178,49 @@ function openSaveTemplate(){
     try{
       const name=$('#tName',m).value.trim()||'Untitled template', clear=$('#tClear',m).checked;
       const pages=JSON.parse(JSON.stringify(S.doc.pages));
+      const problems=[];
+      const uploads=[];
       for(const page of pages){
+        page.layers=(page.layers||[]).filter(L=>!L.psdRef);
         for(const L of page.layers){
           if(L.type!=='image'||!L.src) continue;
-          if(clear && L.slot){ L.src=null; continue; }
-          if(L.src.kind==='local'){
-            if(!cap.assets) throw {code:'need_assets'};
-            prog.textContent='Uploading '+(L.name||'image')+'…';
-            const b=localBlobs.get(L.src.key)||await idbGet(L.src.key); if(!b){ L.src=null; continue; }
-            const r=await cap.assets.upload(b); L.src={kind:'asset',assetId:r.id,url:r.url||''};
-          }
+          if(clear && L.role==='photo'){ L.src=null; continue; }
+          if(L.src.kind!=='local') continue;
+          const label=L.name||'Untitled';
+          let blob=localBlobs.get(L.src.key)||await idbGet(L.src.key);
+          if(!blob){ problems.push(label+': the image file isn\'t on this computer'); continue; }
+          const fitted=await fitLayerForUpload(L, blob);
+          if(fitted.error){ problems.push(label+': '+fitted.error); continue; }
+          blob=fitted.blob;
+          if(blob.size>TEMPLATE_IMAGE_BYTES){ problems.push(label+': over 4.4 MB'); continue; }
+          uploads.push({L, blob});
         }
+      }
+      if(problems.length){
+        btn.disabled=false;
+        prog.innerHTML=`<span class="note warn">The template was not saved.<br>${problems.map(esc).join('<br>')}</span>`;
+        return;
+      }
+      if(uploads.length && !cap.assets){
+        btn.disabled=false;
+        prog.innerHTML=`<span class="note warn">The template was not saved.<br>${uploads.map(u=>esc((u.L.name||'Untitled')+': uploads are turned off')).join('<br>')}</span>`;
+        return;
+      }
+      for(const item of uploads){
+        const label=item.L.name||'Untitled';
+        prog.textContent='Uploading '+label+'…';
+        try{
+          const r=await cap.assets.upload(item.blob);
+          item.L.src={kind:'asset',assetId:r.id,url:r.url||''};
+        }catch(err){
+          const reason=(err&&(err.code==='too_large'||err.status===413))?'over 4.4 MB':'the upload failed';
+          problems.push(label+': '+reason);
+        }
+      }
+      if(problems.length){
+        btn.disabled=false;
+        prog.innerHTML=`<span class="note warn">The template was not saved.<br>${problems.map(esc).join('<br>')}</span>`;
+        return;
       }
       prog.textContent='Saving…';
       const first=pages[0];

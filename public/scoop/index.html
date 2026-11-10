@@ -1756,10 +1756,8 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
   else if(layer.vectorFill||layer.vectorStroke||layer.vectorMask) report.notes.push('Vector shape on '+meta.name);
 }
 async function flattenPsd(layers, parentOpacity, parentHidden, report, out, page){
-  // ag-psd lists children from the top of the Photoshop panel downward.
-  const list=layers||[];
-  for(let n=list.length-1;n>=0;n--){
-    const layer=list[n];
+  // ag-psd lists children from the back of the stack forward, so the first child is the background.
+  for(const layer of layers||[]){
     const opacity=parentOpacity*(layer.opacity??1)*(layer.fillOpacity??1);
     const hidden=parentHidden||!!layer.hidden;
     if(layer.children){

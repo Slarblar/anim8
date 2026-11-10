@@ -87,6 +87,7 @@ details.ps[open]>summary{margin-bottom:8px}
 .acard .th img{max-width:100%;max-height:100%;object-fit:contain}
 .acard:hover .th{border-color:var(--red)}
 .acard .nm{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acard .piece{font:700 8px/1.25 "Archivo",sans-serif;color:#151616;text-align:center;padding:6px;letter-spacing:.01em}
 .acard .del{position:absolute;top:3px;right:3px;opacity:0}
 .chips{display:flex;flex-wrap:wrap;gap:5px}
 .chip{border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:11px;font-weight:600;background:none;cursor:pointer;color:var(--muted)}
@@ -246,6 +247,7 @@ textarea.inp{resize:vertical;min-height:58px;line-height:1.4}
         <option value="fade">Photo fade (gradient)</option>
         <option value="pin">Location pin</option>
         <option value="arrow">Arrow</option>
+        <option value="tags">Tags</option>
       </select>
     </div>
     <span class="sep"></span>
@@ -1529,8 +1531,31 @@ function addShape(kind){
   else if(kind==='pin') L=SH({shape:'pin',fill:'#ED2224',w:48,h:66});
   else if(kind==='arrow') L=SH({shape:'arrow',fill:'#FFFFFF',strokeW:4,w:90,h:32});
   else if(kind==='ellipse') L=SH({shape:'ellipse',fill:'#ED2224',w:240,h:240});
+  else if(kind==='tags'){ addTagsLayer(); return; }
   else L=SH({shape:'rect',fill:'#ED2224',w:Math.round(W*.4),h:Math.round(H*.08)});
   centerIn(L); if(kind==='fade') L.y=H-L.h; addLayer(L); setTab('layer');
+}
+function addTagsLayer(at){
+  const cat=S.doc.layers.find(l=>l.type==='text'&&(/category/i.test(l.slot||'')||/category/i.test(l.name||'')));
+  const L=T({
+    name:'Tags', slot:'Tags',
+    text:'UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP',
+    font:'Archivo', weight:700, size:23, lh:1.15, color:'#151616', align:'left', w:680,
+  });
+  L.h=Math.round(L.size*L.lh);
+  if(at){
+    L.x=Math.round(at.x); L.y=Math.round(at.y);
+    L.w=Math.min(680, Math.max(180, S.doc.w-L.x-24));
+  }else if(cat){
+    const wide=String(cat.text||'').trim().length>8;
+    L.x=(cat.w===160||cat.w===280)?(wide?360:240):Math.round(cat.x+cat.w+16);
+    L.y=Math.round(cat.y+8);
+    L.w=Math.min(680, Math.max(180, S.doc.w-L.x-24));
+  }else{
+    L.x=56; L.y=Math.round(S.doc.h*0.63);
+    L.w=Math.min(680, Math.max(180, S.doc.w-80));
+  }
+  addLayer(L); ensureFonts([L]); setTab('layer');
 }
 async function blobDims(blob){ const u=URL.createObjectURL(blob); try{ return await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res({w:i.naturalWidth||i.width||400,h:i.naturalHeight||i.height||400});i.onerror=rej;i.src=u;}); } finally{ setTimeout(()=>URL.revokeObjectURL(u),2000);} }
 async function localSrc(file){ const key='loc_'+uid(); localBlobs.set(key,file); idbPut(key,file); return {kind:'local',key}; }
@@ -2123,6 +2148,46 @@ function brushHit(L,x,y){
   }
   return false;
 }
+const alphaMasks=new Map();
+function alphaMask(img, key){
+  const id=key||img.src||'';
+  const hit=alphaMasks.get(id);
+  if(hit) return hit;
+  const nw=img.naturalWidth||img.width||0, nh=img.naturalHeight||img.height||0;
+  if(!(nw>0)||!(nh>0)) return null;
+  const max=96, s=Math.min(1, max/Math.max(nw,nh));
+  const w=Math.max(1,Math.round(nw*s)), h=Math.max(1,Math.round(nh*s));
+  const c=document.createElement('canvas');
+  c.width=w; c.height=h;
+  const g=c.getContext('2d',{willReadFrequently:true});
+  g.drawImage(img,0,0,w,h);
+  let data=null;
+  try{
+    const px=g.getImageData(0,0,w,h).data;
+    data=new Uint8Array(w*h);
+    for(let i=0;i<data.length;i++) data[i]=px[i*4+3];
+  }catch(e){ data=null; }
+  const mask={w,h,data};
+  alphaMasks.set(id, mask);
+  while(alphaMasks.size>24) alphaMasks.delete(alphaMasks.keys().next().value);
+  return mask;
+}
+function imageOpaqueAt(L,x,y){
+  const img=getImg(L.src);
+  if(!img) return true;
+  let [lx,ly]=layerLocal(L,x,y);
+  if(L.flipX) lx=L.w-lx;
+  if(L.flipY) ly=L.h-ly;
+  const d=coverDims(L,img);
+  if(!(Math.abs(d.dw)>0)||!(Math.abs(d.dh)>0)) return true;
+  const ix=(lx-d.dx)/d.dw, iy=(ly-d.dy)/d.dh;
+  if(ix<0||iy<0||ix>1||iy>1) return false;
+  const mask=alphaMask(img, srcKey(L.src));
+  if(!mask||!mask.data) return true;
+  const px=Math.min(mask.w-1, Math.max(0, Math.floor(ix*mask.w)));
+  const py=Math.min(mask.h-1, Math.max(0, Math.floor(iy*mask.h)));
+  return mask.data[py*mask.w+px]>16;
+}
 function hitTest(x,y){
   const ls=S.doc.layers;
   for(let i=ls.length-1;i>=0;i--){
@@ -2132,6 +2197,7 @@ function hitTest(x,y){
     if(!inside(L,x,y)) continue;
     const b=clipBaseIndex(ls, i);
     if(b>=0 && !inside(ls[b], x, y)) continue;
+    if(L.type==='image' && L.src && !imageOpaqueAt(L,x,y)) continue;
     return L;
   }
   return null;
@@ -2317,7 +2383,7 @@ function enterCrop(){
   if(msg) msg.textContent=clipped?'Adjusting photo inside the layer below: drag to reposition, scroll to zoom':'Adjusting photo: drag to reposition, scroll to zoom';
   $('#cropbar').hidden=false; scheduleRender(); renderProps(true);
 }
-const HINT_IDLE='Drag empty space or scroll to pan · Ctrl-scroll to zoom · hold Space to pan · pages sit side by side';
+const HINT_IDLE='Click a layer to select it, then drag to move its box · drag empty space or scroll to pan · Ctrl-scroll to zoom';
 function syncRedactTool(){
   const btn=$('#redactBtn'); if(btn){ btn.classList.toggle('on', !!(S.tool||S.brush)); btn.setAttribute('aria-expanded', $('#redactPop')&&!$('#redactPop').hidden ? 'true' : 'false'); }
   const bar=$('#brushbar'); if(bar) bar.hidden=!S.brush;
@@ -2362,6 +2428,8 @@ stagewrap.addEventListener('drop',e=>{
   const idx=indexFromEvent(e);
   if(idx>=0 && idx!==S.doc.page){ S.sel=null; S.crop=false; $('#cropbar').hidden=true; S.doc.page=idx; syncArtboards(); renderLayers(); renderProps(true); renderPages(); }
   const p=evDoc(e);
+  const piece=e.dataTransfer.getData('application/x-scoop-piece');
+  if(piece==='tags'){ addTagsLayer({x:p.x,y:p.y}); return; }
   const aid=e.dataTransfer.getData('application/x-scoop-asset');
   if(aid){ const a=LIB.find(x=>x.id===aid); if(a) addAsset(a,{x:p.x,y:p.y}); return; }
   if(e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files,{x:p.x,y:p.y});
@@ -3068,6 +3136,9 @@ function renderLib(){
     else if(cap.ready) h+=`<div class="note">Uploads are turned off on this server.</div>`;
     h+=`<input class="inp" id="aq" placeholder="Search assets" value="${esc(assetQuery)}" aria-label="Search assets">`;
     h+=`<div class="chips">${['All'].concat(CATS).map(c=>`<button class="chip" data-cat="${c}" aria-pressed="${c===assetFilter}">${c}</button>`).join('')}</div>`;
+    const showTags=assetFilter==='All' && (!assetQuery || 'tags'.startsWith(assetQuery.toLowerCase()));
+    if(showTags) h+=`<div class="h">Built in</div><div class="agrid"><div class="acard" draggable="true" data-piece="tags" title="Add the tags line. Click to place it, or drag it onto the page. Edit the words in the Layer tab.">
+      <div class="th" style="background:#F4F5F0"><span class="piece">UTAH | PUBLIC SAFETY | COMMUNITY</span></div><span class="nm">Tags</span></div></div>`;
     const list=imgs.filter(a=>(assetFilter==='All'||a.category===assetFilter)&&(!assetQuery||String(a.name).toLowerCase().includes(assetQuery.toLowerCase())));
     if(cap.ready && !list.length) h+=`<div class="empty">${imgs.length?'Nothing matches.':'No brand assets yet. Upload the logo, torn-paper textures, pin and arrow icons so everyone builds from the same files.'}</div>`;
     h+=`<div class="agrid">`+list.map(a=>`<div class="acard" draggable="true" data-asset="${a.id}" title="${esc(a.name)} · click to add, drag onto a photo slot to fill it">
@@ -3098,10 +3169,15 @@ lib.addEventListener('click',async e=>{
   const kd=e.target.closest('[data-kind]'); if(kd){ if(await guardDirty()){ loadDoc(makeDoc(kd.dataset.kind)); setTab('fill'); toast('Loaded “'+kindName(kd.dataset.kind)+'”'); } return; }
   const bi=e.target.closest('[data-builtin]'); if(bi){ if(await guardDirty()) loadDoc(starterDoc()); return; }
   const tp=e.target.closest('[data-tpl]'); if(tp){ const t=TPLS.find(x=>x.id===tp.dataset.tpl); if(t && await guardDirty()) loadTemplate(t); return; }
+  const piece=e.target.closest('[data-piece]'); if(piece&&piece.dataset.piece==='tags'){ addTagsLayer(); return; }
   const ac=e.target.closest('[data-asset]'); if(ac){ const a=LIB.find(x=>x.id===ac.dataset.asset); if(a) addAsset(a); }
 });
 lib.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const tp=e.target.closest('[data-tpl]'); if(tp) tp.click(); } });
-lib.addEventListener('dragstart',e=>{ const ac=e.target.closest('[data-asset]'); if(!ac) return; e.dataTransfer.setData('application/x-scoop-asset',ac.dataset.asset); e.dataTransfer.effectAllowed='copy'; });
+lib.addEventListener('dragstart',e=>{
+  const piece=e.target.closest('[data-piece]');
+  if(piece){ e.dataTransfer.setData('application/x-scoop-piece', piece.dataset.piece); e.dataTransfer.effectAllowed='copy'; return; }
+  const ac=e.target.closest('[data-asset]'); if(!ac) return; e.dataTransfer.setData('application/x-scoop-asset',ac.dataset.asset); e.dataTransfer.effectAllowed='copy';
+});
 
 function loadTemplate(t){
   const pages=Array.isArray(t.pages)&&t.pages.length?JSON.parse(JSON.stringify(t.pages)):[{id:uid(),name:'Page 1',w:t.w,h:t.h,bg:t.bg||'#151616',layers:JSON.parse(JSON.stringify(t.layers||[]))}];

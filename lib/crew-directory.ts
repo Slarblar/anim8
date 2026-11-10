@@ -106,6 +106,12 @@ export type CrewMember = {
   meetingLateCountLastMonth: number;
   meetingAbsentCountLastMonth: number;
   /**
+   * Late (tardy) and absent (missing-day) marks by studio month, YYYY-MM.
+   * The open month is kept in sync with the live counters. Closed months
+   * are written here on rollover so staff reports can total a longer window.
+   */
+  meetingAttendanceByMonth: Record<string, { late: number; absent: number }>;
+  /**
    * Studio date (YYYY-MM-DD) this person was manually marked "out" for.
    * Only applies when it equals today's studio date — clears overnight so
    * presence doesn't stick across days.
@@ -116,7 +122,7 @@ export type CrewMember = {
 /** Fills in fields that may be missing on records created before they existed. */
 function withDefaults(record: CrewMember): CrewMember {
   const employmentType = record.employmentType ?? 'full_time';
-  return {
+  const normalized: CrewMember = {
     ...record,
     location: record.location ?? 'VN',
     reportExempt: defaultReportExempt({
@@ -142,8 +148,45 @@ function withDefaults(record: CrewMember): CrewMember {
       typeof record.meetingLateCountLastMonth === 'number' ? record.meetingLateCountLastMonth : 0,
     meetingAbsentCountLastMonth:
       typeof record.meetingAbsentCountLastMonth === 'number' ? record.meetingAbsentCountLastMonth : 0,
+    meetingAttendanceByMonth: record.meetingAttendanceByMonth ?? {},
     manualOutDate: record.manualOutDate ?? null,
   };
+  return {
+    ...normalized,
+    meetingAttendanceByMonth: attendanceHistoryFromMember(normalized),
+  };
+}
+
+/** Open month mirrors the live counters. A missing previous month is seeded once. */
+export function attendanceHistoryFromMember(
+  member: Pick<
+    CrewMember,
+    | 'meetingAttendanceMonthKey'
+    | 'meetingLateCount'
+    | 'meetingAbsentCount'
+    | 'meetingAttendanceLastMonthKey'
+    | 'meetingLateCountLastMonth'
+    | 'meetingAbsentCountLastMonth'
+    | 'meetingAttendanceByMonth'
+  >
+): Record<string, { late: number; absent: number }> {
+  const history: Record<string, { late: number; absent: number }> = {
+    ...(member.meetingAttendanceByMonth ?? {}),
+  };
+  const lastKey = member.meetingAttendanceLastMonthKey;
+  if (lastKey && !history[lastKey]) {
+    history[lastKey] = {
+      late: member.meetingLateCountLastMonth ?? 0,
+      absent: member.meetingAbsentCountLastMonth ?? 0,
+    };
+  }
+  if (member.meetingAttendanceMonthKey) {
+    history[member.meetingAttendanceMonthKey] = {
+      late: member.meetingLateCount ?? 0,
+      absent: member.meetingAbsentCount ?? 0,
+    };
+  }
+  return history;
 }
 
 /**
@@ -265,6 +308,7 @@ export async function addOrUpdateCrewMember(input: {
     meetingAttendanceLastMonthKey: existing?.meetingAttendanceLastMonthKey ?? null,
     meetingLateCountLastMonth: existing?.meetingLateCountLastMonth ?? 0,
     meetingAbsentCountLastMonth: existing?.meetingAbsentCountLastMonth ?? 0,
+    meetingAttendanceByMonth: existing?.meetingAttendanceByMonth ?? {},
     manualOutDate: existing?.manualOutDate ?? null,
   };
 
@@ -440,9 +484,15 @@ export function currentMeetingAttendance(
  */
 function withAttendanceRollover(member: CrewMember, monthKey: string = monthKeyInTimeZone()): CrewMember {
   const storedMonth = member.meetingAttendanceMonthKey || monthKey;
+  const history = { ...(member.meetingAttendanceByMonth ?? {}) };
   if (storedMonth === monthKey) return member;
+  history[storedMonth] = {
+    late: member.meetingLateCount ?? 0,
+    absent: member.meetingAbsentCount ?? 0,
+  };
   return {
     ...member,
+    meetingAttendanceByMonth: history,
     meetingAttendanceLastMonthKey: storedMonth,
     meetingLateCountLastMonth: member.meetingLateCount ?? 0,
     meetingAbsentCountLastMonth: member.meetingAbsentCount ?? 0,
@@ -482,10 +532,13 @@ export async function adjustMeetingAttendance(
     kind === 'absent'
       ? Math.max(0, (rolled.meetingAbsentCount ?? 0) + delta)
       : rolled.meetingAbsentCount ?? 0;
+  const history = { ...(rolled.meetingAttendanceByMonth ?? {}) };
+  history[rolled.meetingAttendanceMonthKey] = { late: nextLate, absent: nextAbsent };
   const updated: CrewMember = {
     ...rolled,
     meetingLateCount: nextLate,
     meetingAbsentCount: nextAbsent,
+    meetingAttendanceByMonth: history,
   };
   await getKv().set(keyFor(email), updated);
   return updated;

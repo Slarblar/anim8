@@ -636,6 +636,130 @@ function layoutText(ctx,L){
   return {lines:lines.map(t=>({t,w:measure(ctx,t,L.ls)})), lineH, h:Math.max(lineH,lines.length*lineH)+2*padY, padX, padY, hs};
 }
 
+/* A filled slot keeps the template size when the copy fits. A long line steps down, not past a readable floor, until it clears the next layer. */
+const designSize=new Map();
+let measureCanvas=null;
+function textMeasureCtx(){
+  if(!measureCanvas) measureCanvas=document.createElement('canvas');
+  return measureCanvas.getContext('2d');
+}
+function shownIn(layers,L){
+  if(!L||L.visible===false) return false;
+  let id=L.parent, n=0;
+  while(id && n++<24){
+    const p=layers.find(l=>l.id===id);
+    if(!p) break;
+    if(p.visible===false) return false;
+    id=p.parent;
+  }
+  return true;
+}
+function textRole(L){
+  const lab=(L.slot||'').toLowerCase();
+  if(/quote/.test(lab)) return 'quote';
+  if(/headline|title/.test(lab)) return 'display';
+  if(/dek|sub|summary|body/.test(lab)) return 'body';
+  return 'line';
+}
+function lineCap(role){ return role==='quote'?5:role==='display'||role==='body'?3:1; }
+function sizeFloor(L,role){
+  const design=designSize.get(L.id)||L.size;
+  const ratio=role==='body'?0.68:role==='line'?0.62:0.70;
+  const abs=role==='display'||role==='quote'?42:role==='body'?24:15;
+  return Math.min(design, Math.max(abs, design*ratio));
+}
+function xHits(a,b){ return a.x<b.x+b.w-6 && a.x+a.w>b.x+6; }
+function containsPoint(b,x,y){ return x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h; }
+function roomBelow(L,layers,pageW,pageH){
+  const ax=L.x+Math.min(16,Math.max(4,L.w*0.04)), ay=L.y+4;
+  let limit=pageH-6;
+  for(const o of layers){
+    if(o===L||o.type==='folder'||o.type==='redact') continue;
+    if(!shownIn(layers,o)) continue;
+    if((o.opacity??1)<=0.02) continue;
+    if(o.type==='image'&&o.w>=pageW*0.85&&o.h>=pageH*0.85) continue;
+    if(!xHits(L,o)) continue;
+    if(containsPoint(o,ax,ay)) continue;
+    if(o.y<=L.y+14) continue;
+    if(o.y<limit) limit=o.y;
+  }
+  return limit-L.y-8;
+}
+function measureAt(ctx,L,size){
+  const prev=L.size; L.size=size; hintText(ctx);
+  const lay=layoutText(ctx,L); L.size=prev; return lay;
+}
+function blockFits(ctx,L,size,maxH,cap){
+  const lay=measureAt(ctx,L,size);
+  return lay.h<=maxH+0.5 && lay.lines.length<=cap;
+}
+function ragged(lay){
+  if(!lay.lines||lay.lines.length<2) return false;
+  const widths=lay.lines.map(l=>l.w), maxW=Math.max.apply(null,widths), last=widths[widths.length-1];
+  return maxW>40 && last<maxW*0.32 && last<220;
+}
+function easeWidow(ctx,L,size,floor,maxH,cap){
+  let best=size, lay=measureAt(ctx,L,best);
+  if(!ragged(lay)) return best;
+  const startLines=lay.lines.length, limit=Math.max(floor,size*0.92);
+  for(let s=size-0.5; s>=limit-0.01; s-=0.5){
+    const m=measureAt(ctx,L,s);
+    if(m.h>maxH+0.5||m.lines.length>cap||m.lines.length>startLines) continue;
+    const last=m.lines[m.lines.length-1].w, prevLast=lay.lines[lay.lines.length-1].w;
+    if(!ragged(m)||last>prevLast+8){ best=s; lay=m; if(!ragged(m)) break; }
+  }
+  return best;
+}
+function pruneDesignSizes(){
+  if(!S.doc||!S.doc.pages) return;
+  const ids=new Set();
+  for(const p of S.doc.pages) for(const l of p.layers||[]) ids.add(l.id);
+  for(const id of designSize.keys()) if(!ids.has(id)) designSize.delete(id);
+}
+function fitCategoryRow(layers){
+  const cat=layers.find(l=>l.type==='text'&&l.slot==='Category');
+  const tags=layers.find(l=>l.type==='text'&&l.slot==='Tags');
+  if(!cat||!tags||layerLocked(cat)||layerLocked(tags)) return;
+  if(!((cat.w===160||cat.w===280)&&(tags.x===240||tags.x===360))) return;
+  const wide=String(cat.text||'').trim().length>8;
+  cat.w=wide?280:160; tags.x=wide?360:240;
+}
+function fitFilledText(changed,layers,pageW,pageH){
+  pruneDesignSizes();
+  if(changed.some(l=>l&&l.slot==='Category')) fitCategoryRow(layers);
+  const ctx=textMeasureCtx(), tight=[];
+  for(const L of changed){
+    if(!L||L.type!=='text'||!L.slot||layerLocked(L)||!shownIn(layers,L)) continue;
+    if(!designSize.has(L.id)) designSize.set(L.id,L.size);
+    else L.size=designSize.get(L.id);
+    if(!String(L.text||'').trim()) continue;
+    const role=textRole(L), cap=lineCap(role), floor=sizeFloor(L,role), design=designSize.get(L.id);
+    const maxH=roomBelow(L,layers,pageW,pageH);
+    if(!(maxH>=12)) continue;
+    let best=design;
+    if(!blockFits(ctx,L,best,maxH,cap)){
+      let lo=floor, hi=design; best=floor;
+      for(let i=0;i<16;i++){
+        const mid=(lo+hi)/2;
+        if(blockFits(ctx,L,mid,maxH,cap)){ best=mid; lo=mid; } else hi=mid;
+      }
+    }
+    if(best<design-0.2) best=easeWidow(ctx,L,best,floor,maxH,cap);
+    let size=best===design?design:Math.round(best*10)/10;
+    while(size>floor+0.05 && !blockFits(ctx,L,size,maxH,cap)) size=Math.round((size-0.1)*10)/10;
+    if(size<floor) size=Math.round(floor*10)/10;
+    L.size=size;
+    if(!blockFits(ctx,L,L.size,maxH,cap)) tight.push(L.slot);
+  }
+  return tight;
+}
+function tightNote(names){
+  const clean=names.filter(Boolean).map(n=>esc(n));
+  if(!clean.length) return '';
+  if(clean.length===1) return ` ${clean[0]} is as small as it should go and still runs long.`;
+  return ` ${clean.slice(0,-1).join(', ')} and ${clean[clean.length-1]} are as small as they should go and still run long.`;
+}
+
 /* ---------- drawing ---------- */
 function shapePath(ctx,L){
   const w=L.w,h=L.h; ctx.beginPath();
@@ -1827,7 +1951,7 @@ function fillHTML(){
   const slots=S.doc.layers.filter(l=>l.slot).slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
   if(!slots.length) return `<div class="empty">This canvas has no quick-fill slots yet.<br><br>Select a layer, open the <b>Layer</b> tab and turn on <b>Quick-fill slot</b>. Slots show up here so the team can swap the photo and copy without touching the layout.</div>`;
   const empty=slots.filter(l=>l.type==='image'&&!l.src).length;
-  return excerptHTML(slots)+`<div class="note">Fill these in and export. Layout, fonts and brand layers stay put.${empty?` <span class="note warn">${empty} photo slot${empty>1?'s':''} still empty.</span>`:''}</div>`+
+  return excerptHTML(slots)+`<div class="note">Fill these in and export. The layout stays put. Draft post eases a long line down so it stays clear of the next one.${empty?` <span class="note warn">${empty} photo slot${empty>1?'s':''} still empty.</span>`:''}</div>`+
   slots.map(L=>{
     if(L.type==='image') return `<div class="slotcard ${L.id===S.sel?'sel':''}" data-slotcard="${L.id}">
       <div class="lab">${esc(L.slot)}<em>${Math.round(L.w)}×${Math.round(L.h)}</em></div>
@@ -1851,13 +1975,13 @@ function excerptHTML(slots){
     <div class="lab"><label for="exIn">Draft from excerpt</label><em>Claude</em></div>
     <textarea class="inp" id="exIn" placeholder="Paste the article, press release or reporter notes. Claude writes the ${n} text slots from it." ${EX.busy?'disabled':''}>${esc(EX.text)}</textarea>
     <div class="row"><button class="btn primary" id="exGo" ${EX.busy?'disabled':''}>${EX.busy?'Drafting…':'Draft post'}</button>${EX.busy?'<button class="btn" id="exStop">Stop</button>':''}</div>
-    ${EX.msg?`<div class="note ${EX.err?'warn':''}">${EX.msg}</div>`:'<div class="note">Uses only what the excerpt says. Check every line against the source before posting.</div>'}
+    ${EX.msg?`<div class="note ${EX.err?'warn':''}">${EX.msg}</div>`:'<div class="note">Uses only what the excerpt says. A long line eases down so it stays clear of the next one. Check every line against the source before posting.</div>'}
   </div>`;
 }
 function slotBrief(L){
-  const lab=L.slot.toLowerCase(), hs=L.hscale||1;
-  const perLine=Math.max(8,Math.floor(L.w/(L.size*.56*hs)));
-  const lines=/headline|title/.test(lab)?3:/dek|sub|summary|body/.test(lab)?3:1;
+  const lab=L.slot.toLowerCase(), hs=L.hscale||1, size=designSize.get(L.id)||L.size;
+  const perLine=Math.max(8,Math.floor(L.w/(size*.56*hs)));
+  const lines=/headline|title/.test(lab)?3:/quote/.test(lab)?5:/dek|sub|summary|body/.test(lab)?3:1;
   return {slot:L.slot,maxChars:perLine*lines,caps:!!L.upper,example:String(L.text).slice(0,160)};
 }
 async function draftFromExcerpt(){
@@ -1868,10 +1992,16 @@ async function draftFromExcerpt(){
   EX.busy=true; EX.msg=''; EX.err=false; EX.ctrl=new AbortController(); renderProps(true);
   try{
     const out=await cap.sample.draft({excerpt:text.slice(0,12000),slots:briefs},EX.ctrl.signal);
-    const f=(out&&out.fields)||{}; let n=0;
-    for(const L of slots){ const v=f[L.slot]; if(typeof v==='string'&&v.trim()){ L.text=v.trim(); n++; } }
-    if(n){ commit(); ensureFonts(slots); scheduleRender(); renderLayers(); }
-    EX.msg=n?`Filled ${n} of ${slots.length} slots.`+(out.notes?` <b>Note:</b> ${esc(out.notes)}`:'')+' Fix anything with the boxes below, or undo with Ctrl+Z.':'The excerpt didn\'t have enough to fill the slots.';
+    const f=(out&&out.fields)||{}; const filled=[];
+    for(const L of slots){ const v=f[L.slot]; if(typeof v==='string'&&v.trim()){ L.text=v.trim(); filled.push(L); } }
+    const n=filled.length; let tight=[];
+    if(n){
+      await ensureFonts(filled);
+      tight=fitFilledText(filled,S.doc.layers,S.doc.w,S.doc.h);
+      await ensureFonts(filled);
+      commit(); scheduleRender(); renderLayers();
+    }
+    EX.msg=n?`Filled ${n} of ${slots.length} slots.`+tightNote(tight)+(out.notes?` <b>Note:</b> ${esc(out.notes)}`:'')+' Fix anything with the boxes below, or undo with Ctrl+Z.':'The excerpt didn\'t have enough to fill the slots.';
     EX.err=!n;
   }catch(err){
     EX.err=true;
@@ -2067,7 +2197,7 @@ let fillT=0;
 props.addEventListener('change',e=>{
   const el=e.target;
   if(el.dataset.p){ if(el.dataset.p==='_size'&&!el.value) return; applyField(el,true); if(!el.dataset.p.startsWith('_')||el.dataset.p==='_slot') commit(); else { S.dirty=true; commit(); } return; }
-  if(el.dataset.fs||el.dataset.fz) commit();
+  if(el.dataset.fs||el.dataset.fz){ if(el.dataset.fs){ const L=S.doc.layers.find(l=>l.id===el.dataset.fs); if(L) designSize.set(L.id,L.size); } commit(); }
 });
 props.addEventListener('focusin',e=>{
   const card=e.target.closest('[data-slotcard]');
@@ -2633,6 +2763,41 @@ function loadBrandFonts(){
     face.load().then(loaded=>{ document.fonts.add(loaded); scheduleRender(); }).catch(()=>{ toast('Missing font file: '+f.file,true); });
   }
 }
+globalThis.__scoopFitTest=async function(){
+  const layers=S.doc.layers;
+  const by=slot=>layers.find(l=>l.slot===slot);
+  const head=by('Headline'), dek=by('Dek'), cat=by('Category'), tags=by('Tags'), loc=by('Location'), src=by('Source');
+  await ensureFonts(layers.filter(l=>l.type==='text'));
+  const stock={head:head.size,dek:dek.size,headText:head.text,dekText:dek.text};
+  fitFilledText([head,dek,cat,tags,loc,src].filter(Boolean),layers,S.doc.w,S.doc.h);
+  const stockAfter={head:head.size,dek:dek.size};
+  head.text='City council votes to close the downtown street for the rest of the summer after a long and crowded public hearing';
+  const tightHead=fitFilledText([head],layers,S.doc.w,S.doc.h);
+  const ctx=document.createElement('canvas').getContext('2d');
+  hintText(ctx);
+  const lay=layoutText(ctx,head);
+  const long={size:head.size,lines:lay.lines.map(l=>l.t),bottom:+(head.y+lay.h).toFixed(1),dekY:dek.y,tight:tightHead,floor:+sizeFloor(head,'display').toFixed(1)};
+  head.text='Street closure';
+  fitFilledText([head],layers,S.doc.w,S.doc.h);
+  const shortSize=head.size;
+  dek.text='Crews will close the street from State Street to West Temple while the city rebuilds the rail crossing, and drivers should expect delays through the evening commute and into the weekend.';
+  const tightDek=fitFilledText([dek],layers,S.doc.w,S.doc.h);
+  const dlay=layoutText(ctx,dek);
+  const dekFit={size:dek.size,lines:dlay.lines.length,bottom:+(dek.y+dlay.h).toFixed(1),footer:1196,tight:tightDek};
+  cat.text='Transportation';
+  tags.text='UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  TRANSIT  |  DOWNTOWN  |  CITY HALL';
+  const tightRow=fitFilledText([cat,tags],layers,S.doc.w,S.doc.h);
+  const clay=layoutText(ctx,cat), tlay=layoutText(ctx,tags);
+  loc.text='Salt Lake City, UT';
+  fitFilledText([loc],layers,S.doc.w,S.doc.h);
+  head.text='Council votes to close the downtown street for the rest of the summer';
+  const tightMid=fitFilledText([head],layers,S.doc.w,S.doc.h);
+  const mlay=layoutText(ctx,head);
+  const mid={size:head.size,lines:mlay.lines.map(l=>l.t),bottom:+(head.y+mlay.h).toFixed(1),tight:tightMid};
+  const note=document.querySelector('#props .note')?.textContent||'';
+  scheduleRender();
+  return {stock,stockAfter,long,shortSize,dekFit,mid,cat:{size:cat.size,w:cat.w,lines:clay.lines.length,text:clay.lines.map(l=>l.t)},tags:{size:tags.size,x:tags.x,lines:tlay.lines.length},loc:loc.size,tightRow,note};
+};
 function boot(){
   loadBrandFonts();
   let doc=null;

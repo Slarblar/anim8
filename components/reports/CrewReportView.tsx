@@ -8,6 +8,7 @@ import {
   type StaffKpiPersonSlice,
   type StaffKpiWindow,
 } from '@/lib/kpi-shared';
+import { formatAttendanceDays, type StaffAttendanceSlice } from '@/lib/staff-attendance';
 
 const EMPLOYMENT_TYPE_LABELS: Record<CrewReportData['member']['employmentType'], string> = {
   full_time: 'Full-time',
@@ -150,16 +151,106 @@ function KpiPeriodSection({
   );
 }
 
+function AttendancePeriodSection({
+  kpiWindow,
+  slice,
+}: {
+  kpiWindow: StaffKpiWindow;
+  slice: StaffAttendanceSlice;
+}) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-lg font-black uppercase tracking-tight text-white print:text-black">
+        Attendance
+      </h2>
+      <p className="text-xs text-text-muted print:text-black/60">{kpiWindow.label}</p>
+      <div className="grid grid-cols-3 gap-3">
+        <StatCard label="Tardy" value={String(slice.late)} sub="Late meeting marks" />
+        <StatCard label="Missing days" value={String(slice.absent)} sub="Absent marks" />
+        <StatCard label="PTO days" value={formatAttendanceDays(slice.ptoDays)} sub="Approved time off" />
+      </div>
+
+      {slice.months.filter((month) => month.late > 0 || month.absent > 0 || month.ptoDays > 0).length > 1 ? (
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-white/10 text-[10px] font-bold uppercase tracking-widest text-text-muted print:border-black/20 print:text-black/50">
+              <th className="py-2 pr-3">Month</th>
+              <th className="py-2 pr-3">Tardy</th>
+              <th className="py-2 pr-3">Missing</th>
+              <th className="py-2 pr-3">PTO days</th>
+            </tr>
+          </thead>
+          <tbody>
+            {slice.months
+              .filter((month) => month.late > 0 || month.absent > 0 || month.ptoDays > 0)
+              .map((month) => (
+              <tr
+                key={month.month}
+                className="border-b border-white/5 text-text-muted print:border-black/10 print:text-black/80"
+              >
+                <td className="py-2 pr-3 text-white print:text-black">{month.label}</td>
+                <td className="py-2 pr-3 font-mono">{month.late}</td>
+                <td className="py-2 pr-3 font-mono">{month.absent}</td>
+                <td className="py-2 pr-3 font-mono">{formatAttendanceDays(month.ptoDays)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+
+      <div>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-text-muted print:text-black/50">
+          Approved time off in this period
+        </p>
+        {slice.timeOff.length === 0 ? (
+          <p className="text-sm text-text-muted print:text-black/60">No approved time off in this period.</p>
+        ) : (
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/10 text-[10px] font-bold uppercase tracking-widest text-text-muted print:border-black/20 print:text-black/50">
+                <th className="py-2 pr-3">Dates</th>
+                <th className="py-2 pr-3">Days</th>
+                <th className="py-2 pr-3">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slice.timeOff.map((request) => (
+                <tr
+                  key={request.id}
+                  className="border-b border-white/5 text-text-muted print:border-black/10 print:text-black/80"
+                >
+                  <td className="py-2 pr-3 font-mono text-xs text-white print:text-black">
+                    {request.startDate === request.endDate
+                      ? formatDate(request.startDate)
+                      : `${formatDate(request.startDate)} – ${formatDate(request.endDate)}`}
+                  </td>
+                  <td className="py-2 pr-3 font-mono">{formatAttendanceDays(request.days)}</td>
+                  <td className="max-w-[16rem] truncate py-2 pr-3">{request.note || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function CrewReportView({
   data,
   embedded = false,
   kpiPeriod = null,
+  reportMode = 'kpi',
+  attendancePeriod = null,
 }: {
   data: CrewReportData;
   /** Hide the per-person print button when this report is part of the staff batch. */
   embedded?: boolean;
   /** When set, the KPI block follows this staff-report window instead of the fixed last-month view. */
   kpiPeriod?: { window: StaffKpiWindow; slice: StaffKpiPersonSlice } | null;
+  /** Staff-report extract. Attendance replaces the KPI packet with tardy and missing days. */
+  reportMode?: 'kpi' | 'attendance';
+  attendancePeriod?: { window: StaffKpiWindow; slice: StaffAttendanceSlice } | null;
 }) {
   const { member, pto, attendance, kpi, generatedAt } = data;
   const reported = lastCompleteKpiMonth();
@@ -180,7 +271,10 @@ export function CrewReportView({
 
       <header className="border-b border-white/10 pb-6 print:border-black/20">
         <p className="text-xs font-bold uppercase tracking-widest text-brand-cyan print:text-black">
-          Anim-8 <span className="text-white print:text-black">— Progress report</span>
+          Anim-8{' '}
+          <span className="text-white print:text-black">
+            — {reportMode === 'attendance' ? 'Attendance report' : 'Progress report'}
+          </span>
         </p>
         <h1 className="mt-2 text-2xl font-black uppercase tracking-tight text-white print:text-black">
           {member.name}
@@ -199,6 +293,10 @@ export function CrewReportView({
         </p>
       </header>
 
+      {reportMode === 'attendance' && attendancePeriod ? (
+        <AttendancePeriodSection kpiWindow={attendancePeriod.window} slice={attendancePeriod.slice} />
+      ) : (
+      <>
       <section className="space-y-4">
         <h2 className="text-lg font-black uppercase tracking-tight text-white print:text-black">
           PTO overview
@@ -337,6 +435,8 @@ export function CrewReportView({
           </>
         )}
       </section>
+      )}
+      </>
       )}
     </div>
   );

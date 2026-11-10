@@ -24,6 +24,15 @@ import {
   adminSelectChevronStyle,
 } from '@/components/admin/admin-ui';
 import { CrewReportView, PrintReportButton } from '@/components/reports/CrewReportView';
+import {
+  buildStaffAttendanceCsv,
+  formatAttendanceDays,
+  staffAttendanceCsvFilename,
+  staffAttendanceSlice,
+  STAFF_ATTENDANCE_NOTE,
+  type StaffAttendanceExportPerson,
+  type StaffAttendanceSlice,
+} from '@/lib/staff-attendance';
 
 const EMPLOYMENT: Record<CrewReportData['member']['employmentType'], string> = {
   full_time: 'Full-time',
@@ -64,20 +73,44 @@ function toExportPerson(report: CrewReportData): StaffKpiExportPerson {
   };
 }
 
+function toAttendanceExport(report: CrewReportData, slice: StaffAttendanceSlice): StaffAttendanceExportPerson {
+  return {
+    name: report.member.name,
+    email: report.member.email,
+    role: report.member.role,
+    level: report.member.level,
+    employment: EMPLOYMENT[report.member.employmentType],
+    location: report.member.location === 'US' ? 'US' : 'VN',
+    slice,
+  };
+}
+
 function periodButtonClass(active: boolean): string {
   return active ? adminBtnPrimary : adminBtnSecondary;
 }
 
+export type StaffReportView = 'kpi' | 'attendance';
+
+function reportUrl(period: string, view: StaffReportView): string {
+  const params = new URLSearchParams();
+  params.set('period', period);
+  if (view === 'attendance') params.set('view', 'attendance');
+  return `/admin/crew/report?${params}`;
+}
+
 export function StaffReportExplorer({
   initialPeriod,
+  initialView,
   reports,
   generatedAt,
 }: {
   initialPeriod: string;
+  initialView: StaffReportView;
   reports: CrewReportData[];
   generatedAt: string;
 }) {
   const [periodParam, setPeriodParam] = useState(initialPeriod);
+  const [view, setView] = useState<StaffReportView>(initialView);
   const now = useMemo(() => new Date(generatedAt), [generatedAt]);
   const period = parseStaffKpiPeriod(periodParam, now);
   const kpiWindow = describeStaffKpiPeriod(period, now);
@@ -90,12 +123,25 @@ export function StaffReportExplorer({
     report,
     slice: staffKpiSlice(report.kpi, kpiWindow, now),
   }));
-  const csv = buildStaffKpiCsv(reports.map(toExportPerson), kpiWindow, now);
+  const attendanceSlices = reports.map((report) => ({
+    report,
+    slice: staffAttendanceSlice(report.attendance.months, report.pto.approvedTimeOff, kpiWindow),
+  }));
+  const csv =
+    view === 'attendance'
+      ? buildStaffAttendanceCsv(
+          attendanceSlices.map(({ report, slice }) => toAttendanceExport(report, slice)),
+          kpiWindow.label
+        )
+      : buildStaffKpiCsv(reports.map(toExportPerson), kpiWindow, now);
+  const csvFilename =
+    view === 'attendance' ? staffAttendanceCsvFilename(kpiWindow) : staffKpiCsvFilename(kpiWindow, now);
 
   useEffect(() => {
     function onPop() {
-      const param = new URLSearchParams(window.location.search).get('period');
-      setPeriodParam(param ?? initialPeriod);
+      const params = new URLSearchParams(window.location.search);
+      setPeriodParam(params.get('period') ?? initialPeriod);
+      setView(params.get('view') === 'attendance' ? 'attendance' : 'kpi');
     }
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -104,7 +150,13 @@ export function StaffReportExplorer({
   function selectPeriod(next: string) {
     if (next === periodParam) return;
     setPeriodParam(next);
-    window.history.pushState(null, '', `/admin/crew/report?period=${encodeURIComponent(next)}`);
+    window.history.pushState(null, '', reportUrl(next, view));
+  }
+
+  function selectView(next: StaffReportView) {
+    if (next === view) return;
+    setView(next);
+    window.history.pushState(null, '', reportUrl(periodParam, next));
   }
 
   return (
@@ -119,7 +171,8 @@ export function StaffReportExplorer({
             </p>
             <h1 className="mt-1 text-2xl font-black uppercase tracking-tight text-white">Staff report</h1>
             <p className={`${adminBody} mt-1`}>
-              {reports.length} active crew on this report · {kpiWindow.label}
+              {reports.length} active crew on this report · {view === 'attendance' ? 'Attendance' : 'KPI'} ·{' '}
+              {kpiWindow.label}
             </p>
             <p className="mt-1 text-xs text-text-muted">
               Test accounts, US-based crew, and anyone marked exempt in the crew directory are left off.
@@ -129,7 +182,7 @@ export function StaffReportExplorer({
             <button
               type="button"
               className={adminBtnSecondary}
-              onClick={() => downloadCsv(staffKpiCsvFilename(kpiWindow, now), csv)}
+              onClick={() => downloadCsv(csvFilename, csv)}
             >
               Download CSV
             </button>
@@ -137,7 +190,26 @@ export function StaffReportExplorer({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="KPI period">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Report type">
+          <button
+            type="button"
+            className={periodButtonClass(view === 'kpi')}
+            aria-pressed={view === 'kpi'}
+            onClick={() => selectView('kpi')}
+          >
+            KPI
+          </button>
+          <button
+            type="button"
+            className={periodButtonClass(view === 'attendance')}
+            aria-pressed={view === 'attendance'}
+            onClick={() => selectView('attendance')}
+          >
+            Attendance
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Report period">
           <button
             type="button"
             className={periodButtonClass(period.kind === 'mtd')}
@@ -185,19 +257,23 @@ export function StaffReportExplorer({
           </button>
         </div>
         <p className="text-xs text-text-muted">
-          CSV is one row per person per month. Bonus eligibility is Good or above (55+) on a closed month.
+          {view === 'attendance'
+            ? 'CSV is one row per person per month, with tardy marks, missing days, and approved PTO days.'
+            : 'CSV is one row per person per month. Bonus eligibility is Good or above (55+) on a closed month.'}
         </p>
       </div>
 
       <section className="crew-report-summary space-y-4">
         <header>
           <p className="text-xs font-bold uppercase tracking-widest text-brand-cyan print:text-black">
-            Anim-8 <span className="text-white print:text-black">— Staff KPI</span>
+            Anim-8 <span className="text-white print:text-black">— {view === 'attendance' ? 'Staff attendance' : 'Staff KPI'}</span>
           </p>
           <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white print:text-black">
             {kpiWindow.label}
           </h2>
-          <p className={`${adminBody} mt-1 print:text-black/70`}>{staffKpiPeriodNote(kpiWindow)}</p>
+          <p className={`${adminBody} mt-1 print:text-black/70`}>
+            {view === 'attendance' ? STAFF_ATTENDANCE_NOTE : staffKpiPeriodNote(kpiWindow)}
+          </p>
           <p className="mt-1 text-[11px] text-text-muted/70 print:text-black/50">
             {reports.length} active crew · Generated {formatGeneratedAt(generatedAt)}
           </p>
@@ -205,6 +281,8 @@ export function StaffReportExplorer({
 
         {reports.length === 0 ? (
           <p className={adminBody}>No active crew members to report.</p>
+        ) : view === 'attendance' ? (
+          <AttendanceSummaryTable rows={attendanceSlices} />
         ) : (
           <KpiSummaryTable singleMonth={kpiWindow.singleMonth} rows={slices} />
         )}
@@ -212,14 +290,24 @@ export function StaffReportExplorer({
 
       {reports.length > 0 ? (
         <div className="crew-report-batch space-y-16">
-          {slices.map(({ report, slice }) => (
-            <CrewReportView
-              key={report.member.email}
-              data={report}
-              embedded
-              kpiPeriod={{ window: kpiWindow, slice }}
-            />
-          ))}
+          {view === 'attendance'
+            ? attendanceSlices.map(({ report, slice }) => (
+                <CrewReportView
+                  key={report.member.email}
+                  data={report}
+                  embedded
+                  reportMode="attendance"
+                  attendancePeriod={{ window: kpiWindow, slice }}
+                />
+              ))
+            : slices.map(({ report, slice }) => (
+                <CrewReportView
+                  key={report.member.email}
+                  data={report}
+                  embedded
+                  kpiPeriod={{ window: kpiWindow, slice }}
+                />
+              ))}
         </div>
       ) : null}
     </div>
@@ -284,6 +372,55 @@ function KpiSummaryTable({
                       ? slice.averageScored.toFixed(1)
                       : '—'}
                 </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AttendanceSummaryTable({
+  rows,
+}: {
+  rows: { report: CrewReportData; slice: StaffAttendanceSlice }[];
+}) {
+  return (
+    <div className="overflow-x-auto print:overflow-visible">
+      <table className="w-full min-w-[40rem] border-collapse text-left text-sm print:min-w-0">
+        <thead>
+          <tr className="border-b border-white/10 text-[10px] font-bold uppercase tracking-widest text-text-muted print:border-black/20 print:text-black/50">
+            <th className="py-2 pr-3">Person</th>
+            <th className="py-2 pr-3">Tardy</th>
+            <th className="py-2 pr-3">Missing days</th>
+            <th className="py-2 pr-3">PTO days</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ report, slice }) => {
+            const member = report.member;
+            const detail = [
+              EMPLOYMENT[member.employmentType],
+              member.location === 'US' ? 'US' : 'VN',
+              member.level,
+              member.role,
+            ]
+              .filter(Boolean)
+              .join(' · ');
+            return (
+              <tr
+                key={member.email}
+                className="border-b border-white/5 align-top text-text-muted print:border-black/10 print:text-black/80"
+              >
+                <td className="py-2 pr-3">
+                  <p className="font-semibold text-white print:text-black">{member.name}</p>
+                  <p className="text-[11px] text-text-muted print:text-black/60">{member.email}</p>
+                  {detail ? <p className="text-[11px] text-text-muted print:text-black/60">{detail}</p> : null}
+                </td>
+                <td className="py-2 pr-3 font-mono text-white print:text-black">{slice.late}</td>
+                <td className="py-2 pr-3 font-mono text-white print:text-black">{slice.absent}</td>
+                <td className="py-2 pr-3 font-mono">{formatAttendanceDays(slice.ptoDays)}</td>
               </tr>
             );
           })}

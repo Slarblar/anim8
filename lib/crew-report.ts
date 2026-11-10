@@ -1,6 +1,7 @@
 import 'server-only';
 import {
   annualLeaveEntitlementDays,
+  attendanceHistoryFromMember,
   currentMeetingAttendance,
   getCrewMember,
   listCrewMembers,
@@ -10,6 +11,7 @@ import {
 import { listPtoRequestsForEmployee, ptoDaysForRequest, type PtoRequest } from './pto-requests';
 import { getKPIDataForUser, type PersonKPISummary } from './kpi';
 import { isExemptFromReports } from './crew-report-eligibility';
+import type { AttendanceTimeOffInput } from './staff-attendance';
 import { studioTodayDateString } from './studio-date';
 
 export type CrewReportData = {
@@ -28,11 +30,15 @@ export type CrewReportData = {
     daysTakenYtd: number;
     /** Most recent first, capped so the report stays a page or two. */
     requests: PtoRequest[];
+    /** Every approved time-off request, uncapped, for the attendance extract. */
+    approvedTimeOff: AttendanceTimeOffInput[];
   };
   attendance: {
     monthKey: string;
     late: number;
     absent: number;
+    /** Tardy and missing-day marks by YYYY-MM, oldest first. */
+    months: { month: string; late: number; absent: number }[];
   };
   kpi: PersonKPISummary | null;
   generatedAt: string;
@@ -62,6 +68,8 @@ export async function buildCrewReport(email: string): Promise<CrewReportData | n
     )
     .reduce((sum, r) => sum + ptoDaysForRequest(r), 0);
 
+  const current = currentMeetingAttendance(member);
+  const history = attendanceHistoryFromMember(member);
   return {
     member: {
       name: member.name,
@@ -77,8 +85,24 @@ export async function buildCrewReport(email: string): Promise<CrewReportData | n
       entitlementDays: annualLeaveEntitlementDays(member.startDate),
       daysTakenYtd,
       requests: requests.slice(0, MAX_REQUESTS_IN_REPORT),
+      approvedTimeOff: requests
+        .filter((request) => request.type === 'PTO' && request.status === 'approved')
+        .map((request) => ({
+          id: request.id,
+          type: request.type,
+          status: request.status,
+          startDate: request.startDate,
+          endDate: request.endDate,
+          dayPortion: request.dayPortion,
+          note: request.note,
+        })),
     },
-    attendance: currentMeetingAttendance(member),
+    attendance: {
+      ...current,
+      months: Object.keys(history)
+        .sort()
+        .map((month) => ({ month, late: history[month]?.late ?? 0, absent: history[month]?.absent ?? 0 })),
+    },
     kpi,
     generatedAt: new Date().toISOString(),
   };

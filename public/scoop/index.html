@@ -2763,41 +2763,6 @@ function loadBrandFonts(){
     face.load().then(loaded=>{ document.fonts.add(loaded); scheduleRender(); }).catch(()=>{ toast('Missing font file: '+f.file,true); });
   }
 }
-globalThis.__scoopFitTest=async function(){
-  const layers=S.doc.layers;
-  const by=slot=>layers.find(l=>l.slot===slot);
-  const head=by('Headline'), dek=by('Dek'), cat=by('Category'), tags=by('Tags'), loc=by('Location'), src=by('Source');
-  await ensureFonts(layers.filter(l=>l.type==='text'));
-  const stock={head:head.size,dek:dek.size,headText:head.text,dekText:dek.text};
-  fitFilledText([head,dek,cat,tags,loc,src].filter(Boolean),layers,S.doc.w,S.doc.h);
-  const stockAfter={head:head.size,dek:dek.size};
-  head.text='City council votes to close the downtown street for the rest of the summer after a long and crowded public hearing';
-  const tightHead=fitFilledText([head],layers,S.doc.w,S.doc.h);
-  const ctx=document.createElement('canvas').getContext('2d');
-  hintText(ctx);
-  const lay=layoutText(ctx,head);
-  const long={size:head.size,lines:lay.lines.map(l=>l.t),bottom:+(head.y+lay.h).toFixed(1),dekY:dek.y,tight:tightHead,floor:+sizeFloor(head,'display').toFixed(1)};
-  head.text='Street closure';
-  fitFilledText([head],layers,S.doc.w,S.doc.h);
-  const shortSize=head.size;
-  dek.text='Crews will close the street from State Street to West Temple while the city rebuilds the rail crossing, and drivers should expect delays through the evening commute and into the weekend.';
-  const tightDek=fitFilledText([dek],layers,S.doc.w,S.doc.h);
-  const dlay=layoutText(ctx,dek);
-  const dekFit={size:dek.size,lines:dlay.lines.length,bottom:+(dek.y+dlay.h).toFixed(1),footer:1196,tight:tightDek};
-  cat.text='Transportation';
-  tags.text='UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  TRANSIT  |  DOWNTOWN  |  CITY HALL';
-  const tightRow=fitFilledText([cat,tags],layers,S.doc.w,S.doc.h);
-  const clay=layoutText(ctx,cat), tlay=layoutText(ctx,tags);
-  loc.text='Salt Lake City, UT';
-  fitFilledText([loc],layers,S.doc.w,S.doc.h);
-  head.text='Council votes to close the downtown street for the rest of the summer';
-  const tightMid=fitFilledText([head],layers,S.doc.w,S.doc.h);
-  const mlay=layoutText(ctx,head);
-  const mid={size:head.size,lines:mlay.lines.map(l=>l.t),bottom:+(head.y+mlay.h).toFixed(1),tight:tightMid};
-  const note=document.querySelector('#props .note')?.textContent||'';
-  scheduleRender();
-  return {stock,stockAfter,long,shortSize,dekFit,mid,cat:{size:cat.size,w:cat.w,lines:clay.lines.length,text:clay.lines.map(l=>l.t)},tags:{size:tags.size,x:tags.x,lines:tlay.lines.length},loc:loc.size,tightRow,note};
-};
 function boot(){
   loadBrandFonts();
   let doc=null;

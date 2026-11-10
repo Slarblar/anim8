@@ -481,6 +481,7 @@ let LIB = [], TPLS = [], SWATCH = [], NAMES = {};
 
 /* ---------- local blobs (IndexedDB) ---------- */
 const localBlobs = new Map();
+let webpWarn=false;
 let idbP=null;
 function idb(){ if(!idbP) idbP=new Promise((res,rej)=>{try{const r=indexedDB.open('scoop-builder',1);r.onupgradeneeded=()=>r.result.createObjectStore('blobs');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}}); return idbP; }
 async function idbPut(k,v){try{const d=await idb();await new Promise((res,rej)=>{const t=d.transaction('blobs','readwrite');t.objectStore('blobs').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
@@ -794,6 +795,45 @@ function coverDims(L,img){
   const s=(L.fit==='contain'?Math.min(L.w/nw,L.h/nh):Math.max(L.w/nw,L.h/nh))*(L.zoom||1);
   const dw=nw*s, dh=nh*s; return {dw,dh,dx:(L.w-dw)*L.fx,dy:(L.h-dh)*L.fy};
 }
+function applyImageFilter(ctx,L,sc){
+  const f=[];
+  if(L.bright!==100) f.push(`brightness(${L.bright}%)`);
+  if(L.contrast!==100) f.push(`contrast(${L.contrast}%)`);
+  if(L.sat!==100) f.push(`saturate(${L.sat}%)`);
+  if(L.gray) f.push(`grayscale(${L.gray}%)`);
+  if(L.blur) f.push(`blur(${L.blur*(sc||1)}px)`);
+  if(FILTER_OK && f.length) ctx.filter=f.join(' ');
+}
+const resampleCache=new Map();
+function scaledImage(img, key, tw, th){
+  const id=key+'@'+tw+'x'+th;
+  const hit=resampleCache.get(id);
+  if(hit){ resampleCache.delete(id); resampleCache.set(id,hit); return hit; }
+  let cur=img, w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+  while(w>tw*2 || h>th*2){
+    const nw=Math.max(tw, Math.round(w*0.5)), nh=Math.max(th, Math.round(h*0.5));
+    if(nw>=w && nh>=h) break;
+    const c=document.createElement('canvas');
+    c.width=nw; c.height=nh;
+    const g=c.getContext('2d');
+    g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+    g.drawImage(cur,0,0,nw,nh);
+    cur=c; w=nw; h=nh;
+  }
+  if(w!==tw || h!==th){
+    const c=document.createElement('canvas');
+    c.width=tw; c.height=th;
+    const g=c.getContext('2d');
+    g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+    g.drawImage(cur,0,0,tw,th);
+    cur=c;
+  }
+  if(tw*th>=160*160){
+    resampleCache.set(id, cur);
+    while(resampleCache.size>8) resampleCache.delete(resampleCache.keys().next().value);
+  }
+  return cur;
+}
 function drawPlaceholder(ctx,L,sc){
   ctx.fillStyle='#2b2b2e'; ctx.fillRect(0,0,L.w,L.h);
   ctx.save(); ctx.beginPath(); ctx.rect(0,0,L.w,L.h); ctx.clip();
@@ -983,13 +1023,33 @@ function drawLayer(ctx,L,opt){
   else if(L.type==='image'){
     const img=getImg(L.src);
     if(!img){ if(opt.editor) drawPlaceholder(ctx,L,opt.scale||1); ctx.restore(); return; }
+    const nw=img.naturalWidth||img.width||0, nh=img.naturalHeight||img.height||0;
+    const sc=opt.scale||1;
+    const one=rot===0 && (L.fit||'cover')==='stretch' && !L.flipX && !L.flipY && nw>0 && nh>0 && Math.round(L.w)===nw && Math.round(L.h)===nh;
+    if(one){
+      ctx.setTransform(sc,0,0,sc,0,0);
+      ctx.globalAlpha=L.opacity??1;
+      ctx.globalCompositeOperation=L.blend||'source-over';
+      const ix=Math.round(L.x), iy=Math.round(L.y);
+      if(L.shadow){
+        ctx.shadowColor=L.shadowColor; ctx.shadowBlur=(L.shadowBlur||0)*sc; ctx.shadowOffsetX=(L.shadowX||0)*sc; ctx.shadowOffsetY=(L.shadowY||0)*sc;
+        ctx.fillStyle='#000'; ctx.fillRect(ix,iy,nw,nh); ctx.shadowColor='transparent';
+      }
+      applyImageFilter(ctx,L,sc);
+      ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+      ctx.drawImage(img, ix, iy);
+      ctx.restore(); return;
+    }
     if(L.shadow){ ctx.fillStyle='#000'; ctx.fillRect(0,0,L.w,L.h); ctx.shadowColor='transparent'; }
     ctx.beginPath(); ctx.rect(0,0,L.w,L.h); ctx.clip();
-    const f=[]; if(L.bright!==100) f.push(`brightness(${L.bright}%)`); if(L.contrast!==100) f.push(`contrast(${L.contrast}%)`); if(L.sat!==100) f.push(`saturate(${L.sat}%)`); if(L.gray) f.push(`grayscale(${L.gray}%)`); if(L.blur) f.push(`blur(${L.blur*(opt.scale||1)}px)`);
-    if(FILTER_OK && f.length) ctx.filter=f.join(' ');
+    applyImageFilter(ctx,L,sc);
     if(L.flipX||L.flipY){ ctx.translate(L.flipX?L.w:0,L.flipY?L.h:0); ctx.scale(L.flipX?-1:1,L.flipY?-1:1); }
     const d=coverDims(L,img);
-    ctx.drawImage(img,d.dx,d.dy,d.dw,d.dh);
+    ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+    let src=img;
+    const tw=Math.max(1,Math.round(Math.abs(d.dw)*sc)), th=Math.max(1,Math.round(Math.abs(d.dh)*sc));
+    if(nw>tw*2 || nh>th*2) src=scaledImage(img, srcKey(L.src)||'img', tw, th);
+    ctx.drawImage(src, d.dx, d.dy, d.dw, d.dh);
   }
   else if(L.type==='text') paintText(ctx,L,lay,true);
   ctx.restore();
@@ -1050,11 +1110,17 @@ function backingFor(page){
   const pxLong=Math.max(140,Math.min(long*k*dpr,560));
   return pxLong/long;
 }
-function paintArtboard(canvas,page){
-  const s=backingFor(page);
+function editorScale(){
+  const k=S.cam.k||1, dpr=window.devicePixelRatio||1;
+  return Math.min(3, k*dpr);
+}
+function paintArtboard(canvas,page,live){
+  const s=live?editorScale():backingFor(page);
   const w=Math.max(1,Math.round(page.w*s)), h=Math.max(1,Math.round(page.h*s));
   if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h; }
-  renderDoc(canvas.getContext('2d'),page,{editor:true,scale:s});
+  const ctx=canvas.getContext('2d');
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  renderDoc(ctx,page,{editor:true,scale:s});
 }
 function renderMain(){
   if(!S.doc) return;
@@ -1065,7 +1131,7 @@ function renderMain(){
     const c=artCanvas(i); if(!c) return;
     const live=i===S.doc.page;
     if(!live && !p._dirty && c._paintK===S.cam.bucket) return;
-    paintArtboard(c,p); p._dirty=false; c._paintK=S.cam.bucket;
+    paintArtboard(c,p,live); p._dirty=false; c._paintK=S.cam.bucket;
   });
 }
 
@@ -1139,6 +1205,7 @@ function saveDraft(){ clearTimeout(draftT); draftT=setTimeout(()=>{ try{ localSt
 
 /* ---------- doc load ---------- */
 function loadDoc(doc,{fresh=true}={}){
+  webpWarn=false;
   S.doc=activate(doc); S.sel=null; S.crop=false; S.tool=null; S.brush=false; S.brushAt=null; $('#cropbar').hidden=true; syncRedactTool();
   afterLoad(true);
   if(fresh){ resetHist(); S.dirty=false; saveDraft(); }
@@ -1151,6 +1218,7 @@ function afterLoad(structural){
   if(structural || S.zoom==='fit') fitView();
   else { layoutPages(); syncArtboards(); applyCam(); scheduleRender(); }
   renderLayers(); renderPages(); renderProps(true);
+  checkStoredWebp();
 }
 
 /* ---------- camera / artboards ---------- */
@@ -1193,13 +1261,16 @@ function applyCam(){
   stage.style.backgroundPosition=`${S.cam.x}px ${S.cam.y}px`;
   S.k=S.cam.k;
   const lbl=$('#zoomlbl'); if(lbl) lbl.textContent=(S.zoom==='fit'?'Fit · ':'')+Math.round(S.cam.k*100)+'%';
+  const dpr=window.devicePixelRatio||1;
+  const viewChanged=S._camK!==S.cam.k || S._camDpr!==dpr;
+  S._camK=S.cam.k; S._camDpr=dpr;
   const bucket=Math.round(Math.log2(Math.max(.05,S.cam.k))*8);
   const jumped=bucket!==S.cam.bucket;
   if(jumped) S.cam.bucket=bucket;
   if(S.doc){
     layoutPages(); syncArtboards();
     if(jumped) markArts();
-    if(jumped || S.doc.pages.some(p=>p._dirty)) scheduleRender();
+    if(viewChanged || jumped || S.doc.pages.some(p=>p._dirty)) scheduleRender();
   }
   drawOverlay();
 }
@@ -1249,7 +1320,15 @@ function fitView(){
 }
 function zoomBy(f){ const r=stage.getBoundingClientRect(); zoomAt(f, r.left+r.width/2, r.top+r.height/2); }
 new ResizeObserver(()=>{ if(!S.doc) return; if(S.zoom==='fit') fitView(); else { markArts(); applyCam(); scheduleRender(); } }).observe(stage);
-window.addEventListener('resize',()=>drawOverlay());
+window.addEventListener('resize',()=>{ drawOverlay(); if(S.doc) scheduleRender(); });
+function bindDpr(){
+  const dpr=window.devicePixelRatio||1;
+  let mq;
+  try{ mq=matchMedia('(resolution: '+dpr+'dppx)'); }catch(e){ return; }
+  const on=()=>{ if(S.doc) scheduleRender(); bindDpr(); };
+  if(mq.addEventListener) mq.addEventListener('change', on, {once:true});
+}
+bindDpr();
 
 /* ---------- adding layers ---------- */
 function addLayer(L,{select=true}={}){ S.doc.layers.push(L); if(select) S.sel=L.id; commit(); scheduleRender(); renderLayers(); renderProps(true); return L; }
@@ -1336,13 +1415,45 @@ function loadAgPsd(){
 function canvasBlob(canvas,type,q){
   return new Promise(res=>{ try{ canvas.toBlob(b=>res(b),type,q); }catch(e){ res(null); } });
 }
+const WEBP_REIMPORT='Some layers were saved as WebP. Re-import the PSD for a sharp PNG.';
 async function pixelsFromCanvas(canvas,name){
-  let blob=await canvasBlob(canvas,'image/webp',0.92);
-  if(!blob||blob.type!=='image/webp') blob=await canvasBlob(canvas,'image/png');
-  if(!blob) throw new Error('blob');
-  const ext=blob.type==='image/webp'?'.webp':'.png';
-  const file=new File([blob],(slug(name)||'layer')+'-'+uid()+ext,{type:blob.type||'image/png'});
+  let blob=await canvasBlob(canvas,'image/png');
+  if(!blob || blob.type==='image/webp' || blob.type==='image/jpeg'){
+    try{
+      const url=canvas.toDataURL('image/png');
+      const bin=atob(url.split(',')[1]||'');
+      const bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+      blob=new Blob([bytes],{type:'image/png'});
+    }catch(e){ blob=null; }
+  }
+  if(!blob || blob.type==='image/webp' || blob.type==='image/jpeg') throw new Error('png');
+  const file=new File([blob],(slug(name)||'layer')+'-'+uid()+'.png',{type:'image/png'});
   return {src:await localSrc(file), nw:canvas.width||1, nh:canvas.height||1};
+}
+function psdLayerWebp(L){
+  if(!L||L.type!=='image'||!L.src||L.src.kind!=='local') return false;
+  const b=localBlobs.get(L.src.key);
+  if(!b) return false;
+  const name=b.name||'';
+  if(!/-[a-z0-9]{8}\.webp$/i.test(name)) return false;
+  return !b.type || b.type==='image/webp';
+}
+function checkStoredWebp(){
+  const doc=S.doc;
+  if(!doc) return;
+  const pending=[];
+  for(const p of doc.pages||[]) for(const L of p.layers||[]){
+    if(!psdLayerWebp(L) && L.type==='image' && L.src && L.src.kind==='local' && !localBlobs.get(L.src.key)) pending.push(idbGet(L.src.key).then(b=>{ if(b && S.doc===doc) localBlobs.set(L.src.key,b); }));
+  }
+  Promise.all(pending).then(()=>{
+    if(S.doc!==doc) return;
+    const hit=(doc.pages||[]).some(p=>(p.layers||[]).some(psdLayerWebp));
+    if(hit===webpWarn) return;
+    webpWarn=hit;
+    const a=document.activeElement;
+    if(!a||!a.closest||!a.closest('#props')) renderProps(true);
+  });
 }
 function parsePsdName(raw){
   let name=String(raw||'').trim()||'Layer';
@@ -1485,7 +1596,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
       const px=await pixelsFromCanvas(layer.canvas, meta.name+'-reference');
       const ref=IM({
         name:meta.name+' (PSD reference)', src:px.src, nw:px.nw, nh:px.nh,
-        x:box.w?box.x:L.x, y:box.h?box.y:L.y, w:box.w||px.nw, h:box.h||px.nh,
+        x:Math.round(box.w?box.x:L.x), y:Math.round(box.h?box.y:L.y), w:px.nw, h:px.nh,
         fit:'stretch', visible:false, web:false, opacity:1,
       });
       ref.psdRef=true;
@@ -1499,7 +1610,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
     const px=await pixelsFromCanvas(layer.canvas, meta.name);
     const L=IM({
       name:meta.name, src:px.src, nw:px.nw, nh:px.nh, fit:'stretch',
-      x:round2(box.x), y:round2(box.y), w:Math.max(1,round2(box.w||px.nw)), h:Math.max(1,round2(box.h||px.nh)),
+      x:Math.round(box.x||0), y:Math.round(box.y||0), w:px.nw, h:px.nh,
       opacity:Math.min(1,Math.max(0,opacity)), blend:mapPsdBlend(layer.blendMode, meta.name, report),
       visible:!hidden, locked:meta.locked, slot:meta.slot,
     });
@@ -1511,8 +1622,8 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
     const framed=box.w>1&&box.h>1;
     const L=IM({
       name:meta.name, src:null, fit:'stretch',
-      x:framed?round2(box.x):0, y:framed?round2(box.y):0,
-      w:framed?Math.max(1,round2(box.w)):page.w, h:framed?Math.max(1,round2(box.h)):page.h,
+      x:framed?Math.round(box.x):0, y:framed?Math.round(box.y):0,
+      w:framed?Math.max(1,Math.round(box.w)):page.w, h:framed?Math.max(1,Math.round(box.h)):page.h,
       opacity:Math.min(1,Math.max(0,opacity)), blend:mapPsdBlend(layer.blendMode, meta.name, report),
       visible:!hidden, locked:meta.locked, slot:meta.slot,
     });
@@ -1574,6 +1685,7 @@ async function importPsdFile(file){
     const layers=[];
     await flattenPsd(psd.children, 1, false, report, layers, {w, h});
     if(!layers.length){ toast('That Photoshop file has no layers to place.',true); return; }
+    if(layers.some(psdLayerWebp)) report.notes.push(WEBP_REIMPORT);
     report.notes=[...new Set(report.notes)];
     report.slots=[...new Set(layers.filter(l=>l.slot).map(l=>l.slot))];
     report.count=layers.filter(l=>!l.psdRef).length;
@@ -1623,6 +1735,10 @@ function pickSnap(points, targets, thrEdge, thrOther){
     if(d<=thr && (!best || d<best.d-0.01 || (Math.abs(d-best.d)<=0.5 && t.rank<best.rank))) best={d,value:t.v-p.origin,guide:t.v,rank:t.rank};
   }
   return best;
+}
+function roundImageBox(L){
+  if(!L||L.type!=='image') return;
+  L.x=Math.round(L.x); L.y=Math.round(L.y); L.w=Math.round(L.w); L.h=Math.round(L.h);
 }
 function snapMove(nx,ny,w,h,id,k){
   const edge=14/k, other=8/k;
@@ -1784,6 +1900,7 @@ stage.addEventListener('pointermove',e=>{
     let nx=s.x+dx, ny=s.y+dy; S.guides=[];
     if(!e.altKey){ const snapped=snapMove(nx,ny,L.w,L.h,L.id,p.v.k||S.cam.k||1); nx=snapped.x; ny=snapped.y; }
     L.x=Math.round(nx); L.y=Math.round(ny);
+    if(L.type==='image') roundImageBox(L);
   }
   else if(drag.mode==='resize'){
     S.guides=[];
@@ -1809,6 +1926,7 @@ stage.addEventListener('pointermove',e=>{
       x=snapped.x; y=snapped.y; w=snapped.w; h=snapped.h; S.guides=snapped.guides;
     }
     L.w=Math.round(w); L.h=Math.round(h); L.x=Math.round(x); L.y=Math.round(y);
+    if(L.type==='image') roundImageBox(L);
   }
   else if(drag.mode==='rotate'){
     const cx=L.x+L.w/2, cy=L.y+L.h/2;
@@ -1961,7 +2079,7 @@ window.addEventListener('keydown',e=>{
   if(e.key==='['){ act(e.shiftKey?'bottom':'back'); return; }
   if(e.key==='Enter' && L.type==='image' && L.src){ S.crop?exitCrop():enterCrop(); return; }
   const n=e.shiftKey?10:1, mv={ArrowLeft:[-n,0],ArrowRight:[n,0],ArrowUp:[0,-n],ArrowDown:[0,n]}[e.key];
-  if(mv && !layerLocked(L) && L.type!=='folder'){ e.preventDefault(); L.x+=mv[0]; L.y+=mv[1]; scheduleRender(); syncProps(); clearTimeout(nudgeT); nudgeT=setTimeout(commit,250); }
+  if(mv && !layerLocked(L) && L.type!=='folder'){ e.preventDefault(); L.x+=mv[0]; L.y+=mv[1]; if(L.type==='image') roundImageBox(L); scheduleRender(); syncProps(); clearTimeout(nudgeT); nudgeT=setTimeout(commit,250); }
 });
 window.addEventListener('keyup',e=>{ if(e.code==='Space'){ spaceDown=false; if(!drag) stage.style.cursor='default'; } });
 let nudgeT=0;
@@ -2237,9 +2355,10 @@ function renderProps(structural){
 }
 function fillHTML(){
   const slots=S.doc.layers.filter(l=>l.slot).slice().sort((a,b)=>(a.y-b.y)||(a.x-b.x));
-  if(!slots.length) return `<div class="empty">This canvas has no quick-fill slots yet.<br><br>Select a layer, open the <b>Layer</b> tab and turn on <b>Quick-fill slot</b>. Slots show up here so the team can swap the photo and copy without touching the layout.</div>`;
+  const webpNote=webpWarn?`<div class="note warn">${esc(WEBP_REIMPORT)}</div>`:'';
+  if(!slots.length) return webpNote+`<div class="empty">This canvas has no quick-fill slots yet.<br><br>Select a layer, open the <b>Layer</b> tab and turn on <b>Quick-fill slot</b>. Slots show up here so the team can swap the photo and copy without touching the layout.</div>`;
   const empty=slots.filter(l=>l.type==='image'&&!l.src).length;
-  return excerptHTML(slots)+`<div class="note">Fill these in and export. The layout stays put. Draft post eases a long line down so it stays clear of the next one.${empty?` <span class="note warn">${empty} photo slot${empty>1?'s':''} still empty.</span>`:''}</div>`+
+  return webpNote+excerptHTML(slots)+`<div class="note">Fill these in and export. The layout stays put. Draft post eases a long line down so it stays clear of the next one.${empty?` <span class="note warn">${empty} photo slot${empty>1?'s':''} still empty.</span>`:''}</div>`+
   slots.map(L=>{
     if(L.type==='image') return `<div class="slotcard ${L.id===S.sel?'sel':''}" data-slotcard="${L.id}">
       <div class="lab">${esc(L.slot)}<em>${Math.round(L.w)}×${Math.round(L.h)}</em></div>

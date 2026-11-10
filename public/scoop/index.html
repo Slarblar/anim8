@@ -1280,9 +1280,10 @@ function brushHit(L,x,y){
   return false;
 }
 function hitTest(x,y){ for(let i=S.doc.layers.length-1;i>=0;i--){ const L=S.doc.layers[i]; if(L.type==='folder'||!layerShown(L)||layerLocked(L)) continue; if(L.type==='redact'&&L.shape==='brush'){ if(brushHit(L,x,y)) return L; continue; } if(inside(L,x,y)) return L; } return null; }
+function holdPointer(e){ try{ if(e.pointerId!=null) stage.setPointerCapture(e.pointerId); }catch(err){} }
 function startCam(e,clear){
   drag={mode:'cam',x:e.clientX,y:e.clientY,cx:S.cam.x,cy:S.cam.y,moved:false,clear:!!clear};
-  stage.setPointerCapture(e.pointerId); stage.style.cursor='grabbing'; e.preventDefault();
+  holdPointer(e); stage.style.cursor='grabbing'; e.preventDefault();
 }
 stage.addEventListener('pointerdown',e=>{
   if(e.button===1 || (e.button===0 && spaceDown)){ startCam(e,false); return; }
@@ -1300,14 +1301,14 @@ stage.addEventListener('pointerdown',e=>{
     const box=RD({shape,x:Math.round(p.x),y:Math.round(p.y),w:1,h:1});
     S.doc.layers.push(box); S.sel=box.id;
     drag={mode:'draw-redact',L:box,p0:p,moved:false};
-    stage.setPointerCapture(e.pointerId); e.preventDefault();
+    holdPointer(e); e.preventDefault();
     renderLayers(); scheduleRender(); return;
   }
   if(S.brush && L && L.type==='redact' && !layerLocked(L)){
     for(const h of handlesFor(L,p.v)){
       if(Math.hypot(h.sx-p.sx,h.sy-p.sy)<=10){
         drag={mode:h.rot?'rotate':'resize',h,L,start:JSON.parse(JSON.stringify(L)),p0:p};
-        stage.setPointerCapture(e.pointerId); e.preventDefault(); return;
+        holdPointer(e); e.preventDefault(); return;
       }
     }
     if(!Array.isArray(L.strokes)) L.strokes=[];
@@ -1317,26 +1318,26 @@ stage.addEventListener('pointerdown',e=>{
     L.strokes.push(stroke);
     if(L.shape!=='brush') L.shape='brush';
     drag={mode:'brush',L,stroke,p0:p};
-    stage.setPointerCapture(e.pointerId); e.preventDefault();
+    holdPointer(e); e.preventDefault();
     scheduleRender(); return;
   }
   if(L && !layerLocked(L) && !S.crop && L.visible && L.type!=='folder'){
     for(const h of handlesFor(L,p.v)){
       if(Math.hypot(h.sx-p.sx,h.sy-p.sy)<=10){
         drag={mode:h.rot?'rotate':'resize',h,L,start:JSON.parse(JSON.stringify(L)),p0:p};
-        stage.setPointerCapture(e.pointerId); e.preventDefault(); return;
+        holdPointer(e); e.preventDefault(); return;
       }
     }
   }
   if(S.crop && L && L.type==='image' && inside(L,p.x,p.y)){
-    drag={mode:'pan',L,start:{fx:L.fx,fy:L.fy},p0:p}; stage.setPointerCapture(e.pointerId); e.preventDefault(); return;
+    drag={mode:'pan',L,start:{fx:L.fx,fy:L.fy},p0:p}; holdPointer(e); e.preventDefault(); return;
   }
   if(S.crop){ exitCrop(); }
   const hit=hitTest(p.x,p.y);
   if(hit){
     if(S.sel!==hit.id){ S.sel=hit.id; renderLayers(); renderProps(true); }
     drag={mode:'move',L:hit,start:{x:hit.x,y:hit.y},p0:p};
-    stage.setPointerCapture(e.pointerId); e.preventDefault();
+    holdPointer(e); e.preventDefault();
   } else if(S.sel){ S.sel=null; renderLayers(); renderProps(true); }
   scheduleRender();
 });

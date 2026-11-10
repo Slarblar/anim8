@@ -175,6 +175,8 @@ textarea.inp{resize:vertical;min-height:58px;line-height:1.4}
 .lrow .ic{width:20px;height:20px;display:grid;place-items:center;color:var(--muted)}
 .lrow .ic svg{width:14px;height:14px}
 .lrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.lrow .nm.clipbase{text-decoration:underline;text-underline-offset:2px}
+.lrow .clipmark{color:var(--faint);margin-right:4px}
 .lrow .slotb{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--red-hi);border:1px solid rgba(237,34,36,.5);border-radius:3px;padding:1px 4px}
 .lrow .tb{width:22px;height:22px;display:grid;place-items:center;border:0;background:none;border-radius:3px;cursor:pointer;color:var(--faint)}
 .lrow .tb:hover{color:var(--text);background:var(--line)}
@@ -277,7 +279,7 @@ textarea.inp{resize:vertical;min-height:58px;line-height:1.4}
     <section class="stagewrap" id="stagewrap">
       <div class="stage" id="stage"><div class="world" id="world"></div></div>
       <canvas id="ov"></canvas>
-      <div class="cropbar" id="cropbar" hidden>Adjusting photo: drag to reposition, scroll to zoom <button data-act="crop-done">Done</button></div>
+      <div class="cropbar" id="cropbar" hidden><span id="cropMsg">Adjusting photo: drag to reposition, scroll to zoom</span> <button data-act="crop-done">Done</button></div>
       <div class="cropbar" id="brushbar" hidden>Brush · drag to paint · Shift straight · Alt erase <label class="bsz">Size <input type="range" id="brushSize" min="8" max="240" step="1" value="48" aria-label="Brush size"><output id="brushSizeOut">48</output></label><button type="button" data-act="brush-done">Done</button></div>
       <div class="dropmask" id="dropmask" hidden>Drop to add · drop a PSD to import the layout</div>
       <div class="stagehint" id="hint">Drag empty space or scroll to pan · Ctrl-scroll to zoom · hold Space to pan · pages sit side by side</div>
@@ -348,7 +350,7 @@ function hexA(hex,a){const h=(hex||'#000').replace('#','');const f=h.length===3?
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
 /* ---------- layer factories ---------- */
-const BASE = ()=>({id:uid(),name:'',parent:null,x:0,y:0,w:200,h:100,rot:0,opacity:1,blend:'source-over',visible:true,locked:false,slot:'',shadow:false,shadowColor:'#000000',shadowBlur:16,shadowX:0,shadowY:4});
+const BASE = ()=>({id:uid(),name:'',parent:null,x:0,y:0,w:200,h:100,rot:0,opacity:1,blend:'source-over',visible:true,locked:false,slot:'',clip:false,shadow:false,shadowColor:'#000000',shadowBlur:16,shadowX:0,shadowY:4});
 const T = o=>Object.assign(BASE(),{type:'text',web:false,text:'Text',font:'Archivo',weight:800,italic:false,size:48,lh:1.1,ls:0,color:'#FFFFFF',align:'left',upper:false,hscale:1,strokeW:0,stroke:'#000000',bg:'none',bgColor:'#ED2224',padX:18,padY:8},o);
 const SH = o=>Object.assign(BASE(),{type:'shape',web:false,shape:'rect',fill:'#ED2224',grad:false,fill2:'#000000',fill2Alpha:0,gradAngle:90,stroke:'#000000',strokeW:0,radius:0,rough:18,seed:7,edges:'both'},o);
 const IM = o=>Object.assign(BASE(),{type:'image',web:true,src:null,nw:0,nh:0,fit:'cover',fx:.5,fy:.5,zoom:1,flipX:false,flipY:false,bright:100,contrast:100,sat:100,gray:0,blur:0},o);
@@ -450,7 +452,8 @@ function normalizeDoc(raw){
     p.name=p.name||('Page '+(i+1));
     p.w=+p.w||1080; p.h=+p.h||1350; p.bg=p.bg||'#151616';
     if(!Array.isArray(p.layers)) p.layers=[];
-    p.layers.forEach(l=>{ if(l.parent==null) l.parent=null; if(l.type==='folder'&&l.open==null) l.open=true; ensureLayerWeb(l); });
+    p.layers.forEach(l=>{ if(l.parent==null) l.parent=null; if(l.type==='folder'&&l.open==null) l.open=true; if(l.clip!==true) l.clip=false; ensureLayerWeb(l); });
+    settleClips(p.layers);
   });
   d.page=clamp(+d.page||0,0,d.pages.length-1);
   d.templateType=d.templateType||'single';
@@ -608,8 +611,8 @@ function drawSupersampledText(ctx,L,lay,opt){
   const bmp=textBitmap(L,lay);
   ctx.save();
   hintText(ctx);
-  ctx.globalAlpha=L.opacity??1;
-  ctx.globalCompositeOperation=L.blend||'source-over';
+  ctx.globalAlpha=layerPaintAlpha(L,opt);
+  ctx.globalCompositeOperation=layerPaintBlend(L,opt);
   const x=Math.round(L.x), y=Math.round(L.y);
   ctx.translate(x+L.w/2, y+lay.h/2);
   ctx.rotate((L.rot||0)*Math.PI/180);
@@ -847,6 +850,77 @@ function drawPlaceholder(ctx,L,sc){
   ctx.textAlign='left';
 }
 let drawList=null;
+function layerPaintAlpha(L,opt){ return opt&&opt.flat?1:(L.opacity??1); }
+function layerPaintBlend(L,opt){ return opt&&opt.flat?'source-over':(L.blend||'source-over'); }
+function canClipLayer(L){
+  if(!L||!S.doc||L.type==='redact'||L.type==='folder'||L.psdRef) return false;
+  return clipTargetIndex(S.doc.layers, S.doc.layers.indexOf(L))>=0;
+}
+function clipTargetIndex(layers, i){
+  const L=layers[i];
+  if(!L||i<=0||L.type==='redact'||L.type==='folder'||L.psdRef) return -1;
+  for(let j=i-1;j>=0;j--){
+    const B=layers[j];
+    if(B.type==='folder'||B.psdRef) continue;
+    if(B.type==='redact') return -1;
+    if(B.clip===true) continue;
+    return j;
+  }
+  return -1;
+}
+function clipBaseIndex(layers, i){
+  const L=layers[i];
+  if(!L||L.clip!==true||L.type==='redact'||L.type==='folder'||L.psdRef) return -1;
+  return clipTargetIndex(layers, i);
+}
+function clipMembers(layers, baseIndex){
+  const out=[];
+  for(let j=baseIndex+1;j<layers.length;j++){
+    const N=layers[j];
+    if(N.type==='folder'||N.psdRef) continue;
+    if(clipBaseIndex(layers, j)!==baseIndex) break;
+    out.push(N);
+  }
+  return out;
+}
+function settleClips(layers){
+  if(!layers) return;
+  for(let i=0;i<layers.length;i++){
+    const L=layers[i];
+    if(!L||L.type==='redact'||L.type==='folder'||L.psdRef){ if(L) L.clip=false; continue; }
+    L.clip=L.clip===true && clipTargetIndex(layers, i)>=0;
+  }
+}
+function stackBlock(ls, i){
+  const block=[i];
+  const L=ls[i];
+  if(!L) return block;
+  let j=i+1;
+  if(j<ls.length && ls[j].psdRef){ block.push(j); j++; }
+  if(L.clip===true||L.type==='folder'||L.type==='redact') return block;
+  for(;j<ls.length;j++){
+    const N=ls[j];
+    if(N.psdRef){ block.push(j); continue; }
+    if(N.type==='folder'||N.type==='redact'||N.clip!==true) break;
+    if(clipBaseIndex(ls, j)!==i) break;
+    block.push(j);
+  }
+  return block;
+}
+function moveStack(ls, where, i){
+  if(i<0||!ls[i]) return;
+  const block=stackBlock(ls, i);
+  const items=block.map(ix=>ls[ix]);
+  const start=block[0];
+  for(let k=block.length-1;k>=0;k--) ls.splice(block[k],1);
+  let dest=start;
+  if(where==='front') dest=ls.length;
+  else if(where==='bottom') dest=0;
+  else if(where==='fwd') dest=Math.min(ls.length, start+1);
+  else if(where==='back') dest=Math.max(0, start-1);
+  ls.splice(dest,0,...items);
+  settleClips(ls);
+}
 function layerList(){ return drawList || (S.doc?S.doc.layers:[]); }
 function layerShown(L){
   if(!L||L.visible===false) return false;
@@ -1005,8 +1079,8 @@ function drawLayer(ctx,L,opt){
   if(L.type==='text' && (rot!==0 || hs!==1)){ drawSupersampledText(ctx,L,lay,opt); return; }
   ctx.save();
   hintText(ctx);
-  ctx.globalAlpha=L.opacity??1;
-  ctx.globalCompositeOperation=L.blend||'source-over';
+  ctx.globalAlpha=layerPaintAlpha(L,opt);
+  ctx.globalCompositeOperation=layerPaintBlend(L,opt);
   if(L.type==='text') ctx.translate(Math.round(L.x), Math.round(L.y));
   else { const cx=L.x+L.w/2, cy=L.y+L.h/2; ctx.translate(cx,cy); ctx.rotate(rot*Math.PI/180); ctx.translate(-L.w/2,-L.h/2); }
   if(L.shadow){ const s=opt.scale||1; ctx.shadowColor=L.shadowColor; ctx.shadowBlur=L.shadowBlur*s; ctx.shadowOffsetX=L.shadowX*s; ctx.shadowOffsetY=L.shadowY*s; }
@@ -1028,8 +1102,8 @@ function drawLayer(ctx,L,opt){
     const one=rot===0 && (L.fit||'cover')==='stretch' && !L.flipX && !L.flipY && nw>0 && nh>0 && Math.round(L.w)===nw && Math.round(L.h)===nh;
     if(one){
       ctx.setTransform(sc,0,0,sc,0,0);
-      ctx.globalAlpha=L.opacity??1;
-      ctx.globalCompositeOperation=L.blend||'source-over';
+      ctx.globalAlpha=layerPaintAlpha(L,opt);
+      ctx.globalCompositeOperation=layerPaintBlend(L,opt);
       const ix=Math.round(L.x), iy=Math.round(L.y);
       if(L.shadow){
         ctx.shadowColor=L.shadowColor; ctx.shadowBlur=(L.shadowBlur||0)*sc; ctx.shadowOffsetX=(L.shadowX||0)*sc; ctx.shadowOffsetY=(L.shadowY||0)*sc;
@@ -1054,6 +1128,40 @@ function drawLayer(ctx,L,opt){
   else if(L.type==='text') paintText(ctx,L,lay,true);
   ctx.restore();
 }
+function paintClipGroup(ctx, base, clips, opt){
+  const s=opt.scale||1;
+  const w=ctx.canvas.width, h=ctx.canvas.height;
+  const group=takeCanvas('clipg', w, h);
+  const mask=takeCanvas('clipm', w, h);
+  const prep=canvas=>{
+    const g=canvas.getContext('2d');
+    g.setTransform(1,0,0,1,0,0);
+    g.globalAlpha=1;
+    g.globalCompositeOperation='source-over';
+    g.clearRect(0,0,canvas.width,canvas.height);
+    g.setTransform(s,0,0,s,0,0);
+    return g;
+  };
+  const flat=Object.assign({}, opt, {flat:true});
+  drawLayer(prep(group), base, flat);
+  drawLayer(prep(mask), base, flat);
+  const gg=group.getContext('2d');
+  gg.setTransform(s,0,0,s,0,0);
+  gg.globalAlpha=1;
+  gg.globalCompositeOperation='source-over';
+  for(const C of clips) drawLayer(gg, C, opt);
+  gg.setTransform(1,0,0,1,0,0);
+  gg.globalAlpha=1;
+  gg.globalCompositeOperation='destination-in';
+  gg.drawImage(mask, 0, 0);
+  gg.globalCompositeOperation='source-over';
+  ctx.save();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.globalAlpha=base.opacity??1;
+  ctx.globalCompositeOperation=base.blend||'source-over';
+  ctx.drawImage(group, 0, 0);
+  ctx.restore();
+}
 function paintDoc(ctx,doc,opt,pred){
   const s=opt.scale||1;
   const prev=drawList;
@@ -1068,9 +1176,16 @@ function paintDoc(ctx,doc,opt,pred){
     scratch=takeCanvas('scratch', ctx.canvas.width, ctx.canvas.height);
     blitCanvas(ctx.canvas, scratch, s);
   }
-  for(const L of doc.layers){
-    if(L.type==='folder'||!layerShown(L)||!pred(L)) continue;
-    if(L.type==='redact'){
+  const layers=doc.layers;
+  for(let i=0;i<layers.length;i++){
+    const L=layers[i];
+    if(L.type==='folder'||clipBaseIndex(layers, i)>=0) continue;
+    if(!layerShown(L)||!pred(L)) continue;
+    const clips=clipMembers(layers, i).filter(C=>layerShown(C)&&pred(C));
+    if(clips.length){
+      paintClipGroup(ctx, L, clips, opt);
+      if(scratch) paintClipGroup(scratch.getContext('2d'), L, clips, opt);
+    } else if(L.type==='redact'){
       drawRedact(ctx,L,opt,scratch);
       if(scratch) blitCanvas(ctx.canvas, scratch, s);
     } else {
@@ -1174,6 +1289,10 @@ function drawOverlay(){
     c.strokeStyle='#fff'; c.lineWidth=1.5; c.stroke();
   };
   const L=sel(); if(!L||L.type==='folder'||!layerShown(L)){ brushCursor(); return; }
+  if(S.crop && L.type==='image'){
+    const bi=clipBaseIndex(S.doc.layers, S.doc.layers.indexOf(L));
+    if(bi>=0){ poly(S.doc.layers[bi]); c.save(); c.strokeStyle='rgba(255,255,255,.92)'; c.lineWidth=1.5; c.setLineDash([]); c.stroke(); c.restore(); }
+  }
   if(S.crop && L.type==='image' && L.src){
     const img=getImg(L.src);
     if(img){ const d=coverDims(L,img); c.save(); c.setLineDash([5,4]); c.strokeStyle='rgba(255,255,255,.7)';
@@ -1519,7 +1638,6 @@ function psdHasMask(layer){
 function notePsdExtras(layer,name,report){
   for(const label of psdEffects(layer.effects)) report.notes.push(label+' on '+name);
   if(psdHasMask(layer)) report.notes.push('Mask on '+name);
-  if(layer.clipping) report.notes.push('Clipping mask on '+name);
   if(layer.text&&layer.text.orientation==='vertical') report.notes.push(name+' is vertical text');
   if(layer.text&&layer.text.warp&&layer.text.warp.style&&layer.text.warp.style!=='none') report.notes.push('Text warp on '+name);
 }
@@ -1590,6 +1708,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
     });
     if(Math.abs(frame.rot)>0.05) L.rot=round2(frame.rot);
     if(meta.web!==null) L.web=meta.web;
+    L.clip=!!layer.clipping;
     out.push(L);
     if(layer.canvas&&layer.canvas.width&&layer.canvas.height){
       const box=psdBox(layer);
@@ -1615,6 +1734,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
       visible:!hidden, locked:meta.locked, slot:meta.slot,
     });
     if(meta.web!==null) L.web=meta.web;
+    L.clip=!!layer.clipping;
     out.push(L);
     return;
   }
@@ -1628,6 +1748,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
       visible:!hidden, locked:meta.locked, slot:meta.slot,
     });
     if(meta.web!==null) L.web=meta.web;
+    L.clip=!!layer.clipping;
     out.push(L);
     return;
   }
@@ -1642,7 +1763,15 @@ async function flattenPsd(layers, parentOpacity, parentHidden, report, out, page
       const g=parsePsdName(layer.name);
       if(layer.blendMode&&layer.blendMode!=='pass through'&&layer.blendMode!=='normal') report.notes.push('Group blend “'+layer.blendMode+'” on '+g.name+' was not applied');
       notePsdExtras(layer, g.name, report);
+      const start=out.length;
       await flattenPsd(layer.children, opacity, hidden, report, out, page);
+      if(layer.clipping){
+        for(let i=start;i<out.length;i++){
+          const L=out[i];
+          if(!L||L.psdRef||L.type==='folder'||L.type==='redact') continue;
+          L.clip=true;
+        }
+      }
     } else await importPsdLeaf(layer, opacity, hidden, report, out, page);
   }
 }
@@ -1663,7 +1792,7 @@ function openPsdReport(report){
   const drop=$('#psdDropRefs', m);
   if(drop) drop.onclick=()=>{
     let n=0;
-    S.doc.pages.forEach(p=>{ const next=p.layers.filter(l=>!l.psdRef); n+=p.layers.length-next.length; p.layers=next; });
+    S.doc.pages.forEach(p=>{ const next=p.layers.filter(l=>!l.psdRef); n+=p.layers.length-next.length; p.layers=next; settleClips(p.layers); });
     if(S.sel&&!S.doc.layers.some(l=>l.id===S.sel)) S.sel=null;
     drop.disabled=true; drop.textContent=n?`Removed ${n} reference layer${n===1?'':'s'}`:'No reference layers';
     commit(); scheduleRender(); renderLayers(); renderProps(true);
@@ -1805,7 +1934,19 @@ function brushHit(L,x,y){
   }
   return false;
 }
-function hitTest(x,y){ for(let i=S.doc.layers.length-1;i>=0;i--){ const L=S.doc.layers[i]; if(L.type==='folder'||!layerShown(L)||layerLocked(L)) continue; if(L.type==='redact'&&L.shape==='brush'){ if(brushHit(L,x,y)) return L; continue; } if(inside(L,x,y)) return L; } return null; }
+function hitTest(x,y){
+  const ls=S.doc.layers;
+  for(let i=ls.length-1;i>=0;i--){
+    const L=ls[i];
+    if(L.type==='folder'||!layerShown(L)||layerLocked(L)) continue;
+    if(L.type==='redact'&&L.shape==='brush'){ if(brushHit(L,x,y)) return L; continue; }
+    if(!inside(L,x,y)) continue;
+    const b=clipBaseIndex(ls, i);
+    if(b>=0 && !inside(ls[b], x, y)) continue;
+    return L;
+  }
+  return null;
+}
 function holdPointer(e){ try{ if(e.pointerId!=null) stage.setPointerCapture(e.pointerId); }catch(err){} }
 function startCam(e,clear){
   drag={mode:'cam',x:e.clientX,y:e.clientY,cx:S.cam.x,cy:S.cam.y,moved:false,clear:!!clear};
@@ -1856,7 +1997,8 @@ stage.addEventListener('pointerdown',e=>{
     }
   }
   if(S.crop && L && L.type==='image' && inside(L,p.x,p.y)){
-    drag={mode:'pan',L,start:{fx:L.fx,fy:L.fy},p0:p}; holdPointer(e); e.preventDefault(); return;
+    const bi=clipBaseIndex(S.doc.layers, S.doc.layers.indexOf(L));
+    if(bi<0 || inside(S.doc.layers[bi], p.x, p.y)){ drag={mode:'pan',L,start:{fx:L.fx,fy:L.fy},p0:p}; holdPointer(e); e.preventDefault(); return; }
   }
   if(S.crop){ exitCrop(); }
   const hit=hitTest(p.x,p.y);
@@ -1976,7 +2118,16 @@ stage.addEventListener('wheel',e=>{
   S.cam.x-=e.deltaX; S.cam.y-=e.deltaY; S.zoom=S.cam.k; applyCam();
 },{passive:false});
 let wheelT=0;
-function enterCrop(){ const L=sel(); if(!L||L.type!=='image'||!L.src) return; if(S.brush||S.tool) exitDrawTools(); if(L.fit==='stretch') L.fit='cover'; S.crop=true; $('#cropbar').hidden=false; scheduleRender(); renderProps(true); }
+function enterCrop(){
+  const L=sel(); if(!L||L.type!=='image'||!L.src) return;
+  if(S.brush||S.tool) exitDrawTools();
+  if(L.fit==='stretch') L.fit='cover';
+  S.crop=true;
+  const clipped=clipBaseIndex(S.doc.layers, S.doc.layers.indexOf(L))>=0;
+  const msg=$('#cropMsg');
+  if(msg) msg.textContent=clipped?'Adjusting photo inside the layer below: drag to reposition, scroll to zoom':'Adjusting photo: drag to reposition, scroll to zoom';
+  $('#cropbar').hidden=false; scheduleRender(); renderProps(true);
+}
 const HINT_IDLE='Drag empty space or scroll to pan · Ctrl-scroll to zoom · hold Space to pan · pages sit side by side';
 function syncRedactTool(){
   const btn=$('#redactBtn'); if(btn){ btn.classList.toggle('on', !!(S.tool||S.brush)); btn.setAttribute('aria-expanded', $('#redactPop')&&!$('#redactPop').hidden ? 'true' : 'false'); }
@@ -2051,6 +2202,7 @@ function pasteLayer(){
     return c;
   });
   S.doc.layers.push(...clones); S.sel=clones[0].id;
+  settleClips(S.doc.layers);
   commit(); scheduleRender(); renderLayers(); renderProps(true);
 }
 
@@ -2070,6 +2222,7 @@ window.addEventListener('keydown',e=>{
   if(mod && e.key.toLowerCase()==='d' && L){ e.preventDefault(); act('dup'); return; }
   if(mod && e.key.toLowerCase()==='s'){ e.preventDefault(); openSaveTemplate(); return; }
   if(mod && e.key.toLowerCase()==='e'){ e.preventDefault(); openExport(); return; }
+  if(mod && e.altKey && e.code==='KeyG'){ e.preventDefault(); if(sel()) toggleClip(sel()); return; }
   if(!mod && !e.repeat && e.key.toLowerCase()==='t'){ addText(); return; }
   if(!mod && !e.repeat && e.key.toLowerCase()==='r'){ e.preventDefault(); addRedactBox(); return; }
   if(!mod && !e.repeat && e.key.toLowerCase()==='b'){ const cur=sel(); if(cur&&cur.type==='redact'){ e.preventDefault(); S.brush?exitDrawTools():enterBrush(false); return; } }
@@ -2103,8 +2256,15 @@ function holds(id,nodeId){
   return false;
 }
 function removeBranch(id){
+  const ls=S.doc.layers;
   const ids=new Set(collectBranch(id));
-  S.doc.layers=S.doc.layers.filter(L=>!ids.has(L.id));
+  ls.forEach((L,i)=>{
+    if(ids.has(L.id)||L.clip!==true) return;
+    const b=clipBaseIndex(ls, i);
+    if(b>=0 && ids.has(ls[b].id)) L.clip=false;
+  });
+  S.doc.layers=ls.filter(L=>!ids.has(L.id));
+  settleClips(S.doc.layers);
 }
 function duplicateBranch(id){
   const ids=collectBranch(id), map={};
@@ -2118,7 +2278,8 @@ function duplicateBranch(id){
     return c;
   });
   const i=S.doc.layers.findIndex(l=>l.id===id);
-  S.doc.layers.splice(i+1,0,...clones);
+  const at=stackBlock(S.doc.layers, i).pop()+1;
+  S.doc.layers.splice(at,0,...clones);
   S.sel=map[id];
   commit(); scheduleRender(); renderLayers(); renderProps(true);
 }
@@ -2201,10 +2362,10 @@ function act(a,el){
     case 'add-page': addPage(false); break;
     case 'dup-page': addPage(true); break;
     case 'del-page': deletePage(); break;
-    case 'fwd': if(L&&i<ls.length-1){ ls.splice(i,1); ls.splice(i+1,0,L); commit(); scheduleRender(); renderLayers(); } break;
-    case 'back': if(L&&i>0){ ls.splice(i,1); ls.splice(i-1,0,L); commit(); scheduleRender(); renderLayers(); } break;
-    case 'front': if(L){ ls.splice(i,1); ls.push(L); commit(); scheduleRender(); renderLayers(); } break;
-    case 'bottom': if(L){ ls.splice(i,1); ls.unshift(L); commit(); scheduleRender(); renderLayers(); } break;
+    case 'fwd': if(L&&i>=0){ moveStack(ls,'fwd',i); commit(); scheduleRender(); renderLayers(); renderProps(true); } break;
+    case 'back': if(L&&i>=0){ moveStack(ls,'back',i); commit(); scheduleRender(); renderLayers(); renderProps(true); } break;
+    case 'front': if(L&&i>=0){ moveStack(ls,'front',i); commit(); scheduleRender(); renderLayers(); renderProps(true); } break;
+    case 'bottom': if(L&&i>=0){ moveStack(ls,'bottom',i); commit(); scheduleRender(); renderLayers(); renderProps(true); } break;
     case 'al-l': case 'al-c': case 'al-r': case 'al-t': case 'al-m': case 'al-b':
       if(L){ const W=S.doc.w,H=S.doc.h; if(a==='al-l') L.x=0; if(a==='al-c') L.x=Math.round(W/2-L.w/2); if(a==='al-r') L.x=W-L.w; if(a==='al-t') L.y=0; if(a==='al-m') L.y=Math.round(H/2-L.h/2); if(a==='al-b') L.y=H-L.h; commit(); scheduleRender(); syncProps(); } break;
     case 'flipx': if(L){ L.flipX=!L.flipX; commit(); scheduleRender(); renderProps(true);} break;
@@ -2270,18 +2431,43 @@ function renderLayers(){
   const folders=ls.length-n;
   $('#lcount').textContent=n+' layer'+(n===1?'':'s')+(folders?` · ${folders} folder${folders===1?'':'s'}`:'');
   const rows=layerRows();
-  box.innerHTML = rows.map(({L,depth})=>`
-    <div class="lrow ${L.type==='folder'?'folder':''} ${L.id===S.sel?'sel':''} ${layerShown(L)?'':'dim'}" data-lid="${L.id}" draggable="true" style="padding-left:${6+depth*14}px">
+  box.innerHTML = rows.map(({L,depth})=>{
+    const ix=ls.indexOf(L);
+    const clipped=clipBaseIndex(ls, ix)>=0;
+    const base=clipMembers(ls, ix).length>0;
+    return `<div class="lrow ${L.type==='folder'?'folder':''} ${L.id===S.sel?'sel':''} ${layerShown(L)?'':'dim'}" data-lid="${L.id}" draggable="true" style="padding-left:${6+depth*14+(clipped?16:0)}px">
       <span class="ic" ${L.type==='folder'?`data-fold="${L.id}"`:''} title="${L.type==='folder'?(L.open===false?'Expand folder':'Collapse folder'):''}">${L.type==='folder'?(L.open===false?ICON.folderClosed:ICON.folder):ICON[L.type]}</span>
-      <span class="nm" title="Double-click to rename">${esc(layerLabel(L))}</span>
+      <span class="nm ${base?'clipbase':''}" title="Double-click to rename">${clipped?'<span class="clipmark">↳</span>':''}${esc(layerLabel(L))}</span>
       ${L.type==='folder'?`<span class="slotb">${ls.filter(x=>x.parent===L.id).length}</span>`:L.slot?`<span class="slotb">Slot</span>`:'<span></span>'}
       ${L.type==='folder'?'<span></span>':`<button class="tb ${layerWeb(L)?'act':''}" data-web="${L.id}" title="${L.type==='redact'?'Always in the website image':layerWeb(L)?'Included in the website image':'Include in web image'}" aria-label="${L.type==='redact'?'Always in the website image':'Include in web image'}" aria-pressed="${layerWeb(L)}" ${L.type==='redact'?'disabled':''}>${ICON.globe}</button>`}
       <button class="tb ${L.visible?'':'act'}" data-vis="${L.id}" aria-label="${L.visible?'Hide':'Show'} layer">${L.visible?ICON.eye:ICON.eyeoff}</button>
       <button class="tb ${L.locked?'act':''}" data-lock="${L.id}" aria-label="${L.locked?'Unlock':'Lock'} layer">${L.locked?ICON.lock:ICON.unlock}</button>
-    </div>`).join('') || '<div class="empty">No layers yet. Add text, drop an image or pick a template.</div>';
+    </div>`;
+  }).join('') || '<div class="empty">No layers yet. Add text, drop an image or pick a template.</div>';
 }
 const llist=$('#llist');
+function toggleClip(L){
+  if(!L||!S.doc) return;
+  const ls=S.doc.layers;
+  const i=ls.indexOf(L);
+  if(i<0||L.type==='redact'||L.type==='folder'||L.psdRef||clipTargetIndex(ls, i)<0) return;
+  L.clip=!L.clip;
+  settleClips(ls);
+  S.sel=L.id;
+  commit(); scheduleRender(); renderLayers(); renderProps(true);
+}
 llist.addEventListener('click',e=>{
+  if(e.altKey){
+    const row=e.target.closest('[data-lid]');
+    if(row){
+      const rect=row.getBoundingClientRect();
+      const edge=6;
+      let upper=null;
+      if(e.clientY-rect.top<=edge){ const prev=row.previousElementSibling; if(prev&&prev.dataset.lid) upper=prev.dataset.lid; }
+      else if(rect.bottom-e.clientY<=edge) upper=row.dataset.lid;
+      if(upper){ e.preventDefault(); toggleClip(S.doc.layers.find(l=>l.id===upper)); return; }
+    }
+  }
   const fold=e.target.closest('[data-fold]');
   if(fold){ const L=S.doc.layers.find(l=>l.id===fold.dataset.fold); if(L&&L.type==='folder'){ L.open=L.open===false; commit(); renderLayers(); } return; }
   const web=e.target.closest('[data-web]');
@@ -2308,16 +2494,23 @@ llist.addEventListener('drop',e=>{
   if(!dragLid) return; e.preventDefault(); e.stopPropagation();
   const r=e.target.closest('[data-lid]'); const ls=S.doc.layers;
   const from=ls.findIndex(l=>l.id===dragLid); const L=ls[from];
-  if(L && !r){ L.parent=null; commit(); scheduleRender(); }
-  else if(L && r && r.dataset.lid!==dragLid){
+  if(L && !r){
+    stackBlock(ls, from).forEach(ix=>{ ls[ix].parent=null; });
+    settleClips(ls);
+    commit(); scheduleRender(); renderProps(true);
+  } else if(L && r && r.dataset.lid!==dragLid){
     const target=ls.find(l=>l.id===r.dataset.lid);
-    if(target && !(L.type==='folder' && holds(L.id,target.id))){
-      L.parent=target.type==='folder'?target.id:(target.parent||null);
+    const block=stackBlock(ls, from);
+    if(target && !block.some(ix=>ls[ix].id===target.id) && !(L.type==='folder' && holds(L.id,target.id))){
+      const parent=target.type==='folder'?target.id:(target.parent||null);
       if(target.type==='folder') target.open=true;
-      ls.splice(from,1);
+      const items=block.map(ix=>ls[ix]);
+      for(let k=block.length-1;k>=0;k--) ls.splice(block[k],1);
+      items.forEach(it=>{ it.parent=parent; });
       const to=ls.findIndex(l=>l.id===target.id);
-      ls.splice(Math.max(0,to)+1,0,L);
-      commit(); scheduleRender();
+      ls.splice(Math.max(0,to)+1,0,...items);
+      settleClips(ls);
+      commit(); scheduleRender(); renderProps(true);
     }
   }
   dragLid=null; renderLayers();
@@ -2436,7 +2629,7 @@ function canvasHTML(){
   </div>
   <div class="section"><div class="h">Background</div>${F.color('Color','_bg')}</div>
   <div class="section"><div class="h">Shortcuts</div>
-    <div class="note" style="font-family:var(--f-mono);font-size:11px;line-height:1.8">T add text · R redaction box · B brush a redaction<br>Del remove · ⌘/Ctrl D duplicate<br>⌘/Ctrl C / V copy &amp; paste layer · paste an image to add it<br>[ ] move layer down / up · arrows nudge (Shift ×10)<br>Enter or double-click photo to reposition<br>⌘/Ctrl Z undo · ⌘/Ctrl S save template · ⌘/Ctrl E export<br>Drag or resize snaps to the artboard edge · Alt turns snapping off</div>
+    <div class="note" style="font-family:var(--f-mono);font-size:11px;line-height:1.8">T add text · R redaction box · B brush a redaction<br>Del remove · ⌘/Ctrl D duplicate<br>⌘/Ctrl C / V copy &amp; paste layer · paste an image to add it<br>[ ] move layer down / up · arrows nudge (Shift ×10)<br>⌘/Ctrl Alt G clip to the layer below<br>Enter or double-click photo to reposition<br>⌘/Ctrl Z undo · ⌘/Ctrl S save template · ⌘/Ctrl E export<br>Drag or resize snaps to the artboard edge · Alt turns snapping off</div>
   </div>`;
 }
 function layerHTML(){
@@ -2450,6 +2643,7 @@ function layerHTML(){
     <div class="fld"><label for="f-name">Name</label><input class="inp" id="f-name" data-p="name" data-t="str" placeholder="${esc(layerLabel(L))}"></div>
     <label class="chk"><input type="checkbox" id="f-_slot" data-p="_slot" data-t="bool">Quick-fill slot</label>
     ${L.type==='redact'?'<div class="note">Always applied</div>':`<label class="chk"><input type="checkbox" id="f-web" data-p="web" data-t="bool">Include in web image</label>`}
+    ${L.type==='folder'?'':`<label class="chk"><input type="checkbox" id="f-clip" data-p="clip" data-t="bool" ${canClipLayer(L)?'':'disabled'}>Clip to layer below</label>`}
     ${L.slot?`<div class="fld"><label for="f-slot">Slot label</label><input class="inp" id="f-slot" data-p="slot" data-t="str"></div>`:''}
   </div>`;
   if(L.type==='redact') h+=`<div class="section">
@@ -2589,7 +2783,8 @@ function applyField(el,isChange){
   scheduleRender();
   if(t==='color'||t==='hex'){ const other=$('#props').querySelector(`[data-p="${p}"][data-t="${t==='color'?'hex':'color'}"]`); if(other) other.value=v; }
   const o=$('#props').querySelector(`[data-o="${p}"]`); if(o) o.textContent=fmtOut(p,v);
-  if(p==='name'||p==='slot'||p==='_slot'||p==='text'||p==='web') renderLayers();
+  if(p==='clip'){ L.clip=!!v && canClipLayer(L); settleClips(S.doc.layers); }
+  if(p==='name'||p==='slot'||p==='_slot'||p==='text'||p==='web'||p==='clip') renderLayers();
   if(isChange && REBUILD.has(p)) renderProps(true);
 }
 const props=$('#props');

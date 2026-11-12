@@ -910,13 +910,13 @@ function shownIn(layers,L){
   return true;
 }
 function textRole(L){
-  const lab=(L.slot||'').toLowerCase();
+  const lab=(L.slot||L.name||'').toLowerCase();
   if(/quote/.test(lab)) return 'quote';
   if(/headline|title/.test(lab)) return 'display';
-  if(/dek|sub|summary|body/.test(lab)) return 'body';
-  return 'line';
+  if(/category|tag|location|source|credit|follow|handle/.test(lab)) return 'line';
+  return 'body';
 }
-function lineCap(role){ return role==='quote'?5:role==='display'||role==='body'?3:1; }
+function lineCap(role){ return role==='quote'?5:role==='display'||role==='body'?4:1; }
 function sizeFloor(L,role){
   const design=designSize.get(L.id)||L.size;
   const ratio=role==='body'?0.68:role==='line'?0.62:0.70;
@@ -926,19 +926,26 @@ function sizeFloor(L,role){
 function xHits(a,b){ return a.x<b.x+b.w-6 && a.x+a.w>b.x+6; }
 function containsPoint(b,x,y){ return x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h; }
 function roomBelow(L,layers,pageW,pageH){
-  const ax=L.x+Math.min(16,Math.max(4,L.w*0.04)), ay=L.y+4;
   let limit=pageH-6;
   for(const o of layers){
     if(o===L||o.type==='folder'||o.type==='redact') continue;
     if(!shownIn(layers,o)) continue;
     if((o.opacity??1)<=0.02) continue;
-    if(o.type==='image'&&o.w>=pageW*0.85&&o.h>=pageH*0.85) continue;
+    if(o.w>=pageW*0.85&&o.h>=pageH*0.55&&o.y<pageH*0.45) continue;
     if(!xHits(L,o)) continue;
-    if(containsPoint(o,ax,ay)) continue;
-    if(o.y<=L.y+14) continue;
+    if(o.y<=L.y+Math.max(8,(L.size||24)*0.35)) continue;
     if(o.y<limit) limit=o.y;
   }
-  return limit-L.y-8;
+  return Math.max(0, limit-L.y-6);
+}
+function layoutWithinRoom(L,lay,layers,pageW,pageH){
+  if(!L||!L.slot||!lay) return lay;
+  const room=roomBelow(L,layers,pageW,pageH);
+  if(!(room>=8)||lay.h<=room+1) return lay;
+  const n=Math.max(1, Math.floor((room-2*(lay.padY||0))/Math.max(1,lay.lineH)));
+  if(n>=lay.lines.length) return lay;
+  const lines=lay.lines.slice(0,n);
+  return Object.assign({}, lay, {lines, h:Math.max(lay.lineH, lines.length*lay.lineH)+2*(lay.padY||0)});
 }
 function measureAt(ctx,L,size){
   const prev=L.size; L.size=size; hintText(ctx);
@@ -1546,7 +1553,7 @@ function paintShape(ctx,L){
 function drawLayer(ctx,L,opt){
   if(L.type==='folder'||!layerShown(L,opt)||L.type==='redact') return;
   let lay=null;
-  if(L.type==='text'){ lay=layoutText(ctx,L); L.h=lay.h; }
+  if(L.type==='text'){ lay=layoutWithinRoom(L, layoutText(ctx,L), drawList, paintSize.w, paintSize.h); L.h=lay.h; }
   const rot=L.rot||0, hs=L.hscale||1;
   if(L.type==='text' && (rot!==0 || hs!==1)){ drawSupersampledText(ctx,L,lay,opt); return; }
   ctx.save();
@@ -1635,10 +1642,12 @@ function paintClipGroup(ctx, base, clips, opt){
   ctx.drawImage(group, 0, 0);
   ctx.restore();
 }
+let paintSize={w:1080,h:1350};
 function paintDoc(ctx,doc,opt,pred){
   const s=opt.scale||1;
-  const prev=drawList;
+  const prev=drawList, prevSize=paintSize;
   drawList=doc.layers;
+  paintSize={w:doc.w||1080,h:doc.h||1350};
   ctx.save(); ctx.setTransform(s,0,0,s,0,0);
   hintText(ctx);
   ctx.clearRect(0,0,doc.w,doc.h);
@@ -1668,6 +1677,7 @@ function paintDoc(ctx,doc,opt,pred){
   }
   ctx.restore();
   drawList=prev;
+  paintSize=prevSize;
 }
 function renderDoc(ctx,doc,opt={}){ paintDoc(ctx,doc,opt,()=>true); }
 function renderWeb(ctx,doc,opt={}){ paintDoc(ctx,doc,Object.assign({editor:false},opt),L=>L.type==='redact'||layerWeb(L)); }
@@ -4629,13 +4639,13 @@ async function initBackend(){
   db.collection('templates').onSnapshot(snap=>{
     TPLS=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
     done(); renderLib();
-    if(C.generated&&!C.templateRestored&&selectedTemplateRecord()){
+    if(C.workspace==='creator'&&C.generated&&!C.templateRestored&&selectedTemplateRecord()){
       C.templateRestored=true;
       const words=S.doc.pages.map(p=>(p.layers||[]).filter(l=>l.type==='text'&&l.slot).map(l=>({key:creatorSlotKey(l.slot),text:l.text})));
       if(reloadSelectedTemplate()){
         S.doc.pages.forEach((p,i)=>p.layers.forEach(L=>{ if(L.type!=='text'||!L.slot)return; const hit=(words[i]||[]).find(w=>w.key===creatorSlotKey(L.slot)); if(hit&&String(hit.text||'').trim()) L.text=hit.text; }));
         for(const p of S.doc.pages) fitLooseText(p.layers.filter(l=>l.type==='text'&&l.slot), p.layers, p.w, p.h);
-        commit(); if(C.workspace==='creator') renderCreator(); scheduleRender();
+        commit(); renderCreator(); scheduleRender();
       }
     }
   },()=>{ done(); cap.failed=true; renderLib(); });

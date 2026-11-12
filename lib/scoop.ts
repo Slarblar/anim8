@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 /** Collections the post builder is allowed to read and write. */
-export const COLLECTIONS = new Set(['library', 'templates', 'brand', 'references']);
+export const COLLECTIONS = new Set(['library', 'templates', 'brand', 'references', 'postrefs']);
 export const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** Every stored JSON doc lives under this Vercel Blob prefix. */

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { guard } from '@/lib/scoop';
+import { guard, isBlobUrl } from '@/lib/scoop';
+import { brandFrom, normalizeDraft, readBrand, tagsLine, type CategoryRule } from '@/lib/scoop-brand';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -79,6 +80,162 @@ ${excerpt}
 Reply with JSON only, no prose and no code fence: {"fields": {"<slot name exactly as given>": "<text>"}, "notes": "<one short sentence flagging anything unclear, unverified or missing in the excerpt, or an empty string>"}`;
 }
 
+type ZoneBudget = { role: string; x: number; y: number; w: number; h: number; perLine: number; maxLines: number; minSize: number; maxSize: number };
+type LayoutRef = { id: string; storyType: string; imageUrl: string; measure: unknown; copy: { headline: string; dek: string; category: string; tags: string } };
+
+function cleanZones(raw: unknown): ZoneBudget[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ZoneBudget[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Partial<ZoneBudget>;
+    const role = String(row.role ?? '').slice(0, 24);
+    if (!role) continue;
+    out.push({
+      role,
+      x: Math.round(Number(row.x) || 0),
+      y: Math.round(Number(row.y) || 0),
+      w: Math.max(1, Math.round(Number(row.w) || 1)),
+      h: Math.max(1, Math.round(Number(row.h) || 1)),
+      perLine: Math.min(80, Math.max(4, Math.round(Number(row.perLine) || 24))),
+      maxLines: Math.min(4, Math.max(1, Math.round(Number(row.maxLines) || 1))),
+      minSize: Math.round(Number(row.minSize) || 0),
+      maxSize: Math.round(Number(row.maxSize) || 0),
+    });
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+function cleanLayoutRefs(raw: unknown): LayoutRef[] {
+  if (!Array.isArray(raw)) return [];
+  const out: LayoutRef[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Partial<LayoutRef> & { copy?: Partial<LayoutRef['copy']> };
+    const id = String(row.id ?? '').slice(0, 64);
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) continue;
+    const copy: Partial<LayoutRef['copy']> = row.copy && typeof row.copy === 'object' ? row.copy : {};
+    out.push({
+      id,
+      storyType: String(row.storyType ?? '').slice(0, 24),
+      imageUrl: isBlobUrl(String(row.imageUrl ?? '')) ? String(row.imageUrl) : '',
+      measure: row.measure && typeof row.measure === 'object' ? row.measure : null,
+      copy: {
+        headline: cleanLines(copy.headline, 4, 280),
+        dek: cleanLines(copy.dek, 4, 500),
+        category: String(copy.category ?? '').slice(0, 40),
+        tags: String(copy.tags ?? '').slice(0, 180),
+      },
+    });
+    if (out.length >= 3) break;
+  }
+  return out;
+}
+
+function categoryBlock(categories: CategoryRule[]) {
+  return categories
+    .map((c) => `${c.id}: ${c.description} ${c.when}`.trim())
+    .join('\n');
+}
+
+function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: CategoryRule[], tags: string[], refs: LayoutRef[], voice: VoiceRef[], pageCount: number, flags: { followUp: boolean; correction: boolean }) {
+  const zoneText = zones
+    .map((z) => `${z.role}: about ${z.perLine} characters per line, up to ${z.maxLines} lines. The fitter chooses the size between ${z.minSize || '?'} and ${z.maxSize || '?'} px.`)
+    .join('\n');
+  const examples = refs
+    .map((ref, i) => {
+      const parts = [`Reference ${i + 1} id=${ref.id}${ref.storyType ? ` · ${ref.storyType}` : ''}`];
+      if (ref.copy.headline) parts.push(`Headline:\n${ref.copy.headline}`);
+      if (ref.copy.dek) parts.push(`Dek:\n${ref.copy.dek}`);
+      if (ref.copy.category || ref.copy.tags) parts.push(`Category: ${ref.copy.category || '—'}\nTags: ${ref.copy.tags || '—'}`);
+      if (ref.measure) parts.push(`Measured:\n${JSON.stringify(ref.measure)}`);
+      return parts.join('\n');
+    })
+    .join('\n\n');
+  const voiceText = voice.length
+    ? voice.map((ref, i) => `Voice ${i + 1}${ref.category ? ` · ${ref.category}` : ''}\n${ref.headline}${ref.dek ? `\n${ref.dek}` : ''}`).join('\n\n')
+    : '';
+  return `Write one SLC Scoop post from the excerpt. You choose the words, the category, up to 3 topic tags, and which reference to follow. You do not choose font sizes, coordinates, or layer positions. A separate fitter does that.
+
+Use only facts stated in the excerpt. Never invent names, numbers, places, quotes, or causes.
+
+Categories — pick exactly one id from this list:
+${categoryBlock(categories)}
+${flags.correction ? 'The editor marked this as a correction. Set category to CORRECTION.' : 'Do not choose CORRECTION. The editor did not mark this as a correction.'}
+${flags.followUp ? 'The editor marked this as a follow-up, so UPDATE is allowed when this is a new development on a story already posted.' : 'Do not choose UPDATE. The editor did not mark this as a follow-up.'}
+
+Topic tags — pick up to 3 from this list, not counting SLCSCOOP (the fitter adds SLCSCOOP):
+${tags.join(', ')}
+If a useful tag is missing, put it in suggestedTags and do not include it in topicTags.
+
+Text zones and the character budget at the target size:
+${zoneText || 'No zones were sent.'}
+
+Give 3 headline options. Each option's lines array is the graphic line breaks, one string per line, 1 to 4 lines. A true one-line fact stays one line. Do not add a line that carries no fact. The dek is at most 3 lines and does not repeat the headline.
+${pageCount > 1 ? `This template has ${pageCount} pages. Return a pages array of ${pageCount} items. Each item has its own headlines (3 options) and dek. Page 1 is the cover. Later pages continue the same story without repeating the cover headline.` : 'Return a single cover. pages may be omitted.'}
+
+Layout references show line shape, density, and spacing. Their events are not this story. Never reuse their names, numbers, places, or quotes. Set referenceId to the reference whose line count and density this story should follow, or "" if none apply.
+${examples ? `\n${examples}` : '\nNo layout references were sent.'}
+${voiceText ? `\nVoice samples, for cadence only. Do not reuse their facts.\n\n${voiceText}` : ''}
+
+Excerpt:
+"""
+${excerpt}
+"""
+
+Reply with JSON only, no prose and no code fence:
+{"category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["LINE ONE","LINE TWO"]}],"dek":"One or two sentences.","location":"Salt Lake City, UT","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["LINE ONE"]}],"dek":""}]}`;
+}
+
+async function layoutImage(url: string) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const type = (res.headers.get('content-type') || '').split(';')[0].trim();
+    if (!/^image\/(jpeg|png|webp)$/.test(type)) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (!buf.length || buf.length > 1_200_000) return null;
+    return { type: 'image' as const, source: { type: 'base64' as const, media_type: type as 'image/jpeg' | 'image/png' | 'image/webp', data: buf.toString('base64') } };
+  } catch {
+    return null;
+  }
+}
+
+function fieldsFrom(draft: ReturnType<typeof normalizeDraft>, slots: Slot[]) {
+  const headline = draft.headlines[0]?.lines.join('\n') || '';
+  const tags = tagsLine(draft.topicTags);
+  const byRole: Record<string, string> = {
+    headline,
+    title: headline,
+    quote: headline,
+    dek: draft.dek,
+    sub: draft.dek,
+    summary: draft.dek,
+    supporting: draft.dek,
+    category: draft.category,
+    tags,
+    location: draft.location,
+    source: draft.source.startsWith('Source') || !draft.source ? draft.source : `Source: ${draft.source}`,
+  };
+  const fields: Record<string, string> = {};
+  for (const slot of slots) {
+    const key = slot.slot.toLowerCase();
+    const role = /headline|title|quote/.test(key) ? 'headline' : /dek|sub|summary|supporting|body/.test(key) ? 'dek' : /category/.test(key) ? 'category' : /tag/.test(key) ? 'tags' : /location/.test(key) ? 'location' : /source|credit|attribution/.test(key) ? 'source' : '';
+    if (role && byRole[role]) fields[slot.slot] = byRole[role].slice(0, slot.maxChars + 40);
+  }
+  if (!slots.length) {
+    fields.Headline = headline;
+    fields.Dek = draft.dek;
+    fields.Category = draft.category;
+    fields.Tags = tags;
+    fields.Location = draft.location;
+    fields.Source = byRole.source;
+  }
+  return fields;
+}
+
 /** POST /api/scoop/draft  { excerpt, slots, references? } → { fields, notes } */
 export async function POST(req: NextRequest) {
   const denied = guard(req);
@@ -86,7 +243,19 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return NextResponse.json({ error: 'not_configured' }, { status: 503 });
 
-  let body: { excerpt?: unknown; slots?: unknown; references?: unknown };
+  let body: {
+    excerpt?: unknown;
+    slots?: unknown;
+    references?: unknown;
+    voice?: unknown;
+    zones?: unknown;
+    layoutRefs?: unknown;
+    pageCount?: unknown;
+    followUp?: unknown;
+    correction?: unknown;
+    categories?: unknown;
+    tags?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -102,11 +271,34 @@ export async function POST(req: NextRequest) {
       caps: !!s.caps,
       example: String(s.example ?? '').slice(0, 160),
     }));
-  if (excerpt.length < 40 || !slots.length) {
+  const zones = cleanZones(body.zones);
+  if (excerpt.length < 40 || (!slots.length && !zones.length)) {
     return NextResponse.json({ error: 'need an excerpt and at least one text slot' }, { status: 400 });
   }
 
   try {
+    const layout = zones.length > 0;
+    const layoutRefs = layout ? cleanLayoutRefs(body.layoutRefs) : [];
+    const flags = { followUp: body.followUp === true, correction: body.correction === true };
+    const stored = layout ? await readBrand() : null;
+    const brand = stored && (stored.categories.length || stored.tags.length)
+      ? stored
+      : brandFrom({ categories: body.categories, tags: body.tags });
+    const voice = cleanRefs(body.voice ?? body.references).slice(0, layout ? 8 : VOICE_LIMIT);
+    const content: ({ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } })[] = [];
+    if (layout) {
+      for (const ref of layoutRefs) {
+        const image = await layoutImage(ref.imageUrl);
+        if (image) {
+          content.push({ type: 'text', text: `Layout reference image id=${ref.id}` });
+          content.push(image);
+        }
+      }
+      content.push({
+        type: 'text',
+        text: layoutPrompt(excerpt, zones, brand.categories, brand.tags, layoutRefs, voice, Math.min(6, Math.max(1, Math.round(Number(body.pageCount) || 1))), flags),
+      });
+    }
     const res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
@@ -116,9 +308,11 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1500,
-        system: systemPrompt(cleanRefs(body.references)),
-        messages: [{ role: 'user', content: buildPrompt(excerpt, slots) }],
+        max_tokens: layout ? 2200 : 1500,
+        system: layout
+          ? 'You write Instagram news graphics for SLC Scoop, an independent Salt Lake City news outlet. Tagline: "Reprogramming the news." Voice: direct, factual, local, no clickbait, no opinion, no emoji. You never choose pixel sizes or coordinates. Reply with JSON only.'
+          : systemPrompt(voice),
+        messages: [{ role: 'user', content: layout ? content : buildPrompt(excerpt, slots) }],
       }),
     });
     if (res.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
@@ -131,12 +325,20 @@ export async function POST(req: NextRequest) {
     const text = (message.content ?? []).map((block) => (block.type === 'text' ? block.text ?? '' : '')).join('');
     const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
     const out = JSON.parse(json) as { fields?: Record<string, unknown>; notes?: unknown };
-    const fields: Record<string, string> = {};
-    for (const slot of slots) {
-      const value = out.fields?.[slot.slot];
-      if (typeof value === 'string') fields[slot.slot] = value.slice(0, slot.maxChars + 40);
+    if (!layout) {
+      const fields: Record<string, string> = {};
+      for (const slot of slots) {
+        const value = out.fields?.[slot.slot];
+        if (typeof value === 'string') fields[slot.slot] = value.slice(0, slot.maxChars + 40);
+      }
+      return NextResponse.json({ fields, notes: typeof out.notes === 'string' ? out.notes : '' });
     }
-    return NextResponse.json({ fields, notes: typeof out.notes === 'string' ? out.notes : '' });
+    const draft = normalizeDraft(out, brand, flags, layoutRefs.map((ref) => ref.id));
+    return NextResponse.json({
+      ...draft,
+      tags: tagsLine(draft.topicTags),
+      fields: fieldsFrom(draft, slots),
+    });
   } catch (err) {
     console.error('scoop draft failed', err);
     return NextResponse.json({ error: 'draft_failed' }, { status: 502 });

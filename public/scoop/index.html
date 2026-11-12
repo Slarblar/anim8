@@ -1125,6 +1125,15 @@ function fitOneLine(L,zone,role){
 }
 function fitPage(page,opt){
   opt=opt||{};
+  // A template keeps its own layout. Zones move type only after someone edits them.
+  if(!page.zonesCustom){
+    const H=findRole(page.layers,'headline'), D=findRole(page.layers,'dek');
+    if(opt.headlineText!=null&&H) H.text=opt.headlineText;
+    if(opt.dekText!=null&&D) D.text=opt.dekText;
+    const changed=(opt.only&&opt.only.length?opt.only:page.layers.filter(l=>l.type==='text'&&l.slot)).filter(Boolean);
+    const tight=fitLooseText(changed,page.layers,page.w,page.h);
+    return {notes:tight.map(name=>({message:name+' still runs long'})), score:0};
+  }
   if(!page.zones||!page.zones.length) page.zones=defaultZones(page);
   if(!page.spacing||typeof page.spacing.headlineToDekGap!=='number') page.spacing=Object.assign({headlineToDekGap:defaultGap(page)},page.spacing||{});
   const notes=[];
@@ -1156,7 +1165,7 @@ function fitPage(page,opt){
   return {notes,score};
 }
 function fitNote(L,page){
-  if(!L||L.type!=='text'||!window.ScoopFit) return '';
+  if(!L||L.type!=='text'||!window.ScoopFit||!page||!page.zonesCustom) return '';
   const role=zoneRoleForLayer(L); if(!role) return '';
   const zone=zoneFor(page,role); if(!zone||!String(L.text||'').trim()) return '';
   const lines=String(L.text).split('\n').map(s=>s.trim()).filter(Boolean);
@@ -1831,14 +1840,15 @@ function addZone(role){
   const existing=page.zones.find(z=>z.role===role);
   if(existing){ S.zoneId=existing.id; syncZoneLabel(); drawOverlay(); return; }
   const z={id:uid(),role,label:labels[role]||role,x:60,y:120+page.zones.length*24,w:Math.min(960,page.w-120),h:role==='dek'||role==='tag'||role==='category'?72:180};
-  page.zones.push(z); S.zoneId=z.id; commit(); syncZoneLabel(); drawOverlay();
+  page.zones.push(z); page.zonesCustom=true; S.zoneId=z.id; commit(); syncZoneLabel(); drawOverlay();
 }
 function deleteZone(){
   const page=S.doc.pages[S.doc.page];
   page.zones=(page.zones||[]).filter(z=>z.id!==S.zoneId);
+  page.zonesCustom=true;
   S.zoneId=(page.zones[0]||{}).id||null; commit(); syncZoneLabel(); drawOverlay();
 }
-$('#zoneLabel').addEventListener('change',()=>{ const z=currentZone(); if(!z) return; z.label=$('#zoneLabel').value.trim()||z.role; commit(); drawOverlay(); });
+$('#zoneLabel').addEventListener('change',()=>{ const z=currentZone(); if(!z||!S.doc) return; z.label=$('#zoneLabel').value.trim()||z.role; S.doc.pages[S.doc.page].zonesCustom=true; commit(); drawOverlay(); });
 
 /* ---------- overlay ---------- */
 function drawOverlay(){
@@ -2562,7 +2572,7 @@ async function importPsdFile(file){
     report.refs=layers.some(l=>l.psdRef);
     report.w=w; report.h=h;
     report.docName=String(file.name||'').replace(/\.psd$/i,'').trim()||'Untitled post';
-    const page={id:uid(),name:'Page 1',w,h,bg:'#151616',layers,zones:shell.zones||[]};
+    const page={id:uid(),name:'Page 1',w,h,bg:'#151616',layers,zones:shell.zones||[],zonesCustom:!!(shell.zones&&shell.zones.length)};
     if(!page.zones.length) page.zones=defaultZones(page);
     page.spacing={headlineToDekGap:defaultGap(page)};
     loadDoc({name:report.docName, templateId:null, templateType:'single', page:0, pages:[page]});
@@ -2920,6 +2930,7 @@ function endDrag(e){
     if(!d.moved && d.clear && S.sel){ S.sel=null; renderLayers(); renderProps(true); scheduleRender(); }
     return;
   }
+  if(d.mode==='zone-move'||d.mode==='zone-resize'){ const page=S.doc&&S.doc.pages[S.doc.page]; if(page) page.zonesCustom=true; }
   commit(); scheduleRender(); syncProps();
 }
 stage.addEventListener('pointerup',endDrag); stage.addEventListener('pointercancel',endDrag);
@@ -3474,7 +3485,7 @@ function aiDraftBody(excerpt,flags){
     slots:S.doc.pages.flatMap((p,i)=>p.layers.filter(l=>l.slot&&l.type==='text').map(l=>({...slotBrief(l),slot:S.doc.pages.length>1?`Page ${i+1} ${l.slot}`:l.slot})))};
 }
 function applyReferenceLayout(page,ref){
-  if(!ref) return;
+  if(!ref||!page.zonesCustom) return;
   const sx=ref.pageW?page.w/ref.pageW:1, sy=ref.pageH?page.h/ref.pageH:1;
   if(Array.isArray(ref.zones)&&ref.zones.length) page.zones=ref.zones.map(z=>({id:uid(),role:z.role,label:z.label||z.role,x:Math.round((+z.x||0)*sx),y:Math.round((+z.y||0)*sy),w:Math.max(24,Math.round((+z.w||1)*sx)),h:Math.max(24,Math.round((+z.h||1)*sy))}));
   const gap=ref.spacing&&typeof ref.spacing.headlineToDekGap==='number'?ref.spacing.headlineToDekGap:(ref.measure&&ref.measure.dek?ref.measure.dek.gap:null);
@@ -4198,7 +4209,7 @@ function openSaveTemplate(status='draft'){
         page.layers=(page.layers||[]).filter(L=>!L.psdRef);
         for(const L of page.layers){
           if(L.type!=='image'||!L.src) continue;
-          if(clear && (L.role==='photo'||L.slot)){ L.src=null; continue; }
+          if(clear && L.role==='photo'){ L.src=null; continue; }
           if(L.src.kind!=='local') continue;
           const label=L.name||'Untitled';
           let blob=localBlobs.get(L.src.key)||await idbGet(L.src.key);
@@ -4618,6 +4629,15 @@ async function initBackend(){
   db.collection('templates').onSnapshot(snap=>{
     TPLS=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
     done(); renderLib();
+    if(C.generated&&!C.templateRestored&&selectedTemplateRecord()){
+      C.templateRestored=true;
+      const words=S.doc.pages.map(p=>(p.layers||[]).filter(l=>l.type==='text'&&l.slot).map(l=>({key:creatorSlotKey(l.slot),text:l.text})));
+      if(reloadSelectedTemplate()){
+        S.doc.pages.forEach((p,i)=>p.layers.forEach(L=>{ if(L.type!=='text'||!L.slot)return; const hit=(words[i]||[]).find(w=>w.key===creatorSlotKey(L.slot)); if(hit&&String(hit.text||'').trim()) L.text=hit.text; }));
+        for(const p of S.doc.pages) fitLooseText(p.layers.filter(l=>l.type==='text'&&l.slot), p.layers, p.w, p.h);
+        commit(); if(C.workspace==='creator') renderCreator(); scheduleRender();
+      }
+    }
   },()=>{ done(); cap.failed=true; renderLib(); });
   db.collection('references').onSnapshot(snap=>{
     REFS=snap.docs.map(d=>Object.assign({id:d.id},d.data())).filter(r=>String(r.headline||'').trim()).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,30);
@@ -4759,7 +4779,7 @@ function creatorIssues(){
     const visible=p.layers.filter(l=>l.slot&&shownIn(p.layers,l)),photo=visible.some(l=>l.type==='image'&&l.src);
     for(const l of visible){
       const key=creatorSlotKey(l.slot),value=String(l.text||'').trim();let label='';
-      if(l.type==='image'&&!l.src)label='Add '+l.slot.toLowerCase();
+      if(l.type==='image'&&l.role==='photo'&&!l.src)label='Add '+l.slot.toLowerCase();
       if(l.type==='text'&&key==='headline'&&!value)label='Add '+l.slot.toLowerCase();
       if(l.type==='text'&&key==='source'&&photo&&!value)label='Add photo credit';
       if(l.type==='text'&&value){ const note=fitNote(l,p); if(note) label=note; }
@@ -4801,13 +4821,42 @@ function parseTeamCopy(raw){
     return out;
   });
 }
+function photoBank(doc){
+  const bank=[];
+  (doc&&doc.pages||[]).forEach((p,i)=>(p.layers||[]).forEach(l=>{
+    if(l.type==='image'&&l.role==='photo'&&l.src) bank.push({page:i,slot:creatorSlotKey(l.slot)||String(l.slot||l.name||'').toLowerCase(),src:l.src,nw:l.nw,nh:l.nh,zoom:l.zoom,fx:l.fx,fy:l.fy});
+  }));
+  return bank;
+}
+function applyPhotoBank(doc,bank){
+  if(!doc||!bank||!bank.length) return;
+  (doc.pages||[]).forEach((p,i)=>(p.layers||[]).forEach(l=>{
+    if(l.type!=='image'||l.role!=='photo') return;
+    const key=creatorSlotKey(l.slot)||String(l.slot||l.name||'').toLowerCase();
+    const hit=bank.find(b=>b.page===i&&b.slot===key)||bank.find(b=>b.page===i);
+    if(hit) Object.assign(l,{src:hit.src,nw:hit.nw,nh:hit.nh,zoom:hit.zoom||1,fx:hit.fx??.5,fy:hit.fy??.5});
+  }));
+}
+function selectedTemplateRecord(){
+  const [type,key]=creatorSelected().split(':');
+  if(type==='team') return TPLS.find(t=>t.id===key&&t.status!=='draft'&&t.status!=='archived')||null;
+  return stockOverride(key);
+}
+function reloadSelectedTemplate(){
+  if(!S.doc||!selectedTemplateRecord()) return false;
+  const bank=photoBank(S.doc), name=S.doc.name;
+  const fresh=creatorDocFor(creatorSelected());
+  applyPhotoBank(fresh, bank);
+  fresh.name=name||fresh.name;
+  loadDoc(fresh,{fresh:false});
+  return true;
+}
 async function creatorChooseTemplate(id){
   if(C.busy)return false;
-  if(creatorSelected()===id){localStorage.setItem('scoop-builder:preferred-template',id);return true;}
   clearTimeout(fillT);commit();const previous=JSON.parse(snap()),next=creatorDocFor(id);
   if(C.generated&&previous.pages.length>next.pages.length){if(!await creatorConfirm('Use a shorter template?',`This layout has ${next.pages.length} page${next.pages.length===1?'':'s'}. Extra pages will leave this post; their content is retained if you switch back.`,'Change template'))return false;}
   previous.pages.forEach((p,i)=>{const bank=C.contentCache[i]||(C.contentCache[i]={});p.layers.filter(l=>l.slot&&(C.generated||l.type==='image')).forEach(l=>{bank[l.type+':'+creatorSlotKey(l.slot)]=l.type==='text'?{text:l.text}:{src:l.src,nw:l.nw,nh:l.nh};});});
-  next.pages.forEach((p,i)=>{const bank=C.contentCache[i]||{};p.layers.forEach(l=>{if(!l.slot)return;const v=bank[l.type+':'+creatorSlotKey(l.slot)];if(l.type==='text'&&C.generated)l.text=v?v.text:'';else if(l.type==='image'&&v)Object.assign(l,v,{zoom:1,fx:.5,fy:.5});});});
+  next.pages.forEach((p,i)=>{const bank=C.contentCache[i]||{};p.layers.forEach(l=>{if(!l.slot)return;const v=bank[l.type+':'+creatorSlotKey(l.slot)];if(l.type==='text'&&C.generated)l.text=v?v.text:'';else if(l.type==='image'&&v&&v.src)Object.assign(l,v,{zoom:1,fx:.5,fy:.5});});});
   loadDoc(next,{fresh:false});if(C.generated)for(const p of S.doc.pages){await ensureFonts(p.layers);fitFilledText(p.layers.filter(l=>l.type==='text'&&l.slot),p.layers,p.w,p.h);}
   localStorage.setItem('scoop-builder:preferred-template',id);C.field='';commit();saveDraft();creatorPersist();renderCreator();scheduleRender();return true;
 }
@@ -4821,6 +4870,7 @@ async function creatorCreatePost(){
   C.busy=true;C.message='';C.error=false;C.ctrl=new AbortController();renderCreator();
   let fields={},notes='';
   try{
+    reloadSelectedTemplate();
     if(C.inputMode==='ai'){
       if(!cap.sample)throw {code:'not_configured'};
       const out=await cap.sample.draft(aiDraftBody(C.source,{followUp:C.followUp,correction:C.correction}),C.ctrl.signal);

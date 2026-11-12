@@ -1,0 +1,7 @@
+Sample image: Salt Lake City Skyline
+Photographer: Alan Cressler, from USGS Circular 1358
+Rights: Public domain, as stated by U.S. Geological Survey
+Source: https://www.usgs.gov/media/images/salt-lake-city-skyline
+Image: https://d9-wret.s3.us-west-2.amazonaws.com/assets/palladium/production/s3fs-public/media/images/cir1358_ch06ph19_alan%20cresslersSLCskyline.jpg
+The bundled JPEG is resized to 1200 x 729, converted to RGB, with metadata
+removed for web use. Used only for sample previews, not real post defaults.

@@ -5,19 +5,61 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 type Slot = { slot: string; maxChars: number; caps: boolean; example: string };
+type VoiceRef = { headline: string; dek: string; category: string };
+
+const VOICE_LIMIT = 24;
+
+function cleanLines(value: unknown, maxLines: number, maxChars: number): string {
+  return String(value ?? '')
+    .replace(/\r\n/g, '\n')
+    .replace(/"""/g, '"')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, maxLines)
+    .join('\n')
+    .slice(0, maxChars);
+}
+
+function cleanRefs(raw: unknown): VoiceRef[] {
+  if (!Array.isArray(raw)) return [];
+  const out: VoiceRef[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Partial<VoiceRef>;
+    const headline = cleanLines(row.headline, 4, 280);
+    const dek = cleanLines(row.dek, 4, 500);
+    const category = String(row.category ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (headline.length < 8) continue;
+    out.push({ headline, dek, category });
+    if (out.length >= VOICE_LIMIT) break;
+  }
+  return out;
+}
+
+function systemPrompt(refs: VoiceRef[]): string {
+  const examples = refs.length
+    ? `\n\nVoice examples from posts SLC Scoop already published. Match their cadence, specificity, how they attribute, and what they leave out. Headline line breaks in the examples are intentional. Write a headline of 2 or 3 lines when the excerpt has enough fact to fill them, and keep a true one-line story as one line. Do not add a line that does not carry a fact from the excerpt. These events are not the story you are writing. Never reuse their names, numbers, places, or quotes.\n\n${refs
+        .map((ref, i) => {
+          const parts = [`Example ${i + 1}${ref.category ? ` · ${ref.category}` : ''}`, `Headline:\n${ref.headline}`];
+          if (ref.dek) parts.push(`Dek:\n${ref.dek}`);
+          return parts.join('\n');
+        })
+        .join('\n\n')}`
+    : '';
+  return `You write Instagram news graphics for SLC Scoop, an independent Salt Lake City news outlet. Tagline: "Reprogramming the news." Voice: direct, factual, local, no clickbait, no opinion, no emoji.${examples}`;
+}
 
 /** Same Sonnet id the client-request briefs already call. Override with SCOOP_MODEL. */
 const MODEL = process.env.SCOOP_MODEL?.trim() || 'claude-sonnet-5';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 function buildPrompt(excerpt: string, slots: Slot[]) {
-  return `You write Instagram news graphics for SLC Scoop, an independent Salt Lake City news outlet. Tagline: "Reprogramming the news." Voice: direct, factual, local, no clickbait, no opinion, no emoji.
-
-Fill each text slot of the graphic using ONLY facts stated in the excerpt. Never invent names, numbers, places, quotes or causes. If the excerpt doesn't support a slot, return an empty string for it.
+  return `Fill each text slot of the graphic using ONLY facts stated in the excerpt. Never invent names, numbers, places, quotes or causes. If the excerpt doesn't support a slot, return an empty string for it.
 
 Slot guidance (match by slot name):
-- Headline: the single most newsworthy fact, active voice, present tense, specific. Use single quotes for any quoted phrase.
-- Dek / Sub: 1-2 sentences adding who, where and the key detail the headline leaves out. Attribute claims ("police say", "X says").
+- Headline: the single most newsworthy fact, active voice, present tense, specific. Use single quotes for any quoted phrase. Put a newline between graphic lines. Aim for 2 or 3 lines when the facts support it, and stay within maxChars. A true one-line headline stays one line.
+- Dek / Sub: 1-2 sentences, at most 3 lines, adding who, where and the key detail the headline leaves out. Attribute claims ("police say", "X says").
 - Category: one or two words, e.g. NEWS, BREAKING, UPDATE, COURTS, POLITICS, WEATHER, CRIME, BUSINESS, COMMUNITY.
 - Tags: 3-4 topic tags separated by "  |  " ending with SLCSCOOP, e.g. "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
 - Location: "City, UT" style (or the state's postal code if not Utah).
@@ -37,14 +79,14 @@ ${excerpt}
 Reply with JSON only, no prose and no code fence: {"fields": {"<slot name exactly as given>": "<text>"}, "notes": "<one short sentence flagging anything unclear, unverified or missing in the excerpt, or an empty string>"}`;
 }
 
-/** POST /api/scoop/draft  { excerpt, slots } → { fields, notes } */
+/** POST /api/scoop/draft  { excerpt, slots, references? } → { fields, notes } */
 export async function POST(req: NextRequest) {
   const denied = guard(req);
   if (denied) return denied;
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) return NextResponse.json({ error: 'not_configured' }, { status: 503 });
 
-  let body: { excerpt?: unknown; slots?: unknown };
+  let body: { excerpt?: unknown; slots?: unknown; references?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -75,6 +117,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 1500,
+        system: systemPrompt(cleanRefs(body.references)),
         messages: [{ role: 'user', content: buildPrompt(excerpt, slots) }],
       }),
     });

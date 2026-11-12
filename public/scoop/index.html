@@ -264,7 +264,84 @@ body[data-workspace=creator] .modal{background:#fff;color:#24251f;--panel:#fff;-
 
 body[data-workspace=builder] #app{grid-template-rows:auto 34px minmax(0,1fr)}
 
+.night-toggle{width:36px;height:36px;flex:none;display:grid;place-items:center;padding:0;border-radius:7px;border:1px solid transparent;background:transparent;color:#aaa;cursor:pointer}
+.night-toggle:hover{color:#fff}
+.night-toggle[aria-pressed=true]{background:#303131;color:#fff;border-color:#454646}
+.night-toggle svg{width:16px;height:16px}
+.night-toggle .icon-sun{display:none}
+.night-toggle[aria-pressed=true] .icon-moon{display:none}
+.night-toggle[aria-pressed=true] .icon-sun{display:block}
+html[data-night]{--c-ink:#efeee9;--c-muted:#a09d95;--c-line:#3a3a3c;--c-bg:#0e0e0f;color-scheme:dark}
+html[data-night] body{background:#0e0e0f;color:#efeee9}
+html[data-night] #creator{color:#efeee9;color-scheme:dark;--text:#efeee9;--muted:#a09d95;--faint:#6b6964;--panel:#161617;--panel2:#1d1d1f;--line:#302f2d;--raise:#262628}
+html[data-night] .creator-heading h1,
+html[data-night] .c-panel h2,
+html[data-night] .creator-steps button[aria-current=step],
+html[data-night] .drawer-toggle,
+html[data-night] .template-current,
+html[data-night] .template-current b,
+html[data-night] .source-photo,
+html[data-night] .source-photo b,
+html[data-night] .creator-template,
+html[data-night] .photo-upload strong,
+html[data-night] .c-tip strong{color:#efeee9}
+html[data-night] .c-panel,
+html[data-night] body[data-workspace=creator] .modal{background:#161617;color:#efeee9;border-color:#302f2d}
+html[data-night] .c-button{background:#1d1d1f;color:#efeee9;border-color:#3a3a3c}
+html[data-night] .c-button:hover{background:#262628;border-color:#555}
+html[data-night] .c-button.primary,
+html[data-night] .c-button.primary:hover{color:#fff}
+html[data-night] .c-button.primary{background:#ed2224;border-color:#ed2224}
+html[data-night] .c-button.primary:hover{background:#ff4447}
+html[data-night] .c-button.dark{background:#efeee9;color:#151616;border-color:#efeee9}
+html[data-night] .input-modes{background:#1d1d1f;border-color:#302f2d}
+html[data-night] .input-modes button{color:#a09d95}
+html[data-night] .input-modes button[aria-pressed=true]{background:#262628;color:#efeee9;box-shadow:none}
+html[data-night] .c-input,
+html[data-night] .review-field textarea,
+html[data-night] .field-select{background:#1d1d1f;border-color:#3a3a3c;color:#efeee9}
+html[data-night] .c-input::placeholder{color:#6b6964}
+html[data-night] .creator-preview{background:#121214;border-color:#302f2d}
+html[data-night] .preview-label,
+html[data-night] .preview-caption span,
+html[data-night] .preview-hint,
+html[data-night] .field-foot,
+html[data-night] .c-tip,
+html[data-night] .save-caption,
+html[data-night] .copy-help,
+html[data-night] .creator-steps button,
+html[data-night] .template-current small,
+html[data-night] .template-current span span,
+html[data-night] .source-photo small{color:#a09d95}
+html[data-night] .creator-steps,
+html[data-night] .review-field,
+html[data-night] .review-tabs{border-color:#302f2d}
+html[data-night] .step-num{border-color:#3a3a3c;color:#a09d95}
+html[data-night] .template-current,
+html[data-night] .source-photo,
+html[data-night] .photo-upload,
+html[data-night] .more-templates,
+html[data-night] .preview-undo button{background:#1d1d1f;border-color:#3a3a3c;color:#efeee9}
+html[data-night] .creator-template .ct-thumb{background:#1d1d1f}
+html[data-night] .template-filters button{background:#1d1d1f;color:#a09d95;border-color:#3a3a3c}
+html[data-night] .template-filters button[aria-pressed=true]{background:#efeee9;color:#151616;border-color:#efeee9}
+html[data-night] .creator-actions{background:#161617f2;border-color:#302f2d}
+html[data-night] .template-star{background:#161617;color:#a09d95}
+html[data-night] .template-star[aria-pressed=true]{color:#e0b774}
+html[data-night] .live-label{background:#243024;color:#b7c7a8}
+html[data-night] .readiness-list button{background:#2a261c;border-color:#5c4d2e;color:#e0b774}
+html[data-night] .ready-note{color:#99ad84}
+html[data-night] #builderGate,
+html[data-night] #builderGate h1{color:#efeee9}
+html[data-night] #builderGate p{color:#a09d95}
+html[data-night] .preview-frame{background:#151616}
+@media(max-width:700px){
+  .studio-status{display:flex;flex:none}
+  .studio-status .status-dot,.studio-status #studioStatus{display:none}
+}
+
 </style>
+<script>try{if(localStorage.getItem('scoop-studio:night')==='1')document.documentElement.setAttribute('data-night','')}catch(e){}</script>
 </head>
 <body data-workspace="creator">
 <header class="studio-nav">
@@ -273,7 +350,7 @@ body[data-workspace=builder] #app{grid-template-rows:auto 34px minmax(0,1fr)}
     <button type="button" data-workspace="creator" aria-pressed="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="2.5" width="14" height="15" rx="2"/><path d="M6 6h8M6 9h8M6 12h5"/></svg>Post Creator</button>
     <button type="button" data-workspace="builder" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="16" height="12" rx="2"/><path d="M6 18h8M10 15v3M7 3v12"/></svg>Template Builder <span class="desktop-tag">DESKTOP</span></button>
   </nav>
-  <div class="studio-status"><i class="status-dot"></i><span id="studioStatus">Opening studio</span></div>
+  <div class="studio-status"><button type="button" id="nightToggle" class="night-toggle" aria-pressed="false" aria-label="Turn on night mode" title="Night mode"><svg class="icon-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M16 12.2A6.5 6.5 0 0 1 7.8 4 6.5 6.5 0 1 0 16 12.2z"/></svg><svg class="icon-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M15.4 4.6 14 6M6 14l-1.4 1.4"/></svg></button><i class="status-dot"></i><span id="studioStatus">Opening studio</span></div>
 </header>
 <main id="creator" data-step="0">
   <div class="creator-heading">
@@ -4231,7 +4308,15 @@ async function creatorExport(){
   await prepare();
 }
 
+function applyNight(on){
+  if(on) document.documentElement.setAttribute('data-night','');
+  else document.documentElement.removeAttribute('data-night');
+  const b=$('#nightToggle');
+  if(b){ b.setAttribute('aria-pressed',on?'true':'false'); b.setAttribute('aria-label',on?'Turn off night mode':'Turn on night mode'); b.title=on?'Night mode on':'Night mode'; }
+  try{ localStorage.setItem('scoop-studio:night',on?'1':'0'); }catch(e){}
+}
 document.addEventListener('click',async e=>{
+  if(e.target.closest('#nightToggle')){ applyNight(!document.documentElement.hasAttribute('data-night')); return; }
   const workspace=e.target.closest('button[data-workspace]');if(workspace){creatorSwitchWorkspace(workspace.dataset.workspace);return;}
   if(C.workspace!=='creator')return;
   const b=e.target.closest('button');if(!b||b.disabled)return;
@@ -4291,6 +4376,7 @@ function loadBrandFonts(){
   }
 }
 function boot(){
+  try{ applyNight(localStorage.getItem('scoop-studio:night')==='1'); }catch(e){}
   loadBrandFonts();
   let doc=null;
   try{ const s=localStorage.getItem('scoop-builder:draft'); if(s) doc=JSON.parse(s); }catch(e){}

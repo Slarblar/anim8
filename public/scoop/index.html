@@ -1167,6 +1167,10 @@ function fitOneLine(L,zone,role){
   const cut=Fit.overflowChars([text],(line,size)=>measureLineWidth(ctx,L,line,size),fit.size,zone.w,zone.h,L.lh||1);
   return (L.slot||role)+': 1 line at '+Math.round(fit.size)+'px, minimum size; shorten by ~'+cut+' characters';
 }
+function textBlockHeight(L){
+  if(!L) return 0;
+  return layoutText(textMeasureCtx(),L,false).h;
+}
 function seatSubheading(page){
   if(!page) return;
   const H=findRole(page.layers,'headline'), D=findRole(page.layers,'dek');
@@ -1174,13 +1178,22 @@ function seatSubheading(page){
   if(typeof D.homeY!=='number') D.homeY=D.y;
   const lines=String(H.text||'').split('\n').map(s=>s.trim()).filter(Boolean).length;
   const drop=lines>=3?Math.round((H.size||67)*(H.lh||0.94)):0;
-  let y=D.homeY+drop, limit=null;
-  for(const o of page.layers){
-    if(o===D||o.type==='folder'||o.type==='redact'||!shownIn(page.layers,o)||(o.opacity??1)<=0.02) continue;
-    if(o.y<=D.homeY+4||!xHits(D,o)) continue;
-    if(limit==null||o.y<limit) limit=o.y;
+  const block=Math.max(8, textBlockHeight(D));
+  let limit=page.h-6;
+  const start=page.layers.indexOf(D);
+  for(let i=start+1;i<page.layers.length;i++){
+    const o=page.layers[i];
+    if(!o||o.type==='text'||o.type==='folder'||o.type==='redact'||!shownIn(page.layers,o)||(o.opacity??1)<=0.02) continue;
+    if(o.w>=page.w*0.85&&o.h>=page.h*0.55&&o.y<page.h*0.45) continue;
+    if(!xHits(D,o)||o.y+o.h<=D.homeY+4) continue;
+    // A shape that already sits behind the resting subheading, such as a torn footer, covers anything pushed deeper into it.
+    const top=o.y<=D.homeY+4?D.homeY+block:o.y;
+    if(top<limit) limit=top;
   }
-  if(limit!=null) y=Math.min(y, limit-8);
+  const base=D.clip?page.layers[clipBaseIndex(page.layers, start)]:null;
+  if(base) limit=Math.min(limit, base.y+base.h);
+  const maxY=limit-8-block;
+  const y=maxY>=D.homeY?Math.min(D.homeY+drop, maxY):D.homeY;
   D.y=Math.round(y);
 }
 function fitPage(page,opt){

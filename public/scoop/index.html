@@ -1167,6 +1167,22 @@ function fitOneLine(L,zone,role){
   const cut=Fit.overflowChars([text],(line,size)=>measureLineWidth(ctx,L,line,size),fit.size,zone.w,zone.h,L.lh||1);
   return (L.slot||role)+': 1 line at '+Math.round(fit.size)+'px, minimum size; shorten by ~'+cut+' characters';
 }
+function seatSubheading(page){
+  if(!page) return;
+  const H=findRole(page.layers,'headline'), D=findRole(page.layers,'dek');
+  if(!H||!D) return;
+  if(typeof D.homeY!=='number') D.homeY=D.y;
+  const lines=String(H.text||'').split('\n').map(s=>s.trim()).filter(Boolean).length;
+  const drop=lines>=3?Math.round((H.size||67)*(H.lh||0.94)):0;
+  let y=D.homeY+drop, limit=null;
+  for(const o of page.layers){
+    if(o===D||o.type==='folder'||o.type==='redact'||!shownIn(page.layers,o)||(o.opacity??1)<=0.02) continue;
+    if(o.y<=D.homeY+4||!xHits(D,o)) continue;
+    if(limit==null||o.y<limit) limit=o.y;
+  }
+  if(limit!=null) y=Math.min(y, limit-8);
+  D.y=Math.round(y);
+}
 function fitPage(page,opt){
   opt=opt||{};
   // A template keeps its own layout. Zones move type only after someone edits them.
@@ -1174,8 +1190,10 @@ function fitPage(page,opt){
     const H=findRole(page.layers,'headline'), D=findRole(page.layers,'dek');
     if(opt.headlineText!=null&&H) H.text=opt.headlineText;
     if(opt.dekText!=null&&D) D.text=opt.dekText;
+    seatSubheading(page);
     const changed=(opt.only&&opt.only.length?opt.only:page.layers.filter(l=>l.type==='text'&&l.slot)).filter(Boolean);
     const tight=fitLooseText(changed,page.layers,page.w,page.h);
+    seatSubheading(page);
     return {notes:tight.map(name=>({message:name+' still runs long'})), score:0};
   }
   if(!page.zones||!page.zones.length) page.zones=defaultZones(page);
@@ -3553,6 +3571,7 @@ function copyFittedPage(from,to){
     if(src.dupOf){ L.visible=false; L.dupOf=src.dupOf; }
     if(L.type!=='text') continue;
     L.text=src.text; L.x=src.x; L.y=src.y; L.w=src.w; L.h=src.h; L.size=src.size;
+    if(typeof src.homeY==='number') L.homeY=src.homeY;
   }
 }
 function writeSlots(page,fields){
@@ -4724,7 +4743,7 @@ async function initBackend(){
       const keptLink=S.doc.sourceLink||null;
       if(reloadSelectedTemplate()){
         S.doc.pages.forEach((p,i)=>p.layers.forEach(L=>{ if(L.type!=='text'||!L.slot)return; const hit=(words[i]||[]).find(w=>w.key===creatorSlotKey(L.slot)); if(hit&&String(hit.text||'').trim()) L.text=hit.text; }));
-        for(const p of S.doc.pages) fitLooseText(p.layers.filter(l=>l.type==='text'&&l.slot), p.layers, p.w, p.h);
+        for(const p of S.doc.pages){ seatSubheading(p); fitLooseText(p.layers.filter(l=>l.type==='text'&&l.slot), p.layers, p.w, p.h); seatSubheading(p); }
         if(keptLink) S.doc.sourceLink=keptLink;
         commit(); renderCreator(); scheduleRender();
       }
@@ -5192,7 +5211,7 @@ document.addEventListener('click',async e=>{
   if(b.dataset.creatorPage!==undefined){clearTimeout(fillT);commit();goPage(+b.dataset.creatorPage);C.field='';renderCreator();return;}
   if(b.dataset.issueLayer){clearTimeout(fillT);commit();goPage(+b.dataset.issuePage);C.field=b.dataset.issueLayer;C.reviewTab=b.dataset.issueTab;C.drawer=true;renderCreator();if(C.reviewTab==='text')$('#c-text-'+C.field)?.focus();else $('#creatorPanel').scrollIntoView({block:'nearest'});return;}
   if(b.dataset.creatorPhoto){pendingSlot=b.dataset.creatorPhoto;$('#fileSlot').click();return;}
-  if(b.dataset.textSize){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){if(!designSize.has(L.id))designSize.set(L.id,L.size);L.size=clamp(Math.round((L.size+Number(b.dataset.textSize))*10)/10,8,250);commit();scheduleRender();creatorRefreshInputs();}return;}
+  if(b.dataset.textSize){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){if(!designSize.has(L.id))designSize.set(L.id,L.size);L.size=clamp(Math.round((L.size+Number(b.dataset.textSize))*10)/10,8,250);if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);commit();scheduleRender();creatorRefreshInputs();}return;}
   if(b.dataset.textFit){const L=S.doc.layers.find(l=>l.id===b.dataset.textFit);if(L){const tight=fitFilledText([L],S.doc.layers,S.doc.w,S.doc.h);commit();scheduleRender();creatorRefreshInputs();if(tight.length)toast(tight[0]);}return;}
   if(b.dataset.catPick){pickCategory(b.dataset.catPick);return;}
   if(b.dataset.tagPick!=null){toggleTopicTag(b.dataset.tagPick);return;}
@@ -5218,7 +5237,7 @@ document.addEventListener('input',e=>{
   if(C.workspace!=='creator')return;const el=e.target;
   if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint&&C.inputMode==='ai')hint.textContent=url?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.';$('#sourceCount').textContent=el.value.length.toLocaleString()+' / 12,000';const next=$('#creatorNext');if(next&&!C.busy)next.innerHTML=creatorActionInner();creatorPersist();}
   if(el.id==='creatorTemplateSearch'){C.query=el.value;renderCreatorTemplates();}
-  if(el.dataset.creatorText){const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
+  if(el.dataset.creatorText){const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
   if(el.dataset.photoProp){const L=S.doc.layers.find(l=>l.id===el.dataset.layer);if(L){L[el.dataset.photoProp]=+el.value;el.nextElementSibling.textContent=Math.round(+el.value*100)+'%';scheduleRender();}}
 });
 document.addEventListener('change',e=>{

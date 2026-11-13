@@ -162,15 +162,38 @@ export type NormalizedDraft = {
   pages: { headlines: HeadlineOption[]; dek: string }[];
 };
 
+const HEADLINE_LINE = 23;
+const HEADLINE_MAX_LINES = 3;
+
+/** Break a headline into at most 3 lines of 23 characters, counting spaces. */
+function wrapHeadline(lines: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of lines) {
+    const words = raw.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    let current = '';
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (current && next.length > HEADLINE_LINE) {
+        out.push(current);
+        current = word;
+        if (out.length >= HEADLINE_MAX_LINES) return out;
+      } else current = next;
+    }
+    if (current) out.push(current);
+    if (out.length >= HEADLINE_MAX_LINES) break;
+  }
+  return out.slice(0, HEADLINE_MAX_LINES).filter(Boolean);
+}
+
 function headlineOption(raw: unknown): HeadlineOption | null {
   if (typeof raw === 'string') {
-    const lines = cleanLines(raw, 4, 280).split('\n').filter(Boolean);
+    const lines = wrapHeadline(cleanLines(raw, 6, 280).split('\n'));
     return lines.length ? { lines } : null;
   }
   const row = asObject(raw);
   const fromLines = Array.isArray(row.lines) ? row.lines : Array.isArray(row.headlineLines) ? row.headlineLines : null;
   if (fromLines) {
-    const lines = fromLines.map((line) => String(line ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 4);
+    const lines = wrapHeadline(fromLines.map((line) => String(line ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean));
     if (lines.join(' ').length >= 3) return { lines };
   }
   if (typeof row.headline === 'string') return headlineOption(row.headline);

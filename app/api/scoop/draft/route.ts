@@ -40,7 +40,7 @@ function cleanRefs(raw: unknown): VoiceRef[] {
 
 function systemPrompt(refs: VoiceRef[]): string {
   const examples = refs.length
-    ? `\n\nVoice examples from posts SLC Scoop already published. Match their cadence, specificity, how they attribute, and what they leave out. Headline line breaks in the examples are intentional. Write a headline of 2 or 3 lines when the excerpt has enough fact to fill them, and keep a true one-line story as one line. Do not add a line that does not carry a fact from the excerpt. These events are not the story you are writing. Never reuse their names, numbers, places, or quotes.\n\n${refs
+    ? `\n\nVoice examples from posts SLC Scoop already published. Match their cadence, specificity, how they attribute, and what they leave out. A headline is 2 or 3 full lines across the box, not three stacked words. Each line is a full phrase. Copy the voice, not a one-word-per-line shape. These events are not the story you are writing. Never reuse their names, numbers, places, or quotes.\n\n${refs
         .map((ref, i) => {
           const parts = [`Example ${i + 1}${ref.category ? ` · ${ref.category}` : ''}`, `Headline:\n${ref.headline}`];
           if (ref.dek) parts.push(`Dek:\n${ref.dek}`);
@@ -74,11 +74,19 @@ function attribution(link: { title: string; siteName: string; published: string 
   return `\nThe facts below come from ${link.siteName}${headline}${when}. When a fact appears only in this excerpt, attribute it to ${link.siteName} (“${link.siteName} reports” or “according to ${link.siteName}”). Do not present those claims as SLC Scoop’s own reporting.\n`;
 }
 
+function headlineLength(perLine: number): string {
+  const per = Math.max(12, Math.round(perLine) || 22);
+  const floor = Math.max(10, Math.round(per * 0.75));
+  return `Write the headline as 2 or 3 full lines that fill the headline box. Each line is about ${per} characters and no shorter than ${floor}. The whole headline is about ${per * 2} to ${per * 3} characters. Do not put one word on a line, and do not stop at three words. Use the place, the person, and the number from the excerpt so each line reaches across the box. Break where a phrase ends so the lines are nearly the same length. Use one line only when that single line is already about ${per} characters. Use four lines only when three full lines cannot hold the fact.`;
+}
+
 function buildPrompt(excerpt: string, slots: Slot[], link: { title: string; siteName: string; published: string } | null) {
+  const head = slots.find((slot) => /headline|title|\bhed\b/i.test(slot.slot));
+  const perLine = head ? Math.round(head.maxChars / 3) : 22;
   return `Fill each text slot of the graphic using ONLY facts stated in the excerpt. Never invent names, numbers, places, quotes or causes. If the excerpt doesn't support a slot, return an empty string for it.
 
 Slot guidance (match by slot name):
-- Headline: the single most newsworthy fact, active voice, present tense, specific. Use single quotes for any quoted phrase. Put a newline between graphic lines. Aim for 2 or 3 lines when the facts support it, and stay within maxChars. A true one-line headline stays one line.
+- Headline: the single most newsworthy fact, active voice, present tense, specific. Use single quotes for any quoted phrase. Put a newline between graphic lines. ${headlineLength(perLine)} Stay within maxChars.
 - Dek / Sub: 1-2 sentences, at most 3 lines, adding who, where and the key detail the headline leaves out. Attribute claims ("police say", "X says").
 - Category: one or two words, e.g. NEWS, BREAKING, UPDATE, COURTS, POLITICS, WEATHER, CRIME, BUSINESS, COMMUNITY.
 - Tags: 3-4 topic tags separated by "  |  " ending with SLCSCOOP, e.g. "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
@@ -160,6 +168,7 @@ function categoryBlock(categories: CategoryRule[]) {
 }
 
 function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: CategoryRule[], tags: string[], refs: LayoutRef[], voice: VoiceRef[], pageCount: number, flags: { followUp: boolean; correction: boolean }, link: { title: string; siteName: string; published: string } | null) {
+  const headZone = zones.find((zone) => zone.role === 'headline');
   const zoneText = zones
     .map((z) => `${z.role}: about ${z.perLine} characters per line, up to ${z.maxLines} lines. The fitter chooses the size between ${z.minSize || '?'} and ${z.maxSize || '?'} px.`)
     .join('\n');
@@ -192,10 +201,11 @@ If a useful tag is missing, put it in suggestedTags and do not include it in top
 Text zones and the character budget at the target size:
 ${zoneText || 'No zones were sent.'}
 
-Give 3 headline options. Each option's lines array is the graphic line breaks, one string per line, 1 to 4 lines. A true one-line fact stays one line. Do not add a line that carries no fact. The dek is at most 3 lines and does not repeat the headline.
+${headlineLength(headZone ? headZone.perLine : 22)}
+Give 3 headline options. Each option's lines array is the graphic line breaks, one string per line. Every line has to carry a fact and fill its share of the box. The dek is at most 3 lines and does not repeat the headline.
 ${pageCount > 1 ? `This template has ${pageCount} pages. Return a pages array of ${pageCount} items. Each item has its own headlines (3 options) and dek. Page 1 is the cover. Later pages continue the same story without repeating the cover headline.` : 'Return a single cover. pages may be omitted.'}
 
-Layout references show line shape, density, and spacing. Their events are not this story. Never reuse their names, numbers, places, or quotes. Set referenceId to the reference whose line count and density this story should follow, or "" if none apply.
+Layout references show line count, density, and spacing. Their events are not this story. Never reuse their names, numbers, places, or quotes. Follow a reference's line count only when each of your lines still fills the box. Do not copy a one-word line. Set referenceId to the reference this story should follow, or "" if none apply.
 ${examples ? `\n${examples}` : '\nNo layout references were sent.'}
 ${voiceText ? `\nVoice samples, for cadence only. Do not reuse their facts.\n\n${voiceText}` : ''}
 
@@ -206,7 +216,7 @@ ${excerpt}
 """
 
 Reply with JSON only, no prose and no code fence:
-{"category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["LINE ONE","LINE TWO"]}],"dek":"One or two sentences.","location":"Salt Lake City, UT","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["LINE ONE"]}],"dek":""}]}`;
+{"category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["THE PLACE AND WHO IT HAPPENED TO","AND THE FACT THAT FILLS THE LINE"]}],"dek":"One or two sentences.","location":"Salt Lake City, UT","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["THE PLACE AND WHO IT HAPPENED TO","AND THE FACT THAT FILLS THE LINE"]}],"dek":""}]}`;
 }
 
 async function layoutImage(url: string) {

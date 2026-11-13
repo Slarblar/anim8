@@ -85,7 +85,10 @@
     const close = opt.targetLines
       ? 1 - Math.min(1, Math.abs(opt.lines - opt.targetLines) / Math.max(1, opt.maxLines || 4))
       : 1;
-    const base = sizeScore + fillScore(opt.fill, opt.targetFill) + opt.balance + close;
+    const width = typeof opt.widthFill === 'number' ? opt.widthFill : 1;
+    // A full line reaches across the box. Bigger type must not rescue a one-word line.
+    const widthScore = width >= 0.72 ? 1 : Math.max(0, width / 0.72);
+    const base = sizeScore * 0.45 + fillScore(opt.fill, opt.targetFill) + widthScore * 1.6 + opt.balance * 0.6 + close * 0.4;
     if (opt.fits === false) return base - 10 - (opt.overflow || 0) / 80;
     return base;
   }
@@ -135,7 +138,8 @@
     const preferred = Array.isArray(opts.preferred)
       ? opts.preferred.map((line) => String(line || '').replace(/\s+/g, ' ').trim()).filter(Boolean)
       : null;
-    let lines = preferred && preferred.length === lineCount ? preferred.slice() : null;
+    const sparse = preferred && preferred.every((line) => wordsOf(line).length < 2);
+    let lines = preferred && preferred.length === lineCount && !sparse ? preferred.slice() : null;
     const measureWidth = opts.measureWidth;
     if (!lines) {
       const widthAt = (size) => (line) => measureWidth(line, size);
@@ -143,7 +147,7 @@
       if (!lines) return null;
     }
     let found = largestSize(lines, opts.min, opts.max, measureWidth, opts.lineHeight, opts.zoneW, opts.zoneH);
-    if (!(preferred && preferred.length === lineCount)) {
+    if (!(preferred && preferred.length === lineCount && !sparse)) {
       const again = balanceLines(opts.text, lineCount, (line) => measureWidth(line, found.size));
       if (again && again.join('\n') !== lines.join('\n')) {
         lines = again;
@@ -164,6 +168,7 @@
       targetLines: opts.targetLines || 0,
       maxLines: opts.maxLines || lineCount,
       targetFill: opts.targetFill || 0,
+      widthFill: opts.zoneW > 0 ? found.widest / opts.zoneW : 1,
       fits: found.fits,
       overflow,
     });

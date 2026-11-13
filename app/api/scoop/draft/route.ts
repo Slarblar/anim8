@@ -55,7 +55,26 @@ function systemPrompt(refs: VoiceRef[]): string {
 const MODEL = process.env.SCOOP_MODEL?.trim() || 'claude-sonnet-5';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
-function buildPrompt(excerpt: string, slots: Slot[]) {
+function cleanLink(raw: unknown): { title: string; siteName: string; published: string } | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const siteName = String(row.siteName ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!siteName) return null;
+  return {
+    title: String(row.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 200),
+    siteName,
+    published: String(row.published ?? '').replace(/\s+/g, ' ').trim().slice(0, 40),
+  };
+}
+
+function attribution(link: { title: string; siteName: string; published: string } | null): string {
+  if (!link) return '';
+  const headline = link.title ? `, headline “${link.title}”` : '';
+  const when = link.published ? `, published ${link.published}` : '';
+  return `\nThe facts below come from ${link.siteName}${headline}${when}. When a fact appears only in this excerpt, attribute it to ${link.siteName} (“${link.siteName} reports” or “according to ${link.siteName}”). Do not present those claims as SLC Scoop’s own reporting.\n`;
+}
+
+function buildPrompt(excerpt: string, slots: Slot[], link: { title: string; siteName: string; published: string } | null) {
   return `Fill each text slot of the graphic using ONLY facts stated in the excerpt. Never invent names, numbers, places, quotes or causes. If the excerpt doesn't support a slot, return an empty string for it.
 
 Slot guidance (match by slot name):
@@ -72,6 +91,7 @@ Each slot has maxChars (a hard limit so it fits the layout) and an example showi
 Slots:
 ${JSON.stringify(slots, null, 1)}
 
+${attribution(link)}
 Excerpt:
 """
 ${excerpt}
@@ -139,7 +159,7 @@ function categoryBlock(categories: CategoryRule[]) {
     .join('\n');
 }
 
-function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: CategoryRule[], tags: string[], refs: LayoutRef[], voice: VoiceRef[], pageCount: number, flags: { followUp: boolean; correction: boolean }) {
+function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: CategoryRule[], tags: string[], refs: LayoutRef[], voice: VoiceRef[], pageCount: number, flags: { followUp: boolean; correction: boolean }, link: { title: string; siteName: string; published: string } | null) {
   const zoneText = zones
     .map((z) => `${z.role}: about ${z.perLine} characters per line, up to ${z.maxLines} lines. The fitter chooses the size between ${z.minSize || '?'} and ${z.maxSize || '?'} px.`)
     .join('\n');
@@ -179,6 +199,7 @@ Layout references show line shape, density, and spacing. Their events are not th
 ${examples ? `\n${examples}` : '\nNo layout references were sent.'}
 ${voiceText ? `\nVoice samples, for cadence only. Do not reuse their facts.\n\n${voiceText}` : ''}
 
+${attribution(link)}
 Excerpt:
 """
 ${excerpt}
@@ -255,6 +276,7 @@ export async function POST(req: NextRequest) {
     correction?: unknown;
     categories?: unknown;
     tags?: unknown;
+    link?: unknown;
   };
   try {
     body = await req.json();
@@ -285,6 +307,7 @@ export async function POST(req: NextRequest) {
       ? stored
       : brandFrom({ categories: body.categories, tags: body.tags });
     const voice = cleanRefs(body.voice ?? body.references).slice(0, layout ? 8 : VOICE_LIMIT);
+    const link = cleanLink(body.link);
     const content: ({ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } })[] = [];
     if (layout) {
       for (const ref of layoutRefs) {
@@ -296,7 +319,7 @@ export async function POST(req: NextRequest) {
       }
       content.push({
         type: 'text',
-        text: layoutPrompt(excerpt, zones, brand.categories, brand.tags, layoutRefs, voice, Math.min(6, Math.max(1, Math.round(Number(body.pageCount) || 1))), flags),
+        text: layoutPrompt(excerpt, zones, brand.categories, brand.tags, layoutRefs, voice, Math.min(6, Math.max(1, Math.round(Number(body.pageCount) || 1))), flags, link),
       });
     }
     const res = await fetch(ANTHROPIC_URL, {
@@ -312,7 +335,7 @@ export async function POST(req: NextRequest) {
         system: layout
           ? 'You write Instagram news graphics for SLC Scoop, an independent Salt Lake City news outlet. Tagline: "Reprogramming the news." Voice: direct, factual, local, no clickbait, no opinion, no emoji. You never choose pixel sizes or coordinates. Reply with JSON only.'
           : systemPrompt(voice),
-        messages: [{ role: 'user', content: layout ? content : buildPrompt(excerpt, slots) }],
+        messages: [{ role: 'user', content: layout ? content : buildPrompt(excerpt, slots, link) }],
       }),
     });
     if (res.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });

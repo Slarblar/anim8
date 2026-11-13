@@ -40,6 +40,17 @@ export const DEFAULT_TAGS = [
 
 export const STORY_TYPES = ['breaking', 'policy', 'crime', 'courts', 'weather', 'business', 'community', 'feature', 'correction', 'update'] as const;
 
+/** Publishers whose reporting must be credited. Hosts and subdomains match. Editable in brand settings. */
+export const DEFAULT_OUTLETS = [
+  'sltrib.com',
+  'deseret.com',
+  'ksl.com',
+  'fox13now.com',
+  'kutv.com',
+  'abc4.com',
+  'kslnewsradio.com',
+];
+
 function clamp(n: number, lo: number, hi: number) {
   if (!Number.isFinite(n)) return lo;
   return Math.min(hi, Math.max(lo, n));
@@ -99,12 +110,25 @@ export function normalizeTags(raw: unknown): string[] {
   return out.length ? out : DEFAULT_TAGS.slice();
 }
 
-export function brandFrom(raw: unknown): { categories: CategoryRule[]; tags: string[] } {
-  const row = asObject(raw);
-  return { categories: normalizeCategories(row.categories), tags: normalizeTags(row.tags) };
+export function normalizeOutlets(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return DEFAULT_OUTLETS.slice();
+  const out: string[] = [];
+  for (const item of raw) {
+    let host = String(item ?? '').trim().toLowerCase();
+    host = host.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/\.$/, '').replace(/^www\./, '');
+    if (!/^[a-z0-9.-]+\.[a-z]{2,24}$/.test(host) || out.includes(host)) continue;
+    out.push(host);
+    if (out.length >= 80) break;
+  }
+  return out.length ? out : DEFAULT_OUTLETS.slice();
 }
 
-export async function readBrand(): Promise<{ categories: CategoryRule[]; tags: string[] }> {
+export function brandFrom(raw: unknown): { categories: CategoryRule[]; tags: string[]; outlets: string[] } {
+  const row = asObject(raw);
+  return { categories: normalizeCategories(row.categories), tags: normalizeTags(row.tags), outlets: normalizeOutlets(row.outlets) };
+}
+
+export async function readBrand(): Promise<{ categories: CategoryRule[]; tags: string[]; outlets: string[] }> {
   try {
     const { blobs } = await list({ prefix: `${STORE_PREFIX}brand/settings--`, limit: 100, ...blobOptions() });
     let best: { url: string; ts: number } | null = null;

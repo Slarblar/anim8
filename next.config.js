@@ -47,6 +47,7 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['framer-motion'],
+    serverComponentsExternalPackages: ['jsdom', '@mozilla/readability'],
   },
 }
 

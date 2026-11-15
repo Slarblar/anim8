@@ -766,7 +766,7 @@ const DEFAULT_OUTLETS=['sltrib.com','deseret.com','ksl.com','fox13now.com','kutv
 let BRAND_CATS=DEFAULT_CATS.map(c=>Object.assign({},c)), BRAND_TAGS=DEFAULT_TAGS.slice(), BRAND_OUTLETS=DEFAULT_OUTLETS.slice(), BRAND_EXTRA={}, NEWS_SOURCES=[];
 const NEWS_DOMAIN_SEED=['ksl.com','kutv.com','fox13now.com','sltrib.com','deseret.com','abc4.com','kslnewsradio.com','kuer.org','utahnewsdispatch.com','police.slc.gov','udot.utah.gov','weather.gov'];
 let NEWS_DOMAINS=NEWS_DOMAIN_SEED.slice(), NEWS_MODEL='haiku';
-let NEWS={items:[],held:[],search:[],reports:[],loading:false,feedError:'',searchError:'',updatedAt:'',limited:false,updatesAt:'',limitNote:''};
+let NEWS={items:[],held:[],search:[],reports:[],loading:false,searching:false,feedError:'',searchError:'',updatedAt:'',limited:false,updatesAt:'',limitNote:''};
 
 /* ---------- local blobs (IndexedDB) ---------- */
 const localBlobs = new Map();
@@ -3699,7 +3699,7 @@ function newsSourcesHTML(){
 }
 async function loadNews(refresh){
   if(Backend.mode!=='server') return;
-  NEWS.loading=true; NEWS.feedError=''; NEWS.searchError='';
+  NEWS.loading=true; NEWS.searching=true; NEWS.feedError=''; NEWS.searchError='';
   if(C.workspace==='creator'&&C.step===0) renderCreator();
   const win=C.newsWindow||'6h';
   const hours={ '3h':3, '6h':6, '12h':12, '24h':24 }[win]||6;
@@ -3709,7 +3709,8 @@ async function loadNews(refresh){
     NEWS.reports=Array.isArray(data.sources)?data.sources:[];
     if(Array.isArray(data.records)&&data.records.length&&data.records[0]&&data.records[0].url) NEWS_SOURCES=data.records;
     if(data.reason&&!NEWS.items.length) NEWS.feedError=data.reason;
-  }).catch(()=>{ NEWS.feedError='Feeds could not be loaded.'; });
+    if(C.workspace==='creator') renderCreator();
+  }).catch(()=>{ NEWS.feedError='Feeds could not be loaded.'; if(C.workspace==='creator') renderCreator(); });
   const search=api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours,refresh:!!refresh})}).then(data=>{
     NEWS.search=Array.isArray(data.items)?data.items:[];
     NEWS.updatedAt=data.updatedAt||NEWS.updatedAt||'';
@@ -3717,7 +3718,9 @@ async function loadNews(refresh){
     NEWS.updatesAt=data.updatesAt||'';
     NEWS.limitNote=data.limited?(data.reason||'The daily search limit is used.'):'';
     if(data.reason&&!NEWS.search.length&&!data.limited) NEWS.searchError=data.reason;
-  }).catch(()=>{ NEWS.searchError='Search could not run.'; });
+    NEWS.searching=false;
+    if(C.workspace==='creator') renderCreator();
+  }).catch(()=>{ NEWS.searchError='Search could not run.'; NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
   await Promise.all([feed, search]);
   NEWS.loading=false;
   if(C.workspace==='creator') renderCreator();
@@ -3733,7 +3736,9 @@ function localNewsHTML(){
   const row=story=>`<button type="button" class="news-item" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc(story.outlet)}${story.at?' · '+esc(newsAgo(story.at)):''}</small><span class="news-draft">Draft from this</span></button>`;
   const updated=NEWS.updatedAt?`Updated ${newsAgo(NEWS.updatedAt)}`:'';
   const limit=NEWS.limited&&NEWS.updatesAt?`<p class="note">${esc(NEWS.limitNote||'The daily search limit is used.')} It updates ${esc(new Date(NEWS.updatesAt).toLocaleString('en-US',{timeZone:'America/Denver',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}.</p>`:'';
-  const body=NEWS.loading?'<p class="note">Checking local news…</p>':both?'<p class="note">Couldn\'t load news right now. Paste a link or text instead.</p>':`${rows.map(row).join('')||'<p class="note">Nothing in this window.</p>'}`;
+  const searching=NEWS.searching?'<p class="note">Searching the local sites…</p>':'';
+  const searchNote=!NEWS.searching&&NEWS.searchError?`<p class="note">${esc(NEWS.searchError)}</p>`:'';
+  const body=NEWS.loading&&!rows.length?'<p class="note">Checking local news…</p>':both?'<p class="note">Couldn\'t load news right now. Paste a link or text instead.</p>':`${searching}${searchNote}${rows.map(row).join('')||(NEWS.loading?'':'<p class="note">Nothing in this window.</p>')}`;
   return `<details class="local-news" open><summary>Latest local news</summary><div class="news-windows" role="group" aria-label="How recent">${windows.map(([id,label])=>`<button type="button" data-news-window="${id}" aria-pressed="${win===id}">${label}</button>`).join('')}</div><div class="news-bar"><button type="button" class="news-refresh" data-news-refresh>Refresh</button><span class="meta">${esc(updated)}</span></div>${limit}${body}</details>`;
 }
 function saveBrandLists(){

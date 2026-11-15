@@ -3,6 +3,9 @@ const nextConfig = {
   async rewrites() {
     return [{ source: '/scoop', destination: '/scoop/index.html' }];
   },
+  async headers() {
+    return [{ source: '/scoop/index.html', headers: [{ key: 'Cache-Control', value: 'no-cache' }] }];
+  },
   async redirects() {
     return [
       {

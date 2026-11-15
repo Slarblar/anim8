@@ -43,8 +43,9 @@ function resultUrls(content: unknown[]): string[] {
     const node = stack.pop();
     if (!node || typeof node !== 'object') continue;
     const row = node as Record<string, unknown>;
-    if (row.type === 'web_search_result' && typeof row.url === 'string') urls.push(row.url);
+    if ((row.type === 'web_search_result' || row.type === 'web_search_result_location') && typeof row.url === 'string') urls.push(row.url);
     if (Array.isArray(row.content)) stack.push(...row.content);
+    if (Array.isArray(row.citations)) stack.push(...row.citations);
   }
   return urls;
 }
@@ -110,9 +111,9 @@ export async function POST(req: NextRequest) {
 
   const prompt = [
     `Current time: ${now.toISOString()} (America/Denver).`,
-    `Find news published in the last ${hours} hours.`,
+    `Search for news published in the last ${hours} hours. Call the web_search tool before you answer. Do not answer from memory.`,
     UTAH_STORY_RULE,
-    'Return JSON only, an array of objects with title, url, outlet, published, summary, location, and category.',
+    'After the search, return JSON only, an array of objects with title, url, outlet, published, summary, location, and category.',
     'location is a Utah city, a Utah county, or Statewide.',
     'published is an ISO-8601 time read from the article page. If the page does not show a time, set published to null.',
     'summary is one sentence. Every url must be a URL that the web search returned.',
@@ -128,24 +129,30 @@ export async function POST(req: NextRequest) {
   const urls: string[] = [];
   let text = '';
   let ran = false;
+  let searches = 0;
+  let failure = '';
   try {
     for (let turn = 0; turn < 3; turn += 1) {
       const res = await fetch(ANTHROPIC_URL, {
         method: 'POST',
-        signal: AbortSignal.timeout(25_000),
+        signal: AbortSignal.timeout(50_000),
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({
           model,
-          max_tokens: 1600,
-          system: `${UTAH_STORY_RULE} Reply with the JSON array and nothing else.`,
+          max_tokens: 8000,
+          system: 'You search local Utah news for SLC Scoop. Call the web_search tool before you answer. After the results come back, reply with the JSON array and nothing else.',
           tools: [tool],
           messages,
         }),
       });
-      if (!res.ok) break;
+      if (!res.ok) {
+        failure = res.status === 429 ? 'Search is busy. Try again in a minute.' : 'Search could not run.';
+        break;
+      }
       ran = true;
       const data = await res.json();
       const content = Array.isArray(data?.content) ? data.content as unknown[] : [];
+      searches += Number(data?.usage?.server_tool_use?.web_search_requests) || content.filter((block) => (block as { type?: string; name?: string }).type === 'server_tool_use' && (block as { name?: string }).name === 'web_search').length;
       urls.push(...resultUrls(content));
       text += `\n${textOf(content)}`;
       if (data?.stop_reason !== 'pause_turn') break;
@@ -153,9 +160,10 @@ export async function POST(req: NextRequest) {
     }
   } catch {
     ran = false;
+    failure = 'Search took too long.';
   }
-  if (!ran) {
-    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: modelName, reason: 'Search could not run.' });
+  if (!ran || searches < 1) {
+    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: modelName, searched: false, reason: failure || 'Search did not run.' });
   }
 
   let parsed: unknown = [];
@@ -164,7 +172,7 @@ export async function POST(req: NextRequest) {
   const groups = groupStories(items);
   const updatedAt = now.toISOString();
   budget = { day, count: budget.count + 1, updatedAt, items: items.length ? items : budget.items };
-  fresh.set(hours, { exp: Date.now() + CACHE_MS, items, groups, updatedAt });
+  if (items.length) fresh.set(hours, { exp: Date.now() + CACHE_MS, items, groups, updatedAt });
   try {
     const base = record && typeof record === 'object' ? { ...record } : {};
     const previous = saved.byHours && typeof saved.byHours === 'object' ? saved.byHours as Record<string, unknown> : {};

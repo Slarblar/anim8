@@ -7,7 +7,7 @@ export function SlcScoopStudio() {
       <iframe
         title="SLCSCOOP Post Studio"
         allow="web-share"
-        src="/scoop/index.html"
+        src="/scoop/index.html?news=1"
         className="min-h-0 w-full flex-1 border-0 bg-[#0e0e0f]"
       />
     </div>

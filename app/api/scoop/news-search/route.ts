@@ -13,8 +13,11 @@ import {
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const HAIKU = 'claude-haiku-4-5-20251001';
-const SONNET = 'claude-sonnet-5';
+// Current model IDs. Override without a redeploy of code via SCOOP_NEWS_HAIKU / SCOOP_NEWS_SONNET.
+const HAIKU = process.env.SCOOP_NEWS_HAIKU?.trim() || 'claude-haiku-5-5';
+const SONNET = process.env.SCOOP_NEWS_SONNET?.trim() || 'claude-sonnet-5-5';
+// Stay inside Vercel's 60s limit: a killed function returns a bare 504 and the page can't say why.
+const DEADLINE_MS = 48_000;
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const CACHE_MS = 10 * 60 * 1000;
 
@@ -55,6 +58,28 @@ function textOf(content: unknown[]): string {
     const row = block as { type?: string; text?: string };
     return row.type === 'text' ? String(row.text || '') : '';
   }).join('\n');
+}
+
+/** Turns an Anthropic error response into one line a person can act on. */
+async function apiError(res: Response): Promise<string> {
+  let type = '';
+  let message = '';
+  try {
+    const body = await res.json();
+    type = String(body?.error?.type || '');
+    message = String(body?.error?.message || '');
+  } catch { /* not JSON */ }
+  const m = message.toLowerCase();
+  if (res.status === 401) return 'The Anthropic API key was rejected. Check ANTHROPIC_API_KEY in Vercel.';
+  if (/web.?search/.test(m) && /enable|disabled|not allowed|permission/.test(m))
+    return 'Web search is turned off for this Anthropic organization. An admin can turn it on in the Claude Console (Settings → Privacy / web search).';
+  if (res.status === 403) return `The API key can't use this feature${message ? `: ${message}` : '.'}`;
+  if (res.status === 404 || /model/.test(m) && /not.?found|does not exist|invalid/.test(m))
+    return `The search model isn't available${message ? `: ${message}` : '.'} Set SCOOP_NEWS_HAIKU to a current model ID.`;
+  if (/domain/.test(m)) return `A search site was rejected: ${message} Remove it in brand settings → Search sites.`;
+  if (res.status === 429) return 'Search is busy or over the rate limit. Try again in a minute.';
+  if (res.status === 529 || res.status >= 500) return 'Anthropic is overloaded right now. Try again shortly.';
+  return `Search failed (HTTP ${res.status}${type ? `, ${type}` : ''})${message ? `: ${message}` : '.'}`;
 }
 
 function readJson(text: string): unknown {
@@ -131,22 +156,26 @@ export async function POST(req: NextRequest) {
   let ran = false;
   let searches = 0;
   let failure = '';
+  const started = Date.now();
   try {
     for (let turn = 0; turn < 3; turn += 1) {
+      const left = DEADLINE_MS - (Date.now() - started);
+      if (left < 8_000) { if (!text.includes('[')) failure = 'Search ran out of time. Try a shorter window or Haiku.'; break; }
       const res = await fetch(ANTHROPIC_URL, {
         method: 'POST',
-        signal: AbortSignal.timeout(50_000),
+        signal: AbortSignal.timeout(left),
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({
           model,
-          max_tokens: 8000,
+          max_tokens: 4000,
           system: 'You search local Utah news for SLC Scoop. Call the web_search tool before you answer. After the results come back, reply with the JSON array and nothing else.',
           tools: [tool],
           messages,
         }),
       });
       if (!res.ok) {
-        failure = res.status === 429 ? 'Search is busy. Try again in a minute.' : 'Search could not run.';
+        failure = await apiError(res);
+        console.error('[scoop news-search] Anthropic error', res.status, model, failure);
         break;
       }
       ran = true;
@@ -159,12 +188,14 @@ export async function POST(req: NextRequest) {
       if (data?.stop_reason !== 'pause_turn') break;
       messages = [...messages, { role: 'assistant', content }];
     }
-  } catch {
-    ran = false;
-    failure = 'Search took too long.';
+  } catch (err) {
+    ran = !!text;
+    const timeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    failure = timeout ? 'Search took too long. Try again, or switch the search model to Haiku.' : `Search failed: ${err instanceof Error ? err.message : 'network error'}`;
+    console.error('[scoop news-search] request failed', err);
   }
   if (!ran || (searches < 1 && !text.includes('['))) {
-    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: modelName, searched: searches > 0, reason: failure || 'Search did not run.' });
+    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: modelName, searched: searches > 0, reason: failure || 'The model answered without searching. Try again.' });
   }
 
   let parsed: unknown = [];

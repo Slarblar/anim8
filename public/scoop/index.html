@@ -385,6 +385,9 @@ html[data-night] .preview-frame{background:#151616}
 
 [data-embedded] .studio-brand img{display:none}
 [data-embedded] .studio-brand span{border-left:0;padding-left:0}
+.news-diag{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.diag-row{display:flex;flex-direction:column;gap:1px;font-size:12px;padding:6px 8px;border-radius:4px;border:1px solid var(--line)}
+.diag-row.ok b{color:#5fbf7a}.diag-row.bad b{color:#ff6b6b}.diag-row span{color:var(--muted);overflow-wrap:anywhere}
 </style>
 <script>try{if(localStorage.getItem('scoop-studio:night')==='1')document.documentElement.setAttribute('data-night','')}catch(e){}
 try{if(window.self!==window.top)document.documentElement.setAttribute('data-embedded','')}catch(e){document.documentElement.setAttribute('data-embedded','')}</script>
@@ -3695,7 +3698,18 @@ function newsSourcesHTML(){
     const http=s.httpStatus?` · HTTP ${s.httpStatus}`:'';
     return `<div class="news-source ${bad?'failed':''}"><b>${esc(s.name)}</b> <span class="meta">${esc(s.type||'')}${s.enabled?'':' · off'} · ${esc(s.status||'not checked')}</span><div class="meta">${esc(s.url||'')}</div>${bad?`<div class="note warn">${esc(reason+http)}</div>`:''}</div>`;
   }).join(''):'<p class="note">Sources appear here after the collector checks them.</p>';
-  return `<div class="h">Latest local news</div><p class="note">${failed.length?failed.length+' source'+(failed.length===1?'':'s')+' failed and stay listed so the URL can be fixed.':'Failures stay listed with the reason.'}</p>${list}<label class="h">Search sites</label><textarea id="newsDomains" rows="6">${esc(NEWS_DOMAINS.join('\n'))}</textarea><label class="h">Search model</label><select id="newsModel"><option value="haiku"${NEWS_MODEL==='sonnet'?'':' selected'}>Haiku</option><option value="sonnet"${NEWS_MODEL==='sonnet'?' selected':''}>Sonnet</option></select><button class="btn" type="button" id="newsRecheck">Check sources again</button>`;
+  return `<div class="h">Latest local news</div><p class="note">${failed.length?failed.length+' source'+(failed.length===1?'':'s')+' failed and stay listed so the URL can be fixed.':'Failures stay listed with the reason.'}</p>${list}<label class="h">Search sites</label><textarea id="newsDomains" rows="6">${esc(NEWS_DOMAINS.join('\n'))}</textarea><label class="h">Search model</label><select id="newsModel"><option value="haiku"${NEWS_MODEL==='sonnet'?'':' selected'}>Haiku</option><option value="sonnet"${NEWS_MODEL==='sonnet'?' selected':''}>Sonnet</option></select><button class="btn" type="button" id="newsRecheck">Check sources again</button><button class="btn" type="button" id="newsDiag"${newsDiagBusy?' disabled':''}>Run news check</button><div id="newsDiagOut" class="news-diag">${newsDiagHTML}</div>`;
+}
+let newsDiagHTML='';
+let newsDiagBusy=false;
+// The real reason a news request failed, instead of a generic line.
+function newsHttpError(err, what){
+  const st=err&&err.status;
+  if(err&&err.code==='unauthorized') return what+': the team passcode was refused.';
+  if(st===504) return what+' took longer than the server allows (60s). Try again or use Haiku.';
+  if(st===404) return what+': the server route is missing. Redeploy the site.';
+  if(st) return what+' failed (HTTP '+st+')'+(err.reason||err.error?': '+(err.reason||err.error):'')+'. Run the news check in Settings.';
+  return what+': no response from the server (network or crash). Run the news check in Settings.';
 }
 async function loadNews(refresh, attempt){
   if(Backend.mode!=='server') return;
@@ -3710,7 +3724,7 @@ async function loadNews(refresh, attempt){
     if(Array.isArray(data.records)&&data.records.length&&data.records[0]&&data.records[0].url) NEWS_SOURCES=data.records;
     if(data.reason&&!NEWS.items.length) NEWS.feedError=data.reason;
     if(C.workspace==='creator') renderCreator();
-  }).catch(()=>{ NEWS.items=[]; NEWS.feedError='Feeds could not be loaded.'; if(C.workspace==='creator') renderCreator(); });
+  }).catch(err=>{ console.error('news feeds',err); NEWS.items=[]; NEWS.feedError=newsHttpError(err,'Feeds'); if(C.workspace==='creator') renderCreator(); });
   const search=api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours,refresh:!!refresh})}).then(data=>{
     NEWS.search=Array.isArray(data.items)?data.items:[];
     NEWS.updatedAt=data.updatedAt||'';
@@ -3720,10 +3734,10 @@ async function loadNews(refresh, attempt){
     NEWS.searchError=data.reason&&!NEWS.search.length&&!data.limited?data.reason:'';
     NEWS.searching=false;
     if(C.workspace==='creator') renderCreator();
-  }).catch(()=>{ NEWS.search=[]; NEWS.searchError='Search could not run.'; NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
+  }).catch(err=>{ console.error('news search',err); NEWS.search=[]; NEWS.searchError=newsHttpError(err,'Search'); NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
   await Promise.all([feed, search]);
   NEWS.loading=false; NEWS.searching=false;
-  if(!attempt && !newsRows().length && (NEWS.searchError||NEWS.feedError)) return loadNews(refresh, true);
+  if(!attempt && !newsRows().length && NEWS.feedError && !NEWS.searchError) return loadNews(refresh, true);
   if(C.workspace==='creator') renderCreator();
   if(S.tabL==='refs') renderLib();
 }
@@ -4285,7 +4299,7 @@ function renderLib(){
       <div><div class="hl">${esc((r.copy&&r.copy.headline)||'Layout reference')}</div><div class="meta">${esc(r.storyType||'')} ${r.measure&&r.measure.headline?`· ${r.measure.headline.lineCount} lines · ${Math.round(r.measure.headline.capHeight)}px`:''}</div></div>
       ${cap.db?`<button class="del ${armedDel==='p:'+r.id?'confirm':''}" data-delpost="${r.id}" aria-label="Remove layout reference">${armedDel==='p:'+r.id?'Remove?':ICON.trash}</button>`:''}
     </article>`).join('');
-    h+=`<details class="copy-help"><summary>Categories and tags</summary><div class="note">The model picks a category and topic tags from these lists. SLCSCOOP is always added at the end of the tag line.</div>
+    h+=`<details class="copy-help"${newsDiagHTML||newsDiagBusy?' open':''}><summary>Categories and tags</summary><div class="note">The model picks a category and topic tags from these lists. SLCSCOOP is always added at the end of the tag line.</div>
       ${BRAND_CATS.map(c=>`<div class="fld"><label>${esc(c.id)}</label><input class="inp" data-brand-cat="${esc(c.id)}" value="${esc(c.when)}" aria-label="When to use ${esc(c.id)}"></div>`).join('')}
       <div class="fld"><label for="brandTags">Topic tags, one per line</label><textarea class="inp" id="brandTags" rows="4">${esc(BRAND_TAGS.join('\n'))}</textarea></div>
       <div class="fld"><label for="brandOutlets">News outlets, one domain per line</label><textarea class="inp" id="brandOutlets" rows="4">${esc(BRAND_OUTLETS.join('\n'))}</textarea></div>
@@ -4304,6 +4318,18 @@ function renderLib(){
   const up=$('#upbtn'); if(up) up.onclick=()=>{ uploadCat=$('#upcat').value; $('#fileAsset').click(); };
   const saveLists=$('#saveBrandLists'); if(saveLists) saveLists.onclick=saveBrandLists;
   const recheck=$('#newsRecheck'); if(recheck) recheck.onclick=()=>loadNews(true);
+  const diag=$('#newsDiag'); if(diag) diag.onclick=async()=>{
+    newsDiagBusy=true;
+    newsDiagHTML='<p class="note">Checking… (up to 45 seconds)</p>';
+    renderLib();
+    try{
+      const r=await api('/news-diag');
+      newsDiagHTML=(r.checks||[]).map(c=>`<div class="diag-row ${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'✗'} ${esc(c.name)}</b><span>${esc(c.detail||'')}${c.ms!=null?' · '+c.ms+' ms':''}</span></div>`).join('')
+        +`<p class="note">${r.ok?'Everything news needs is working.':'Fix the ✗ rows first. Copy this list into Cursor if you need help.'}</p>`;
+    }catch(err){ newsDiagHTML=`<p class="note warn">${esc(newsHttpError(err,'The news check'))}</p>`; }
+    newsDiagBusy=false;
+    if(S.tabL==='refs') renderLib();
+  };
   const uf=$('#upfont'); if(uf) uf.onclick=()=>$('#fileFont').click();
   const aq=$('#aq'); if(aq) aq.oninput=()=>{ assetQuery=aq.value; const pos=aq.selectionStart; renderLib(); const n=$('#aq'); n.focus(); n.setSelectionRange(pos,pos); };
 }

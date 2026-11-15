@@ -61,6 +61,15 @@ function empty(reason = '') {
 
 /** GET /api/scoop/news — each source fails on its own. The route still returns whatever loaded. */
 export async function GET(req: NextRequest) {
+  try {
+    return await loadFeeds(req);
+  } catch (err) {
+    console.error('[scoop news]', err);
+    return NextResponse.json(empty());
+  }
+}
+
+async function loadFeeds(req: NextRequest) {
   const denied = guard(req);
   if (denied) return denied;
   const window = windowOf(req.nextUrl.searchParams.get('window'));

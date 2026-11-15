@@ -92,6 +92,15 @@ function readJson(text: string): unknown {
 
 /** POST /api/scoop/news-search — one web search, then a checked list. Feeds stay on the other route. */
 export async function POST(req: NextRequest) {
+  try {
+    return await searchNews(req);
+  } catch (err) {
+    console.error('[scoop news-search]', err);
+    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: 'haiku', searched: false });
+  }
+}
+
+async function searchNews(req: NextRequest) {
   const denied = guard(req);
   if (denied) return denied;
   let body: Record<string, unknown> = {};

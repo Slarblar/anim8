@@ -3706,10 +3706,9 @@ let newsDiagBusy=false;
 function newsHttpError(err, what){
   const st=err&&err.status;
   if(err&&err.code==='unauthorized') return what+': the team passcode was refused.';
-  if(st===504) return what+' took longer than the server allows (60s). Try again or use Haiku.';
-  if(st===404) return what+': the server route is missing. Redeploy the site.';
-  if(st) return what+' failed (HTTP '+st+')'+(err.reason||err.error?': '+(err.reason||err.error):'')+'. Run the news check in Settings.';
-  return what+': no response from the server (network or crash). Run the news check in Settings.';
+  if(st===504) return what+' took longer than the server allows. Try again.';
+  if(st) return what+' failed (HTTP '+st+').';
+  return what+' did not respond.';
 }
 async function loadNews(refresh, attempt){
   if(Backend.mode!=='server') return;
@@ -3724,7 +3723,7 @@ async function loadNews(refresh, attempt){
     if(Array.isArray(data.records)&&data.records.length&&data.records[0]&&data.records[0].url) NEWS_SOURCES=data.records;
     if(data.reason&&!NEWS.items.length) NEWS.feedError=data.reason;
     if(C.workspace==='creator') renderCreator();
-  }).catch(err=>{ console.error('news feeds',err); NEWS.items=[]; NEWS.feedError=newsHttpError(err,'Feeds'); if(C.workspace==='creator') renderCreator(); });
+  }).catch(err=>{ console.error('news feeds',err); NEWS.feedError='failed'; if(C.workspace==='creator') renderCreator(); });
   const search=api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours,refresh:!!refresh})}).then(data=>{
     NEWS.search=Array.isArray(data.items)?data.items:[];
     NEWS.updatedAt=data.updatedAt||'';
@@ -3734,10 +3733,10 @@ async function loadNews(refresh, attempt){
     NEWS.searchError=data.reason&&!NEWS.search.length&&!data.limited?data.reason:'';
     NEWS.searching=false;
     if(C.workspace==='creator') renderCreator();
-  }).catch(err=>{ console.error('news search',err); NEWS.search=[]; NEWS.searchError=newsHttpError(err,'Search'); NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
+  }).catch(err=>{ console.error('news search',err); NEWS.searchError='failed'; NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
   await Promise.all([feed, search]);
   NEWS.loading=false; NEWS.searching=false;
-  if(!attempt && !newsRows().length && NEWS.feedError && !NEWS.searchError) return loadNews(refresh, true);
+  if(!attempt && !newsRows().length && (NEWS.searchError==='failed'||NEWS.feedError==='failed')) return loadNews(refresh, true);
   if(C.workspace==='creator') renderCreator();
   if(S.tabL==='refs') renderLib();
 }
@@ -3748,12 +3747,10 @@ function localNewsHTML(){
   const rows=newsRows();
   const row=story=>`<button type="button" class="news-item" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc(story.outlet)}${story.at?' · '+esc(newsAgo(story.at)):''}</small><span class="news-draft">Draft from this</span></button>`;
   const updated=NEWS.updatedAt?`Updated ${newsAgo(NEWS.updatedAt)}`:'';
-  const limit=NEWS.limited&&NEWS.updatesAt?`<p class="note">${esc(NEWS.limitNote||'The daily search limit is used.')} It updates ${esc(new Date(NEWS.updatesAt).toLocaleString('en-US',{timeZone:'America/Denver',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}.</p>`:'';
-  const searching=NEWS.searching?'<p class="note">Searching the local sites…</p>':'';
-  const notes=[NEWS.searchError,NEWS.feedError].filter(Boolean).map(note=>`<p class="note">${esc(note)}</p>`).join('');
-  const empty=!NEWS.loading&&!rows.length?`<p class="note">${NEWS.searchError||NEWS.feedError?'Couldn\'t load news right now. Paste a link or text instead.':'Nothing in this window.'}</p>`:'';
-  const body=`${searching}${notes}${rows.map(row).join('')}${empty}`;
-  return `<details class="local-news" open><summary>Latest local news</summary><div class="news-windows" role="group" aria-label="How recent">${windows.map(([id,label])=>`<button type="button" data-news-window="${id}" aria-pressed="${win===id}">${label}</button>`).join('')}</div><div class="news-bar"><button type="button" class="news-refresh" data-news-refresh>Refresh</button><span class="meta">${esc(updated)}</span></div>${limit}${body}</details>`;
+  const searching=NEWS.searching&&!rows.length?'<p class="note">Finding stories…</p>':'';
+  const empty=!NEWS.loading&&!NEWS.searching&&!rows.length?'<p class="note">No stories in this window. Paste a link or the story below.</p>':'';
+  const body=`${searching}${rows.map(row).join('')}${empty}`;
+  return `<details class="local-news" open><summary>Stories to post</summary><p class="note">Pick one and the post drafts from it.</p><div class="news-windows" role="group" aria-label="How recent">${windows.map(([id,label])=>`<button type="button" data-news-window="${id}" aria-pressed="${win===id}">${label}</button>`).join('')}</div><div class="news-bar"><button type="button" class="news-refresh" data-news-refresh>Refresh</button><span class="meta">${esc(updated)}</span></div>${body}</details>`;
 }
 function saveBrandLists(){
   if(!cap.db){ toast('Saving brand settings needs the team library.',true); return; }

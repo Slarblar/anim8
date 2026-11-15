@@ -367,6 +367,10 @@ html[data-night] .c-progress-top b,html[data-night] .c-progress li.on{color:#efe
 html[data-night] .c-progress-top span,html[data-night] .c-progress p,html[data-night] .c-progress .inline-button,html[data-night] .c-progress li{color:#e0b774}
 html[data-night] .c-progress-track{background:#3d3424}
 html[data-night] .c-progress li.done{color:#b7c7a8}
+body[data-workspace=creator] .scrim.job-scrim{align-items:center;padding:16px}
+body[data-workspace=creator] .modal.job-modal{width:min(440px,100%);padding:0;gap:0;background:transparent;border:0;box-shadow:none;overflow:visible}
+.job-modal .c-progress{margin:0}
+html[data-night] body[data-workspace=creator] .modal.job-modal{background:transparent;border:0}
 html[data-night] .link-preview,html[data-night] .credit-note{background:#2a261c;border-color:#5c4d2e;color:#efeee9}
 html[data-night] .link-preview .link-meta{color:#e0b774}
 html[data-night] .template-star{background:#161617;color:#a09d95}
@@ -3263,6 +3267,7 @@ const isTyping=()=>{ const a=document.activeElement; return a && (a.tagName==='I
 window.addEventListener('keydown',e=>{
   const mod=e.ctrlKey||e.metaKey;
   if(C.workspace==='creator'){
+    if($('#creatorJob')){ if(e.key==='Escape'){ e.preventDefault(); C.ctrl?.abort(); } return; }
     if($('#modalRoot').firstChild){if(e.key==='Escape')closeModal();return;}
     if(isTyping())return;
     if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();renderCreator();}
@@ -3847,9 +3852,11 @@ async function fitStoryPage(page,story,shared,ref){
   }
   if(!best) return {chosen:0,notes:[]};
   copyFittedPage(best.clone,page);
+  retireStackedText(page);
   return {chosen:best.i,notes:best.notes||[]};
 }
 async function applyAiDraft(out){
+  const ids=layerIdSet(S.doc);
   const ref=POSTS.find(r=>r.id===out.referenceId)||null;
   const source=String(out.source||'').trim();
   const shared={category:out.category||'', tags:out.tags||tagsLine(out.topicTags||[])};
@@ -3865,6 +3872,8 @@ async function applyAiDraft(out){
     chosen.push(fit.chosen||0);
     for(const n of fit.notes||[]) if(n.message) notes.push((S.doc.pages.length>1?'Page '+(i+1)+' ':'')+n.message);
   }
+  foldNewTextIntoTemplate(S.doc, ids);
+  for(const p of S.doc.pages) retireStackedText(p);
   S.doc.ai={category:out.category||'', categoryReason:out.categoryReason||'', topicTags:out.topicTags||[], suggestedTags:out.suggestedTags||[], headlines:(pageSpecs[S.doc.page]||pageSpecs[0]||{}).headlines||out.headlines||[], pages:pageSpecs, chosen:chosen[S.doc.page]||0, chosenByPage:chosen, referenceId:out.referenceId||''};
   return notes;
 }
@@ -5042,7 +5051,6 @@ function creatorStoryHTML(){
     ${ai?localNewsHTML():''}
     ${photo?`<button class="source-photo" data-creator-photo="${photo.id}" ${C.busy?'disabled':''}>${CI.photo}<span><b>${photo.src?'Photo added · replace':'Add a photo'}</b><small>Camera roll or files · optional for now</small></span><span aria-hidden="true">${photo.src?'✓':'+'}</span></button>`:''}
     ${!ai?'<details class="copy-help"><summary>Tips for pasting team copy</summary><p>The first line is your headline; the remaining lines are supporting copy. Optional labels: Headline, Supporting copy, Category, Location, Source, and Tags. Separate carousel pages with a line containing <b>---</b>. You can adjust every field in the review.</p></details>':'<div class="c-notice" id="creatorConnectionHint" hidden>AI drafting is available on your connected team website. Choose <button id="creatorUseFinal" class="inline-button">Use team copy</button> to fill and export here.</div>'}
-    ${C.busy&&C.job?creatorJobHTML():''}
     ${C.message?`<p class="${C.error?'c-error':'c-note'}" role="status">${esc(C.message)}</p>`:''}`;
 }
 function creatorTemplates(){
@@ -5137,6 +5145,67 @@ function creatorDocFor(id){
   return doc;
 }
 function rectOf(L){ return {x:L.x,y:L.y,w:Math.max(1,L.w),h:Math.max(1,L.h||(L.size||24)*(L.lh||1.2))}; }
+function overlapShare(a,b){
+  const x=Math.max(0, Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x));
+  const y=Math.max(0, Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y));
+  const inter=x*y;
+  if(!(inter>0)) return 0;
+  return inter/Math.min(Math.max(1,a.w*a.h), Math.max(1,b.w*b.h));
+}
+function storyKeepers(page){
+  const keep=new Set();
+  for(const role of SINGLE_ROLES){ const L=findRole(page.layers,role); if(L) keep.add(L); }
+  for(const L of page.layers||[]) if(L.type==='text'&&layerRole(L)==='static') keep.add(L);
+  return keep;
+}
+// A second string on top of a story line is leftover template type. The fill replaces the line that already exists.
+function retireStackedText(page){
+  const keep=storyKeepers(page);
+  for(const L of page.layers||[]){
+    if(L.type!=='text'||keep.has(L)||!shownIn(page.layers,L)||!String(L.text||'').trim()) continue;
+    const box=rectOf(L);
+    for(const owner of keep){
+      if(owner===L||!shownIn(page.layers,owner)) continue;
+      if(overlapShare(box, rectOf(owner))<0.55) continue;
+      L.visible=false; L.dupOf=owner.id; break;
+    }
+  }
+  const source=findRole(page.layers,'source');
+  if(!source||!shownIn(page.layers,source)) return;
+  const box=rectOf(source);
+  for(const L of page.layers||[]){
+    if(L===source||L.type!=='image'||L.role==='photo'||isLogoLayer(L)||!shownIn(page.layers,L)) continue;
+    if(L.w>=(page.w||1080)*0.5||L.h>=(page.h||1350)*0.22) continue;
+    if(coverFrac(rectOf(L), box)>=0.55){ L.visible=false; L.dupOf=source.id; }
+  }
+}
+function layerIdSet(doc){
+  const ids=new Set();
+  for(const p of doc.pages||[]) for(const l of p.layers||[]) if(l&&l.id) ids.add(l.id);
+  return ids;
+}
+function foldNewTextIntoTemplate(doc, ids){
+  for(const page of doc.pages||[]){
+    const made=(page.layers||[]).filter(l=>l&&!ids.has(l.id));
+    if(!made.length) continue;
+    const keep=[...storyKeepers(page)].filter(l=>ids.has(l.id));
+    for(const layer of made){
+      if(layer.type!=='text'||!String(layer.text||'').trim()) continue;
+      const role=layerRole(layer);
+      let host=role?findRole(page.layers, role):null;
+      if(host&&!ids.has(host.id)) host=null;
+      if(!host){
+        let best=0;
+        for(const L of keep){
+          const share=overlapShare(rectOf(L), rectOf(layer));
+          if(share>best){ best=share; host=L; }
+        }
+      }
+      if(host) host.text=layer.text;
+    }
+    page.layers=page.layers.filter(l=>ids.has(l.id));
+  }
+}
 function isLogoLayer(L){
   if(!L||L.type!=='image'||L.psdRef) return false;
   const url=L.src&&(L.src.url||'')||'';
@@ -5157,6 +5226,7 @@ function dedupeReport(page){
 // and make sure photos can only ever scale proportionally.
 function cleanPostPage(page){
   for(const d of dedupeReport(page)) for(const L of d.extra){ L.visible=false; L.dupOf=d.keep.id; }
+  retireStackedText(page);
   for(const L of page.layers||[]) if(L.type==='image') keepProportional(L);
   return page;
 }
@@ -5241,10 +5311,18 @@ function creditSourceSlot(){
   for(const p of S.doc.pages){ const L=findRole(p.layers,'source'); if(L) L.text=credit; }
 }
 let jobTimer=0;
+function openCreatorJob(){
+  const root=$('#modalRoot');
+  if(!root||!C.job) return;
+  root.innerHTML=`<div class="scrim job-scrim"><div class="modal job-modal" role="dialog" aria-modal="true" aria-labelledby="creatorJobLabel">${creatorJobHTML()}</div></div>`;
+  $('#creatorCancel')?.focus();
+}
+function closeCreatorJob(){ if($('#creatorJob')) $('#modalRoot').innerHTML=''; }
 function creatorJobStart(labels){
   C.job={labels, index:0, started:Date.now(), stepAt:Date.now(), note:'', waitHint:''};
   clearInterval(jobTimer);
   jobTimer=setInterval(creatorJobTick, 400);
+  openCreatorJob();
 }
 function creatorJobStep(index, note){
   if(!C.job) return;
@@ -5262,6 +5340,7 @@ function creatorJobStop(){
   clearInterval(jobTimer);
   jobTimer=0;
   C.job=null;
+  closeCreatorJob();
 }
 function creatorJobHTML(){
   const job=C.job;
@@ -5355,12 +5434,14 @@ async function creatorCreatePost(){
   if(parsed.length>S.doc.pages.length){C.error=true;C.message=`Your copy has ${parsed.length} pages, but this template has ${S.doc.pages.length}. Choose a longer template or remove a page separator.`;renderCreator();return;}
   const ai=C.inputMode==='ai';
   C.busy=true;C.message='';C.error=false;C.ctrl=new AbortController();
+  let templateIds=null;
   creatorJobStart(ai?['Loading your template','Writing the post','Fitting the layout']:['Loading your template','Placing your copy']);
   renderCreator();
   let notes='';
   try{
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     reloadSelectedTemplate();
+    templateIds=layerIdSet(S.doc);
     if(ai){
       if(!cap.sample)throw {code:'not_configured'};
       creatorJobStep(1);
@@ -5371,6 +5452,8 @@ async function creatorCreatePost(){
       if(C.job) C.job.waitHint='';
       const fitNotes=await applyAiDraft(out);
       creditSourceSlot();
+      if(templateIds) foldNewTextIntoTemplate(S.doc, templateIds);
+      for(const p of S.doc.pages) retireStackedText(p);
       notes=[out.categoryReason,out.notes].concat(fitNotes).filter(Boolean).join(' ');
     }
     const omitted=[];C.contentCache=[];
@@ -5379,12 +5462,16 @@ async function creatorCreatePost(){
       for(let i=0;i<S.doc.pages.length;i++){
         if(S.doc.pages.length>1) creatorJobNote('Page '+(i+1)+' of '+S.doc.pages.length);
         const p=S.doc.pages[i],changed=[],copy=parsed[i]||{};
-        for(const L of p.layers.filter(l=>l.slot&&l.type==='text')){
+        for(const L of p.layers.filter(l=>l.slot&&l.type==='text'&&!l.dupOf)){
+          const role=layerRole(L);
+          if(SINGLE_ROLES.includes(role)&&findRole(p.layers,role)!==L) continue;
           L.text=String(copy[creatorSlotKey(L.slot)]||'');changed.push(L);
         }
         const bank=C.contentCache[i]={};Object.entries(copy).forEach(([k,v])=>{bank['text:'+k]={text:v};if(v&&!changed.some(l=>creatorSlotKey(l.slot)===k))omitted.push(k);});
         await ensureFonts(changed);fitFilledText(changed,p.layers,p.w,p.h);
       }
+      if(templateIds) foldNewTextIntoTemplate(S.doc, templateIds);
+      for(const p of S.doc.pages) retireStackedText(p);
     }
     C.generated=true;C.step=2;C.drawer=true;C.field='';C.reviewTab='text';C.message=notes;
     if(omitted.length)C.message='This layout has no field for '+[...new Set(omitted)].join(', ')+'. That copy is kept in your original and will carry into a compatible template.';

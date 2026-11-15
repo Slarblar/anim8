@@ -3712,11 +3712,16 @@ function refreshWait(){
   if(!Number.isFinite(at)||at<=Date.now()) return 0;
   return Math.max(1, Math.ceil((at-Date.now())/60000));
 }
+function takeStories(data){
+  if(Array.isArray(data.items)&&data.items.length) NEWS.search=data.items;
+  if(data.updatedAt) NEWS.updatedAt=data.updatedAt;
+  if(data.refreshAt) NEWS.refreshAt=data.refreshAt;
+}
 async function loadNews(refresh){
   if(Backend.mode!=='server') return;
   if(refresh && refreshWait()) return;
   const win=C.newsWindow||'6h';
-  NEWS.loading=true; NEWS.searching=!NEWS.search.length; NEWS.feedError=''; NEWS.searchError='';
+  NEWS.loading=true; NEWS.searching=!NEWS.search.length||!!refresh; NEWS.feedError=''; NEWS.searchError='';
   if(C.workspace==='creator'&&C.step===0) renderCreator();
   const feed=api('/news?window='+encodeURIComponent(win)+(refresh?'&recheck=1':'')).then(data=>{
     NEWS.items=Array.isArray(data.items)?data.items:[];
@@ -3725,13 +3730,20 @@ async function loadNews(refresh){
     if(Array.isArray(data.records)&&data.records.length&&data.records[0]&&data.records[0].url) NEWS_SOURCES=data.records;
     if(data.reason&&!NEWS.items.length) NEWS.feedError=data.reason;
   }).catch(err=>{ console.error('news feeds',err); NEWS.feedError='failed'; });
-  const search=api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours:6,refresh:!!refresh})}).then(data=>{
-    if(Array.isArray(data.items)&&data.items.length) NEWS.search=data.items;
-    if(data.updatedAt) NEWS.updatedAt=data.updatedAt;
-    NEWS.refreshAt=data.refreshAt||'';
-    NEWS.searching=false;
-    if(C.workspace==='creator') renderCreator();
-  }).catch(err=>{ console.error('news search',err); NEWS.searchError='failed'; NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
+  const search=(async()=>{
+    const read=async()=>{
+      const data=refresh
+        ? await api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours:6,refresh:true})})
+        : await api('/news-search');
+      return data&&typeof data.json==='function'?await data.json():data;
+    };
+    try{ takeStories(await read()); }
+    catch(err){
+      if(refresh||NEWS.search.length) throw err;
+      await new Promise(r=>setTimeout(r,500));
+      takeStories(await read());
+    }
+  })().catch(err=>{ console.error('news search',err); NEWS.searchError='failed'; });
   await Promise.all([feed, search]);
   NEWS.loading=false; NEWS.searching=false;
   if(C.workspace==='creator') renderCreator();
@@ -4250,12 +4262,12 @@ function renderLib(){
   const box=$('#lib'); let h=libStatus();
   if(S.tabL==='templates'){
     h+=`<div class="row"><button class="btn" data-act="new" style="flex:1;justify-content:center">New template</button><button class="btn" data-act="import-psd">Import PSD</button></div>`;
-    h+=`<div class="h">Default templates <span style="color:#777;font-weight:400">· editable</span></div><div class="tgrid">`+KINDS.map(k=>{const over=stockOverride(k.id),draft=templateDraft(k.id),t=draft||over,thumb=t?.thumb||kindThumbs[k.id]||'';return `<button class="tcard" data-kind="${k.id}"><div class="th"><img alt="${esc(k.name)} sample" src="${esc(thumb)}"></div><span class="nm">${esc(k.name)}</span><span class="meta">${t?.w||k.w} × ${t?.h||k.h}${(t?.pages?.length||k.pages)>1?' · '+(t?.pages?.length||k.pages)+' pages':''}</span><span class="template-state">${draft?'Draft saved · unpublished':over?'Published · v'+(over.revision||1):'Original default'}</span><span class="template-edit">Edit default ↗</span></button>`;}).join('')+`</div>`;
+    h+=`<div class="h">Default templates <span style="color:#777;font-weight:400">· editable</span></div><div class="tgrid">`+KINDS.map(k=>{const over=stockOverride(k.id),draft=templateDraft(k.id),t=draft||over,thumb=shownThumb(t,kindThumbs[k.id]||'');return `<button class="tcard" data-kind="${k.id}"><div class="th"><img alt="${esc(k.name)} sample" src="${esc(thumb)}"></div><span class="nm">${esc(k.name)}</span><span class="meta">${t?.w||k.w} × ${t?.h||k.h}${(t?.pages?.length||k.pages)>1?' · '+(t?.pages?.length||k.pages)+' pages':''}</span><span class="template-state">${draft?'Draft saved · unpublished':over?'Published · v'+(over.revision||1):'Original default'}</span><span class="template-edit">Edit default ↗</span></button>`;}).join('')+`</div>`;
     const published=TPLS.filter(t=>!t.stockId&&t.status!=='draft'&&t.status!=='archived');
     const team=published.map(t=>templateDraft(null,t.id)||t).concat(TPLS.filter(t=>!t.stockId&&t.status==='draft'&&!published.some(p=>p.id===t.publishTarget)));
     h+=`<div class="h">Team templates</div>`;
     if(cap.ready&&!team.length)h+=`<div class="empty">Create a new template or save a default as its own template. Save a draft while designing; publish when it is ready for posting.</div>`;
-    h+=`<div class="tgrid">`+team.map(t=>`<div class="tcard" role="button" tabindex="0" data-tpl="${t.id}"><div class="th">${t.thumb?`<img alt="${esc(t.name)} sample" src="${esc(t.thumb)}">`:''}</div><span class="nm">${esc(t.name||'Untitled')}</span><span class="meta">${t.w} × ${t.h}${t.pages?.length>1?' · '+t.pages.length+' pages':''}</span><span class="template-state">${t.status==='draft'?'Draft · unpublished':'Published · v'+(t.revision||1)}</span>${cap.db?`<button class="del ${armedDel==='t:'+t.id?'confirm':''}" data-deltpl="${t.id}" aria-label="Delete ${t.status==='draft'?'draft':'template'}">${armedDel==='t:'+t.id?'Delete?':ICON.trash}</button>`:''}</div>`).join('')+`</div>`;
+    h+=`<div class="tgrid">`+team.map(t=>`<div class="tcard" role="button" tabindex="0" data-tpl="${t.id}"><div class="th">${shownThumb(t)?`<img alt="${esc(t.name)} sample" src="${esc(shownThumb(t))}">`:''}</div><span class="nm">${esc(t.name||'Untitled')}</span><span class="meta">${t.w} × ${t.h}${t.pages?.length>1?' · '+t.pages.length+' pages':''}</span><span class="template-state">${t.status==='draft'?'Draft · unpublished':'Published · v'+(t.revision||1)}</span>${cap.db?`<button class="del ${armedDel==='t:'+t.id?'confirm':''}" data-deltpl="${t.id}" aria-label="Delete ${t.status==='draft'?'draft':'template'}">${armedDel==='t:'+t.id?'Delete?':ICON.trash}</button>`:''}</div>`).join('')+`</div>`;
   }
   else if(S.tabL==='assets'){
     const imgs=LIB.filter(a=>a.kind==='image');
@@ -4482,7 +4494,11 @@ function builderStatus(){
 const SAMPLE_COPY='Headline: A cleaner city starts with us\nSupporting copy: Join your neighbors for a community cleanup this Saturday.\nCategory: COMMUNITY\nLocation: SALT LAKE CITY, UT\nSource: Sample photo · Alan Cressler / USGS\nTags: UTAH | COMMUNITY';
 function templateSamplePage(page,copy=SAMPLE_COPY){
   const clone=JSON.parse(JSON.stringify(page)),fields=parseTeamCopy(copy)[0]||{};
-  clone.layers.forEach(l=>{if(l.type==='text'&&l.slot)l.text=fields[creatorSlotKey(l.slot)]||'';if(l.type==='image'&&l.slot){l.src={kind:'file',url:'/scoop/sample-slc.jpg'};l.nw=1200;l.nh=729;l.fit='cover';}});
+  clone.layers.forEach(l=>{
+    if(l.type==='text'&&l.slot){ const value=fields[creatorSlotKey(l.slot)]; if(value) l.text=value; }
+    // Only the photo is a stand-in. Frames, paper, tags and textures stay the images saved on the template.
+    if(l.type==='image'&&(l.role==='photo'||/^photo$/i.test(String(l.slot||'')))){ l.src={kind:'file',url:'/scoop/sample-slc.jpg'}; l.nw=1200; l.nh=729; l.fit='cover'; }
+  });
   return clone;
 }
 async function fitSample(page){
@@ -4491,6 +4507,39 @@ async function fitSample(page){
   return page;
 }
 async function templateThumbnail(page){const sample=await fitSample(templateSamplePage(page));return thumbData(sample,340);}
+const freshThumbs=new Map();
+let thumbPass=0;
+function shownThumb(t,fallback=''){
+  if(!t) return fallback||'';
+  const hit=freshThumbs.get(t.id);
+  return hit&&hit.thumb||t.thumb||fallback||'';
+}
+// Rebuild a saved template's preview from its current images. The stored JPEG is replaced after the next save.
+async function refreshSavedThumbs(){
+  const pass=++thumbPass;
+  try{ await document.fonts.ready; }catch(e){}
+  let changed=false;
+  for(const t of TPLS){
+    if(pass!==thumbPass) return;
+    const page=t&&t.pages&&t.pages[0];
+    if(!page||t.status==='archived') continue;
+    const at=t.updatedAt||0;
+    const prev=freshThumbs.get(t.id);
+    if(prev&&prev.at===at) continue;
+    try{
+      const thumb=await templateThumbnail(page);
+      if(pass!==thumbPass||!thumb) continue;
+      freshThumbs.set(t.id,{at,thumb});
+      changed=true;
+    }catch(e){}
+  }
+  if(pass!==thumbPass||!changed) return;
+  if($('#creatorTemplateList')) renderCreatorTemplates();
+  if(S.tabL==='templates') renderLib();
+  const current=creatorTemplates().find(item=>item.id===creatorSelected());
+  const img=document.querySelector('.template-current-image img');
+  if(img&&current&&current.thumb) img.src=current.thumb;
+}
 async function builderTestSample(){
   const source=JSON.parse(JSON.stringify(S.doc.pages));let index=S.doc.page,seq=0;
   const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Test with a sample story</h2><button class="btn ghost" data-close aria-label="Close sample test">${CI.x}</button></div><p class="note">Preview how this layout fills and fits. Your template is unchanged.</p><div class="sample-grid"><div><label class="label" for="sampleCopy">Sample copy</label><textarea id="sampleCopy" class="inp" rows="10">${esc(SAMPLE_COPY)}</textarea><div class="row"><button class="btn" id="sampleLong">Try a long headline</button><button class="btn primary" id="sampleUpdate">Update preview</button></div>${source.length>1?`<div class="fld"><label for="samplePage">Template page</label><select id="samplePage" class="sel">${source.map((p,i)=>`<option value="${i}" ${i===index?'selected':''}>Page ${i+1}</option>`).join('')}</select></div>`:''}<p class="note" id="sampleFit" role="status"></p><p class="note">Sample image: Alan Cressler / USGS · public domain.</p></div><div class="sample-frame"><canvas id="sampleCanvas" aria-label="Sample story preview"></canvas><span>SAMPLE · NOT A REAL STORY</span></div></div>`);
@@ -4862,7 +4911,7 @@ async function initBackend(){
   },()=>{ done(); cap.failed=true; renderLib(); });
   db.collection('templates').onSnapshot(snap=>{
     TPLS=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
-    done(); renderLib();
+    done(); renderLib(); refreshSavedThumbs();
     if(C.workspace==='creator'&&C.generated&&!C.templateRestored&&selectedTemplateRecord()){
       C.templateRestored=true;
       const words=S.doc.pages.map(p=>(p.layers||[]).filter(l=>l.type==='text'&&l.slot).map(l=>({key:creatorSlotKey(l.slot),text:l.text})));
@@ -4997,7 +5046,7 @@ function creatorStoryHTML(){
     ${C.message?`<p class="${C.error?'c-error':'c-note'}" role="status">${esc(C.message)}</p>`:''}`;
 }
 function creatorTemplates(){
-  return KINDS.map(k=>{const o=stockOverride(k.id),p=o?.pages?.[0];return {id:'kind:'+k.id,name:k.name,w:p?.w||o?.w||k.w,h:p?.h||o?.h||k.h,pages:o?.pages?.length||k.pages,group:k.layout==='story'?'Stories':k.pages>1?'Carousels':'Feed',thumb:o?.thumb||kindThumbs[k.id]||'',saved:!!o};}).concat(TPLS.filter(t=>!t.stockId&&t.status!=='draft'&&t.status!=='archived').map(t=>({id:'team:'+t.id,name:t.name||'Untitled',w:t.w||t.pages?.[0]?.w,h:t.h||t.pages?.[0]?.h,pages:t.pages?.length||1,group:'Team',thumb:t.thumb||'',saved:true})));
+  return KINDS.map(k=>{const o=stockOverride(k.id),p=o?.pages?.[0];return {id:'kind:'+k.id,name:k.name,w:p?.w||o?.w||k.w,h:p?.h||o?.h||k.h,pages:o?.pages?.length||k.pages,group:k.layout==='story'?'Stories':k.pages>1?'Carousels':'Feed',thumb:shownThumb(o,kindThumbs[k.id]||''),saved:!!o};}).concat(TPLS.filter(t=>!t.stockId&&t.status!=='draft'&&t.status!=='archived').map(t=>({id:'team:'+t.id,name:t.name||'Untitled',w:t.w||t.pages?.[0]?.w,h:t.h||t.pages?.[0]?.h,pages:t.pages?.length||1,group:'Team',thumb:shownThumb(t),saved:true})));
 }
 function creatorSelected(){return S.doc.templateId&&!S.doc.stockId?'team:'+S.doc.templateId:'kind:'+(S.doc.stockId||S.doc.templateType||'single');}
 function creatorOpenTemplates(){

@@ -125,6 +125,23 @@ function readJson(text: string): unknown {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
+/** GET /api/scoop/news-search — the saved 6-hour list. Never starts a search. */
+export async function GET(req: NextRequest) {
+  const denied = guard(req);
+  if (denied) return denied;
+  try {
+    const record = await readBrandRecord();
+    const saved = record?.newsSearch && typeof record.newsSearch === 'object' ? record.newsSearch as Record<string, unknown> : {};
+    const stored = storyList(saved);
+    if (stored) return storyResponse(stored.items, stored, 'haiku');
+  } catch (err) {
+    console.error('[scoop news-search] read failed', err);
+  }
+  const memory = fresh.get(6);
+  if (memory?.items.length) return storyResponse(memory.items, { updatedAt: memory.updatedAt, attemptedAt: memory.updatedAt }, 'haiku');
+  return NextResponse.json({ items: [], groups: [], updatedAt: null, refreshAt: null, cached: true, limited: false, updatesAt: null, model: 'haiku' });
+}
+
 /** POST /api/scoop/news-search — one web search, then a checked list. Feeds stay on the other route. */
 export async function POST(req: NextRequest) {
   const denied = guard(req);

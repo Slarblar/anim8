@@ -64,5 +64,13 @@ export async function GET(req: NextRequest) {
       return `ok · ${searches} search · stop_reason ${body?.stop_reason}`;
     }));
   }
+  if (key) {
+    checks.push(await timed('Read a link through Claude (web fetch)', async () => {
+      const { readViaClaude } = await import('@/lib/scoop-claude-read');
+      const r = await readViaClaude('https://www.utahnewsdispatch.com/', []);
+      if ('error' in r && r.error !== 'unreadable') throw new Error(r.reason || r.error);
+      return 'error' in r ? `fetched (page not an article: ${r.reason || r.error})` : `ok · ${r.text.length} characters`;
+    }));
+  }
   return NextResponse.json({ ok: checks.every((c) => c.ok), checkedAt: new Date().toISOString(), checks }, { headers: { 'cache-control': 'no-store' } });
 }

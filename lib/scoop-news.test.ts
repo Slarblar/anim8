@@ -64,11 +64,11 @@ describe('feeds and pages', () => {
     expect(items[0].dateOnly).toBe(false);
   });
 
-  it('reads article links and their timestamps, and JSON-LD when the page has no anchors', () => {
-    const linked = parsePage(`<article><a href="/news/local/storm">Valley storm warning</a><time datetime="2026-11-14T18:00:00-07:00"></time></article>`, 'https://kutv.com/news/local', 'a[href*="/news/local/"]', 'time');
+  it('reads article links and their timestamps, and JSON-LD when the page has no anchors', async () => {
+    const linked = await parsePage(`<article><a href="/news/local/storm">Valley storm warning</a><time datetime="2026-11-14T18:00:00-07:00"></time></article>`, 'https://kutv.com/news/local', 'a[href*="/news/local/"]', 'time');
     expect(linked[0].title).toBe('Valley storm warning');
     expect(linked[0].url).toBe('https://kutv.com/news/local/storm');
-    const script = parsePage(`<script type="application/ld+json">{"@type":"NewsArticle","headline":"Crews reopen the freeway","url":"https://kutv.com/news/local/freeway","datePublished":"2026-11-14T22:25:58.000-07:00"}</script>`, 'https://kutv.com/news/local', 'a[href*="/news/local/"]', 'time');
+    const script = await parsePage(`<script type="application/ld+json">{"@type":"NewsArticle","headline":"Crews reopen the freeway","url":"https://kutv.com/news/local/freeway","datePublished":"2026-11-14T22:25:58.000-07:00"}</script>`, 'https://kutv.com/news/local', 'a[href*="/news/local/"]', 'time');
     expect(script[0].title).toBe('Crews reopen the freeway');
     expect(script[0].dateOnly).toBe(false);
   });

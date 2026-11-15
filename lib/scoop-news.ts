@@ -1,5 +1,3 @@
-import { JSDOM } from 'jsdom';
-
 export type NewsSourceType = 'rss' | 'newsmap' | 'page' | 'nws' | 'api';
 export type NewsWindow = '3h' | '6h' | '12h' | '24h' | '7d';
 
@@ -486,9 +484,17 @@ function jsonLdArticles(html: string): RawItem[] {
   return out;
 }
 
-export function parsePage(html: string, pageUrl: string, selector?: string, timeSelector?: string): RawItem[] {
+let jsdomLoad: Promise<typeof import('jsdom').JSDOM> | null = null;
+function loadJsDom() {
+  // Loaded only while reading a page. A top-level import crashes the draft route on Vercel.
+  if (!jsdomLoad) jsdomLoad = import('jsdom').then((mod) => mod.JSDOM);
+  return jsdomLoad;
+}
+
+export async function parsePage(html: string, pageUrl: string, selector?: string, timeSelector?: string): Promise<RawItem[]> {
   const out: RawItem[] = [];
   if (selector) {
+    const JSDOM = await loadJsDom();
     const dom = new JSDOM(html, { url: pageUrl });
     const doc = dom.window.document;
     for (const el of doc.querySelectorAll(selector)) {
@@ -601,7 +607,7 @@ async function readSource(source: NewsSource, fetchText: FetchText): Promise<{ i
     } catch { /* the dated-item check reports the parse failure */ }
     return { items };
   }
-  if (source.type === 'page') return { items: parsePage(fetched.text, source.url, source.selector, source.timeSelector), httpStatus: fetched.status || 200 };
+  if (source.type === 'page') return { items: await parsePage(fetched.text, source.url, source.selector, source.timeSelector), httpStatus: fetched.status || 200 };
   return { items: parseFeed(fetched.text), httpStatus: fetched.status || 200 };
   } catch {
     return { items: [], error: 'Could not parse the feed', httpStatus: fetched.status || null, parse: true };

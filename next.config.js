@@ -51,6 +51,11 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['framer-motion'],
     serverComponentsExternalPackages: ['jsdom', '@mozilla/readability'],
+    outputFileTracingIncludes: {
+      '/api/scoop/read-link': ['./node_modules/jsdom/**/*', './node_modules/@mozilla/readability/**/*'],
+      '/api/scoop/news': ['./node_modules/jsdom/**/*'],
+      '/api/scoop/news-search': ['./node_modules/jsdom/**/*'],
+    },
   },
 }
 

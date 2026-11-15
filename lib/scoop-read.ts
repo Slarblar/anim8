@@ -1,7 +1,6 @@
 import { lookup } from 'dns/promises';
 import http from 'http';
 import https from 'https';
-import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import {
   canonicalIp,
@@ -192,7 +191,14 @@ function publishedFrom(doc: Document): string {
   return (time?.getAttribute('datetime') || '').trim().slice(0, 40);
 }
 
-function extract(html: string, pageUrl: string, outlets: string[]): Article | LinkError {
+let jsdomLoad: Promise<typeof import('jsdom').JSDOM> | null = null;
+function loadJsDom() {
+  if (!jsdomLoad) jsdomLoad = import('jsdom').then((mod) => mod.JSDOM);
+  return jsdomLoad;
+}
+
+async function extract(html: string, pageUrl: string, outlets: string[]): Promise<Article | LinkError> {
+  const JSDOM = await loadJsDom();
   const dom = new JSDOM(html, { url: pageUrl });
   const doc = dom.window.document;
   const host = new URL(pageUrl).hostname;
@@ -276,7 +282,7 @@ export async function readPublicArticle(
       } catch {
         html = res.body.toString('utf8');
       }
-      return extract(html, current.href, outlets);
+      return await extract(html, current.href, outlets);
     }
   } catch (err) {
     const code = (err as { code?: string })?.code || '';

@@ -340,6 +340,30 @@ html[data-night] .template-filters button{background:#1d1d1f;color:#a09d95;borde
 html[data-night] .template-filters button[aria-pressed=true]{background:#efeee9;color:#151616;border-color:#efeee9}
 html[data-night] .creator-actions{background:#161617f2;border-color:#302f2d}
 .link-preview{border:1px solid #eadcb9;background:#fffaf0;border-radius:7px;padding:12px 14px;margin:0 0 14px;font-size:12px;line-height:1.55;color:#3c3424}.link-preview .link-meta{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a6e30}.link-preview b{display:block;margin:4px 0 6px;font-size:14px}.link-preview p{margin:8px 0 12px}.link-preview .row{display:flex;gap:8px;flex-wrap:wrap}.credit-note{margin-top:12px}
+.c-progress{margin-top:16px;border:1px solid #eadcb9;background:#fffaf0;border-radius:7px;padding:14px 14px 12px;color:#6d5420}
+.c-progress-top{display:flex;align-items:center;gap:10px}
+.c-progress-top b{font-size:13px;font-weight:700;color:#4e3b12}
+.c-progress-top span{margin-left:auto;font-family:var(--f-mono);font-size:11px;color:#a08448}
+.c-progress .inline-button{color:#8a6e30;min-height:32px;flex:none}
+.c-progress-track{height:6px;margin:12px 0;background:#f0e4c8;border-radius:99px;overflow:hidden}
+.c-progress-track span{display:block;height:100%;width:0;border-radius:99px;background:#c4552a;position:relative;transition:width .4s ease}
+.c-progress-track span:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);background-size:45% 100%;animation:c-progress-sheen 1.15s linear infinite}
+.c-progress ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.c-progress li{display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.3;color:#b5a078}
+.c-progress li:before{content:"";width:8px;height:8px;border-radius:50%;border:1.5px solid #d9c89a;flex:none;box-sizing:border-box}
+.c-progress li.done{color:#5f7048}
+.c-progress li.done:before{background:#7d8f62;border-color:#7d8f62}
+.c-progress li.on{color:#4e3b12;font-weight:700}
+.c-progress li.on:before{background:#c4552a;border-color:#c4552a;box-shadow:0 0 0 3px #c4552a22;animation:c-progress-pulse 1.1s ease-in-out infinite}
+.c-progress p{margin:10px 0 0;font-size:11px;line-height:1.45;color:#a08448;min-height:1.2em}
+@keyframes c-progress-sheen{from{background-position:-40% 0}to{background-position:160% 0}}
+@keyframes c-progress-pulse{50%{transform:scale(1.3)}}
+@media(prefers-reduced-motion:reduce){.c-progress-track span{transition:none}.c-progress-track span:after,.c-progress li.on:before{animation:none}}
+html[data-night] .c-progress{background:#2a261c;border-color:#5c4d2e;color:#e0b774}
+html[data-night] .c-progress-top b,html[data-night] .c-progress li.on{color:#efeee9}
+html[data-night] .c-progress-top span,html[data-night] .c-progress p,html[data-night] .c-progress .inline-button,html[data-night] .c-progress li{color:#e0b774}
+html[data-night] .c-progress-track{background:#3d3424}
+html[data-night] .c-progress li.done{color:#b7c7a8}
 html[data-night] .link-preview,html[data-night] .credit-note{background:#2a261c;border-color:#5c4d2e;color:#efeee9}
 html[data-night] .link-preview .link-meta{color:#e0b774}
 html[data-night] .template-star{background:#161617;color:#a09d95}
@@ -541,7 +565,11 @@ const T = o=>Object.assign(BASE(),{type:'text',web:false,text:'Text',font:'Archi
 const SH = o=>Object.assign(BASE(),{type:'shape',web:false,shape:'rect',fill:'#ED2224',grad:false,fill2:'#000000',fill2Alpha:0,gradAngle:90,stroke:'#000000',strokeW:0,radius:0,rough:18,seed:7,edges:'both'},o);
 const IM = o=>Object.assign(BASE(),{type:'image',web:true,role:'design',src:null,nw:0,nh:0,fit:'cover',fx:.5,fy:.5,zoom:1,flipX:false,flipY:false,bright:100,contrast:100,sat:100,gray:0,blur:0},o);
 const RD = o=>Object.assign(BASE(),{type:'redact',web:true,name:'Redaction',mode:'mosaic',block:28,blurRadius:24,solidColor:'#000000',shape:'rect',strokes:[]},o);
-function defaultWeb(type){ return type==='image'||type==='redact'; }
+function defaultWeb(L){
+  if(!L) return false;
+  if(L.type==='redact') return true;
+  return L.type==='image'&&L.role==='photo';
+}
 function ensureLayerWeb(L){
   if(!L||L.type==='folder') return;
   if(L.type==='redact'){
@@ -552,7 +580,7 @@ function ensureLayerWeb(L){
     if(!L.solidColor) L.solidColor='#000000';
     if(L.shape!=='ellipse'&&L.shape!=='brush') L.shape='rect';
     if(!Array.isArray(L.strokes)) L.strokes=[];
-  } else if(typeof L.web!=='boolean') L.web=defaultWeb(L.type);
+  } else if(typeof L.web!=='boolean') L.web=defaultWeb(L);
 }
 function layerWeb(L){ if(!L||L.type==='folder') return false; if(L.type==='redact') return true; return L.web===true; }
 
@@ -1620,6 +1648,8 @@ function paintShape(ctx,L){
 }
 function drawLayer(ctx,L,opt){
   if(L.type==='folder'||!layerShown(L,opt)||L.type==='redact') return;
+  // Web export must not paint a layer the globe turned off, even inside a clip group.
+  if(opt&&opt.web&&L.type!=='redact'&&!layerWeb(L)) return;
   let lay=null;
   if(L.type==='text'){ lay=layoutWithinRoom(L, layoutText(ctx,L), drawList, paintSize.w, paintSize.h); L.h=lay.h; }
   const rot=L.rot||0, hs=L.hscale||1;
@@ -1748,7 +1778,76 @@ function paintDoc(ctx,doc,opt,pred){
   paintSize=prevSize;
 }
 function renderDoc(ctx,doc,opt={}){ paintDoc(ctx,doc,opt,()=>true); }
-function renderWeb(ctx,doc,opt={}){ paintDoc(ctx,doc,Object.assign({editor:false},opt),L=>L.type==='redact'||layerWeb(L)); }
+function layerBounds(L){
+  let h=L&&L.h;
+  if(!(h>0)) h=L&&L.type==='text'?Math.max(8,(+L.size||24)*(+L.lh||1.2)):1;
+  return {x:+L.x||0,y:+L.y||0,w:Math.max(1,+L.w||1),h:Math.max(1,+h||1)};
+}
+function coverFrac(inner,outer){
+  const x=Math.max(inner.x,outer.x), y=Math.max(inner.y,outer.y);
+  const r=Math.min(inner.x+inner.w,outer.x+outer.w), b=Math.min(inner.y+inner.h,outer.y+outer.h);
+  if(r<=x||b<=y) return 0;
+  return ((r-x)*(b-y))/(inner.w*inner.h);
+}
+// The website image only keeps layers the globe includes. It also leaves out anything
+// that is invisible on the post because a layer we are omitting sits on top of it
+// (a stale CORRECTION badge under the live NEWS label), and a plate whose clipped
+// type was all omitted (torn paper with the headline turned off).
+function webPaintPred(doc,opt){
+  const layers=doc.layers||[];
+  const base=L=>{
+    if(!L||L.type==='folder'||L.psdRef) return false;
+    if(!layerShown(L,opt)) return false;
+    if(L.type==='redact') return true;
+    return layerWeb(L);
+  };
+  const buried=L=>{
+    if(!L||L.role==='photo'||L.type==='redact') return false;
+    const box=layerBounds(L), i=layers.indexOf(L);
+    for(let j=i+1;j<layers.length;j++){
+      const T=layers[j];
+      if(!T||!layerShown(T,opt)||T.type==='folder'||T.psdRef||T.type==='redact') continue;
+      if((T.opacity??1)<=0.02) continue;
+      if(base(T)) continue;
+      const tb=layerBounds(T), frac=coverFrac(box,tb);
+      if(frac>=0.7) return true;
+      if(frac>=0.45){
+        const cx=box.x+box.w/2, cy=box.y+box.h/2;
+        if(cx>=tb.x&&cx<=tb.x+tb.w&&cy>=tb.y&&cy<=tb.y+tb.h) return true;
+      }
+    }
+    return false;
+  };
+  const included=L=>base(L)&&!buried(L);
+  const pageW=doc.w||1080, pageH=doc.h||1350;
+  // A torn paper or badge plate whose story text was all left out of the web image.
+  const emptyPlate=L=>{
+    if(!L||L.type==='text'||L.role==='photo'||L.type==='redact') return false;
+    const box=layerBounds(L);
+    if(box.w>=pageW*0.9&&box.h>=pageH*0.7) return false;
+    let held=false;
+    for(let j=layers.indexOf(L)+1;j<layers.length;j++){
+      const T=layers[j];
+      if(!T||T.type!=='text'||!layerShown(T,opt)||T.psdRef) continue;
+      if(coverFrac(layerBounds(T), box)<0.8) continue;
+      held=true;
+      if(included(T)) return false;
+    }
+    return held;
+  };
+  return L=>{
+    if(!included(L)) return false;
+    if(L.role==='photo'||L.type==='redact') return true;
+    const members=clipMembers(layers, layers.indexOf(L)).filter(C=>layerShown(C,opt)&&!C.psdRef);
+    if(members.length&&!members.some(included)) return false;
+    if(emptyPlate(L)) return false;
+    return true;
+  };
+}
+function renderWeb(ctx,doc,opt={}){
+  const o=Object.assign({editor:false,web:true},opt);
+  paintDoc(ctx,doc,o,webPaintPred(doc,o));
+}
 function rectsOverlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
 function webExportIssues(page){
   const layers=page.layers||[];
@@ -1758,11 +1857,12 @@ function webExportIssues(page){
     while(id&&n++<24){ const p=layers.find(x=>x.id===id); if(!p) break; if(p.visible===false) return false; id=p.parent; }
     return true;
   };
-  const content=layers.filter(L=>shown(L)&&L.type!=='redact'&&layerWeb(L));
+  const pred=webPaintPred(page,{editor:false,web:true});
+  const content=layers.filter(L=>pred(L)&&L.type!=='redact');
   const blocked=[];
   layers.forEach((L,i)=>{
     if(L.type!=='redact'||!shown(L)) return;
-    const covered=layers.slice(0,i).some(B=>shown(B)&&B.type==='image'&&layerWeb(B)&&rectsOverlap(L,B));
+    const covered=layers.slice(0,i).some(B=>pred(B)&&B.type==='image'&&rectsOverlap(L,B));
     if(!covered) blocked.push(L.name||'Redact');
   });
   return {empty:!content.length, blocked};
@@ -2327,7 +2427,7 @@ function parsePsdName(raw){
   let name=String(raw||'').trim()||'Layer';
   let isSlot=false, locked=false, web=null;
   for(let i=0;i<8;i++){
-    const m=/^(slot|lock|web|noweb)\s*:\s*/i.exec(name);
+    const m=/^(slot|lock|noweb|web)\s*:\s*/i.exec(name);
     if(!m) break;
     const key=m[1].toLowerCase();
     name=name.slice(m[0].length).trim();
@@ -2442,7 +2542,12 @@ function psdBox(layer){
   return {x, y, w:(layer.right??x)-x, h:(layer.bottom??y)-y};
 }
 function round2(n){ return Math.round(n*100)/100; }
-async function importPsdLeaf(layer, opacity, hidden, report, out, page){
+function applyPsdWeb(L, meta, parentWeb){
+  if(meta.web!==null) L.web=meta.web;
+  else if(typeof parentWeb==='boolean') L.web=parentWeb;
+  else if(L.type==='image'&&L.role!=='photo') L.web=false;
+}
+async function importPsdLeaf(layer, opacity, hidden, report, out, page, parentWeb){
   const meta=parsePsdName(layer.name);
   notePsdExtras(layer, meta.name, report);
   if(layer.adjustment){
@@ -2476,7 +2581,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
       visible:!hidden, locked:meta.locked, slot:meta.slot,
     });
     if(Math.abs(frame.rot)>0.05) L.rot=round2(frame.rot);
-    if(meta.web!==null) L.web=meta.web;
+    applyPsdWeb(L, meta, parentWeb);
     L.clip=!!layer.clipping;
     out.push(L);
     if(layer.canvas&&layer.canvas.width&&layer.canvas.height){
@@ -2502,7 +2607,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
       opacity:Math.min(1,Math.max(0,opacity)), blend:mapPsdBlend(layer.blendMode, meta.name, report),
       visible:!hidden, locked:meta.locked, slot:meta.slot, role:psdImageRole(meta),
     });
-    if(meta.web!==null) L.web=meta.web;
+    applyPsdWeb(L, meta, parentWeb);
     L.clip=!!layer.clipping;
     out.push(L);
     return;
@@ -2516,7 +2621,7 @@ async function importPsdLeaf(layer, opacity, hidden, report, out, page){
       opacity:Math.min(1,Math.max(0,opacity)), blend:mapPsdBlend(layer.blendMode, meta.name, report),
       visible:!hidden, locked:meta.locked, slot:meta.slot,
     });
-    if(meta.web!==null) L.web=meta.web;
+    applyPsdWeb(L, meta, parentWeb);
     L.clip=!!layer.clipping;
     out.push(L);
     return;
@@ -2545,7 +2650,7 @@ function takePsdZone(layer, page, report){
   report.notes.push('Zone “'+label+'” uses its frame and is not printed');
   return true;
 }
-async function flattenPsd(layers, parentOpacity, parentHidden, report, out, page){
+async function flattenPsd(layers, parentOpacity, parentHidden, report, out, page, parentWeb){
   // ag-psd lists children from the back of the stack forward, so the first child is the background.
   for(const layer of layers||[]){
     if(takePsdZone(layer, page, report)) continue;
@@ -2553,10 +2658,11 @@ async function flattenPsd(layers, parentOpacity, parentHidden, report, out, page
     const hidden=parentHidden||!!layer.hidden;
     if(layer.children){
       const g=parsePsdName(layer.name);
+      const inherited=g.web!==null?g.web:parentWeb;
       if(layer.blendMode&&layer.blendMode!=='pass through'&&layer.blendMode!=='normal') report.notes.push('Group blend “'+layer.blendMode+'” on '+g.name+' was not applied');
       notePsdExtras(layer, g.name, report);
       const start=out.length;
-      await flattenPsd(layer.children, opacity, hidden, report, out, page);
+      await flattenPsd(layer.children, opacity, hidden, report, out, page, inherited);
       if(layer.clipping){
         for(let i=start;i<out.length;i++){
           const L=out[i];
@@ -2564,7 +2670,7 @@ async function flattenPsd(layers, parentOpacity, parentHidden, report, out, page
           L.clip=true;
         }
       }
-    } else await importPsdLeaf(layer, opacity, hidden, report, out, page);
+    } else await importPsdLeaf(layer, opacity, hidden, report, out, page, parentWeb);
   }
 }
 function faceFamily(face){ return String(face&&face.family||'').replace(/^["']|["']$/g,'').trim(); }
@@ -3603,6 +3709,9 @@ async function fitStoryPage(page,story,shared,ref){
   await ensureFonts(page.layers);
   let best=null;
   for(let i=0;i<options.length;i++){
+    const where=C.job&&C.job.pageLabel?C.job.pageLabel+' · ':'';
+    if(options.length>1) creatorJobNote(where+'Scoring headline '+(i+1)+' of '+options.length);
+    else if(where) creatorJobNote(where+'Fitting the type');
     const clone=JSON.parse(JSON.stringify(page));
     if(ref) applyReferenceLayout(clone,ref);
     writeSlots(clone,shared||{});
@@ -3622,6 +3731,7 @@ async function applyAiDraft(out){
   const pageSpecs=Array.isArray(out.pages)&&out.pages.length?out.pages:[{headlines:out.headlines||[],dek:out.dek||''}];
   const notes=[], chosen=[];
   for(let i=0;i<S.doc.pages.length;i++){
+    if(C.job) C.job.pageLabel=S.doc.pages.length>1?'Page '+(i+1)+' of '+S.doc.pages.length:'';
     const own=pageSpecs[i];
     const spec=own&&Array.isArray(own.headlines)&&own.headlines.length?own:(pageSpecs[0]||{headlines:[],dek:''});
     const fit=await fitStoryPage(S.doc.pages[i], spec, shared, ref);
@@ -4865,7 +4975,7 @@ function creatorStoryHTML(){
     <div class="field-foot"><span id="sourceHint">${ai?(creatorReadsLink()?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.'):'Exact wording. No AI rewrite.'}</span><span id="sourceCount">${(ai?C.source:C.teamCopy).length.toLocaleString()} / 12,000</span></div>
     ${photo?`<button class="source-photo" data-creator-photo="${photo.id}" ${C.busy?'disabled':''}>${CI.photo}<span><b>${photo.src?'Photo added · replace':'Add a photo'}</b><small>Camera roll or files · optional for now</small></span><span aria-hidden="true">${photo.src?'✓':'+'}</span></button>`:''}
     ${!ai?'<details class="copy-help"><summary>Tips for pasting team copy</summary><p>The first line is your headline; the remaining lines are supporting copy. Optional labels: Headline, Supporting copy, Category, Location, Source, and Tags. Separate carousel pages with a line containing <b>---</b>. You can adjust every field in the review.</p></details>':'<div class="c-notice" id="creatorConnectionHint" hidden>AI drafting is available on your connected team website. Choose <button id="creatorUseFinal" class="inline-button">Use team copy</button> to fill and export here.</div>'}
-    ${C.busy?`<div class="c-notice" role="status">${C.reading?'Reading the link…':'Writing your post…'} <button class="inline-button" id="creatorCancel">Cancel</button></div>`:''}
+    ${C.busy&&C.job?creatorJobHTML():''}
     ${C.message?`<p class="${C.error?'c-error':'c-note'}" role="status">${esc(C.message)}</p>`:''}`;
 }
 function creatorTemplates(){
@@ -5033,10 +5143,16 @@ function selectedTemplateRecord(){
   if(type==='team') return TPLS.find(t=>t.id===key&&t.status!=='draft'&&t.status!=='archived')||null;
   return stockOverride(key);
 }
+function copyWebFlags(fromDoc, toDoc){
+  const prev=new Map();
+  for(const p of fromDoc.pages||[]) for(const L of p.layers||[]) if(L&&typeof L.web==='boolean') prev.set(L.id, L.web);
+  for(const p of toDoc.pages||[]) for(const L of p.layers||[]) if(L&&prev.has(L.id)) L.web=prev.get(L.id);
+}
 function reloadSelectedTemplate(){
   if(!S.doc||!selectedTemplateRecord()) return false;
   const bank=photoBank(S.doc), name=S.doc.name;
   const fresh=creatorDocFor(creatorSelected());
+  copyWebFlags(S.doc, fresh);
   applyPhotoBank(fresh, bank);
   fresh.name=name||fresh.name;
   loadDoc(fresh,{fresh:false});
@@ -5057,19 +5173,87 @@ function creditSourceSlot(){
   const credit='Source: '+C.link.siteName;
   for(const p of S.doc.pages){ const L=findRole(p.layers,'source'); if(L) L.text=credit; }
 }
+let jobTimer=0;
+function creatorJobStart(labels){
+  C.job={labels, index:0, started:Date.now(), stepAt:Date.now(), note:'', waitHint:''};
+  clearInterval(jobTimer);
+  jobTimer=setInterval(creatorJobTick, 400);
+}
+function creatorJobStep(index, note){
+  if(!C.job) return;
+  C.job.index=index;
+  C.job.stepAt=Date.now();
+  C.job.note=note||'';
+  creatorJobTick();
+}
+function creatorJobNote(note){
+  if(!C.job) return;
+  C.job.note=note||'';
+  creatorJobTick();
+}
+function creatorJobStop(){
+  clearInterval(jobTimer);
+  jobTimer=0;
+  C.job=null;
+}
+function creatorJobHTML(){
+  const job=C.job;
+  if(!job) return '';
+  const i=Math.min(job.index, job.labels.length-1);
+  const items=job.labels.map((label,n)=>`<li data-job-step="${n}" class="${n<i?'done':n===i?'on':''}">${esc(label)}</li>`).join('');
+  return `<div class="c-progress" id="creatorJob">
+    <div class="c-progress-top">
+      <b id="creatorJobLabel" role="status">${esc(job.labels[i]||'')}</b>
+      <span id="creatorJobTime" aria-hidden="true">0s</span>
+      <button class="inline-button" id="creatorCancel" type="button">Cancel</button>
+    </div>
+    <div class="c-progress-track" aria-hidden="true"><span id="creatorJobBar"></span></div>
+    <ol>${items}</ol>
+    <p id="creatorJobNote" hidden></p>
+  </div>`;
+}
+function creatorJobTick(){
+  const job=C.job, root=$('#creatorJob');
+  if(!job||!root) return;
+  const n=job.labels.length, i=Math.min(job.index, n-1);
+  const elapsed=Math.max(0, Math.floor((Date.now()-job.started)/1000));
+  const inStep=Math.max(0, (Date.now()-job.stepAt)/1000);
+  const crawl=Math.min(0.82, 0.12+inStep/36);
+  const pct=Math.max(4, Math.min(96, ((i+crawl)/n)*100));
+  const label=root.querySelector('#creatorJobLabel');
+  const time=root.querySelector('#creatorJobTime');
+  const bar=root.querySelector('#creatorJobBar');
+  const note=root.querySelector('#creatorJobNote');
+  const line=job.note || (inStep>=5 && job.waitHint ? job.waitHint : '');
+  const title=job.labels[i]||'';
+  const stamp=elapsed+'s';
+  if(label&&label.textContent!==title) label.textContent=title;
+  if(time&&time.textContent!==stamp) time.textContent=stamp;
+  if(bar) bar.style.width=pct.toFixed(1)+'%';
+  if(note){ if(note.textContent!==line) note.textContent=line; note.hidden=!line; }
+  root.querySelectorAll('[data-job-step]').forEach(li=>{
+    const k=+li.dataset.jobStep;
+    li.className=k<i?'done':k===i?'on':'';
+  });
+}
 async function creatorReadLink(){
   const url=onlyUrl(C.source);
   if(!url||C.busy) return;
   if(Backend.mode!=='server'){ C.error=true; C.message='Reading a link needs the team website. Paste the article text instead.'; renderCreator(); return; }
-  C.busy=true; C.reading=true; C.message=''; C.error=false; C.linkPreview=null; C.ctrl=new AbortController(); renderCreator();
+  C.busy=true; C.reading=true; C.message=''; C.error=false; C.linkPreview=null; C.ctrl=new AbortController();
+  creatorJobStart(['Opening the link','Reading the article']);
+  C.job.waitHint='The page request is still open.';
+  renderCreator();
   try{
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    creatorJobStep(1);
     const out=await api('/read-link',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url}),signal:C.ctrl.signal});
     if(out&&out.error) throw out;
     C.linkPreview=out;
   }catch(e){
     if(e?.name==='AbortError'){ C.message='Reading cancelled.'; }
     else { C.error=true; C.message=e?.error==='social'?'Social posts can\'t be read automatically. Paste the post\'s text instead.':e?.error==='unreadable'?'Couldn\'t read this page (paywall or it needs a browser). Paste the article text instead.':'Couldn\'t read that link. Paste the article text instead.'; }
-  }finally{ C.busy=false; C.reading=false; C.ctrl=null; renderCreator(); }
+  }finally{ creatorJobStop(); C.busy=false; C.reading=false; C.ctrl=null; renderCreator(); }
 }
 function useLinkText(){
   const a=C.linkPreview; if(!a||!a.text) return;
@@ -5089,35 +5273,45 @@ async function creatorCreatePost(){
   if(!allSlots.length){C.message='This template has no text slots. Choose another template or add quick-fill fields in Template Builder.';renderCreator();return;}
   const parsed=C.inputMode==='final'?parseTeamCopy(C.teamCopy):[];
   if(parsed.length>S.doc.pages.length){C.error=true;C.message=`Your copy has ${parsed.length} pages, but this template has ${S.doc.pages.length}. Choose a longer template or remove a page separator.`;renderCreator();return;}
-  C.busy=true;C.message='';C.error=false;C.ctrl=new AbortController();renderCreator();
-  let fields={},notes='';
+  const ai=C.inputMode==='ai';
+  C.busy=true;C.message='';C.error=false;C.ctrl=new AbortController();
+  creatorJobStart(ai?['Loading your template','Writing the post','Fitting the layout']:['Loading your template','Placing your copy']);
+  renderCreator();
+  let notes='';
   try{
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     reloadSelectedTemplate();
-    if(C.inputMode==='ai'){
+    if(ai){
       if(!cap.sample)throw {code:'not_configured'};
+      creatorJobStep(1);
+      C.job.waitHint='The draft request is still open.';
       const out=await cap.sample.draft(aiDraftBody(C.source,{followUp:C.followUp,correction:C.correction}),C.ctrl.signal);
       if(!out||!Array.isArray(out.headlines)||!out.headlines.length)throw {code:'no_fields'};
+      creatorJobStep(2);
+      if(C.job) C.job.waitHint='';
       const fitNotes=await applyAiDraft(out);
       creditSourceSlot();
       notes=[out.categoryReason,out.notes].concat(fitNotes).filter(Boolean).join(' ');
     }
     const omitted=[];C.contentCache=[];
-    if(C.inputMode!=='ai') for(let i=0;i<S.doc.pages.length;i++){
-      const p=S.doc.pages[i],changed=[],copy=parsed[i]||{};
-      for(const L of p.layers.filter(l=>l.slot&&l.type==='text')){
-        L.text=C.inputMode==='ai'?String(fields[S.doc.pages.length>1?`Page ${i+1} ${L.slot}`:L.slot]||'').trim():String(copy[creatorSlotKey(L.slot)]||'');changed.push(L);
-      }
-      if(C.inputMode==='final'){
+    if(!ai){
+      creatorJobStep(1);
+      for(let i=0;i<S.doc.pages.length;i++){
+        if(S.doc.pages.length>1) creatorJobNote('Page '+(i+1)+' of '+S.doc.pages.length);
+        const p=S.doc.pages[i],changed=[],copy=parsed[i]||{};
+        for(const L of p.layers.filter(l=>l.slot&&l.type==='text')){
+          L.text=String(copy[creatorSlotKey(L.slot)]||'');changed.push(L);
+        }
         const bank=C.contentCache[i]={};Object.entries(copy).forEach(([k,v])=>{bank['text:'+k]={text:v};if(v&&!changed.some(l=>creatorSlotKey(l.slot)===k))omitted.push(k);});
+        await ensureFonts(changed);fitFilledText(changed,p.layers,p.w,p.h);
       }
-      await ensureFonts(changed);fitFilledText(changed,p.layers,p.w,p.h);
     }
     C.generated=true;C.step=2;C.drawer=true;C.field='';C.reviewTab='text';C.message=notes;
     if(omitted.length)C.message='This layout has no field for '+[...new Set(omitted)].join(', ')+'. That copy is kept in your original and will carry into a compatible template.';
     else if(C.inputMode==='final'&&parsed.length<S.doc.pages.length)C.message='Add the remaining page copy using the page arrows. Your pasted wording has been preserved.';
     S.doc.name=slotText('headline','title','quote').slice(0,70)||'New post';commit();creatorPersist();renderLayers();renderProps(true);scheduleRender();window.scrollTo({top:0,behavior:'instant'});
   }catch(e){C.error=true;C.message=e?.name==='AbortError'?'Drafting cancelled. Your copy is safe.':e?.code==='not_configured'?'AI drafting needs your team’s website connection. Use team copy here, or open this tool on your website.':e?.code==='rate_limited'?'Too many drafts at once. Try again shortly.':e?.code==='too_many_slots'?'This template has more than 20 text fields. Use team copy or simplify the template.':e?.code==='no_fields'?'No usable copy came back. Add more detail and try again.':'Could not draft the post. Your story is saved; please try again.';}
-  finally{C.busy=false;C.ctrl=null;renderCreator();}
+  finally{creatorJobStop();C.busy=false;C.ctrl=null;renderCreator();}
 }
 function creatorConfirm(title,description,label){return new Promise(resolve=>{
   let settled=false;

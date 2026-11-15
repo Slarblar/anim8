@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   acceptSearchItems,
-  parsePageAge,
   collectNews,
   denverMidnight,
   failureDetail,
@@ -239,19 +238,20 @@ describe('web search results', () => {
     expect(items[0].url).toContain('ksl.com/article/1/storm');
   });
 
-  it('keeps a story from the search page age when that age is inside the window', () => {
-    const allowed = ['https://ksl.com/article/9/today'];
-    const key = 'https://ksl.com/article/9/today';
-    const dated = acceptSearchItems([
-      { title: 'Salt Lake council meets', url: key, outlet: 'KSL', published: null, summary: 'The council met in Salt Lake.', location: 'Salt Lake City', category: 'News' },
-    ], allowed, 24, NOW, { [key]: '2026-11-14' });
-    expect(dated).toHaveLength(1);
-    expect(dated[0].title).toBe('Salt Lake council meets');
-    const recent = acceptSearchItems([
-      { title: 'Salt Lake council meets', url: key, outlet: 'KSL', published: null, summary: 'The council met in Salt Lake.', location: 'Salt Lake City', category: 'News' },
-    ], allowed, 6, NOW, { [key]: '2 hours ago' });
-    expect(recent).toHaveLength(1);
-    expect(parsePageAge('2 hours ago', NOW)).toBe(new Date(NOW.getTime() - 2 * 60 * 60 * 1000).toISOString());
+  it('drops a homepage and keeps an article from the same search', () => {
+    const items = acceptSearchItems([
+      { title: 'FOX 13 Utah and Salt Lake City', url: 'https://www.fox13now.com/', published: 'today', summary: 'Home.', location: 'Salt Lake City' },
+      { title: 'Salt Lake council meets', url: 'https://ksl.com/article/9/today', published: '2 hours ago', summary: 'The council met in Salt Lake.', location: 'Salt Lake City' },
+    ], ['https://www.fox13now.com/', 'https://ksl.com/article/9/today'], 6, NOW);
+    expect(items.map((item) => item.title)).toEqual(['Salt Lake council meets']);
+  });
+
+  it('treats "0 days ago" as today and keeps it in a 6 hour window', () => {
+    const items = acceptSearchItems([
+      { title: 'BYU beats Baylor in Provo', url: 'https://www.sltrib.com/sports/byu-cougars/2026/11/14/byu-football-beats-baylor-28-7/', published: '0 days ago', summary: 'BYU won in Provo.', location: 'Provo' },
+    ], ['https://www.sltrib.com/sports/byu-cougars/2026/11/14/byu-football-beats-baylor-28-7/'], 6, NOW);
+    expect(items).toHaveLength(1);
+    expect(items[0].timeConfirmed).toBe(true);
   });
 
   it('groups the same story by URL and by a similar headline', () => {
@@ -263,5 +263,32 @@ describe('web search results', () => {
     ]);
     expect(groups).toHaveLength(2);
     expect(groups[0]).toHaveLength(3);
+  });
+});
+
+describe('search result ages', () => {
+  const now = new Date('2026-11-15T09:00:00Z');
+  it('uses the age the search result showed when the model gives no time', async () => {
+    const { acceptSearchItems, emptySearchStats } = await import('@/lib/scoop-news');
+    const stats = emptySearchStats();
+    const items = acceptSearchItems([
+      { title: 'Crash closes I-15 in Lehi', url: 'http://www.ksl.com/article/9/crash', outlet: 'KSL', published: null, summary: 'A crash closed I-15 in Lehi, Utah County.', location: 'Lehi' },
+      { title: 'Sandy council votes on budget', url: 'https://www.fox13now.com/news/sandy-budget', outlet: 'FOX 13', published: 'November 15, 2026', summary: 'Sandy City Council in Utah voted.', location: 'Sandy' },
+      { title: 'Ogden fire', url: 'https://www.abc4.com/news/ogden-fire', outlet: 'ABC4', published: null, summary: 'A fire in Ogden, Utah.', location: 'Ogden' },
+    ], ['https://www.ksl.com/article/9/crash', 'https://www.fox13now.com/news/sandy-budget', 'https://www.abc4.com/news/ogden-fire'], 12, now, {
+      ages: { 'https://www.ksl.com/article/9/crash': '2 hours ago' },
+      stats,
+    });
+    expect(items.map((i) => i.title)).toEqual(['Crash closes I-15 in Lehi', 'Sandy council votes on budget']);
+    expect(items[0].timeConfirmed).toBe(true);
+    expect(items[1].timeConfirmed).toBe(false);
+    expect(stats.noDate).toBe(1);
+  });
+  it('keeps date-only stories out of 3h and 6h windows', async () => {
+    const { acceptSearchItems } = await import('@/lib/scoop-news');
+    const items = acceptSearchItems([
+      { title: 'Sandy council votes on budget', url: 'https://www.fox13now.com/news/sandy-budget', published: 'November 15, 2026', summary: 'Sandy City Council in Utah voted.', location: 'Sandy' },
+    ], ['https://www.fox13now.com/news/sandy-budget'], 6, now);
+    expect(items).toHaveLength(0);
   });
 });

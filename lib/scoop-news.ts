@@ -336,6 +336,37 @@ export function parseWhen(value: string): Dated | null {
   return { at, dateOnly: false };
 }
 
+/**
+ * Reads the age a search result shows: "3 hours ago", "yesterday", "Nov 14, 2026", "2026-11-14", or a full timestamp.
+ * Relative ages are exact enough to place a story in a 3h window; plain dates are date-only.
+ */
+export function parsePageAge(value: string, now: Date): Dated | null {
+  const raw = String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  if (!raw) return null;
+  const rel = raw.match(/^(an?|\d+)\s*(second|sec|minute|min|hour|hr|day|week)s?\s+ago$/);
+  if (rel) {
+    const n = rel[1] === 'a' || rel[1] === 'an' ? 1 : Number(rel[1]);
+    const unit = rel[2];
+    const ms = unit.startsWith('s') ? 1e3 : unit.startsWith('m') ? 6e4 : unit.startsWith('h') ? 36e5 : unit === 'day' ? 864e5 : 6048e5;
+    // "0 days ago" means today. A day or week with a count is only a date.
+    return { at: new Date(now.getTime() - n * ms), dateOnly: (unit === 'day' || unit === 'week') && n > 0 };
+  }
+  if (raw === 'just now') return { at: now, dateOnly: false };
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  if (raw === 'today') return { at: denverMidnight(today), dateOnly: true };
+  if (raw === 'yesterday') return { at: new Date(denverMidnight(today).getTime() - 864e5), dateOnly: true };
+  const exact = parseWhen(value);
+  if (exact) {
+    // "November 14, 2026" parses as UTC midnight with no time: treat as a plain date.
+    if (!/\d{1,2}:\d{2}/.test(raw) && !/t\d{2}/.test(raw)) {
+      const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(exact.at);
+      return { at: denverMidnight(day), dateOnly: true };
+    }
+    return exact;
+  }
+  return null;
+}
+
 export function passesWindow(item: { publishedAt: string; dateOnly: boolean }, window: NewsWindow, now: Date): boolean {
   if ((window === '3h' || window === '6h') && item.dateOnly) return false;
   const at = Date.parse(item.publishedAt);
@@ -687,12 +718,29 @@ export function normalizeSearchDomains(raw: unknown): string[] {
   return out.length ? out : NEWS_SEARCH_DOMAINS.slice();
 }
 
+const SECTION = /^(news|sports|utah|local|politics|weather|traffic|video|videos|watch|live|home)$/i;
+
+/** A story link has an article path. Homepages and section indexes are not stories. */
+export function isArticleUrl(value: string): boolean {
+  try {
+    const path = new URL(value).pathname.replace(/\/amp\/?$/i, '').replace(/\/$/, '');
+    const parts = path.split('/').filter(Boolean);
+    if (!parts.length) return false;
+    if (parts.length === 1 && (SECTION.test(parts[0]) || (parts[0].length < 8 && !/\d/.test(parts[0])))) return false;
+    if (parts.every((part) => SECTION.test(part))) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function urlKey(value: string): string {
   try {
     const url = new URL(value);
     const host = url.hostname.toLowerCase().replace(/^www\./, '');
-    const path = url.pathname.replace(/\/$/, '');
-    return `${url.protocol}//${host}${path}`;
+    const path = url.pathname.replace(/\/amp\/?$/, '').replace(/\/$/, '');
+    // Protocol-agnostic: the model sometimes writes http:// for an https:// result.
+    return `//${host}${path}`;
   } catch {
     return '';
   }
@@ -706,38 +754,61 @@ export type SearchHit = {
   summary: string;
   location: string;
   category: string;
+  /** false when only the day is known (search result showed a date without a time). */
+  timeConfirmed?: boolean;
 };
 
-/** A search page age such as "2 hours ago" becomes a time. A plain date is left for parseWhen. */
-export function parsePageAge(value: string, now: Date): string {
-  const raw = String(value || '').trim();
-  const rel = /^(\d+)\s*(minute|hour|day)s?\s+ago$/i.exec(raw);
-  if (!rel) return raw;
-  const n = Number(rel[1]);
-  const unit = rel[2].toLowerCase();
-  const ms = unit.startsWith('minute') ? n * 60 * 1000 : unit.startsWith('hour') ? n * 60 * 60 * 1000 : n * 24 * 60 * 60 * 1000;
-  return new Date(now.getTime() - ms).toISOString();
+/** Why search results were kept or dropped, so an empty list explains itself. */
+export type SearchStats = {
+  returned: number;
+  kept: number;
+  notInResults: number;
+  noDate: number;
+  tooOld: number;
+  notUtah: number;
+  badTitle: number;
+};
+
+export function emptySearchStats(): SearchStats {
+  return { returned: 0, kept: 0, notInResults: 0, noDate: 0, tooOld: 0, notUtah: 0, badTitle: 0 };
 }
 
-/** Keep search rows whose URL came from the tool and whose time falls inside the window. */
-export function acceptSearchItems(raw: unknown, allowedUrls: string[], hours: number, now: Date, pageAges?: Record<string, string>): SearchHit[] {
+/** Keep search rows whose URL came from the tool, whose time was on the page, and that are inside the window. */
+export function acceptSearchItems(
+  raw: unknown,
+  allowedUrls: string[],
+  hours: number,
+  now: Date,
+  opts: { ages?: Record<string, string>; stats?: SearchStats } = {},
+): SearchHit[] {
+  const stats = opts.stats || emptySearchStats();
   if (!Array.isArray(raw)) return [];
   const allowed = new Set(allowedUrls.map(urlKey).filter(Boolean));
+  const ages = new Map(Object.entries(opts.ages || {}).map(([u, a]) => [urlKey(u), a] as const));
   const maxAge = hours * 60 * 60 * 1000;
   const out: SearchHit[] = [];
+  const seen = new Set<string>();
   for (const item of raw) {
+    stats.returned += 1;
     const row = asObject(item);
     const url = String(row.url ?? '').trim();
     const key = urlKey(url);
-    if (!key || !allowed.has(key)) continue;
-    const given = String(row.published ?? '').trim();
-    const stamped = given && given.toLowerCase() !== 'null' ? given : (pageAges?.[key] || '');
-    const when = parseWhen(parsePageAge(stamped, now));
-    if (!when) continue;
-    const age = now.getTime() - when.at.getTime();
-    if (age < -5 * 60 * 1000 || age > maxAge) continue;
+    if (!key || !allowed.has(key) || !isArticleUrl(url)) { stats.notInResults += 1; continue; }
+    if (seen.has(key)) continue;
+    // The model's time first; otherwise the age the search result itself showed.
+    const told = String(row.published ?? '');
+    const when = parsePageAge(told, now) || parsePageAge(ages.get(key) || '', now);
+    if (!when) { stats.noDate += 1; continue; }
+    if (when.dateOnly) {
+      // A plain date can't place a story in a 3h/6h window. For 12h/24h, keep it if that day overlaps the window.
+      const dayEnd = when.at.getTime() + 864e5;
+      if (hours < 12 || now.getTime() - dayEnd > maxAge || when.at.getTime() - now.getTime() > 864e5) { stats.tooOld += 1; continue; }
+    } else {
+      const age = now.getTime() - when.at.getTime();
+      if (age < -5 * 60 * 1000 || age > maxAge) { stats.tooOld += 1; continue; }
+    }
     const title = String(row.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
-    if (title.length < 4) continue;
+    if (title.length < 4) { stats.badTitle += 1; continue; }
     const hit: SearchHit = {
       title,
       url,
@@ -746,10 +817,13 @@ export function acceptSearchItems(raw: unknown, allowedUrls: string[], hours: nu
       summary: String(row.summary ?? '').replace(/\s+/g, ' ').trim().slice(0, 280),
       location: String(row.location ?? '').replace(/\s+/g, ' ').trim().slice(0, 80),
       category: String(row.category ?? '').replace(/\s+/g, ' ').trim().slice(0, 40),
+      timeConfirmed: !when.dateOnly,
     };
-    if (!isUtahStory(hit)) continue;
+    if (!isUtahStory(hit)) { stats.notUtah += 1; continue; }
+    seen.add(key);
     out.push(hit);
   }
+  stats.kept = out.length;
   return out;
 }
 

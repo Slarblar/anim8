@@ -4,9 +4,9 @@ import { readBrandRecord, writeBrandRecord } from '@/lib/scoop-brand';
 import {
   acceptSearchItems,
   denverMidnight,
+  emptySearchStats,
   groupStories,
   normalizeSearchDomains,
-  urlKey,
   UTAH_STORY_RULE,
   type SearchHit,
 } from '@/lib/scoop-news';
@@ -42,27 +42,25 @@ function hoursOf(value: unknown): 3 | 6 | 12 | 24 {
 
 type SearchPage = { url: string; title: string; pageAge: string };
 
-function resultUrls(content: unknown[]): { urls: string[]; ages: Record<string, string>; pages: SearchPage[] } {
+/** Every URL the search returned, plus the age and title each result showed. */
+function resultUrls(content: unknown[], ages: Record<string, string> = {}, pages: SearchPage[] = []): string[] {
   const urls: string[] = [];
-  const ages: Record<string, string> = {};
-  const pages: SearchPage[] = [];
   const stack = [...content];
   while (stack.length) {
     const node = stack.pop();
     if (!node || typeof node !== 'object') continue;
     const row = node as Record<string, unknown>;
-    if ((row.type === 'web_search_result' || row.type === 'web_search_result_location') && typeof row.url === 'string') urls.push(row.url);
-    if (row.type === 'web_search_result' && typeof row.url === 'string') {
-      const key = urlKey(row.url);
+    if ((row.type === 'web_search_result' || row.type === 'web_search_result_location') && typeof row.url === 'string') {
+      urls.push(row.url);
       const pageAge = typeof row.page_age === 'string' ? row.page_age.trim() : '';
+      if (pageAge) ages[row.url] = pageAge;
       const title = typeof row.title === 'string' ? row.title.trim() : '';
-      if (key && pageAge) ages[key] = pageAge;
-      if (title) pages.push({ url: row.url, title, pageAge });
+      if (row.type === 'web_search_result' && title) pages.push({ url: row.url, title, pageAge });
     }
     if (Array.isArray(row.content)) stack.push(...row.content);
     if (Array.isArray(row.citations)) stack.push(...row.citations);
   }
-  return { urls, ages, pages };
+  return urls;
 }
 
 function textOf(content: unknown[]): string {
@@ -104,15 +102,6 @@ function readJson(text: string): unknown {
 
 /** POST /api/scoop/news-search — one web search, then a checked list. Feeds stay on the other route. */
 export async function POST(req: NextRequest) {
-  try {
-    return await searchNews(req);
-  } catch (err) {
-    console.error('[scoop news-search]', err);
-    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: 'haiku', searched: false });
-  }
-}
-
-async function searchNews(req: NextRequest) {
   const denied = guard(req);
   if (denied) return denied;
   let body: Record<string, unknown> = {};
@@ -157,11 +146,14 @@ async function searchNews(req: NextRequest) {
 
   const prompt = [
     `Current time: ${now.toISOString()} (America/Denver).`,
-    `Search for news published in the last ${hours} hours. Call the web_search tool before you answer. Do not answer from memory.`,
+    `Find Utah news articles published in the last ${hours} hours. Call the web_search tool before you answer. Do not answer from memory.`,
+    `Today's date in Utah is ${new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', month: 'long', day: 'numeric', year: 'numeric' }).format(now)}. Put that date, or "today", in the search queries.`,
+    'Run several short searches, for example: "Utah news today", "Salt Lake City news today", "Utah police today", "Utah crash today", "Provo news today", "St. George news today". Return up to 25 articles.',
+    'Skip homepages, section pages, and any result whose shown age is older than the window.',
     UTAH_STORY_RULE,
     'After the search, return JSON only, an array of objects with title, url, outlet, published, summary, location, and category.',
     'location is a Utah city, a Utah county, or Statewide.',
-    'published is the time on the page, as ISO-8601. If the page shows a date but no clock time, use YYYY-MM-DD. If the page shows no date, set published to null.',
+    'published: copy the date or age shown with the search result (for example "3 hours ago", "November 14, 2026", or an ISO time). If none is shown, set published to null. Never guess a time.',
     'summary is one sentence. Every url must be a URL that the web search returned.',
   ].join(' ');
   const tool = {
@@ -205,10 +197,7 @@ async function searchNews(req: NextRequest) {
       const data = await res.json();
       const content = Array.isArray(data?.content) ? data.content as unknown[] : [];
       searches += Number(data?.usage?.server_tool_use?.web_search_requests) || 0;
-      const found = resultUrls(content);
-      urls.push(...found.urls);
-      Object.assign(ages, found.ages);
-      pages.push(...found.pages);
+      urls.push(...resultUrls(content, ages, pages));
       if (!searches && urls.length) searches = urls.length;
       text += `\n${textOf(content)}`;
       if (data?.stop_reason !== 'pause_turn') break;
@@ -226,18 +215,20 @@ async function searchNews(req: NextRequest) {
 
   let parsed: unknown = [];
   try { parsed = readJson(text); } catch { parsed = []; }
-  let items = acceptSearchItems(parsed, urls, hours, now, ages);
-  if (!items.length && pages.length) {
-    items = acceptSearchItems(pages.map((page) => ({
-      title: page.title,
-      url: page.url,
-      outlet: '',
-      published: page.pageAge || null,
-      summary: page.title,
-      location: '',
-      category: '',
-    })), urls, hours, now, ages);
-  }
+  const stats = emptySearchStats();
+  const told = Array.isArray(parsed) ? parsed : [];
+  const rows = told.concat(pages.map((page) => ({
+    title: page.title,
+    url: page.url,
+    outlet: '',
+    published: page.pageAge || null,
+    summary: page.title,
+    location: '',
+    category: '',
+  })));
+  const items = acceptSearchItems(rows, urls, hours, now, { ages, stats });
+  const found = { searches, links: new Set(urls).size, ...stats };
+  console.log('[scoop news-search]', JSON.stringify(found));
   const groups = groupStories(items);
   const updatedAt = now.toISOString();
   budget = { day, count: budget.count + 1, updatedAt, items: items.length ? items : budget.items };
@@ -252,5 +243,19 @@ async function searchNews(req: NextRequest) {
       newsSearch: { day, count: budget.count, updatedAt, byHours: { ...previous, [String(hours)]: { updatedAt, items } } },
     });
   } catch { /* the in-memory count still limits this process */ }
-  return NextResponse.json({ items, groups, updatedAt, cached: false, limited: false, updatesAt: null, model: modelName });
+  return NextResponse.json({
+    items, groups, updatedAt, cached: false, limited: false, updatesAt: null, model: modelName, found,
+    reason: items.length ? undefined : explainEmpty(found, hours),
+  });
+}
+
+function explainEmpty(f: { searches: number; links: number; returned: number; noDate: number; tooOld: number; notUtah: number; notInResults: number }, hours: number): string {
+  if (!f.links) return 'Claude searched but the search sites returned nothing. Check the Search sites list in Settings.';
+  const parts = [
+    f.tooOld && `${f.tooOld} older than ${hours}h`,
+    f.noDate && `${f.noDate} with no date`,
+    f.notUtah && `${f.notUtah} not Utah stories`,
+    f.notInResults && `${f.notInResults} with unverified links`,
+  ].filter(Boolean);
+  return `Claude found ${f.links} links in ${f.searches} search${f.searches === 1 ? '' : 'es'}, but none passed: ${parts.join(', ') || 'no stories were returned'}. Try 24h.`;
 }

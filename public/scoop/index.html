@@ -394,6 +394,16 @@ try{if(window.self!==window.top)document.documentElement.setAttribute('data-embe
   body[data-workspace=creator] .export-main{flex-direction:column;align-items:stretch}
   body[data-workspace=creator] .export-main .btn{width:100%}
 }
+.local-news{margin-top:16px}
+.local-news summary{cursor:pointer;font-size:12px;font-weight:700}
+.news-windows{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.news-windows button{border:1px solid var(--c-line,#dfdfd5);background:#fff;border-radius:6px;min-height:32px;padding:0 10px;font-size:12px;font-weight:700;cursor:pointer}
+.news-windows button[aria-pressed=true]{background:#272827;color:#fff;border-color:#272827}
+.news-item{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--c-line,#e4e4dc);background:transparent;padding:8px 0;cursor:pointer}
+.news-item b{display:block;font-size:13px;line-height:1.35}
+.news-item small{display:block;margin-top:2px;color:#8a8a7e;font-size:11px}
+.news-source{padding:8px 0;border-top:1px solid var(--line,#e4e4dc)}
+.news-source.failed{background:#fff6f4;border:1px solid #e7c7c0;border-radius:6px;padding:8px 10px;margin-top:8px}
 </style>
 </head>
 <body data-workspace="creator">
@@ -741,8 +751,9 @@ const DEFAULT_CATS=[
   {id:'TIP',description:'A reader tip or call for information.',when:'Use when the post asks the public for help.'}
 ];
 const DEFAULT_TAGS=['UTAH','PUBLIC SAFETY','COMMUNITY','HEALTH CARE','NATIVE AMERICAN','COURTS','POLITICS','WEATHER','BUSINESS','EDUCATION','HOUSING','TRANSIT','ENVIRONMENT','ELECTIONS'];
-const DEFAULT_OUTLETS=['sltrib.com','deseret.com','ksl.com','fox13now.com','kutv.com','abc4.com','kslnewsradio.com'];
-let BRAND_CATS=DEFAULT_CATS.map(c=>Object.assign({},c)), BRAND_TAGS=DEFAULT_TAGS.slice(), BRAND_OUTLETS=DEFAULT_OUTLETS.slice(), BRAND_EXTRA={};
+const DEFAULT_OUTLETS=['sltrib.com','deseret.com','ksl.com','fox13now.com','kutv.com','abc4.com','kslnewsradio.com','kuer.org','utahnewsdispatch.com','parkrecord.com','townlift.com','upr.org','cityweekly.net'];
+let BRAND_CATS=DEFAULT_CATS.map(c=>Object.assign({},c)), BRAND_TAGS=DEFAULT_TAGS.slice(), BRAND_OUTLETS=DEFAULT_OUTLETS.slice(), BRAND_EXTRA={}, NEWS_SOURCES=[];
+let NEWS={items:[],held:[],loading:false,error:''};
 
 /* ---------- local blobs (IndexedDB) ---------- */
 const localBlobs = new Map();
@@ -3645,7 +3656,35 @@ function outletHost(value){
   const host=String(value||'').trim().toLowerCase().replace(/^https?:\/\//,'').replace(/\/.*$/,'').replace(/\.$/,'').replace(/^www\./,'');
   return /^[a-z0-9.-]+\.[a-z]{2,24}$/.test(host)?host:'';
 }
-function brandDoc(){ return Object.assign({}, BRAND_EXTRA, {swatches:SWATCH.slice(-16), categories:BRAND_CATS, tags:BRAND_TAGS, outlets:BRAND_OUTLETS}); }
+function brandDoc(){ const doc=Object.assign({}, BRAND_EXTRA, {swatches:SWATCH.slice(-16), categories:BRAND_CATS, tags:BRAND_TAGS, outlets:BRAND_OUTLETS}); if(NEWS_SOURCES.length) doc.newsSources=NEWS_SOURCES; return doc; }
+function newsSourcesHTML(){
+  if(!NEWS_SOURCES.length) return '<div class="h">Latest local news</div><p class="note">Sources appear here after the collector checks them.</p>';
+  const failed=NEWS_SOURCES.filter(s=>s.status==='failed');
+  return `<div class="h">Latest local news</div><p class="note">${failed.length?failed.length+' source'+(failed.length===1?'':'s')+' failed and stay listed so the URL can be fixed.':'Every source is checked the first time the collector runs. Failures stay listed.'}</p>`+NEWS_SOURCES.map(s=>`<div class="news-source ${s.status==='failed'?'failed':''}"><b>${esc(s.name)}</b> <span class="meta">${esc(s.type)}${s.enabled?'':' · off'} · ${esc(s.status||'not checked')}</span><div class="meta">${esc(s.url)}</div>${s.status==='failed'?`<div class="note warn">${esc(s.error||'This source could not be read.')}</div>`:''}</div>`).join('')+'<button class="btn" type="button" id="newsRecheck">Check sources again</button>';
+}
+async function loadNews(recheck){
+  if(Backend.mode!=='server') return;
+  NEWS.loading=true; NEWS.error='';
+  if(C.workspace==='creator'&&C.step===0) renderCreator();
+  try{
+    const data=await api('/news?window='+encodeURIComponent(C.newsWindow||'6h')+(recheck?'&recheck=1':''));
+    NEWS.items=Array.isArray(data.items)?data.items:[];
+    NEWS.held=Array.isArray(data.held)?data.held:[];
+    if(Array.isArray(data.sources)&&data.sources.length) NEWS_SOURCES=data.sources;
+    NEWS.loading=false;
+  }catch(e){ NEWS.loading=false; NEWS.error='The news list could not be loaded.'; }
+  if(C.workspace==='creator') renderCreator();
+  if(S.tabL==='refs') renderLib();
+}
+function localNewsHTML(){
+  if(typeof Backend==='undefined'||Backend.mode!=='server') return '';
+  const win=C.newsWindow||'6h';
+  const windows=[['3h','3 hours'],['6h','6 hours'],['7d','7 days']];
+  const row=story=>`<button type="button" class="news-item" data-news-url="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc(story.source)}${story.dateOnly?' · Date only':''}${story.utah==='unconfirmed'?' · Utah check unavailable':''}</small></button>`;
+  const failed=NEWS_SOURCES.filter(s=>s.status==='failed').length;
+  const body=NEWS.loading?'<p class="note">Checking sources…</p>':NEWS.error?`<p class="note warn">${esc(NEWS.error)}</p>`:`${(NEWS.items||[]).map(row).join('')||'<p class="note">Nothing in this window.</p>'}${(NEWS.held||[]).length?`<p class="note">These still need a Utah check.</p>${NEWS.held.map(row).join('')}`:''}`;
+  return `<details class="local-news"><summary>Latest local news</summary><div class="news-windows" role="group" aria-label="How recent">${windows.map(([id,label])=>`<button type="button" data-news-window="${id}" aria-pressed="${win===id}">${label}</button>`).join('')}</div>${body}${failed?`<p class="note warn">${failed} source${failed===1?'':'s'} failed. They stay in brand settings.</p>`:''}</details>`;
+}
 function saveBrandLists(){
   if(!cap.db){ toast('Saving brand settings needs the team library.',true); return; }
   BRAND_CATS=BRAND_CATS.map(c=>{ const input=document.querySelector('[data-brand-cat="'+CSS.escape(c.id)+'"]'); return Object.assign({},c,{when:input?input.value.trim().slice(0,180):c.when}); });
@@ -4190,6 +4229,7 @@ function renderLib(){
       ${BRAND_CATS.map(c=>`<div class="fld"><label>${esc(c.id)}</label><input class="inp" data-brand-cat="${esc(c.id)}" value="${esc(c.when)}" aria-label="When to use ${esc(c.id)}"></div>`).join('')}
       <div class="fld"><label for="brandTags">Topic tags, one per line</label><textarea class="inp" id="brandTags" rows="4">${esc(BRAND_TAGS.join('\n'))}</textarea></div>
       <div class="fld"><label for="brandOutlets">News outlets, one domain per line</label><textarea class="inp" id="brandOutlets" rows="4">${esc(BRAND_OUTLETS.join('\n'))}</textarea></div>
+      ${newsSourcesHTML()}
       <button class="btn" id="saveBrandLists" type="button">Save categories and tags</button></details>`;
   }
   else {
@@ -4203,6 +4243,7 @@ function renderLib(){
   creatorStatus();creatorApplyPreferred();if(C.workspace==='creator')renderCreatorTemplates();builderStatus();
   const up=$('#upbtn'); if(up) up.onclick=()=>{ uploadCat=$('#upcat').value; $('#fileAsset').click(); };
   const saveLists=$('#saveBrandLists'); if(saveLists) saveLists.onclick=saveBrandLists;
+  const recheck=$('#newsRecheck'); if(recheck) recheck.onclick=()=>loadNews(true);
   const uf=$('#upfont'); if(uf) uf.onclick=()=>$('#fileFont').click();
   const aq=$('#aq'); if(aq) aq.oninput=()=>{ assetQuery=aq.value; const pos=aq.selectionStart; renderLib(); const n=$('#aq'); n.focus(); n.setSelectionRange(pos,pos); };
 }
@@ -4734,6 +4775,7 @@ async function initBackend(){
   const db=makeDb();
   Object.assign(cap,{db,assets:makeAssets(),downloads:downloadsLocal,sample:Backend.mode==='server'?draftApi:null,me:''});
   if(Backend.mode==='local') document.title='SLCSCOOP — Post Studio';
+  if(Backend.mode==='server') loadNews(false);
   let got=0; const timer=setTimeout(()=>{ if(!cap.ready){ cap.failed=true; renderLib(); } },10000);
   const done=()=>{ if(++got>=4){ clearTimeout(timer); cap.ready=true; cap.failed=false; } };
   db.collection('library').onSnapshot(snap=>{
@@ -4768,10 +4810,11 @@ async function initBackend(){
     const d=s.exists?s.data():null;
     SWATCH=(d&&Array.isArray(d.swatches))?d.swatches:[];
     if(d){
-      BRAND_EXTRA=Object.assign({},d); delete BRAND_EXTRA.swatches; delete BRAND_EXTRA.categories; delete BRAND_EXTRA.tags; delete BRAND_EXTRA.outlets;
+      BRAND_EXTRA=Object.assign({},d); delete BRAND_EXTRA.swatches; delete BRAND_EXTRA.categories; delete BRAND_EXTRA.tags; delete BRAND_EXTRA.outlets; delete BRAND_EXTRA.newsSources;
       if(Array.isArray(d.categories)&&d.categories.length) BRAND_CATS=d.categories.map(c=>({id:String(c.id||'').toUpperCase(),description:String(c.description||''),when:String(c.when||'')})).filter(c=>c.id);
       if(Array.isArray(d.tags)&&d.tags.length) BRAND_TAGS=d.tags.map(t=>String(t).toUpperCase().trim()).filter(t=>t&&t!=='SLCSCOOP');
       if(Array.isArray(d.outlets)){ const next=d.outlets.map(outletHost).filter(Boolean); if(next.length) BRAND_OUTLETS=[...new Set(next)].slice(0,80); }
+      if(Array.isArray(d.newsSources)&&d.newsSources.length) NEWS_SOURCES=d.newsSources;
     }
     if(S.tabL==='refs') renderLib();
     if(S.tabR==='layer'||S.tabR==='canvas') renderProps(true);
@@ -4863,6 +4906,7 @@ function creatorStoryHTML(){
     ${ai?linkPreviewHTML():''}
     ${ai?`<div class="story-flags"><label><input type="checkbox" id="creatorFollow" ${C.followUp?'checked':''} ${C.busy?'disabled':''}> This is a follow-up</label><label><input type="checkbox" id="creatorCorrection" ${C.correction?'checked':''} ${C.busy?'disabled':''}> This corrects a previous post</label></div>`:''}
     <div class="field-foot"><span id="sourceHint">${ai?(creatorReadsLink()?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.'):'Exact wording. No AI rewrite.'}</span><span id="sourceCount">${(ai?C.source:C.teamCopy).length.toLocaleString()} / 12,000</span></div>
+    ${ai?localNewsHTML():''}
     ${photo?`<button class="source-photo" data-creator-photo="${photo.id}" ${C.busy?'disabled':''}>${CI.photo}<span><b>${photo.src?'Photo added · replace':'Add a photo'}</b><small>Camera roll or files · optional for now</small></span><span aria-hidden="true">${photo.src?'✓':'+'}</span></button>`:''}
     ${!ai?'<details class="copy-help"><summary>Tips for pasting team copy</summary><p>The first line is your headline; the remaining lines are supporting copy. Optional labels: Headline, Supporting copy, Category, Location, Source, and Tags. Separate carousel pages with a line containing <b>---</b>. You can adjust every field in the review.</p></details>':'<div class="c-notice" id="creatorConnectionHint" hidden>AI drafting is available on your connected team website. Choose <button id="creatorUseFinal" class="inline-button">Use team copy</button> to fill and export here.</div>'}
     ${C.busy&&C.job?creatorJobHTML():''}
@@ -5393,6 +5437,8 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.dataset.step!==undefined){creatorSetStep(+b.dataset.step);return;}
   if(b.dataset.inputMode){C.inputMode=b.dataset.inputMode;C.message='';C.generated=false;creatorPersist();renderCreator();return;}
+  if(b.dataset.newsWindow){C.newsWindow=b.dataset.newsWindow;loadNews(false);return;}
+  if(b.dataset.newsUrl){C.inputMode='ai';C.source=b.dataset.newsUrl;C.link=null;C.linkPreview=null;C.generated=false;if(S.doc)delete S.doc.sourceLink;creatorPersist();renderCreator();const box=$('#creatorSource');if(box)box.focus();return;}
   if(b.dataset.templateFilter){C.filter=b.dataset.templateFilter;document.querySelectorAll('[data-template-filter]').forEach(x=>x.setAttribute('aria-pressed',x===b));renderCreatorTemplates();return;}
   if(b.dataset.favorite){const id=b.dataset.favorite;C.favorites=C.favorites.includes(id)?C.favorites.filter(x=>x!==id):[...C.favorites,id];localStorage.setItem('scoop-builder:favorite-templates',JSON.stringify(C.favorites));renderCreatorTemplates();return;}
   if(b.dataset.creatorTemplate){const id=b.dataset.creatorTemplate;closeModal();await creatorChooseTemplate(id);return;}

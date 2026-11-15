@@ -1,5 +1,6 @@
-import { list } from '@vercel/blob';
+import { del, list, put } from '@vercel/blob';
 import { STORE_PREFIX, blobOptions, parseDocPath } from '@/lib/scoop';
+import { normalizeNewsSources, outletDomains, type NewsSource } from '@/lib/scoop-news';
 
 export type CategoryRule = { id: string; description: string; when: string };
 
@@ -49,6 +50,12 @@ export const DEFAULT_OUTLETS = [
   'kutv.com',
   'abc4.com',
   'kslnewsradio.com',
+  'kuer.org',
+  'utahnewsdispatch.com',
+  'parkrecord.com',
+  'townlift.com',
+  'upr.org',
+  'cityweekly.net',
 ];
 
 function clamp(n: number, lo: number, hi: number) {
@@ -123,27 +130,56 @@ export function normalizeOutlets(raw: unknown): string[] {
   return out.length ? out : DEFAULT_OUTLETS.slice();
 }
 
-export function brandFrom(raw: unknown): { categories: CategoryRule[]; tags: string[]; outlets: string[] } {
+export function brandFrom(raw: unknown): { categories: CategoryRule[]; tags: string[]; outlets: string[]; newsSources: NewsSource[] } {
   const row = asObject(raw);
-  return { categories: normalizeCategories(row.categories), tags: normalizeTags(row.tags), outlets: normalizeOutlets(row.outlets) };
+  const newsSources = normalizeNewsSources(row.newsSources);
+  const outlets = normalizeOutlets(row.outlets);
+  for (const host of outletDomains(newsSources)) if (!outlets.includes(host)) outlets.push(host);
+  return { categories: normalizeCategories(row.categories), tags: normalizeTags(row.tags), outlets, newsSources };
 }
 
-export async function readBrand(): Promise<{ categories: CategoryRule[]; tags: string[]; outlets: string[] }> {
+/** Publishers that must be credited, including every outlet in Latest local news. */
+export function creditOutlets(brand: { outlets: string[]; newsSources?: NewsSource[] }): string[] {
+  const out = brand.outlets.slice();
+  for (const host of outletDomains(brand.newsSources || [])) if (host && !out.includes(host)) out.push(host);
+  return out;
+}
+
+async function latestSettings(): Promise<{ url: string }[]> {
+  const { blobs } = await list({ prefix: `${STORE_PREFIX}brand/settings--`, limit: 100, ...blobOptions() });
+  return blobs.filter((blob) => parseDocPath(blob.pathname, 'brand')?.id === 'settings')
+    .sort((a, b) => (parseDocPath(b.pathname, 'brand')?.ts || 0) - (parseDocPath(a.pathname, 'brand')?.ts || 0));
+}
+
+export async function readBrand(): Promise<{ categories: CategoryRule[]; tags: string[]; outlets: string[]; newsSources: NewsSource[] }> {
   try {
-    const { blobs } = await list({ prefix: `${STORE_PREFIX}brand/settings--`, limit: 100, ...blobOptions() });
-    let best: { url: string; ts: number } | null = null;
-    for (const blob of blobs) {
-      const parsed = parseDocPath(blob.pathname, 'brand');
-      if (!parsed || parsed.id !== 'settings') continue;
-      if (!best || parsed.ts > best.ts) best = { url: blob.url, ts: parsed.ts };
-    }
-    if (!best) return brandFrom(null);
-    const res = await fetch(best.url, { cache: 'no-store' });
-    if (!res.ok) return brandFrom(null);
-    return brandFrom(await res.json());
+    const record = await readBrandRecord();
+    return brandFrom(record);
   } catch {
     return brandFrom(null);
   }
+}
+
+export async function readBrandRecord(): Promise<Record<string, unknown> | null> {
+  const versions = await latestSettings();
+  const best = versions[0];
+  if (!best) return null;
+  const res = await fetch(best.url, { cache: 'no-store' });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : null;
+}
+
+/** Replace brand settings and drop older copies so the CDN does not keep a stale file. */
+export async function writeBrandRecord(data: Record<string, unknown>): Promise<void> {
+  const older = await latestSettings();
+  await put(`${STORE_PREFIX}brand/settings--${Date.now()}.json`, JSON.stringify(data), {
+    access: 'public',
+    contentType: 'application/json',
+    addRandomSuffix: true,
+    ...blobOptions(),
+  });
+  if (older.length) await del(older.map((blob) => blob.url), blobOptions());
 }
 
 export type HeadlineOption = { lines: string[] };

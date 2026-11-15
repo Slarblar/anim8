@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guard } from '@/lib/scoop';
-import { readBrand } from '@/lib/scoop-brand';
+import { creditOutlets, readBrand } from '@/lib/scoop-brand';
 import { readPublicArticle, type LinkResult } from '@/lib/scoop-read';
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   if (hit && hit.exp > Date.now()) return NextResponse.json(hit.value, { status: statusFor(hit.value) });
 
   const brand = await readBrand();
-  const result = await readPublicArticle(url, brand.outlets);
+  const result = await readPublicArticle(url, creditOutlets(brand));
   if (!('error' in result) || result.error !== 'failed') cache.set(key, { exp: Date.now() + CACHE_MS, value: result });
   return NextResponse.json(result, { status: statusFor(result) });
 }

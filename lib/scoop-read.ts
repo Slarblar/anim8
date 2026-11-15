@@ -69,15 +69,16 @@ function nodeLookup(): LookupFn {
   return (hostname) => lookup(hostname, { all: true, verbatim: true });
 }
 
-function nodeRequest(): RequestFn {
+function nodeRequest(extra?: Record<string, string>): RequestFn {
   return (url, signal) => new Promise((resolve, reject) => {
     const lib = url.protocol === 'https:' ? https : http;
     const req = lib.request(url, {
       method: 'GET',
       headers: {
-        'user-agent': UA,
-        accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+        'user-agent': extra?.['user-agent'] || UA,
+        accept: extra?.accept || 'text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8',
         'accept-language': 'en-US,en;q=0.9',
+        ...extra,
       },
       lookup: (hostname, options, callback) => {
         const done = typeof options === 'function' ? options : callback;
@@ -285,5 +286,57 @@ export async function readPublicArticle(
       return { error: 'failed', reason: 'The page took too long to load.' };
     }
     return { error: 'failed', reason: 'The page could not be read.' };
+  }
+}
+
+export type PublicBody = { status: number; url: string; type: string; text: string };
+
+/** Fetch a public text document. Every hop is resolved again and rejected if it is private. */
+export async function fetchPublicBody(
+  input: string,
+  opts?: { headers?: Record<string, string>; timeoutMs?: number },
+  deps?: { lookup?: LookupFn; request?: RequestFn }
+): Promise<PublicBody | LinkError> {
+  const parsed = parsePublicUrl(input);
+  if (!parsed.ok) return { error: parsed.error };
+  const resolve = deps?.lookup || nodeLookup();
+  const request = deps?.request || nodeRequest(opts?.headers);
+  let current = parsed.url;
+  let redirects = 0;
+  const signal = AbortSignal.timeout(opts?.timeoutMs ?? 10_000);
+  try {
+    while (true) {
+      if (isSocialHost(current.hostname)) return { error: 'social' };
+      const addresses = await publicAddresses(current.hostname, resolve);
+      if (!Array.isArray(addresses)) return addresses;
+      const res = await request(current, signal);
+      if ([301, 302, 303, 307, 308].includes(res.status)) {
+        redirects += 1;
+        if (redirects > MAX_REDIRECTS) return { error: 'failed', reason: 'Too many redirects.' };
+        const loc = header(res.headers, 'location');
+        if (!loc) return { error: 'failed', reason: 'The page redirected without a destination.' };
+        let next: URL;
+        try { next = new URL(loc, current); } catch { return { error: 'invalid' }; }
+        const hop = parsePublicUrl(next.href);
+        if (!hop.ok) return { error: hop.error };
+        current = hop.url;
+        continue;
+      }
+      if (res.status < 200 || res.status >= 300) return loadFailure(res.status);
+      const type = header(res.headers, 'content-type').split(';')[0].trim().toLowerCase();
+      if (type && !/text\/|xml|json|javascript/.test(type)) {
+        return { error: 'unreadable', reason: 'The source did not return text.' };
+      }
+      const charset = /charset=([^;\s]+)/i.exec(header(res.headers, 'content-type'))?.[1] || 'utf-8';
+      try { return { status: res.status, url: current.href, type, text: new TextDecoder(charset).decode(res.body) }; }
+      catch { return { status: res.status, url: current.href, type, text: res.body.toString('utf8') }; }
+    }
+  } catch (err) {
+    const code = (err as { code?: string })?.code || '';
+    if (code === 'EBLOCKED') return { error: 'blocked' };
+    if (code === 'ABORT_ERR' || (err instanceof Error && err.name === 'TimeoutError')) {
+      return { error: 'failed', reason: 'The source took too long to load.' };
+    }
+    return { error: 'failed', reason: 'The source could not be read.' };
   }
 }

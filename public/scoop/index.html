@@ -339,7 +339,10 @@ html[data-night] .creator-template .ct-thumb{background:#1d1d1f}
 html[data-night] .template-filters button{background:#1d1d1f;color:#a09d95;border-color:#3a3a3c}
 html[data-night] .template-filters button[aria-pressed=true]{background:#efeee9;color:#151616;border-color:#efeee9}
 html[data-night] .creator-actions{background:#161617f2;border-color:#302f2d}
-.link-preview{border:1px solid #eadcb9;background:#fffaf0;border-radius:7px;padding:12px 14px;margin:0 0 14px;font-size:12px;line-height:1.55;color:#3c3424}.link-preview .link-meta{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a6e30}.link-preview b{display:block;margin:4px 0 6px;font-size:14px}.link-preview p{margin:8px 0 12px}.link-preview .row,.review-body .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.credit-note{margin-top:12px}
+.link-preview{border:1px solid #eadcb9;background:#fffaf0;border-radius:7px;padding:12px 14px;margin:0 0 14px;font-size:12px;line-height:1.55;color:#3c3424}.link-preview .link-meta{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a6e30}.link-preview b{display:block;margin:4px 0 6px;font-size:14px}.link-preview p{margin:8px 0 12px}
+.utah-warn{margin:8px 0 10px;font-size:13px;font-weight:700;color:#9a4d12}
+html[data-night] .utah-warn{color:#e0b774}
+.link-preview .row,.review-body .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.credit-note{margin-top:12px}
 .c-progress{margin-top:16px;border:1px solid #eadcb9;background:#fffaf0;border-radius:7px;padding:14px 14px 12px;color:#6d5420}
 .c-progress-top{display:flex;align-items:center;gap:10px}
 .c-progress-top b{font-size:13px;font-weight:700;color:#4e3b12}
@@ -397,13 +400,21 @@ try{if(window.self!==window.top)document.documentElement.setAttribute('data-embe
 .local-news{margin-top:16px}
 .local-news summary{cursor:pointer;font-size:12px;font-weight:700}
 .news-windows{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
-.news-windows button{border:1px solid var(--c-line,#dfdfd5);background:#fff;border-radius:6px;min-height:32px;padding:0 10px;font-size:12px;font-weight:700;cursor:pointer}
+.news-windows button,.news-refresh{border:1px solid var(--c-line,#dfdfd5);background:#f4f3ee;color:#151616;border-radius:6px;min-height:32px;padding:0 10px;font-size:12px;font-weight:700;cursor:pointer}
 .news-windows button[aria-pressed=true]{background:#272827;color:#fff;border-color:#272827}
-.news-item{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--c-line,#e4e4dc);background:transparent;padding:8px 0;cursor:pointer}
+.news-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
+.news-bar .meta{font-size:11px;color:#8a8a7e}
+.news-item{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--c-line,#e4e4dc);background:transparent;padding:8px 0;cursor:pointer;color:inherit}
 .news-item b{display:block;font-size:13px;line-height:1.35}
-.news-item small{display:block;margin-top:2px;color:#8a8a7e;font-size:11px}
+.news-item small,.news-draft{display:block;margin-top:2px;color:#8a8a7e;font-size:11px}
+.news-draft{font-weight:700}
 .news-source{padding:8px 0;border-top:1px solid var(--line,#e4e4dc)}
 .news-source.failed{background:#fff6f4;border:1px solid #e7c7c0;border-radius:6px;padding:8px 10px;margin-top:8px}
+html[data-night] .news-windows button,html[data-night] .news-refresh{background:#1d1d1f;color:#efeee9;border-color:#3a3a3c}
+html[data-night] .news-windows button[aria-pressed=true]{background:#efeee9;color:#151616;border-color:#efeee9}
+html[data-night] .news-item{color:#efeee9;border-color:#3a3a3c}
+html[data-night] .news-item small,html[data-night] .news-draft,html[data-night] .news-bar .meta{color:#a09d95}
+html[data-night] .news-source.failed{background:#2a201e;border-color:#5c3a34;color:#efeee9}
 </style>
 </head>
 <body data-workspace="creator">
@@ -753,7 +764,9 @@ const DEFAULT_CATS=[
 const DEFAULT_TAGS=['UTAH','PUBLIC SAFETY','COMMUNITY','HEALTH CARE','NATIVE AMERICAN','COURTS','POLITICS','WEATHER','BUSINESS','EDUCATION','HOUSING','TRANSIT','ENVIRONMENT','ELECTIONS'];
 const DEFAULT_OUTLETS=['sltrib.com','deseret.com','ksl.com','fox13now.com','kutv.com','abc4.com','kslnewsradio.com','kuer.org','utahnewsdispatch.com','parkrecord.com','townlift.com','upr.org','cityweekly.net'];
 let BRAND_CATS=DEFAULT_CATS.map(c=>Object.assign({},c)), BRAND_TAGS=DEFAULT_TAGS.slice(), BRAND_OUTLETS=DEFAULT_OUTLETS.slice(), BRAND_EXTRA={}, NEWS_SOURCES=[];
-let NEWS={items:[],held:[],loading:false,error:''};
+const NEWS_DOMAIN_SEED=['ksl.com','kutv.com','fox13now.com','sltrib.com','deseret.com','abc4.com','kslnewsradio.com','kuer.org','utahnewsdispatch.com','police.slc.gov','udot.utah.gov','weather.gov'];
+let NEWS_DOMAINS=NEWS_DOMAIN_SEED.slice(), NEWS_MODEL='haiku';
+let NEWS={items:[],held:[],search:[],reports:[],loading:false,feedError:'',searchError:'',updatedAt:'',limited:false,updatesAt:'',limitNote:''};
 
 /* ---------- local blobs (IndexedDB) ---------- */
 const localBlobs = new Map();
@@ -3656,34 +3669,72 @@ function outletHost(value){
   const host=String(value||'').trim().toLowerCase().replace(/^https?:\/\//,'').replace(/\/.*$/,'').replace(/\.$/,'').replace(/^www\./,'');
   return /^[a-z0-9.-]+\.[a-z]{2,24}$/.test(host)?host:'';
 }
-function brandDoc(){ const doc=Object.assign({}, BRAND_EXTRA, {swatches:SWATCH.slice(-16), categories:BRAND_CATS, tags:BRAND_TAGS, outlets:BRAND_OUTLETS}); if(NEWS_SOURCES.length) doc.newsSources=NEWS_SOURCES; return doc; }
-function newsSourcesHTML(){
-  if(!NEWS_SOURCES.length) return '<div class="h">Latest local news</div><p class="note">Sources appear here after the collector checks them.</p>';
-  const failed=NEWS_SOURCES.filter(s=>s.status==='failed');
-  return `<div class="h">Latest local news</div><p class="note">${failed.length?failed.length+' source'+(failed.length===1?'':'s')+' failed and stay listed so the URL can be fixed.':'Every source is checked the first time the collector runs. Failures stay listed.'}</p>`+NEWS_SOURCES.map(s=>`<div class="news-source ${s.status==='failed'?'failed':''}"><b>${esc(s.name)}</b> <span class="meta">${esc(s.type)}${s.enabled?'':' · off'} · ${esc(s.status||'not checked')}</span><div class="meta">${esc(s.url)}</div>${s.status==='failed'?`<div class="note warn">${esc(s.error||'This source could not be read.')}</div>`:''}</div>`).join('')+'<button class="btn" type="button" id="newsRecheck">Check sources again</button>';
+function brandDoc(){ const doc=Object.assign({}, BRAND_EXTRA, {swatches:SWATCH.slice(-16), categories:BRAND_CATS, tags:BRAND_TAGS, outlets:BRAND_OUTLETS, newsSearchDomains:NEWS_DOMAINS, newsSearchModel:NEWS_MODEL==='sonnet'?'sonnet':'haiku'}); if(NEWS_SOURCES.length) doc.newsSources=NEWS_SOURCES; return doc; }
+function newsAgo(iso){
+  const ms=Date.now()-Date.parse(iso);
+  if(!Number.isFinite(ms)) return '';
+  const min=Math.max(0, Math.round(ms/60000));
+  if(min<1) return 'just now';
+  if(min<60) return min+' min ago';
+  const hr=Math.round(min/60);
+  return hr<48?hr+' hr ago':Math.round(hr/24)+' d ago';
 }
-async function loadNews(recheck){
+function newsRows(){
+  const rows=[];
+  (NEWS.search||[]).forEach(item=>rows.push({title:item.title,url:item.url,outlet:item.outlet||'',at:item.published}));
+  (NEWS.items||[]).forEach(item=>rows.push({title:item.title,url:item.url,outlet:item.source||'',at:item.publishedAt}));
+  rows.sort((a,b)=>Date.parse(b.at||0)-Date.parse(a.at||0));
+  const seen=new Set();
+  return rows.filter(row=>{ const key=String(row.url||'').replace(/^https?:\/\/(?:www\.)?/i,'').replace(/[?#].*$/,'').replace(/\/$/,''); if(!key||seen.has(key)) return false; seen.add(key); return true; });
+}
+function newsSourcesHTML(){
+  const failed=NEWS_SOURCES.filter(s=>s.status==='failed'||(s.enabled===false&&(s.reason||s.error)));
+  const list=NEWS_SOURCES.length?NEWS_SOURCES.map(s=>{
+    const bad=s.status==='failed'||(s.enabled===false&&!!(s.reason||s.error));
+    const reason=s.reason||s.error||'This source could not be read.';
+    const http=s.httpStatus?` · HTTP ${s.httpStatus}`:'';
+    return `<div class="news-source ${bad?'failed':''}"><b>${esc(s.name)}</b> <span class="meta">${esc(s.type||'')}${s.enabled?'':' · off'} · ${esc(s.status||'not checked')}</span><div class="meta">${esc(s.url||'')}</div>${bad?`<div class="note warn">${esc(reason+http)}</div>`:''}</div>`;
+  }).join(''):'<p class="note">Sources appear here after the collector checks them.</p>';
+  return `<div class="h">Latest local news</div><p class="note">${failed.length?failed.length+' source'+(failed.length===1?'':'s')+' failed and stay listed so the URL can be fixed.':'Failures stay listed with the reason.'}</p>${list}<label class="h">Search sites</label><textarea id="newsDomains" rows="6">${esc(NEWS_DOMAINS.join('\n'))}</textarea><label class="h">Search model</label><select id="newsModel"><option value="haiku"${NEWS_MODEL==='sonnet'?'':' selected'}>Haiku</option><option value="sonnet"${NEWS_MODEL==='sonnet'?' selected':''}>Sonnet</option></select><button class="btn" type="button" id="newsRecheck">Check sources again</button>`;
+}
+async function loadNews(refresh){
   if(Backend.mode!=='server') return;
-  NEWS.loading=true; NEWS.error='';
+  NEWS.loading=true; NEWS.feedError=''; NEWS.searchError='';
   if(C.workspace==='creator'&&C.step===0) renderCreator();
-  try{
-    const data=await api('/news?window='+encodeURIComponent(C.newsWindow||'6h')+(recheck?'&recheck=1':''));
+  const win=C.newsWindow||'6h';
+  const hours={ '3h':3, '6h':6, '12h':12, '24h':24 }[win]||6;
+  const feed=api('/news?window='+encodeURIComponent(win)+(refresh?'&recheck=1':'')).then(data=>{
     NEWS.items=Array.isArray(data.items)?data.items:[];
     NEWS.held=Array.isArray(data.held)?data.held:[];
-    if(Array.isArray(data.sources)&&data.sources.length) NEWS_SOURCES=data.sources;
-    NEWS.loading=false;
-  }catch(e){ NEWS.loading=false; NEWS.error='The news list could not be loaded.'; }
+    NEWS.reports=Array.isArray(data.sources)?data.sources:[];
+    if(Array.isArray(data.records)&&data.records.length&&data.records[0]&&data.records[0].url) NEWS_SOURCES=data.records;
+    if(data.reason&&!NEWS.items.length) NEWS.feedError=data.reason;
+  }).catch(()=>{ NEWS.feedError='Feeds could not be loaded.'; });
+  const search=api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours,refresh:!!refresh})}).then(data=>{
+    NEWS.search=Array.isArray(data.items)?data.items:[];
+    NEWS.updatedAt=data.updatedAt||NEWS.updatedAt||'';
+    NEWS.limited=!!data.limited;
+    NEWS.updatesAt=data.updatesAt||'';
+    NEWS.limitNote=data.limited?(data.reason||'The daily search limit is used.'):'';
+    if(data.reason&&!NEWS.search.length&&!data.limited) NEWS.searchError=data.reason;
+  }).catch(()=>{ NEWS.searchError='Search could not run.'; });
+  await Promise.all([feed, search]);
+  NEWS.loading=false;
   if(C.workspace==='creator') renderCreator();
   if(S.tabL==='refs') renderLib();
 }
 function localNewsHTML(){
   if(typeof Backend==='undefined'||Backend.mode!=='server') return '';
   const win=C.newsWindow||'6h';
-  const windows=[['3h','3 hours'],['6h','6 hours'],['7d','7 days']];
-  const row=story=>`<button type="button" class="news-item" data-news-url="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc(story.source)}${story.dateOnly?' · Date only':''}${story.utah==='unconfirmed'?' · Utah check unavailable':''}</small></button>`;
-  const failed=NEWS_SOURCES.filter(s=>s.status==='failed').length;
-  const body=NEWS.loading?'<p class="note">Checking sources…</p>':NEWS.error?`<p class="note warn">${esc(NEWS.error)}</p>`:`${(NEWS.items||[]).map(row).join('')||'<p class="note">Nothing in this window.</p>'}${(NEWS.held||[]).length?`<p class="note">These still need a Utah check.</p>${NEWS.held.map(row).join('')}`:''}`;
-  return `<details class="local-news"><summary>Latest local news</summary><div class="news-windows" role="group" aria-label="How recent">${windows.map(([id,label])=>`<button type="button" data-news-window="${id}" aria-pressed="${win===id}">${label}</button>`).join('')}</div>${body}${failed?`<p class="note warn">${failed} source${failed===1?'':'s'} failed. They stay in brand settings.</p>`:''}</details>`;
+  const windows=[['3h','3h'],['6h','6h'],['12h','12h'],['24h','24h']];
+  const rows=newsRows();
+  const feedsFailed=!!NEWS.feedError||((NEWS.reports||[]).length>0&&(NEWS.reports||[]).every(s=>s.status!=='ok')&&!(NEWS.items||[]).length);
+  const both=!NEWS.loading&&!rows.length&&!!NEWS.searchError&&feedsFailed;
+  const row=story=>`<button type="button" class="news-item" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc(story.outlet)}${story.at?' · '+esc(newsAgo(story.at)):''}</small><span class="news-draft">Draft from this</span></button>`;
+  const updated=NEWS.updatedAt?`Updated ${newsAgo(NEWS.updatedAt)}`:'';
+  const limit=NEWS.limited&&NEWS.updatesAt?`<p class="note">${esc(NEWS.limitNote||'The daily search limit is used.')} It updates ${esc(new Date(NEWS.updatesAt).toLocaleString('en-US',{timeZone:'America/Denver',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}.</p>`:'';
+  const body=NEWS.loading?'<p class="note">Checking local news…</p>':both?'<p class="note">Couldn\'t load news right now. Paste a link or text instead.</p>':`${rows.map(row).join('')||'<p class="note">Nothing in this window.</p>'}`;
+  return `<details class="local-news" open><summary>Latest local news</summary><div class="news-windows" role="group" aria-label="How recent">${windows.map(([id,label])=>`<button type="button" data-news-window="${id}" aria-pressed="${win===id}">${label}</button>`).join('')}</div><div class="news-bar"><button type="button" class="news-refresh" data-news-refresh>Refresh</button><span class="meta">${esc(updated)}</span></div>${limit}${body}</details>`;
 }
 function saveBrandLists(){
   if(!cap.db){ toast('Saving brand settings needs the team library.',true); return; }
@@ -3691,6 +3742,10 @@ function saveBrandLists(){
   BRAND_TAGS=[...new Set($('#brandTags').value.split(/\n+/).map(t=>t.trim().toUpperCase()).filter(t=>t&&t!=='SLCSCOOP'))].slice(0,80);
   const outlets=$('#brandOutlets');
   if(outlets){ const next=[...new Set(outlets.value.split(/\n+/).map(outletHost).filter(Boolean))].slice(0,80); BRAND_OUTLETS=next.length?next:DEFAULT_OUTLETS.slice(); }
+  const domains=$('#newsDomains');
+  if(domains){ const next=[...new Set(domains.value.split(/\n+/).map(outletHost).filter(Boolean))].slice(0,30); if(next.length) NEWS_DOMAINS=next; }
+  const model=$('#newsModel');
+  if(model) NEWS_MODEL=model.value==='sonnet'?'sonnet':'haiku';
   cap.db.doc('brand/settings').set(brandDoc()).then(()=>toast('Saved categories and tags')).catch(()=>toast('Couldn\'t save brand settings.',true));
 }
 function tagsLine(topics){ return (topics||[]).map(t=>String(t).toUpperCase().trim()).filter(t=>t&&t!=='SLCSCOOP').concat(['SLCSCOOP']).join('  |  '); }
@@ -4810,11 +4865,13 @@ async function initBackend(){
     const d=s.exists?s.data():null;
     SWATCH=(d&&Array.isArray(d.swatches))?d.swatches:[];
     if(d){
-      BRAND_EXTRA=Object.assign({},d); delete BRAND_EXTRA.swatches; delete BRAND_EXTRA.categories; delete BRAND_EXTRA.tags; delete BRAND_EXTRA.outlets; delete BRAND_EXTRA.newsSources;
+      BRAND_EXTRA=Object.assign({},d); delete BRAND_EXTRA.swatches; delete BRAND_EXTRA.categories; delete BRAND_EXTRA.tags; delete BRAND_EXTRA.outlets; delete BRAND_EXTRA.newsSources; delete BRAND_EXTRA.newsSearchDomains; delete BRAND_EXTRA.newsSearchModel;
       if(Array.isArray(d.categories)&&d.categories.length) BRAND_CATS=d.categories.map(c=>({id:String(c.id||'').toUpperCase(),description:String(c.description||''),when:String(c.when||'')})).filter(c=>c.id);
       if(Array.isArray(d.tags)&&d.tags.length) BRAND_TAGS=d.tags.map(t=>String(t).toUpperCase().trim()).filter(t=>t&&t!=='SLCSCOOP');
       if(Array.isArray(d.outlets)){ const next=d.outlets.map(outletHost).filter(Boolean); if(next.length) BRAND_OUTLETS=[...new Set(next)].slice(0,80); }
       if(Array.isArray(d.newsSources)&&d.newsSources.length) NEWS_SOURCES=d.newsSources;
+      if(Array.isArray(d.newsSearchDomains)&&d.newsSearchDomains.length) NEWS_DOMAINS=d.newsSearchDomains.map(outletHost).filter(Boolean).slice(0,30);
+      if(d.newsSearchModel==='sonnet'||d.newsSearchModel==='haiku') NEWS_MODEL=d.newsSearchModel;
     }
     if(S.tabL==='refs') renderLib();
     if(S.tabR==='layer'||S.tabR==='canvas') renderProps(true);
@@ -4823,7 +4880,7 @@ async function initBackend(){
 }
 
 /* ---------- mobile-first Post Creator ---------- */
-const C = {workspace:'creator',step:0,inputMode:'ai',reviewTab:'text',field:'',drawer:true,filter:'All',query:'',more:false,favorites:[],busy:false,reading:false,message:'',error:false,generated:false,source:'',teamCopy:'',followUp:false,correction:false,link:null,linkPreview:null,contexts:{},contentCache:[],preferredApplied:false};
+const C = {workspace:'creator',step:0,inputMode:'ai',reviewTab:'text',field:'',drawer:true,filter:'All',query:'',more:false,favorites:[],busy:false,reading:false,message:'',error:false,generated:false,source:'',teamCopy:'',followUp:false,correction:false,link:null,linkPreview:null,contexts:{},contentCache:[],preferredApplied:false,newsWindow:'6h'};
 function ico(body){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;}
 /* Lucide (ISC). https://lucide.dev */
 const CI={
@@ -4896,7 +4953,11 @@ function formatWhen(value){
 function linkPreviewHTML(){
   const a=C.linkPreview; if(!a) return '';
   const when=a.published?formatWhen(a.published):'';
-  return `<div class="link-preview"><div class="link-meta">${esc(a.siteName||'Link')}${when?' · '+esc(when):''}</div><b>${esc(a.title||'Untitled')}</b><p>${esc(String(a.text||'').slice(0,600))}</p><div class="row"><button type="button" class="c-button small" id="linkUse">Use this text</button><button type="button" class="c-button small" id="linkPaste">Paste text instead</button></div></div>`;
+  const away=a.utah===false;
+  const actions=away
+    ? `<p class="utah-warn">This doesn't look like a Utah story</p><div class="row"><button type="button" class="c-button small" id="linkAnyway">Draft anyway</button><button type="button" class="c-button small" id="linkPaste">Paste text instead</button></div>`
+    : `<div class="row"><button type="button" class="c-button small" id="linkUse">Use this text</button><button type="button" class="c-button small" id="linkPaste">Paste text instead</button></div>`;
+  return `<div class="link-preview"><div class="link-meta">${esc(a.siteName||'Link')}${when?' · '+esc(when):''}</div><b>${esc(a.title||'Untitled')}</b><p>${esc(String(a.text||'').slice(0,600))}</p>${actions}</div>`;
 }
 function creatorStoryHTML(){
   const ai=C.inputMode==='ai',photo=S.doc.layers.find(l=>l.type==='image'&&l.slot);
@@ -5201,6 +5262,7 @@ async function creatorReadLink(){
     else { C.error=true; C.message=linkReadMessage(e); }
   }finally{ creatorJobStop(); C.busy=false; C.reading=false; C.ctrl=null; renderCreator(); }
 }
+async function draftAnyway(){ useLinkText(); await creatorCreatePost(); }
 function useLinkText(){
   const a=C.linkPreview; if(!a||!a.text) return;
   C.source=a.text; C.link={url:a.url,title:a.title||'',siteName:a.siteName||'',published:a.published||'',isNewsOutlet:!!a.isNewsOutlet};
@@ -5438,7 +5500,8 @@ document.addEventListener('click',async e=>{
   if(b.dataset.step!==undefined){creatorSetStep(+b.dataset.step);return;}
   if(b.dataset.inputMode){C.inputMode=b.dataset.inputMode;C.message='';C.generated=false;creatorPersist();renderCreator();return;}
   if(b.dataset.newsWindow){C.newsWindow=b.dataset.newsWindow;loadNews(false);return;}
-  if(b.dataset.newsUrl){C.inputMode='ai';C.source=b.dataset.newsUrl;C.link=null;C.linkPreview=null;C.generated=false;if(S.doc)delete S.doc.sourceLink;creatorPersist();renderCreator();const box=$('#creatorSource');if(box)box.focus();return;}
+  if(b.dataset.newsRefresh!==undefined){loadNews(true);return;}
+  if(b.dataset.newsDraft){C.inputMode='ai';C.source=b.dataset.newsDraft;C.link=null;C.linkPreview=null;C.generated=false;if(S.doc)delete S.doc.sourceLink;creatorPersist();renderCreator();await creatorReadLink();return;}
   if(b.dataset.templateFilter){C.filter=b.dataset.templateFilter;document.querySelectorAll('[data-template-filter]').forEach(x=>x.setAttribute('aria-pressed',x===b));renderCreatorTemplates();return;}
   if(b.dataset.favorite){const id=b.dataset.favorite;C.favorites=C.favorites.includes(id)?C.favorites.filter(x=>x!==id):[...C.favorites,id];localStorage.setItem('scoop-builder:favorite-templates',JSON.stringify(C.favorites));renderCreatorTemplates();return;}
   if(b.dataset.creatorTemplate){const id=b.dataset.creatorTemplate;closeModal();await creatorChooseTemplate(id);return;}
@@ -5456,6 +5519,7 @@ document.addEventListener('click',async e=>{
     case 'creatorNew':await creatorNewPost();break;
     case 'creatorNext':if(C.step===0&&creatorReadsLink())await creatorReadLink();else if(C.step===0)await creatorCreatePost();else await creatorExport();break;
     case 'linkUse':useLinkText();break;
+    case 'linkAnyway':await draftAnyway();break;
     case 'linkPaste':pasteLinkInstead();break;
     case 'creatorBack':creatorSetStep(0);break;
     case 'creatorChangeTemplate':creatorOpenTemplates();break;

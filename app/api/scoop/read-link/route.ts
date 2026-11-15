@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guard } from '@/lib/scoop';
 import { creditOutlets, readBrand } from '@/lib/scoop-brand';
-import { readPublicArticle, type LinkResult } from '@/lib/scoop-read';
+import { isUtahStory } from '@/lib/scoop-news';
+import { readPublicArticle, type Article, type LinkResult } from '@/lib/scoop-read';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 20;
 
 const CACHE_MS = 10 * 60 * 1000;
-const cache = new Map<string, { exp: number; value: LinkResult }>();
+const cache = new Map<string, { exp: number; value: LinkResult | (Article & { utah: boolean }) }>();
 
 function cacheKey(url: string): string {
   try {
@@ -41,8 +42,9 @@ export async function POST(req: NextRequest) {
 
   const brand = await readBrand();
   const result = await readPublicArticle(url, creditOutlets(brand));
-  if (!('error' in result) || result.error !== 'failed') cache.set(key, { exp: Date.now() + CACHE_MS, value: result });
-  return NextResponse.json(result, { status: statusFor(result) });
+  const value = 'error' in result ? result : { ...result, utah: isUtahStory({ title: result.title, text: result.text, url: result.url, outlet: result.siteName }) };
+  if (!('error' in value) || value.error !== 'failed') cache.set(key, { exp: Date.now() + CACHE_MS, value });
+  return NextResponse.json(value, { status: statusFor(value) });
 }
 
 function statusFor(result: LinkResult): number {

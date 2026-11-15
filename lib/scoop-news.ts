@@ -1,7 +1,7 @@
 import { JSDOM } from 'jsdom';
 
 export type NewsSourceType = 'rss' | 'newsmap' | 'page' | 'nws' | 'api';
-export type NewsWindow = '3h' | '6h' | '24h' | '7d';
+export type NewsWindow = '3h' | '6h' | '12h' | '24h' | '7d';
 
 export type NewsSource = {
   id: string;
@@ -11,7 +11,7 @@ export type NewsSource = {
   kind: 'outlet' | 'agency';
   note?: string;
   enabled: boolean;
-  /** National wire mixed into a local feed. Borderline items go to the grouping call. */
+  /** National wire mixed into a local feed. Every item still has to be a Utah story. */
   utahFilter?: boolean;
   selector?: string;
   timeSelector?: string;
@@ -19,6 +19,10 @@ export type NewsSource = {
   checkedAt?: string;
   newest?: string;
   error?: string;
+  reason?: string;
+  httpStatus?: number | null;
+  /** Consecutive blocked responses. Three disables the source until someone checks again. */
+  failures?: number;
 };
 
 export type NewsItem = {
@@ -38,72 +42,159 @@ export type Dated = { at: Date; dateOnly: boolean };
 const WINDOW_MS: Record<NewsWindow, number> = {
   '3h': 3 * 60 * 60 * 1000,
   '6h': 6 * 60 * 60 * 1000,
+  '12h': 12 * 60 * 60 * 1000,
   '24h': 24 * 60 * 60 * 1000,
   '7d': 7 * 24 * 60 * 60 * 1000,
 };
 
 const FRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Places and agencies that mark a story as Utah news. Bare words like "price" are left out. */
-const UTAH = [
-  /\butah\b/i,
-  /\bsalt[\s-]?lake\b/i,
-  /\bslc\b/i,
-  /\bprovo\b/i,
-  /\bogden\b/i,
-  /\borem\b/i,
-  /\blayton\b/i,
-  /\bst\.?\s*george\b/i,
-  /\bsaint george\b/i,
-  /\bmoab\b/i,
-  /\blogan\b/i,
-  /\bpark city\b/i,
-  /\bbountiful\b/i,
-  /\bdraper\b/i,
-  /\bsandy\b/i,
-  /\bmurray\b/i,
-  /\btaylorsville\b/i,
-  /\bwest valley\b/i,
-  /\bwest jordan\b/i,
-  /\bsouth jordan\b/i,
-  /\briverton\b/i,
-  /\bherriman\b/i,
-  /\bmillcreek\b/i,
-  /\bmidvale\b/i,
-  /\bcottonwood heights\b/i,
-  /\bkearns\b/i,
-  /\bmagna\b/i,
-  /\bclearfield\b/i,
-  /\bkaysville\b/i,
-  /\bfarmington\b/i,
-  /\bsyracuse\b/i,
-  /\btooele\b/i,
-  /\blehi\b/i,
-  /\bamerican fork\b/i,
-  /\bpleasant grove\b/i,
-  /\bspanish fork\b/i,
-  /\bspringville\b/i,
-  /\bpayson\b/i,
-  /\bheber\b/i,
-  /\bvernal\b/i,
-  /\broosevelt\b/i,
-  /\bcedar city\b/i,
-  /\bbrigham city\b/i,
-  /\bdavis county\b/i,
-  /\butah county\b/i,
-  /\bweber county\b/i,
-  /\bcache county\b/i,
-  /\bsummit county\b/i,
-  /\bwasatch county\b/i,
-  /\bsalt lake county\b/i,
-  /\bwashington county\b/i,
-  /\budot\b/i,
-  /\buhp\b/i,
-  /\bUTA\b/,
-  /\bslcpd\b/i,
-  /\btrax\b/i,
-  /\bfrontrunner\b/i,
+/**
+ * Include a story only if the event happens in Utah, or it is an action or decision by Utah state or local
+ * government, courts, schools, or agencies. Exclude: national and international news, stories from other states
+ * even when a Utahn is involved, national stories with a Utah reaction angle, and sports events played outside
+ * Utah. Utah teams count only for news that happens in Utah (home games, team business, venues).
+ * If you are not sure the story is a Utah story, leave it out.
+ */
+export const UTAH_STORY_RULE = 'Include a story only if the event happens in Utah, or it is an action or decision by Utah state or local government, courts, schools, or agencies. Exclude: national and international news, stories from other states even when a Utahn is involved, national stories with a Utah reaction angle, and sports events played outside Utah. Utah teams count only for news that happens in Utah (home games, team business, venues). If you are not sure the story is a Utah story, leave it out.';
+
+type GazetteerKind = 'city' | 'county' | 'agency' | 'school';
+type GazetteerPlace = { name: string; pattern: RegExp; kind: GazetteerKind; ambiguous?: boolean };
+
+/**
+ * Cities, counties, agencies, and schools. A team name is not a place, and a Utahn somewhere else is not a Utah story.
+ * Ambiguous names also need "Utah", "UT", or a Utah outlet.
+ */
+const GAZETTEER: GazetteerPlace[] = [
+  { name: 'Salt Lake County', pattern: /\bsalt[\s-]?lake county\b/i, kind: 'county' },
+  { name: 'Salt Lake City', pattern: /\bsalt[\s-]?lake(?:\s+city)?\b|\bslc\b/i, kind: 'city' },
+  { name: 'Utah County', pattern: /\butah county\b/i, kind: 'county' },
+  { name: 'Davis County', pattern: /\bdavis county\b/i, kind: 'county' },
+  { name: 'Weber County', pattern: /\bweber county\b/i, kind: 'county' },
+  { name: 'Cache County', pattern: /\bcache county\b/i, kind: 'county' },
+  { name: 'Summit County', pattern: /\bsummit county\b/i, kind: 'county' },
+  { name: 'Wasatch County', pattern: /\bwasatch county\b/i, kind: 'county' },
+  { name: 'Washington County', pattern: /\bwashington county\b/i, kind: 'county', ambiguous: true },
+  { name: 'Tooele County', pattern: /\btooele county\b/i, kind: 'county' },
+  { name: 'Iron County', pattern: /\biron county\b/i, kind: 'county' },
+  { name: 'Box Elder County', pattern: /\bbox elder county\b/i, kind: 'county' },
+  { name: 'Provo', pattern: /\bprovo\b/i, kind: 'city' },
+  { name: 'Orem', pattern: /\borem\b/i, kind: 'city' },
+  { name: 'St. George', pattern: /\bst\.?\s*george\b|\bsaint george\b/i, kind: 'city' },
+  { name: 'Moab', pattern: /\bmoab\b/i, kind: 'city' },
+  { name: 'Park City', pattern: /\bpark city\b/i, kind: 'city' },
+  { name: 'Bountiful', pattern: /\bbountiful\b/i, kind: 'city' },
+  { name: 'West Jordan', pattern: /\bwest jordan\b/i, kind: 'city' },
+  { name: 'South Jordan', pattern: /\bsouth jordan\b/i, kind: 'city' },
+  { name: 'Herriman', pattern: /\bherriman\b/i, kind: 'city' },
+  { name: 'Cottonwood Heights', pattern: /\bcottonwood heights\b/i, kind: 'city' },
+  { name: 'Kearns', pattern: /\bkearns\b/i, kind: 'city' },
+  { name: 'Magna', pattern: /\bmagna\b/i, kind: 'city' },
+  { name: 'Kaysville', pattern: /\bkaysville\b/i, kind: 'city' },
+  { name: 'Lehi', pattern: /\blehi\b/i, kind: 'city' },
+  { name: 'American Fork', pattern: /\bamerican fork\b/i, kind: 'city' },
+  { name: 'Spanish Fork', pattern: /\bspanish fork\b/i, kind: 'city' },
+  { name: 'Tooele', pattern: /\btooele\b/i, kind: 'city' },
+  { name: 'Cedar City', pattern: /\bcedar city\b/i, kind: 'city' },
+  { name: 'Brigham City', pattern: /\bbrigham city\b/i, kind: 'city' },
+  { name: 'Vernal', pattern: /\bvernal\b/i, kind: 'city' },
+  { name: 'Logan', pattern: /\blogan\b/i, kind: 'city', ambiguous: true },
+  { name: 'Ogden', pattern: /\bogden\b/i, kind: 'city', ambiguous: true },
+  { name: 'Murray', pattern: /\bmurray\b/i, kind: 'city', ambiguous: true },
+  { name: 'Sandy', pattern: /\bsandy\b/i, kind: 'city', ambiguous: true },
+  { name: 'Layton', pattern: /\blayton\b/i, kind: 'city', ambiguous: true },
+  { name: 'Draper', pattern: /\bdraper\b/i, kind: 'city', ambiguous: true },
+  { name: 'Syracuse', pattern: /\bsyracuse\b/i, kind: 'city', ambiguous: true },
+  { name: 'Farmington', pattern: /\bfarmington\b/i, kind: 'city', ambiguous: true },
+  { name: 'Clearfield', pattern: /\bclearfield\b/i, kind: 'city', ambiguous: true },
+  { name: 'Midvale', pattern: /\bmidvale\b/i, kind: 'city', ambiguous: true },
+  { name: 'Riverton', pattern: /\briverton\b/i, kind: 'city', ambiguous: true },
+  { name: 'Millcreek', pattern: /\bmillcreek\b/i, kind: 'city', ambiguous: true },
+  { name: 'Payson', pattern: /\bpayson\b/i, kind: 'city', ambiguous: true },
+  { name: 'Springville', pattern: /\bspringville\b/i, kind: 'city', ambiguous: true },
+  { name: 'Roosevelt', pattern: /\broosevelt\b/i, kind: 'city', ambiguous: true },
+  { name: 'Heber', pattern: /\bheber(?:\s+city)?\b/i, kind: 'city', ambiguous: true },
+  { name: 'Pleasant Grove', pattern: /\bpleasant grove\b/i, kind: 'city', ambiguous: true },
+  { name: 'Taylorsville', pattern: /\btaylorsville\b/i, kind: 'city', ambiguous: true },
+  { name: 'West Valley', pattern: /\bwest valley(?:\s+city)?\b/i, kind: 'city', ambiguous: true },
+  { name: 'UDOT', pattern: /\budot\b/i, kind: 'agency' },
+  { name: 'UHP', pattern: /\buhp\b/i, kind: 'agency' },
+  { name: 'UTA', pattern: /\bUTA\b/, kind: 'agency' },
+  { name: 'SLCPD', pattern: /\bslcpd\b/i, kind: 'agency' },
+  { name: 'TRAX', pattern: /\btrax\b/i, kind: 'agency' },
+  { name: 'FrontRunner', pattern: /\bfrontrunner\b/i, kind: 'agency' },
+  { name: 'University of Utah', pattern: /\buniversity of utah\b|\bu of u\b/i, kind: 'school' },
+  { name: 'Utah State University', pattern: /\butah state university\b/i, kind: 'school' },
+  { name: 'Brigham Young University', pattern: /\bbrigham young\b|\bBYU\b/, kind: 'school' },
+  { name: 'Weber State', pattern: /\bweber state\b/i, kind: 'school' },
+  { name: 'Utah Valley University', pattern: /\butah valley university\b|\bUVU\b/, kind: 'school' },
+  { name: 'Southern Utah University', pattern: /\bsouthern utah university\b|\bSUU\b/, kind: 'school' },
+  { name: 'Salt Lake Community College', pattern: /\bsalt lake community college\b|\bSLCC\b/, kind: 'school' },
+  { name: 'Utah Tech', pattern: /\butah tech\b/i, kind: 'school' },
+  { name: 'Snow College', pattern: /\bsnow college\b/i, kind: 'school' },
 ];
+
+const UTAH_OUTLET_HOSTS = [
+  'sltrib.com', 'deseret.com', 'ksl.com', 'fox13now.com', 'kutv.com', 'abc4.com',
+  'kslnewsradio.com', 'kuer.org', 'utahnewsdispatch.com', 'parkrecord.com', 'townlift.com',
+  'upr.org', 'cityweekly.net', 'utah.gov', 'slc.gov', 'utcourts.gov',
+];
+
+function storyText(input: { title?: string; summary?: string; text?: string }): string {
+  return `${input.title || ''}\n${input.summary || ''}\n${input.text || ''}`.replace(/\breal salt lake\b/gi, ' ');
+}
+
+function mentionsUtahTag(value: string): boolean {
+  return /\butah\b/i.test(value) || /\bUT\b/.test(value);
+}
+
+function isUtahOutlet(value: string): boolean {
+  const hosts = (value.match(/[a-z0-9.-]+\.[a-z]{2,24}/gi) || []).map((host) => host.toLowerCase().replace(/^www\./, ''));
+  return hosts.some((host) => UTAH_OUTLET_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`)));
+}
+
+function placeHits(value: string, kinds?: GazetteerKind[]): GazetteerPlace[] {
+  return GAZETTEER.filter((place) => (!kinds || kinds.includes(place.kind)) && place.pattern.test(value));
+}
+
+function anchored(value: string, outlet: string): boolean {
+  return mentionsUtahTag(value) || isUtahOutlet(outlet);
+}
+
+function inferLocation(input: { title?: string; summary?: string; text?: string; url?: string; outlet?: string }): string {
+  const hay = storyText(input);
+  const outlet = `${input.outlet || ''} ${input.url || ''}`;
+  const places = placeHits(hay, ['city', 'county']);
+  const solid = places.find((place) => !place.ambiguous || anchored(hay, outlet));
+  if (solid) return solid.name;
+  if (mentionsUtahTag(hay) || placeHits(hay, ['agency']).length) return 'Statewide';
+  return '';
+}
+
+function locationIsUtah(location: string, outlet: string): boolean {
+  const value = location.trim();
+  if (!value) return false;
+  if (/^(statewide|utah|state of utah)$/i.test(value)) return true;
+  const places = placeHits(value, ['city', 'county']);
+  if (!places.length) return false;
+  if (places.some((place) => !place.ambiguous)) return true;
+  return anchored(value, outlet);
+}
+
+function textNamesUtah(input: { title?: string; summary?: string; text?: string }, outlet: string): boolean {
+  const hay = storyText(input);
+  if (/\butah\b/i.test(hay)) return true;
+  const hits = placeHits(hay);
+  if (hits.some((place) => !place.ambiguous)) return true;
+  return hits.length > 0 && anchored(hay, outlet);
+}
+
+/** Both the location and the wording have to place the story in Utah. Unsure items are left out. */
+export function isUtahStory(input: { location?: string; title?: string; summary?: string; text?: string; url?: string; outlet?: string }): boolean {
+  const outlet = `${input.outlet || ''} ${input.url || ''}`;
+  const location = String(input.location || '').trim() || inferLocation(input);
+  return locationIsUtah(location, outlet) && textNamesUtah(input, outlet);
+}
 
 const KUTV_PAGE = 'https://kutv.com/news/local';
 
@@ -189,7 +280,10 @@ export function normalizeNewsSources(raw: unknown): NewsSource[] {
       status,
       checkedAt: typeof row.checkedAt === 'string' ? row.checkedAt.slice(0, 40) : undefined,
       newest: typeof row.newest === 'string' ? row.newest.slice(0, 40) : undefined,
-      error: status === 'failed' ? String(row.error ?? 'This source could not be read.').replace(/\s+/g, ' ').trim().slice(0, 240) : undefined,
+      error: status === 'failed' ? String(row.error ?? row.reason ?? 'This source could not be read.').replace(/\s+/g, ' ').trim().slice(0, 240) : undefined,
+      reason: String(row.reason ?? row.error ?? '').replace(/\s+/g, ' ').trim().slice(0, 240) || undefined,
+      httpStatus: Number.isFinite(Number(row.httpStatus)) ? Number(row.httpStatus) : null,
+      failures: Math.max(0, Math.min(9, Math.floor(Number(row.failures) || 0))),
     });
     if (out.length >= 40) break;
   }
@@ -248,11 +342,6 @@ export function passesWindow(item: { publishedAt: string; dateOnly: boolean }, w
   if (!Number.isFinite(at)) return false;
   const age = now.getTime() - at;
   return age >= -5 * 60 * 1000 && age <= WINDOW_MS[window];
-}
-
-export function mentionsUtah(title: string, summary: string, url: string): boolean {
-  const hay = `${title}\n${summary}\n${decodeURIComponent(url)}`;
-  return UTAH.some((pattern) => pattern.test(hay));
 }
 
 function decodeXml(value: string): string {
@@ -415,17 +504,40 @@ export function judgeSource(items: RawItem[], now: Date, fetchError?: string, ne
   const checkedAt = now.toISOString();
   if (fetchError) return { status: 'failed', checkedAt, error: fetchError };
   const newest = newestOf(items) || newestOverride || '';
-  if (!newest) return { status: 'failed', checkedAt, error: 'The source parsed, but it had no dated items.' };
+  if (!newest) return { status: 'failed', checkedAt, error: 'No dated items' };
   const age = now.getTime() - Date.parse(newest);
   if (age > FRESH_MS) return { status: 'failed', checkedAt, newest, error: 'The newest item is older than 7 days.' };
   return { status: 'ok', checkedAt, newest, error: undefined };
 }
 
-export type FetchText = (url: string, headers?: Record<string, string>) => Promise<{ ok: true; text: string } | { ok: false; error: string }>;
+export type FetchResult =
+  | { ok: true; text: string; status?: number }
+  | { ok: false; error: string; httpStatus?: number; blocked?: boolean; challenge?: boolean; timeout?: boolean };
+
+export type FetchText = (url: string, headers?: Record<string, string>) => Promise<FetchResult>;
+
+export type SourceReport = {
+  name: string;
+  status: 'ok' | 'failed' | 'disabled';
+  reason: string;
+  httpStatus: number | null;
+  items: NewsItem[];
+};
+
+export function failureDetail(fail: Extract<FetchResult, { ok: false }>): { reason: string; blocked: boolean; httpStatus: number | null } {
+  const httpStatus = Number.isFinite(fail.httpStatus) ? Number(fail.httpStatus) : null;
+  if (fail.challenge) return { reason: 'Blocked (Cloudflare challenge)', blocked: true, httpStatus };
+  if (fail.timeout || /took too long/i.test(fail.error)) return { reason: 'Timed out', blocked: false, httpStatus };
+  if (httpStatus === 403) return { reason: 'Blocked (403)', blocked: true, httpStatus };
+  if (httpStatus === 429) return { reason: 'Blocked (429)', blocked: true, httpStatus };
+  if (fail.blocked) return { reason: fail.error || 'Blocked', blocked: true, httpStatus };
+  if (httpStatus) return { reason: `HTTP ${httpStatus}`, blocked: false, httpStatus };
+  return { reason: fail.error || 'The source could not be read.', blocked: false, httpStatus };
+}
 
 const NWS_UA = 'SLCScoopPostStudio/1.0 (+https://slcscoop.com)';
 
-async function readSource(source: NewsSource, fetchText: FetchText): Promise<{ items: RawItem[]; error?: string; newest?: string }> {
+async function readSource(source: NewsSource, fetchText: FetchText): Promise<{ items: RawItem[]; error?: string; newest?: string; httpStatus?: number | null; blocked?: boolean; parse?: boolean; empty?: boolean }> {
   if (source.type === 'api') {
     if (!process.env.UDOT_API_KEY?.trim()) {
       return { items: [], error: 'Needs a UDOT developer key in UDOT_API_KEY. Closures and major incidents are the only events this source keeps.' };
@@ -434,11 +546,18 @@ async function readSource(source: NewsSource, fetchText: FetchText): Promise<{ i
   }
   const headers = source.type === 'nws' ? { 'user-agent': NWS_UA, accept: 'application/geo+json, application/json' } : undefined;
   const fetched = await fetchText(source.url, headers);
-  if (!fetched.ok) return { items: [], error: fetched.error };
+  if (!fetched.ok) {
+    const detail = failureDetail(fetched);
+    return { items: [], error: detail.reason, httpStatus: detail.httpStatus, blocked: detail.blocked };
+  }
+  if (/just a moment|cf-browser-verification|cf-challenge|cdn-cgi\/challenge/i.test(fetched.text.slice(0, 5000)) && /<html|<!doctype/i.test(fetched.text.slice(0, 400))) {
+    return { items: [], error: 'Blocked (Cloudflare challenge)', httpStatus: fetched.status || 403, blocked: true };
+  }
   if ((source.type === 'rss' || source.type === 'newsmap') && /^\s*(?:<!doctype html|<html)\b/i.test(fetched.text)) {
     return { items: [], error: 'The address returned a web page, not a feed.' };
   }
-  if (source.type === 'newsmap') return { items: parseNewsSitemap(fetched.text) };
+  try {
+  if (source.type === 'newsmap') return { items: parseNewsSitemap(fetched.text), httpStatus: fetched.status || 200 };
   if (source.type === 'nws') {
     const items = parseNws(fetched.text);
     if (items.length) return { items };
@@ -451,8 +570,11 @@ async function readSource(source: NewsSource, fetchText: FetchText): Promise<{ i
     } catch { /* the dated-item check reports the parse failure */ }
     return { items };
   }
-  if (source.type === 'page') return { items: parsePage(fetched.text, source.url, source.selector, source.timeSelector) };
-  return { items: parseFeed(fetched.text) };
+  if (source.type === 'page') return { items: parsePage(fetched.text, source.url, source.selector, source.timeSelector), httpStatus: fetched.status || 200 };
+  return { items: parseFeed(fetched.text), httpStatus: fetched.status || 200 };
+  } catch {
+    return { items: [], error: 'Could not parse the feed', httpStatus: fetched.status || null, parse: true };
+  }
 }
 
 export async function collectNews(input: {
@@ -461,33 +583,61 @@ export async function collectNews(input: {
   window?: NewsWindow;
   recheck?: boolean;
   fetchText: FetchText;
-  decideUtah?: (titles: string[]) => Promise<boolean[] | null>;
-}): Promise<{ items: NewsItem[]; held: NewsItem[]; sources: NewsSource[] }> {
+}): Promise<{ items: NewsItem[]; held: NewsItem[]; sources: NewsSource[]; reports: SourceReport[] }> {
   const now = input.now || new Date();
   const window = input.window || '6h';
   const sources = input.sources.map((source) => ({ ...source }));
   const parsed = new Map<string, RawItem[]>();
   const pending = sources.filter((source) => {
+    if (!source.enabled && !input.recheck) return false;
     const needsCheck = input.recheck || !source.status;
-    return needsCheck || (source.enabled && source.status === 'ok');
+    return needsCheck || source.status === 'ok';
   });
   let cursor = 0;
-  await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
+  await Promise.all(Array.from({ length: Math.min(4, Math.max(1, pending.length)) }, async () => {
     while (cursor < pending.length) {
       const source = pending[cursor];
       cursor += 1;
-      const needsCheck = input.recheck || !source.status;
-      const result = await readSource(source, input.fetchText);
-      if (needsCheck) Object.assign(source, judgeSource(result.items, now, result.error, result.newest));
-      if (source.enabled && source.status === 'ok') parsed.set(source.id, result.items);
+      let result: { items: RawItem[]; error?: string; newest?: string; httpStatus?: number | null; blocked?: boolean };
+      try {
+        result = await readSource(source, input.fetchText);
+      } catch {
+        result = { items: [], error: 'Could not parse the feed' };
+      }
+      const judged = judgeSource(result.items, now, result.error, result.newest);
+      source.httpStatus = result.httpStatus ?? null;
+      if (result.error || judged.status === 'failed') {
+        source.status = 'failed';
+        source.checkedAt = judged.checkedAt;
+        source.newest = judged.newest;
+        source.error = result.error || judged.error;
+        source.reason = source.error;
+        if (result.blocked) {
+          source.failures = (source.failures || 0) + 1;
+          if (source.failures >= 3) {
+            source.enabled = false;
+            source.reason = `Disabled after 3 blocked responses. ${source.error || ''}`.trim();
+            source.error = source.reason;
+          }
+        }
+      } else {
+        source.status = 'ok';
+        source.checkedAt = judged.checkedAt;
+        source.newest = judged.newest;
+        source.error = undefined;
+        source.reason = undefined;
+        source.failures = 0;
+        if (input.recheck) source.enabled = true;
+        parsed.set(source.id, result.items);
+      }
     }
   }));
   const kept: NewsItem[] = [];
-  const borderline: NewsItem[] = [];
   for (const source of sources) {
     if (!source.enabled || source.status !== 'ok') continue;
     for (const raw of parsed.get(source.id) || []) {
-      const item: NewsItem = {
+      if (!isUtahStory({ title: raw.title, summary: raw.summary, url: raw.url, outlet: source.name })) continue;
+      kept.push({
         id: `${source.id}:${raw.url}`,
         sourceId: source.id,
         source: source.name,
@@ -497,32 +647,120 @@ export async function collectNews(input: {
         publishedAt: raw.publishedAt,
         dateOnly: raw.dateOnly,
         utah: 'yes',
-      };
-      if (source.utahFilter && !mentionsUtah(raw.title, raw.summary, raw.url)) borderline.push(item);
-      else kept.push(item);
+      });
     }
   }
   const held: NewsItem[] = [];
-  if (borderline.length && input.decideUtah) {
-    const titles = borderline.map((item) => item.title).slice(0, 40);
-    let decision: boolean[] | null = null;
-    try { decision = await input.decideUtah(titles); } catch { decision = null; }
-    if (!decision || decision.length < titles.length) {
-      held.push(...borderline.map((item) => ({ ...item, utah: 'unconfirmed' as const })));
-    } else {
-      borderline.forEach((item, index) => {
-        if (index >= titles.length) held.push({ ...item, utah: 'unconfirmed' });
-        else if (decision?.[index]) kept.push(item);
-      });
-    }
-  } else if (borderline.length) {
-    held.push(...borderline.map((item) => ({ ...item, utah: 'unconfirmed' as const })));
-  }
   const fresh = (item: NewsItem) => passesWindow(item, window, now);
   const byTime = (a: NewsItem, b: NewsItem) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
-  return {
-    items: kept.filter(fresh).sort(byTime).slice(0, 80),
-    held: held.filter(fresh).sort(byTime).slice(0, 40),
-    sources,
-  };
+  const items = kept.filter(fresh).sort(byTime).slice(0, 80);
+  const heldItems = held.filter(fresh).sort(byTime).slice(0, 40);
+  const reports: SourceReport[] = sources.map((source) => {
+    const mine = [...items, ...heldItems].filter((item) => item.sourceId === source.id);
+    const httpStatus = source.httpStatus ?? null;
+    if (!source.enabled && (source.failures || 0) >= 3) {
+      return { name: source.name, status: 'disabled', reason: source.reason || source.error || 'Disabled after 3 blocked responses.', httpStatus, items: [] };
+    }
+    if (source.status !== 'ok') {
+      const reason = source.reason || source.error || (source.status === 'failed' ? 'This source could not be read.' : 'Off');
+      return { name: source.name, status: source.enabled ? 'failed' : 'disabled', reason, httpStatus, items: [] };
+    }
+    return { name: source.name, status: 'ok', reason: '', httpStatus, items: mine };
+  });
+  return { items, held: heldItems, sources, reports };
+}
+
+export const NEWS_SEARCH_DOMAINS = [
+  'ksl.com', 'kutv.com', 'fox13now.com', 'sltrib.com', 'deseret.com', 'abc4.com',
+  'kslnewsradio.com', 'kuer.org', 'utahnewsdispatch.com', 'police.slc.gov', 'udot.utah.gov', 'weather.gov',
+];
+
+export function normalizeSearchDomains(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return NEWS_SEARCH_DOMAINS.slice();
+  const out: string[] = [];
+  for (const item of raw) {
+    const host = String(item ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
+    if (!/^[a-z0-9.-]+\.[a-z]{2,24}$/.test(host) || out.includes(host)) continue;
+    out.push(host);
+    if (out.length >= 30) break;
+  }
+  return out.length ? out : NEWS_SEARCH_DOMAINS.slice();
+}
+
+export function urlKey(value: string): string {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/^www\./, '');
+    const path = url.pathname.replace(/\/$/, '');
+    return `${url.protocol}//${host}${path}`;
+  } catch {
+    return '';
+  }
+}
+
+export type SearchHit = {
+  title: string;
+  url: string;
+  outlet: string;
+  published: string;
+  summary: string;
+  location: string;
+  category: string;
+};
+
+/** Keep search rows whose URL came from the tool, whose time was on the page, and that are inside the window. */
+export function acceptSearchItems(raw: unknown, allowedUrls: string[], hours: number, now: Date): SearchHit[] {
+  if (!Array.isArray(raw)) return [];
+  const allowed = new Set(allowedUrls.map(urlKey).filter(Boolean));
+  const maxAge = hours * 60 * 60 * 1000;
+  const out: SearchHit[] = [];
+  for (const item of raw) {
+    const row = asObject(item);
+    const url = String(row.url ?? '').trim();
+    const key = urlKey(url);
+    if (!key || !allowed.has(key)) continue;
+    const when = parseWhen(String(row.published ?? ''));
+    if (!when || when.dateOnly) continue;
+    const age = now.getTime() - when.at.getTime();
+    if (age < -5 * 60 * 1000 || age > maxAge) continue;
+    const title = String(row.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
+    if (title.length < 4) continue;
+    const hit: SearchHit = {
+      title,
+      url,
+      outlet: String(row.outlet ?? '').replace(/\s+/g, ' ').trim().slice(0, 80),
+      published: when.at.toISOString(),
+      summary: String(row.summary ?? '').replace(/\s+/g, ' ').trim().slice(0, 280),
+      location: String(row.location ?? '').replace(/\s+/g, ' ').trim().slice(0, 80),
+      category: String(row.category ?? '').replace(/\s+/g, ' ').trim().slice(0, 40),
+    };
+    if (!isUtahStory(hit)) continue;
+    out.push(hit);
+  }
+  return out;
+}
+
+function titleWords(title: string): Set<string> {
+  return new Set(title.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((word) => word.length > 2));
+}
+
+function titlesMatch(a: string, b: string): boolean {
+  const left = titleWords(a);
+  const right = titleWords(b);
+  if (left.size < 2 || right.size < 2) return false;
+  let shared = 0;
+  for (const word of left) if (right.has(word)) shared += 1;
+  return shared / Math.min(left.size, right.size) >= 0.6;
+}
+
+/** Group the same story by URL, then by a similar headline. */
+export function groupStories<T extends { title: string; url: string }>(items: T[]): T[][] {
+  const groups: T[][] = [];
+  for (const item of items) {
+    const key = urlKey(item.url);
+    const found = groups.find((group) => group.some((have) => (key && urlKey(have.url) === key) || titlesMatch(have.title, item.title)));
+    if (found) found.push(item);
+    else groups.push([item]);
+  }
+  return groups;
 }

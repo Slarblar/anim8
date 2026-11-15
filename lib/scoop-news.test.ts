@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  acceptSearchItems,
   collectNews,
   denverMidnight,
-  mentionsUtah,
+  failureDetail,
+  groupStories,
+  isUtahStory,
   newsSitemapFromRobots,
   normalizeNewsSources,
   parseFeed,
@@ -10,6 +13,7 @@ import {
   parsePage,
   passesWindow,
   NEWS_SEED,
+  type NewsSource,
 } from '@/lib/scoop-news';
 
 const NOW = new Date('2026-11-14T20:00:00.000Z');
@@ -76,10 +80,16 @@ describe('feeds and pages', () => {
 });
 
 describe('utah relevance and validation', () => {
-  it('keeps a Utah place and sends a national wire headline to the grouping call', async () => {
-    expect(mentionsUtah('Airport reopens in Salt Lake', '', 'https://www.ksl.com/article/1')).toBe(true);
-    expect(mentionsUtah('Title fight in New York', '', 'https://www.ksl.com/article/2/fight')).toBe(false);
-    const seen: string[][] = [];
+  it('keeps a story set in Utah and drops a story from another state', async () => {
+    expect(isUtahStory({ title: 'Airport reopens in Salt Lake', url: 'https://www.ksl.com/article/1' })).toBe(true);
+    expect(isUtahStory({ title: 'Title fight in New York', summary: 'A Utahn is on the card', url: 'https://www.ksl.com/article/2/fight' })).toBe(false);
+    expect(isUtahStory({ title: 'Logan council meets', url: 'https://example.com/logan' })).toBe(false);
+    expect(isUtahStory({ title: 'Logan council meets', url: 'https://www.ksl.com/article/logan' })).toBe(true);
+    expect(isUtahStory({ location: 'New York', title: 'Salt Lake reacts to the ruling', summary: 'Local leaders commented.', url: 'https://www.ksl.com/article/react' })).toBe(false);
+    expect(isUtahStory({ location: 'Statewide', title: 'Lawmakers pass the bill', summary: 'The Utah legislature voted.', url: 'https://www.ksl.com/article/bill' })).toBe(true);
+    expect(isUtahStory({ title: 'Real Salt Lake falls in Los Angeles', url: 'https://www.ksl.com/article/rsl' })).toBe(false);
+    expect(isUtahStory({ title: 'UDOT closes the freeway', summary: 'Crews are in Salt Lake.', url: 'https://udot.utah.gov/alert' })).toBe(true);
+    expect(isUtahStory({ title: 'BYU plays Saturday in Texas', text: 'The game is in Austin.', url: 'https://www.ksl.com/article/byu' })).toBe(false);
     const result = await collectNews({
       now: NOW,
       window: '6h',
@@ -89,11 +99,9 @@ describe('utah relevance and validation', () => {
         <url><loc>https://www.ksl.com/article/2/fight</loc><news:title>Title fight in New York</news:title><news:publication_date>2026-11-14T18:30:00Z</news:publication_date></url>
         <url><loc>https://www.ksl.com/article/3/old</loc><news:title>Old Utah note</news:title><news:publication_date>2026-11-01</news:publication_date></url>
       </urlset>` }),
-      decideUtah: async (titles) => { seen.push(titles); return titles.map((title) => title.includes('New York')); },
     });
-    expect(seen).toEqual([['Title fight in New York']]);
-    expect(result.items.map((item) => item.title)).toEqual(['Title fight in New York', 'Salt Lake delays the vote']);
-    expect(result.items.some((item) => item.dateOnly)).toBe(false);
+    expect(result.items.map((item) => item.title)).toEqual(['Salt Lake delays the vote']);
+    expect(result.held).toEqual([]);
     expect(result.sources[0].status).toBe('ok');
   });
 
@@ -168,5 +176,76 @@ describe('seed', () => {
     }
     expect(hosts).not.toContain('police.slc.gov');
     expect(hosts).not.toContain('api.weather.gov');
+  });
+});
+
+describe('a source can fail without taking the list down', () => {
+  const rss = `<rss><channel><item><title>Salt Lake council delays the vote</title><link>https://www.sltrib.com/news/vote/</link><pubDate>Sat, 14 Nov 2026 18:00:00 GMT</pubDate></item></channel></rss>`;
+
+  it('returns the feed that loaded when another source throws', async () => {
+    const result = await collectNews({
+      now: NOW,
+      window: '6h',
+      sources: [
+        { id: 'a', name: 'Broken', type: 'rss', url: 'https://broken.example/feed', kind: 'outlet', enabled: true },
+        { id: 'b', name: 'Tribune', type: 'rss', url: 'https://www.sltrib.com/feed', kind: 'outlet', enabled: true },
+      ],
+      fetchText: async (url) => {
+        if (url.includes('broken')) throw new Error('boom');
+        return { ok: true, text: rss, status: 200 };
+      },
+    });
+    expect(result.items.map((item) => item.sourceId)).toEqual(['b']);
+    expect(result.reports.find((row) => row.name === 'Broken')).toMatchObject({ status: 'failed', reason: 'Could not parse the feed' });
+    expect(result.reports.find((row) => row.name === 'Tribune')?.status).toBe('ok');
+  });
+
+  it('disables a source after three blocked responses and does not fetch it again', async () => {
+    expect(failureDetail({ ok: false, error: 'refused', httpStatus: 403 })).toEqual({ reason: 'Blocked (403)', blocked: true, httpStatus: 403 });
+    expect(failureDetail({ ok: false, error: 'slow', timeout: true }).reason).toBe('Timed out');
+    let calls = 0;
+    const fetchText = async () => {
+      calls += 1;
+      return { ok: false as const, error: 'The site refused the reader.', httpStatus: 403, blocked: true };
+    };
+    let sources: NewsSource[] = [{ id: 'park', name: 'Park Record', type: 'rss', url: 'https://www.parkrecord.com/feed/', kind: 'outlet', enabled: true }];
+    for (let i = 0; i < 3; i += 1) {
+      sources = (await collectNews({ now: NOW, window: '6h', recheck: true, sources, fetchText })).sources;
+    }
+    expect(sources[0].enabled).toBe(false);
+    expect(sources[0].failures).toBe(3);
+    expect(sources[0].reason).toContain('Blocked (403)');
+    calls = 0;
+    const again = await collectNews({ now: NOW, window: '6h', sources, fetchText });
+    expect(calls).toBe(0);
+    expect(again.reports[0]).toMatchObject({ status: 'disabled', httpStatus: 403 });
+  });
+});
+
+describe('web search results', () => {
+  it('drops a row whose URL was not in the search, whose time is missing, or that is older than the window', () => {
+    const allowed = ['https://www.ksl.com/article/1/storm', 'https://ksl.com/article/2/old'];
+    const items = acceptSearchItems([
+      { title: 'Valley storm warning', url: 'https://ksl.com/article/1/storm?utm=1', outlet: 'KSL', published: '2026-11-14T18:30:00Z', summary: 'A storm hit Salt Lake.', location: 'Salt Lake City', category: 'Weather' },
+      { title: 'Salt Lake reacts to the vote', url: 'https://ksl.com/article/3/reaction', outlet: 'KSL', published: '2026-11-14T18:40:00Z', summary: 'Leaders commented from home.', location: 'New York', category: 'Politics' },
+      { title: 'Made up', url: 'https://example.com/nope', published: '2026-11-14T18:30:00Z', summary: 'No.' },
+      { title: 'No time', url: 'https://ksl.com/article/1/storm', published: null, summary: 'Missing.' },
+      { title: 'Date only', url: 'https://ksl.com/article/1/storm', published: '2026-11-14', summary: 'Midnight.' },
+      { title: 'Old storm warning', url: 'https://www.ksl.com/article/2/old', published: '2026-11-13T00:00:00Z', summary: 'Old.' },
+    ], allowed, 6, NOW);
+    expect(items).toHaveLength(1);
+    expect(items[0].title).toBe('Valley storm warning');
+    expect(items[0].url).toContain('ksl.com/article/1/storm');
+  });
+
+  it('groups the same story by URL and by a similar headline', () => {
+    const groups = groupStories([
+      { title: 'Salt Lake council delays the vote', url: 'https://www.ksl.com/a' },
+      { title: 'Salt Lake council delays the vote tonight', url: 'https://www.sltrib.com/b' },
+      { title: 'Freeway closes after the crash', url: 'https://kutv.com/c' },
+      { title: 'Freeway closes after the crash', url: 'https://www.ksl.com/a' },
+    ]);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toHaveLength(3);
   });
 });

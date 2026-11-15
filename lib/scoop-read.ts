@@ -294,9 +294,9 @@ export type PublicBody = { status: number; url: string; type: string; text: stri
 /** Fetch a public text document. Every hop is resolved again and rejected if it is private. */
 export async function fetchPublicBody(
   input: string,
-  opts?: { headers?: Record<string, string>; timeoutMs?: number },
+  opts?: { headers?: Record<string, string>; timeoutMs?: number; includeStatus?: boolean },
   deps?: { lookup?: LookupFn; request?: RequestFn }
-): Promise<PublicBody | LinkError> {
+): Promise<PublicBody | (LinkError & { status?: number; challenge?: boolean })> {
   const parsed = parsePublicUrl(input);
   if (!parsed.ok) return { error: parsed.error };
   const resolve = deps?.lookup || nodeLookup();
@@ -322,7 +322,13 @@ export async function fetchPublicBody(
         current = hop.url;
         continue;
       }
-      if (res.status < 200 || res.status >= 300) return loadFailure(res.status);
+      if (res.status < 200 || res.status >= 300) {
+        const failure = loadFailure(res.status);
+        if (!opts?.includeStatus) return failure;
+        const sample = res.body.toString('utf8').slice(0, 5000);
+        const challenge = /just a moment|cf-browser-verification|cf-challenge|attention required|cdn-cgi\/challenge/i.test(sample);
+        return { ...failure, status: res.status, challenge };
+      }
       const type = header(res.headers, 'content-type').split(';')[0].trim().toLowerCase();
       if (type && !/text\/|xml|json|javascript/.test(type)) {
         return { error: 'unreadable', reason: 'The source did not return text.' };

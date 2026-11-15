@@ -19,8 +19,9 @@ const HAIKU = process.env.SCOOP_NEWS_HAIKU?.trim() || 'claude-haiku-5-5';
 const SONNET = process.env.SCOOP_NEWS_SONNET?.trim() || 'claude-sonnet-5-5';
 // Stay inside Vercel's 60s limit: a killed function returns a bare 504 and the page can't say why.
 const DEADLINE_MS = 48_000;
+const LIST_MS = 6 * 60 * 60 * 1000;
+const REFRESH_MS = 15 * 60 * 1000;
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const CACHE_MS = 10 * 60 * 1000;
 
 type CacheRow = { exp: number; items: SearchHit[]; groups: SearchHit[][]; updatedAt: string };
 const fresh = new Map<number, CacheRow>();
@@ -34,10 +35,34 @@ function nextMidnight(now: Date): string {
   return new Date(denverMidnight(denverDay(now)).getTime() + 24 * 60 * 60 * 1000).toISOString();
 }
 
-function hoursOf(value: unknown): 3 | 6 | 12 | 24 {
-  const hours = Number(value);
-  if (hours === 3 || hours === 6 || hours === 12 || hours === 24) return hours;
-  return 6;
+function storyList(saved: Record<string, unknown>): { items: SearchHit[]; updatedAt: string; attemptedAt: string } | null {
+  const by = saved.byHours && typeof saved.byHours === 'object' ? saved.byHours as Record<string, unknown> : {};
+  const row = by['6'] && typeof by['6'] === 'object' ? by['6'] as Record<string, unknown> : null;
+  const items = row && Array.isArray(row.items) ? row.items.filter((item): item is SearchHit => {
+    if (!item || typeof item !== 'object') return false;
+    const hit = item as SearchHit;
+    return typeof hit.title === 'string' && typeof hit.url === 'string' && hit.title.length > 0 && hit.url.length > 0;
+  }) : [];
+  if (!items.length) return null;
+  const updatedAt = typeof row?.updatedAt === 'string' ? row.updatedAt : '';
+  const attemptedAt = typeof row?.attemptedAt === 'string' ? row.attemptedAt : updatedAt;
+  return { items, updatedAt, attemptedAt };
+}
+
+function storyResponse(items: SearchHit[], times: { updatedAt: string; attemptedAt: string }, modelName: string, extra: Record<string, unknown> = {}) {
+  const attempt = Date.parse(times.attemptedAt);
+  const refreshAt = Number.isFinite(attempt) ? new Date(attempt + REFRESH_MS).toISOString() : null;
+  return NextResponse.json({
+    items,
+    groups: groupStories(items),
+    updatedAt: times.updatedAt || null,
+    refreshAt,
+    cached: true,
+    limited: false,
+    updatesAt: null,
+    model: modelName,
+    ...extra,
+  });
 }
 
 type SearchPage = { url: string; title: string; pageAge: string };
@@ -106,7 +131,7 @@ export async function POST(req: NextRequest) {
   if (denied) return denied;
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { body = {}; }
-  const hours = hoursOf(body.hours);
+  const hours = 6;
   const refresh = body.refresh === true;
   const now = new Date();
   const day = denverDay(now);
@@ -122,10 +147,12 @@ export async function POST(req: NextRequest) {
   const modelName = record?.newsSearchModel === 'sonnet' ? 'sonnet' : 'haiku';
   const model = modelName === 'sonnet' ? SONNET : HAIKU;
   const limit = Math.min(500, Math.max(1, Number(record?.newsSearchLimit) || Number(process.env.SCOOP_NEWS_SEARCH_DAILY) || 60));
+  const stored = storyList(saved);
+  const updatedAge = stored ? Date.now() - Date.parse(stored.updatedAt) : Infinity;
+  const attemptAge = stored ? Date.now() - Date.parse(stored.attemptedAt) : Infinity;
+  if (stored && !refresh && updatedAge < LIST_MS) return storyResponse(stored.items, stored, modelName);
+  if (stored && refresh && attemptAge < REFRESH_MS) return storyResponse(stored.items, stored, modelName);
   const cached = fresh.get(hours);
-  if (!refresh && cached && cached.exp > Date.now()) {
-    return NextResponse.json({ ...cached, cached: true, limited: false, updatesAt: null, model: modelName });
-  }
   if (budget.count >= limit) {
     const stored = cached?.items?.length ? cached.items : budget.items;
     const groups = groupStories(stored);
@@ -210,7 +237,8 @@ export async function POST(req: NextRequest) {
     console.error('[scoop news-search] request failed', err);
   }
   if (!ran || (searches < 1 && !text.includes('['))) {
-    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: modelName, searched: searches > 0, reason: failure || 'The model answered without searching. Try again.' });
+    if (stored) return storyResponse(stored.items, stored, modelName);
+    return NextResponse.json({ items: [], groups: [], updatedAt: null, refreshAt: null, cached: false, limited: false, updatesAt: null, model: modelName, reason: failure || 'The model answered without searching. Try again.' });
   }
 
   let parsed: unknown = [];
@@ -229,10 +257,11 @@ export async function POST(req: NextRequest) {
   const items = acceptSearchItems(rows, urls, hours, now, { ages, stats });
   const found = { searches, links: new Set(urls).size, ...stats };
   console.log('[scoop news-search]', JSON.stringify(found));
-  const groups = groupStories(items);
-  const updatedAt = now.toISOString();
-  budget = { day, count: budget.count + 1, updatedAt, items: items.length ? items : budget.items };
-  if (items.length) fresh.set(hours, { exp: Date.now() + CACHE_MS, items, groups, updatedAt });
+  const keep = items.length ? items : (stored?.items || []);
+  const updatedAt = items.length ? now.toISOString() : (stored?.updatedAt || now.toISOString());
+  const attemptedAt = now.toISOString();
+  budget = { day, count: budget.count + 1, updatedAt, items: keep };
+  if (keep.length) fresh.set(hours, { exp: Date.now() + LIST_MS, items: keep, groups: groupStories(keep), updatedAt });
   try {
     const base = record && typeof record === 'object' ? { ...record } : {};
     const previous = saved.byHours && typeof saved.byHours === 'object' ? saved.byHours as Record<string, unknown> : {};
@@ -240,22 +269,8 @@ export async function POST(req: NextRequest) {
       ...base,
       newsSearchDomains: domains,
       newsSearchModel: modelName,
-      newsSearch: { day, count: budget.count, updatedAt, byHours: { ...previous, [String(hours)]: { updatedAt, items } } },
+      newsSearch: { day, count: budget.count, updatedAt, byHours: { ...previous, '6': { updatedAt, attemptedAt, items: keep } } },
     });
   } catch { /* the in-memory count still limits this process */ }
-  return NextResponse.json({
-    items, groups, updatedAt, cached: false, limited: false, updatesAt: null, model: modelName, found,
-    reason: items.length ? undefined : explainEmpty(found, hours),
-  });
-}
-
-function explainEmpty(f: { searches: number; links: number; returned: number; noDate: number; tooOld: number; notUtah: number; notInResults: number }, hours: number): string {
-  if (!f.links) return 'Claude searched but the search sites returned nothing. Check the Search sites list in Settings.';
-  const parts = [
-    f.tooOld && `${f.tooOld} older than ${hours}h`,
-    f.noDate && `${f.noDate} with no date`,
-    f.notUtah && `${f.notUtah} not Utah stories`,
-    f.notInResults && `${f.notInResults} with unverified links`,
-  ].filter(Boolean);
-  return `Claude found ${f.links} links in ${f.searches} search${f.searches === 1 ? '' : 'es'}, but none passed: ${parts.join(', ') || 'no stories were returned'}. Try 24h.`;
+  return storyResponse(keep, { updatedAt, attemptedAt }, modelName, { cached: false });
 }

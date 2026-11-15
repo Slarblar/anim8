@@ -400,23 +400,21 @@ try{if(window.self!==window.top)document.documentElement.setAttribute('data-embe
   body[data-workspace=creator] .export-main{flex-direction:column;align-items:stretch}
   body[data-workspace=creator] .export-main .btn{width:100%}
 }
-.local-news{margin-top:16px}
-.local-news summary{cursor:pointer;font-size:12px;font-weight:700}
-.news-windows{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
-.news-windows button,.news-refresh{border:1px solid var(--c-line,#dfdfd5);background:#f4f3ee;color:#151616;border-radius:6px;min-height:32px;padding:0 10px;font-size:12px;font-weight:700;cursor:pointer}
-.news-windows button[aria-pressed=true]{background:#272827;color:#fff;border-color:#272827}
-.news-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
-.news-bar .meta{font-size:11px;color:#8a8a7e}
-.news-item{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--c-line,#e4e4dc);background:transparent;padding:8px 0;cursor:pointer;color:inherit}
-.news-item b{display:block;font-size:13px;line-height:1.35}
-.news-item small,.news-draft{display:block;margin-top:2px;color:#8a8a7e;font-size:11px}
-.news-draft{font-weight:700}
+.story-picks{margin-top:18px}
+.story-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.story-head h2{margin:0;font-size:13px;letter-spacing:0}
+.story-picks .note{margin:6px 0 0}
+.story-refresh{border:1px solid var(--c-line,#dfdfd5);background:#f4f3ee;color:#151616;border-radius:999px;min-height:32px;padding:0 12px;font-size:12px;font-weight:650;cursor:pointer}
+.story-refresh[disabled]{opacity:.45;cursor:default}
+.story-options{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.story-option{display:block;width:100%;text-align:left;border:1px solid var(--c-line,#e4e4dc);background:transparent;border-radius:10px;padding:12px 14px;cursor:pointer;color:inherit}
+.story-option b{display:block;font-size:14px;line-height:1.35;font-weight:650}
+.story-option small{display:block;margin-top:4px;color:#8a8a7e;font-size:12px}
 .news-source{padding:8px 0;border-top:1px solid var(--line,#e4e4dc)}
 .news-source.failed{background:#fff6f4;border:1px solid #e7c7c0;border-radius:6px;padding:8px 10px;margin-top:8px}
-html[data-night] .news-windows button,html[data-night] .news-refresh{background:#1d1d1f;color:#efeee9;border-color:#3a3a3c}
-html[data-night] .news-windows button[aria-pressed=true]{background:#efeee9;color:#151616;border-color:#efeee9}
-html[data-night] .news-item{color:#efeee9;border-color:#3a3a3c}
-html[data-night] .news-item small,html[data-night] .news-draft,html[data-night] .news-bar .meta{color:#a09d95}
+html[data-night] .story-refresh{background:#1d1d1f;color:#efeee9;border-color:#3a3a3c}
+html[data-night] .story-option{color:#efeee9;border-color:#3a3a3c}
+html[data-night] .story-option small{color:#a09d95}
 html[data-night] .news-source.failed{background:#2a201e;border-color:#5c3a34;color:#efeee9}
 </style>
 </head>
@@ -769,7 +767,7 @@ const DEFAULT_OUTLETS=['sltrib.com','deseret.com','ksl.com','fox13now.com','kutv
 let BRAND_CATS=DEFAULT_CATS.map(c=>Object.assign({},c)), BRAND_TAGS=DEFAULT_TAGS.slice(), BRAND_OUTLETS=DEFAULT_OUTLETS.slice(), BRAND_EXTRA={}, NEWS_SOURCES=[];
 const NEWS_DOMAIN_SEED=['ksl.com','kutv.com','fox13now.com','sltrib.com','deseret.com','abc4.com','kslnewsradio.com','kuer.org','utahnewsdispatch.com','police.slc.gov','udot.utah.gov','weather.gov'];
 let NEWS_DOMAINS=NEWS_DOMAIN_SEED.slice(), NEWS_MODEL='haiku';
-let NEWS={items:[],held:[],search:[],reports:[],loading:false,searching:false,feedError:'',searchError:'',updatedAt:'',limited:false,updatesAt:'',limitNote:'',found:null};
+let NEWS={items:[],held:[],search:[],reports:[],loading:false,searching:false,feedError:'',searchError:'',updatedAt:'',refreshAt:'',limited:false,updatesAt:'',limitNote:'',found:null};
 
 /* ---------- local blobs (IndexedDB) ---------- */
 const localBlobs = new Map();
@@ -3709,51 +3707,45 @@ function newsHttpError(err, what){
   if(st) return what+' failed (HTTP '+st+').';
   return what+' did not respond.';
 }
-async function loadNews(refresh, attempt){
+function refreshWait(){
+  const at=Date.parse(NEWS.refreshAt||'');
+  if(!Number.isFinite(at)||at<=Date.now()) return 0;
+  return Math.max(1, Math.ceil((at-Date.now())/60000));
+}
+async function loadNews(refresh){
   if(Backend.mode!=='server') return;
-  NEWS.loading=true; NEWS.searching=true; NEWS.search=[]; NEWS.found=null; NEWS.feedError=''; NEWS.searchError='';
-  if(C.workspace==='creator'&&C.step===0) renderCreator();
+  if(refresh && refreshWait()) return;
   const win=C.newsWindow||'6h';
-  const hours={ '3h':3, '6h':6, '12h':12, '24h':24 }[win]||6;
+  NEWS.loading=true; NEWS.searching=!NEWS.search.length; NEWS.feedError=''; NEWS.searchError='';
+  if(C.workspace==='creator'&&C.step===0) renderCreator();
   const feed=api('/news?window='+encodeURIComponent(win)+(refresh?'&recheck=1':'')).then(data=>{
     NEWS.items=Array.isArray(data.items)?data.items:[];
     NEWS.held=Array.isArray(data.held)?data.held:[];
     NEWS.reports=Array.isArray(data.sources)?data.sources:[];
     if(Array.isArray(data.records)&&data.records.length&&data.records[0]&&data.records[0].url) NEWS_SOURCES=data.records;
     if(data.reason&&!NEWS.items.length) NEWS.feedError=data.reason;
-    if(C.workspace==='creator') renderCreator();
-  }).catch(err=>{ console.error('news feeds',err); NEWS.feedError='failed'; if(C.workspace==='creator') renderCreator(); });
-  const search=api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours,refresh:!!refresh})}).then(data=>{
-    NEWS.search=Array.isArray(data.items)?data.items:[];
-    NEWS.updatedAt=data.updatedAt||'';
-    NEWS.limited=!!data.limited;
-    NEWS.updatesAt=data.updatesAt||'';
-    NEWS.limitNote=data.limited?(data.reason||'The daily search limit is used.'):'';
-    NEWS.searchError=data.reason&&!NEWS.search.length&&!data.limited?data.reason:'';
-    NEWS.found=data.found||null;
+  }).catch(err=>{ console.error('news feeds',err); NEWS.feedError='failed'; });
+  const search=api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours:6,refresh:!!refresh})}).then(data=>{
+    if(Array.isArray(data.items)&&data.items.length) NEWS.search=data.items;
+    if(data.updatedAt) NEWS.updatedAt=data.updatedAt;
+    NEWS.refreshAt=data.refreshAt||'';
     NEWS.searching=false;
     if(C.workspace==='creator') renderCreator();
   }).catch(err=>{ console.error('news search',err); NEWS.searchError='failed'; NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
   await Promise.all([feed, search]);
   NEWS.loading=false; NEWS.searching=false;
-  if(!attempt && !newsRows().length && NEWS.searchError==='failed') return loadNews(refresh, true);
   if(C.workspace==='creator') renderCreator();
   if(S.tabL==='refs') renderLib();
 }
 function localNewsHTML(){
   if(typeof Backend==='undefined'||Backend.mode!=='server') return '';
-  const win=C.newsWindow||'6h';
-  const windows=[['3h','3h'],['6h','6h'],['12h','12h'],['24h','24h']];
-  const rows=newsRows();
-  const row=story=>`<button type="button" class="news-item" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc(story.outlet)}${story.at?' · '+esc(story.dayOnly?new Date(story.at).toLocaleDateString('en-US',{timeZone:'America/Denver',month:'short',day:'numeric'})+' (time not shown)':newsAgo(story.at)):''}</small><span class="news-draft">Draft from this</span></button>`;
-  const updated=NEWS.updatedAt?`Updated ${newsAgo(NEWS.updatedAt)}`:'';
+  const rows=newsRows().slice(0,8);
+  const row=story=>`<button type="button" class="story-option" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc([story.outlet, story.at?newsAgo(story.at):''].filter(Boolean).join(' · '))}</small></button>`;
+  const wait=refreshWait();
+  const label=NEWS.searching&&rows.length?'Refreshing…':wait?'Refresh in '+wait+' min':'Refresh';
   const searching=NEWS.searching&&!rows.length?'<p class="note">Finding stories…</p>':'';
   const empty=!NEWS.searching&&!rows.length?'<p class="note">No updates yet.</p>':'';
-  const f=NEWS.found;
-  const foundLine=!NEWS.searching&&!rows.length&&f&&f.links?`<p class="note">Searched ${f.searches}× · ${f.links} links · kept ${f.kept}${f.returned>f.kept?' ('+[f.tooOld&&f.tooOld+' too old',f.noDate&&f.noDate+' no date',f.notUtah&&f.notUtah+' not Utah',f.notInResults&&f.notInResults+' unverified'].filter(Boolean).join(', ')+')':''}</p>`:'';
-  const lead=rows.length?'<p class="note">Pick one and the post drafts from it.</p>':'';
-  const body=`${searching}${rows.map(row).join('')}${empty}${foundLine}`;
-  return `<details class="local-news" open><summary>Stories to post</summary>${lead}<div class="news-windows" role="group" aria-label="How recent">${windows.map(([id,label])=>`<button type="button" data-news-window="${id}" aria-pressed="${win===id}">${label}</button>`).join('')}</div><div class="news-bar"><button type="button" class="news-refresh" data-news-refresh>Refresh</button><span class="meta">${esc(updated)}</span></div>${body}</details>`;
+  return `<section class="story-picks"><div class="story-head"><h2>Stories to post</h2><button type="button" class="story-refresh" data-news-refresh ${wait?'disabled':''}>${label}</button></div><p class="note">From the last 6 hours.</p>${searching}${empty}<div class="story-options">${rows.map(row).join('')}</div></section>`;
 }
 function saveBrandLists(){
   if(!cap.db){ toast('Saving brand settings needs the team library.',true); return; }

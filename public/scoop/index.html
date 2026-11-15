@@ -3697,7 +3697,7 @@ function newsSourcesHTML(){
   }).join(''):'<p class="note">Sources appear here after the collector checks them.</p>';
   return `<div class="h">Latest local news</div><p class="note">${failed.length?failed.length+' source'+(failed.length===1?'':'s')+' failed and stay listed so the URL can be fixed.':'Failures stay listed with the reason.'}</p>${list}<label class="h">Search sites</label><textarea id="newsDomains" rows="6">${esc(NEWS_DOMAINS.join('\n'))}</textarea><label class="h">Search model</label><select id="newsModel"><option value="haiku"${NEWS_MODEL==='sonnet'?'':' selected'}>Haiku</option><option value="sonnet"${NEWS_MODEL==='sonnet'?' selected':''}>Sonnet</option></select><button class="btn" type="button" id="newsRecheck">Check sources again</button>`;
 }
-async function loadNews(refresh){
+async function loadNews(refresh, attempt){
   if(Backend.mode!=='server') return;
   NEWS.loading=true; NEWS.searching=true; NEWS.feedError=''; NEWS.searchError='';
   if(C.workspace==='creator'&&C.step===0) renderCreator();
@@ -3710,19 +3710,20 @@ async function loadNews(refresh){
     if(Array.isArray(data.records)&&data.records.length&&data.records[0]&&data.records[0].url) NEWS_SOURCES=data.records;
     if(data.reason&&!NEWS.items.length) NEWS.feedError=data.reason;
     if(C.workspace==='creator') renderCreator();
-  }).catch(()=>{ NEWS.feedError='Feeds could not be loaded.'; if(C.workspace==='creator') renderCreator(); });
+  }).catch(()=>{ NEWS.items=[]; NEWS.feedError='Feeds could not be loaded.'; if(C.workspace==='creator') renderCreator(); });
   const search=api('/news-search',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hours,refresh:!!refresh})}).then(data=>{
     NEWS.search=Array.isArray(data.items)?data.items:[];
-    NEWS.updatedAt=data.updatedAt||NEWS.updatedAt||'';
+    NEWS.updatedAt=data.updatedAt||'';
     NEWS.limited=!!data.limited;
     NEWS.updatesAt=data.updatesAt||'';
     NEWS.limitNote=data.limited?(data.reason||'The daily search limit is used.'):'';
-    if(data.reason&&!NEWS.search.length&&!data.limited) NEWS.searchError=data.reason;
+    NEWS.searchError=data.reason&&!NEWS.search.length&&!data.limited?data.reason:'';
     NEWS.searching=false;
     if(C.workspace==='creator') renderCreator();
-  }).catch(()=>{ NEWS.searchError='Search could not run.'; NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
+  }).catch(()=>{ NEWS.search=[]; NEWS.searchError='Search could not run.'; NEWS.searching=false; if(C.workspace==='creator') renderCreator(); });
   await Promise.all([feed, search]);
-  NEWS.loading=false;
+  NEWS.loading=false; NEWS.searching=false;
+  if(!attempt && !newsRows().length && (NEWS.searchError||NEWS.feedError)) return loadNews(refresh, true);
   if(C.workspace==='creator') renderCreator();
   if(S.tabL==='refs') renderLib();
 }
@@ -3731,14 +3732,13 @@ function localNewsHTML(){
   const win=C.newsWindow||'6h';
   const windows=[['3h','3h'],['6h','6h'],['12h','12h'],['24h','24h']];
   const rows=newsRows();
-  const feedsFailed=!!NEWS.feedError||((NEWS.reports||[]).length>0&&(NEWS.reports||[]).every(s=>s.status!=='ok')&&!(NEWS.items||[]).length);
-  const both=!NEWS.loading&&!rows.length&&!!NEWS.searchError&&feedsFailed;
   const row=story=>`<button type="button" class="news-item" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc(story.outlet)}${story.at?' · '+esc(newsAgo(story.at)):''}</small><span class="news-draft">Draft from this</span></button>`;
   const updated=NEWS.updatedAt?`Updated ${newsAgo(NEWS.updatedAt)}`:'';
   const limit=NEWS.limited&&NEWS.updatesAt?`<p class="note">${esc(NEWS.limitNote||'The daily search limit is used.')} It updates ${esc(new Date(NEWS.updatesAt).toLocaleString('en-US',{timeZone:'America/Denver',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}.</p>`:'';
   const searching=NEWS.searching?'<p class="note">Searching the local sites…</p>':'';
-  const searchNote=!NEWS.searching&&NEWS.searchError?`<p class="note">${esc(NEWS.searchError)}</p>`:'';
-  const body=NEWS.loading&&!rows.length?'<p class="note">Checking local news…</p>':both?'<p class="note">Couldn\'t load news right now. Paste a link or text instead.</p>':`${searching}${searchNote}${rows.map(row).join('')||(NEWS.loading?'':'<p class="note">Nothing in this window.</p>')}`;
+  const notes=[NEWS.searchError,NEWS.feedError].filter(Boolean).map(note=>`<p class="note">${esc(note)}</p>`).join('');
+  const empty=!NEWS.loading&&!rows.length?`<p class="note">${NEWS.searchError||NEWS.feedError?'Couldn\'t load news right now. Paste a link or text instead.':'Nothing in this window.'}</p>`:'';
+  const body=`${searching}${notes}${rows.map(row).join('')}${empty}`;
   return `<details class="local-news" open><summary>Latest local news</summary><div class="news-windows" role="group" aria-label="How recent">${windows.map(([id,label])=>`<button type="button" data-news-window="${id}" aria-pressed="${win===id}">${label}</button>`).join('')}</div><div class="news-bar"><button type="button" class="news-refresh" data-news-refresh>Refresh</button><span class="meta">${esc(updated)}</span></div>${limit}${body}</details>`;
 }
 function saveBrandLists(){

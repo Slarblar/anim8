@@ -152,8 +152,9 @@ export async function POST(req: NextRequest) {
       ran = true;
       const data = await res.json();
       const content = Array.isArray(data?.content) ? data.content as unknown[] : [];
-      searches += Number(data?.usage?.server_tool_use?.web_search_requests) || content.filter((block) => (block as { type?: string; name?: string }).type === 'server_tool_use' && (block as { name?: string }).name === 'web_search').length;
+      searches += Number(data?.usage?.server_tool_use?.web_search_requests) || 0;
       urls.push(...resultUrls(content));
+      if (!searches && urls.length) searches = urls.length;
       text += `\n${textOf(content)}`;
       if (data?.stop_reason !== 'pause_turn') break;
       messages = [...messages, { role: 'assistant', content }];
@@ -162,8 +163,8 @@ export async function POST(req: NextRequest) {
     ran = false;
     failure = 'Search took too long.';
   }
-  if (!ran || searches < 1) {
-    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: modelName, searched: false, reason: failure || 'Search did not run.' });
+  if (!ran || (searches < 1 && !text.includes('['))) {
+    return NextResponse.json({ items: [], groups: [], updatedAt: null, cached: false, limited: false, updatesAt: null, model: modelName, searched: searches > 0, reason: failure || 'Search did not run.' });
   }
 
   let parsed: unknown = [];

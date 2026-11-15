@@ -120,6 +120,51 @@ describe('readPublicArticle', () => {
     expect(looksLikePaywall('Subscribe to read the rest')).toBe(true);
   });
 
+  it('reads a public address when DNS also returns a private one', async () => {
+    let called = false;
+    const result = await readPublicArticle('https://www.sltrib.com/news/vote/', DEFAULT_OUTLETS, {
+      lookup: async () => [{ address: '10.0.0.8', family: 4 }, { address: '93.184.216.34', family: 4 }],
+      request: async () => {
+        called = true;
+        return { status: 200, headers: { 'content-type': 'text/html' }, body: Buffer.from(articleHtml) };
+      },
+    });
+    expect(called).toBe(true);
+    expect(result).toMatchObject({ title: 'Council delays the water vote' });
+  });
+
+  it('keeps a full article that mentions a subscription at the end', async () => {
+    const story = 'The city council delayed the water rate vote until June after residents asked for another hearing. '.repeat(8);
+    const html = `<!doctype html><html><head><title>Council delays the water vote</title></head><body><article><h1>Council delays the water vote</h1><p>${story}</p><p>Subscribe to continue reading our newsletters.</p></article></body></html>`;
+    const result = await readPublicArticle('https://www.sltrib.com/news/vote/', DEFAULT_OUTLETS, {
+      lookup: async () => [{ address: '93.184.216.34', family: 4 }],
+      request: async () => ({ status: 200, headers: { 'content-type': 'text/html' }, body: Buffer.from(html) }),
+    });
+    expect(result).toMatchObject({ title: 'Council delays the water vote' });
+    if ('text' in result) expect(result.text.length).toBeGreaterThan(300);
+  });
+
+  it('reads article text from structured data when the page shell is empty', async () => {
+    const body = 'The airport reopened two runways and told passengers to check their airline before leaving home. '.repeat(6);
+    const html = `<!doctype html><html><head><title>Flights resume</title>
+      <script type="application/ld+json">{"@type":"NewsArticle","headline":"Flights resume at the airport","articleBody":${JSON.stringify(body)},"datePublished":"2026-11-14"}</script>
+      </head><body><div id="app"></div></body></html>`;
+    const result = await readPublicArticle('https://www.ksl.com/article/1/flights', DEFAULT_OUTLETS, {
+      lookup: async () => [{ address: '93.184.216.34', family: 4 }],
+      request: async () => ({ status: 200, headers: { 'content-type': 'text/html' }, body: Buffer.from(html) }),
+    });
+    expect(result).toMatchObject({ title: 'Flights resume at the airport', isNewsOutlet: true });
+    if ('text' in result) expect(result.text).toContain('two runways');
+  });
+
+  it('says when a site refuses the reader', async () => {
+    const result = await readPublicArticle('https://www.nytimes.com/story', [], {
+      lookup: async () => [{ address: '93.184.216.34', family: 4 }],
+      request: async () => ({ status: 403, headers: { 'content-type': 'text/html' }, body: Buffer.from('no') }),
+    });
+    expect(result).toEqual({ error: 'failed', reason: 'The site refused the reader.' });
+  });
+
   it('refuses a file that is not html', async () => {
     const result = await readPublicArticle('https://cdn.example/photo.jpg', [], {
       lookup: async () => [{ address: '93.184.216.34', family: 4 }],

@@ -5236,23 +5236,35 @@ function creatorJobTick(){
     li.className=k<i?'done':k===i?'on':'';
   });
 }
+function linkReadMessage(e){
+  const paste=' Paste the article text instead.';
+  if(e?.error==='social') return 'Social posts can\'t be read automatically. Paste the post\'s text instead.';
+  if(e?.error==='blocked') return 'That link points at a private address, so it was not opened.'+paste;
+  if(e?.error==='invalid') return 'That doesn\'t look like a web link.'+paste;
+  if(e?.reason) return String(e.reason).replace(/\.$/,'')+'.'+paste;
+  if(e?.name==='TypeError'||String(e?.code||'').startsWith('http_')) return 'Couldn\'t reach the link reader. Refresh the studio and try the link again.';
+  return 'Couldn\'t read that link.'+paste;
+}
 async function creatorReadLink(){
   const url=onlyUrl(C.source);
   if(!url||C.busy) return;
-  if(Backend.mode!=='server'){ C.error=true; C.message='Reading a link needs the team website. Paste the article text instead.'; renderCreator(); return; }
   C.busy=true; C.reading=true; C.message=''; C.error=false; C.linkPreview=null; C.ctrl=new AbortController();
   creatorJobStart(['Opening the link','Reading the article']);
   C.job.waitHint='The page request is still open.';
   renderCreator();
   try{
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    if(Backend.mode!=='server'){
+      try{ await api('/store/brand',{signal:C.ctrl.signal}); Backend.mode='server'; cap.sample=draftApi; }
+      catch(e){ if(e?.name==='AbortError') throw e; C.error=true; C.message='Reading a link needs the team website. Paste the article text instead.'; return; }
+    }
     creatorJobStep(1);
     const out=await api('/read-link',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url}),signal:C.ctrl.signal});
     if(out&&out.error) throw out;
     C.linkPreview=out;
   }catch(e){
     if(e?.name==='AbortError'){ C.message='Reading cancelled.'; }
-    else { C.error=true; C.message=e?.error==='social'?'Social posts can\'t be read automatically. Paste the post\'s text instead.':e?.error==='unreadable'?'Couldn\'t read this page (paywall or it needs a browser). Paste the article text instead.':'Couldn\'t read that link. Paste the article text instead.'; }
+    else { C.error=true; C.message=linkReadMessage(e); }
   }finally{ creatorJobStop(); C.busy=false; C.reading=false; C.ctrl=null; renderCreator(); }
 }
 function useLinkText(){

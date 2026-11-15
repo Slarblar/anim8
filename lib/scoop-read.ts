@@ -39,6 +39,13 @@ export type Fetched = {
 type LookupFn = (hostname: string) => Promise<{ address: string; family: number }[]>;
 type RequestFn = (url: URL, signal: AbortSignal) => Promise<Fetched>;
 
+function loadFailure(status: number): LinkError {
+  if (status === 401 || status === 403) return { error: 'failed', reason: 'The site refused the reader.' };
+  if (status === 404) return { error: 'failed', reason: 'The page was not found.' };
+  if (status === 429) return { error: 'failed', reason: 'The site asked the reader to slow down.' };
+  return { error: 'failed', reason: 'The page did not load.' };
+}
+
 function header(headers: Fetched['headers'], name: string): string {
   const value = headers[name] ?? headers[name.toLowerCase()];
   return Array.isArray(value) ? value[0] || '' : value || '';
@@ -53,8 +60,9 @@ async function publicAddresses(hostname: string, resolve: LookupFn): Promise<str
   } catch {
     return { error: 'failed', reason: 'The address could not be resolved.' };
   }
-  if (!records.length || records.some((record) => isBlockedIp(record.address))) return { error: 'blocked' };
-  return records.map((record) => record.address);
+  const usable = records.map((record) => record.address).filter((address) => !isBlockedIp(address));
+  if (!usable.length) return { error: 'blocked' };
+  return usable;
 }
 
 function nodeLookup(): LookupFn {
@@ -75,39 +83,100 @@ function nodeRequest(): RequestFn {
         const done = typeof options === 'function' ? options : callback;
         const wantAll = typeof options === 'object' && !!options.all;
         lookup(hostname, { all: true, verbatim: true }).then((records) => {
-          if (!records.length || records.some((record) => isBlockedIp(record.address))) {
+          const usable = records.filter((record) => !isBlockedIp(record.address));
+          if (!usable.length) {
             done(Object.assign(new Error('blocked address'), { code: 'EBLOCKED' }), '', 4);
             return;
           }
-          if (wantAll) done(null, records);
-          else done(null, records[0].address, records[0].family);
+          if (wantAll) done(null, usable);
+          else done(null, usable[0].address, usable[0].family);
         }).catch((err) => done(err as NodeJS.ErrnoException, '', 4));
       },
       signal,
     }, (res) => {
       const chunks: Buffer[] = [];
       let size = 0;
-      const declared = Number(res.headers['content-length'] || 0);
-      if (declared > MAX_BYTES) {
-        res.destroy();
-        reject(Object.assign(new Error('too big'), { code: 'ESIZE' }));
-        return;
-      }
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve({ status: res.statusCode || 0, headers: res.headers, body: Buffer.concat(chunks) });
+      };
       res.on('data', (chunk: Buffer) => {
-        size += chunk.length;
-        if (size > MAX_BYTES) {
+        if (settled || size >= MAX_BYTES) return;
+        const slice = size + chunk.length > MAX_BYTES ? chunk.subarray(0, MAX_BYTES - size) : chunk;
+        chunks.push(slice);
+        size += slice.length;
+        if (size >= MAX_BYTES) {
           res.destroy();
-          reject(Object.assign(new Error('too big'), { code: 'ESIZE' }));
-          return;
+          finish();
         }
-        chunks.push(chunk);
       });
-      res.on('end', () => resolve({ status: res.statusCode || 0, headers: res.headers, body: Buffer.concat(chunks) }));
-      res.on('error', reject);
+      res.on('end', finish);
+      res.on('error', () => {
+        if (chunks.length) finish();
+        else reject(Object.assign(new Error('socket'), { code: 'ECONNRESET' }));
+      });
     });
     req.on('error', reject);
     req.end();
   });
+}
+
+function articleIsWall(text: string): boolean {
+  if (!looksLikePaywall(text)) return false;
+  if (text.length < 800) return true;
+  return looksLikePaywall(text.slice(0, 500));
+}
+
+function jsonLdBody(doc: Document): { title: string; body: string; published: string; byline: string } | null {
+  let best: { title: string; body: string; published: string; byline: string } | null = null;
+  for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+    let data: unknown;
+    try {
+      data = JSON.parse(script.textContent || '');
+    } catch {
+      continue;
+    }
+    const stack = Array.isArray(data) ? data.slice() : [data];
+    while (stack.length) {
+      const node = stack.pop();
+      if (!node || typeof node !== 'object') continue;
+      const row = node as Record<string, unknown>;
+      if (Array.isArray(row['@graph'])) stack.push(...row['@graph']);
+      const type = row['@type'];
+      const types = (Array.isArray(type) ? type : [type]).map((item) => String(item || ''));
+      const body = typeof row.articleBody === 'string' ? row.articleBody : '';
+      if (!types.some((item) => /article/i.test(item)) || body.trim().length < 300) continue;
+      if (best && best.body.length >= body.length) continue;
+      const author = row.author;
+      const byline = typeof author === 'string'
+        ? author
+        : author && typeof author === 'object' && !Array.isArray(author) && typeof (author as { name?: unknown }).name === 'string'
+          ? String((author as { name: string }).name)
+          : '';
+      best = {
+        title: typeof row.headline === 'string' ? row.headline : '',
+        body,
+        published: typeof row.datePublished === 'string' ? row.datePublished : '',
+        byline,
+      };
+    }
+  }
+  return best;
+}
+
+function visibleArticle(doc: Document): string {
+  const selectors = ['[itemprop="articleBody"]', 'article', 'main'];
+  let best = '';
+  for (const selector of selectors) {
+    for (const el of doc.querySelectorAll(selector)) {
+      const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (text.length > best.length) best = text;
+    }
+    if (best.length >= 300) break;
+  }
+  return best;
 }
 
 function meta(doc: Document, name: string): string {
@@ -129,18 +198,32 @@ function extract(html: string, pageUrl: string, outlets: string[]): Article | Li
   const ogType = meta(doc, 'og:type');
   const siteName = meta(doc, 'og:site_name') || host.replace(/^www\./, '');
   const isNewsOutlet = hostIsOutlet(host, outlets) || /^article\b/i.test(ogType);
-  const article = new Readability(doc).parse();
-  const text = cleanArticleText(article?.textContent || '');
-  const sample = `${article?.title || ''}\n${text}`;
-  if (looksLikePaywall(sample) || looksLikePaywall(meta(doc, 'og:description'))) {
+  const published = publishedFrom(doc);
+  const description = meta(doc, 'og:description');
+  const linked = jsonLdBody(doc);
+  const visible = visibleArticle(doc);
+  let article: ReturnType<Readability['parse']> = null;
+  try { article = new Readability(doc).parse(); } catch { article = null; }
+  let text = cleanArticleText(article?.textContent || '');
+  let title = article?.title || '';
+  let byline = article?.byline || '';
+  let when = published;
+  if (text.length < 300 && linked) {
+    text = cleanArticleText(linked.body);
+    title = linked.title || title;
+    byline = linked.byline || byline;
+    when = when || linked.published.slice(0, 40);
+  }
+  if (text.length < 300) text = cleanArticleText(visible);
+  if (articleIsWall(text) || (text.length < 800 && looksLikePaywall(description))) {
     return { error: 'unreadable', reason: 'The page looks like a paywall or login wall.' };
   }
   if (text.length < 300) return { error: 'unreadable', reason: 'The page did not include enough article text.' };
   return {
-    title: (article?.title || meta(doc, 'og:title') || '').replace(/\s+/g, ' ').trim().slice(0, 200),
+    title: (title || meta(doc, 'og:title') || '').replace(/\s+/g, ' ').trim().slice(0, 200),
     siteName: siteName.slice(0, 80),
-    byline: (article?.byline || '').replace(/\s+/g, ' ').trim().slice(0, 160),
-    published: publishedFrom(doc),
+    byline: byline.replace(/\s+/g, ' ').trim().slice(0, 160),
+    published: when,
     text,
     url: pageUrl,
     isNewsOutlet,
@@ -182,9 +265,9 @@ export async function readPublicArticle(
         current = hop.url;
         continue;
       }
-      if (res.status < 200 || res.status >= 300) return { error: 'failed', reason: 'The page did not load.' };
+      if (res.status < 200 || res.status >= 300) return loadFailure(res.status);
       const type = header(res.headers, 'content-type').split(';')[0].trim().toLowerCase();
-      if (type !== 'text/html') return { error: 'unreadable', reason: 'The page is not an article.' };
+      if (type !== 'text/html' && type !== 'application/xhtml+xml') return { error: 'unreadable', reason: 'The page is not an article.' };
       const charset = /charset=([^;\s]+)/i.exec(header(res.headers, 'content-type'))?.[1] || 'utf-8';
       let html = '';
       try {

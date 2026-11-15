@@ -6,6 +6,7 @@ import {
   denverMidnight,
   groupStories,
   normalizeSearchDomains,
+  urlKey,
   UTAH_STORY_RULE,
   type SearchHit,
 } from '@/lib/scoop-news';
@@ -39,18 +40,29 @@ function hoursOf(value: unknown): 3 | 6 | 12 | 24 {
   return 6;
 }
 
-function resultUrls(content: unknown[]): string[] {
+type SearchPage = { url: string; title: string; pageAge: string };
+
+function resultUrls(content: unknown[]): { urls: string[]; ages: Record<string, string>; pages: SearchPage[] } {
   const urls: string[] = [];
+  const ages: Record<string, string> = {};
+  const pages: SearchPage[] = [];
   const stack = [...content];
   while (stack.length) {
     const node = stack.pop();
     if (!node || typeof node !== 'object') continue;
     const row = node as Record<string, unknown>;
     if ((row.type === 'web_search_result' || row.type === 'web_search_result_location') && typeof row.url === 'string') urls.push(row.url);
+    if (row.type === 'web_search_result' && typeof row.url === 'string') {
+      const key = urlKey(row.url);
+      const pageAge = typeof row.page_age === 'string' ? row.page_age.trim() : '';
+      const title = typeof row.title === 'string' ? row.title.trim() : '';
+      if (key && pageAge) ages[key] = pageAge;
+      if (title) pages.push({ url: row.url, title, pageAge });
+    }
     if (Array.isArray(row.content)) stack.push(...row.content);
     if (Array.isArray(row.citations)) stack.push(...row.citations);
   }
-  return urls;
+  return { urls, ages, pages };
 }
 
 function textOf(content: unknown[]): string {
@@ -149,7 +161,7 @@ async function searchNews(req: NextRequest) {
     UTAH_STORY_RULE,
     'After the search, return JSON only, an array of objects with title, url, outlet, published, summary, location, and category.',
     'location is a Utah city, a Utah county, or Statewide.',
-    'published is an ISO-8601 time read from the article page. If the page does not show a time, set published to null.',
+    'published is the time on the page, as ISO-8601. If the page shows a date but no clock time, use YYYY-MM-DD. If the page shows no date, set published to null.',
     'summary is one sentence. Every url must be a URL that the web search returned.',
   ].join(' ');
   const tool = {
@@ -161,6 +173,8 @@ async function searchNews(req: NextRequest) {
   };
   let messages: unknown[] = [{ role: 'user', content: prompt }];
   const urls: string[] = [];
+  const ages: Record<string, string> = {};
+  const pages: SearchPage[] = [];
   let text = '';
   let ran = false;
   let searches = 0;
@@ -191,7 +205,10 @@ async function searchNews(req: NextRequest) {
       const data = await res.json();
       const content = Array.isArray(data?.content) ? data.content as unknown[] : [];
       searches += Number(data?.usage?.server_tool_use?.web_search_requests) || 0;
-      urls.push(...resultUrls(content));
+      const found = resultUrls(content);
+      urls.push(...found.urls);
+      Object.assign(ages, found.ages);
+      pages.push(...found.pages);
       if (!searches && urls.length) searches = urls.length;
       text += `\n${textOf(content)}`;
       if (data?.stop_reason !== 'pause_turn') break;
@@ -209,7 +226,18 @@ async function searchNews(req: NextRequest) {
 
   let parsed: unknown = [];
   try { parsed = readJson(text); } catch { parsed = []; }
-  const items = acceptSearchItems(parsed, urls, hours, now);
+  let items = acceptSearchItems(parsed, urls, hours, now, ages);
+  if (!items.length && pages.length) {
+    items = acceptSearchItems(pages.map((page) => ({
+      title: page.title,
+      url: page.url,
+      outlet: '',
+      published: page.pageAge || null,
+      summary: page.title,
+      location: '',
+      category: '',
+    })), urls, hours, now, ages);
+  }
   const groups = groupStories(items);
   const updatedAt = now.toISOString();
   budget = { day, count: budget.count + 1, updatedAt, items: items.length ? items : budget.items };

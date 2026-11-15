@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   acceptSearchItems,
+  parsePageAge,
   collectNews,
   denverMidnight,
   failureDetail,
@@ -236,6 +237,21 @@ describe('web search results', () => {
     expect(items).toHaveLength(1);
     expect(items[0].title).toBe('Valley storm warning');
     expect(items[0].url).toContain('ksl.com/article/1/storm');
+  });
+
+  it('keeps a story from the search page age when that age is inside the window', () => {
+    const allowed = ['https://ksl.com/article/9/today'];
+    const key = 'https://ksl.com/article/9/today';
+    const dated = acceptSearchItems([
+      { title: 'Salt Lake council meets', url: key, outlet: 'KSL', published: null, summary: 'The council met in Salt Lake.', location: 'Salt Lake City', category: 'News' },
+    ], allowed, 24, NOW, { [key]: '2026-11-14' });
+    expect(dated).toHaveLength(1);
+    expect(dated[0].title).toBe('Salt Lake council meets');
+    const recent = acceptSearchItems([
+      { title: 'Salt Lake council meets', url: key, outlet: 'KSL', published: null, summary: 'The council met in Salt Lake.', location: 'Salt Lake City', category: 'News' },
+    ], allowed, 6, NOW, { [key]: '2 hours ago' });
+    expect(recent).toHaveLength(1);
+    expect(parsePageAge('2 hours ago', NOW)).toBe(new Date(NOW.getTime() - 2 * 60 * 60 * 1000).toISOString());
   });
 
   it('groups the same story by URL and by a similar headline', () => {

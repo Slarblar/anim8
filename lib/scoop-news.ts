@@ -708,8 +708,19 @@ export type SearchHit = {
   category: string;
 };
 
-/** Keep search rows whose URL came from the tool, whose time was on the page, and that are inside the window. */
-export function acceptSearchItems(raw: unknown, allowedUrls: string[], hours: number, now: Date): SearchHit[] {
+/** A search page age such as "2 hours ago" becomes a time. A plain date is left for parseWhen. */
+export function parsePageAge(value: string, now: Date): string {
+  const raw = String(value || '').trim();
+  const rel = /^(\d+)\s*(minute|hour|day)s?\s+ago$/i.exec(raw);
+  if (!rel) return raw;
+  const n = Number(rel[1]);
+  const unit = rel[2].toLowerCase();
+  const ms = unit.startsWith('minute') ? n * 60 * 1000 : unit.startsWith('hour') ? n * 60 * 60 * 1000 : n * 24 * 60 * 60 * 1000;
+  return new Date(now.getTime() - ms).toISOString();
+}
+
+/** Keep search rows whose URL came from the tool and whose time falls inside the window. */
+export function acceptSearchItems(raw: unknown, allowedUrls: string[], hours: number, now: Date, pageAges?: Record<string, string>): SearchHit[] {
   if (!Array.isArray(raw)) return [];
   const allowed = new Set(allowedUrls.map(urlKey).filter(Boolean));
   const maxAge = hours * 60 * 60 * 1000;
@@ -719,8 +730,10 @@ export function acceptSearchItems(raw: unknown, allowedUrls: string[], hours: nu
     const url = String(row.url ?? '').trim();
     const key = urlKey(url);
     if (!key || !allowed.has(key)) continue;
-    const when = parseWhen(String(row.published ?? ''));
-    if (!when || when.dateOnly) continue;
+    const given = String(row.published ?? '').trim();
+    const stamped = given && given.toLowerCase() !== 'null' ? given : (pageAges?.[key] || '');
+    const when = parseWhen(parsePageAge(stamped, now));
+    if (!when) continue;
     const age = now.getTime() - when.at.getTime();
     if (age < -5 * 60 * 1000 || age > maxAge) continue;
     const title = String(row.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);

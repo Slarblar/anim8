@@ -100,7 +100,7 @@ function buildPrompt(excerpt: string, slots: Slot[], link: { title: string; site
 
 Slot guidance (match by slot name):
 - Headline: the single most newsworthy fact, active voice, present tense, specific. Use single quotes for any quoted phrase. ${headlineRule({ perLine: 24, lines: 3, cap: 0 })}
-- Dek / Sub: 1-2 sentences, at most 3 lines, adding who, where and the key detail the headline leaves out. You may say what police or an official said. Do not name the outlet. The Source line already credits them.
+- Dek / Sub: 1-2 sentences on 3 or 4 lines, adding who, where and the key detail the headline leaves out. You may say what police or an official said. Do not name the outlet. The Source line already credits them. Do not stop at one line when another fact fits. Never write a fifth line.
 - Category: one or two words, e.g. NEWS, BREAKING, UPDATE, COURTS, POLITICS, WEATHER, CRIME, BUSINESS, COMMUNITY.
 - Tags: at most 3 topic tags plus SLCSCOOP, four tags on the line. Example: "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
 - Location: the closest city and the state, always "Logan, UT". No county, no extra words. Do not copy the sample city in the slot example.
@@ -234,7 +234,7 @@ Text zones and the character budget at the target size:
 ${zoneText || 'No zones were sent.'}
 
 ${headlineRule(header)}
-Give 3 headline options. Each option's lines array is those graphic lines. The dek is at most 3 lines and does not repeat the headline. Do not name the outlet in the headline or the dek.
+Give 3 headline options. Each option's lines array is those graphic lines. The dek is 3 or 4 lines and does not repeat the headline. Do not stop at one line when another fact fits. Never write a fifth line. Do not name the outlet in the headline or the dek.
 Location is the closest city and the state, always written "Logan, UT". "Near Logan" means Logan, UT. Do not drop the comma or the UT. Use "Utah" only when the story names no city. Do not keep a sample city, the outlet's home city, or the city where an agency is based when the incident happened somewhere else. The city in the JSON example is the format only.
 ${pageCount > 1 ? `This template has ${pageCount} pages. Return a pages array of ${pageCount} items. Each item has its own headlines (3 options) and dek. Page 1 is the cover. Later pages continue the same story without repeating the cover headline.` : 'Return a single cover. pages may be omitted.'}
 

@@ -1593,8 +1593,55 @@ function roomBelow(L,layers,pageW,pageH){
   }
   return Math.max(0, limit-L.y-6);
 }
+function paperTopY(layers){
+  let top=0;
+  for(const o of layers||[]){
+    if(!o||o.type!=='shape'||!shownIn(layers,o)||(o.opacity??1)<=0.02) continue;
+    const name=String(o.name||'');
+    if(/paper/i.test(name)&&!/footer/i.test(name)) top=Math.max(top, o.y);
+  }
+  return top;
+}
+function paperLimitY(layers, pageH){
+  let bottom=(pageH||1350)-6;
+  for(const o of layers||[]){
+    if(!o||o.type!=='shape'||!shownIn(layers,o)||(o.opacity??1)<=0.02) continue;
+    const name=String(o.name||'');
+    if(/footer/i.test(name)) bottom=Math.min(bottom, o.y-4);
+    else if(/paper/i.test(name)) bottom=Math.min(bottom, o.y+o.h-4);
+  }
+  return bottom;
+}
+function cappedLay(lay, cap){
+  if(!lay||lay.lines.length<=cap) return lay;
+  const lines=lay.lines.slice(0,cap);
+  return Object.assign({}, lay, {lines, h:Math.max(lay.lineH, lines.length*lay.lineH)+2*(lay.padY||0)});
+}
+function layoutBodyInPaper(L,layers,pageW,pageH){
+  const ctx=textMeasureCtx(), cap=lineCap('body');
+  if(!designSize.has(L.id)) designSize.set(L.id, L.size);
+  const ceiling=designSize.get(L.id)||L.size;
+  const floor=sizeFloor(L,'body');
+  const edge=paperLimitY(layers, pageH);
+  const room=Math.max(0, Math.min(roomBelow(L,layers,pageW,pageH), edge-L.y));
+  const at=(size)=>cappedLay(measureAt(ctx,L,size), cap);
+  if(!(room>=8)) return at(Math.min(L.size||floor, ceiling));
+  let lo=floor, hi=Math.max(floor, ceiling), best=null;
+  for(let i=0;i<16;i++){
+    const mid=(lo+hi)/2;
+    if(at(mid).h<=room+0.5){ best=mid; lo=mid; } else hi=mid;
+  }
+  L.size=best==null?Math.round(floor*10)/10:(Math.abs(best-ceiling)<0.3?ceiling:Math.round(best*10)/10);
+  const lay=at(L.size);
+  if(lay.h>room+1){
+    const y=Math.max(paperTopY(layers)+8, Math.round(edge-lay.h));
+    if(y<L.y) L.y=y;
+  }
+  return lay;
+}
 function layoutWithinRoom(L,lay,layers,pageW,pageH){
   if(!L||!L.slot||!lay) return lay;
+  if(textRole(L)==='body') return layoutBodyInPaper(L,layers,pageW,pageH);
   const room=roomBelow(L,layers,pageW,pageH);
   if(!(room>=8)||lay.h<=room+1) return lay;
   const n=Math.max(1, Math.floor((room-2*(lay.padY||0))/Math.max(1,lay.lineH)));
@@ -1797,27 +1844,47 @@ function textBlockHeight(L){
 function seatSubheading(page){
   if(!page) return;
   const H=findRole(page.layers,'headline'), D=findRole(page.layers,'dek');
-  if(!H||!D) return;
+  if(!D) return;
   if(typeof D.homeY!=='number') D.homeY=D.y;
-  const lines=String(H.text||'').split('\n').map(s=>s.trim()).filter(Boolean).length;
-  const drop=lines>=3?Math.round((H.size||67)*(H.lh||0.94)):0;
-  const block=Math.max(8, textBlockHeight(D));
-  let limit=page.h-6;
   const start=page.layers.indexOf(D);
-  for(let i=start+1;i<page.layers.length;i++){
-    const o=page.layers[i];
-    if(!o||o.type==='text'||o.type==='folder'||o.type==='redact'||!shownIn(page.layers,o)||(o.opacity??1)<=0.02) continue;
-    if(o.w>=page.w*0.85&&o.h>=page.h*0.55&&o.y<page.h*0.45) continue;
-    if(!xHits(D,o)||o.y+o.h<=D.homeY+4) continue;
-    // A shape that already sits behind the resting subheading, such as a torn footer, covers anything pushed deeper into it.
-    const top=o.y<=D.homeY+4?D.homeY+block:o.y;
-    if(top<limit) limit=top;
-  }
   const base=D.clip?page.layers[clipBaseIndex(page.layers, start)]:null;
-  if(base) limit=Math.min(limit, base.y+base.h);
-  const maxY=limit-8-block;
-  const y=maxY>=D.homeY?Math.min(D.homeY+drop, maxY):D.homeY;
-  D.y=Math.round(y);
+  const edge=Math.min(paperLimitY(page.layers, page.h), base?base.y+base.h-4:page.h);
+  const top=Math.max(paperTopY(page.layers)+8, 0);
+  const ctx=textMeasureCtx();
+  if(!designSize.has(D.id)) designSize.set(D.id, D.size);
+  const floor=sizeFloor(D,'body');
+  const atDesign=cappedLay(measureAt(ctx,D,designSize.get(D.id)||D.size), lineCap('body'));
+  const keep=Math.min(lineCap('body'), Math.max(1, atDesign.lines.length));
+  const reserved=Math.max(keep*(floor*(D.lh||1)), cappedLay(measureAt(ctx,D,floor), lineCap('body')).h);
+  const floorLay={h:reserved};
+  const need=reserved+12;
+  if(H){
+    if(!designSize.has(H.id)) designSize.set(H.id, H.size);
+    const headFloor=sizeFloor(H,'display');
+    const ceiling=Math.min(designSize.get(H.id)||H.size, H.size>0?Math.max(H.size, headFloor):headFloor);
+    const leavesRoom=(size)=>{
+      const prev=H.size; H.size=size;
+      const bottom=H.y+textBlockHeight(H);
+      H.size=prev;
+      return bottom+need<=edge+0.5;
+    };
+    const capSize=H.size>0?H.size:ceiling;
+    if(!leavesRoom(capSize)){
+      let lo=headFloor, hi=Math.max(headFloor, capSize), best=headFloor;
+      for(let i=0;i<16;i++){
+        const mid=(lo+hi)/2;
+        if(leavesRoom(mid)){ best=mid; lo=mid; } else hi=mid;
+      }
+      H.size=Math.round(best*10)/10;
+    }
+  }
+  const gap=H?Math.max(8, Math.round((H.size||36)*0.22)):8;
+  const below=H?Math.round(H.y+textBlockHeight(H)+gap):D.homeY;
+  let y=Math.max(D.homeY, below);
+  // A lower seat keeps every body line by getting smaller. It does not drop lines to clear the footer.
+  if(y+floorLay.h>edge) y=Math.max(top, Math.round(edge-floorLay.h));
+  if(y<below && below+floorLay.h<=edge+0.5) y=below;
+  D.y=Math.round(Math.max(top, y));
 }
 function fitPage(page,opt){
   opt=opt||{};
@@ -6369,7 +6436,7 @@ document.addEventListener('click',async e=>{
   if(b.dataset.creatorPage!==undefined){clearTimeout(fillT);commit();goPage(+b.dataset.creatorPage);C.field='';renderCreator();return;}
   if(b.dataset.issueLayer){clearTimeout(fillT);commit();goPage(+b.dataset.issuePage);C.field=b.dataset.issueLayer;C.reviewTab=b.dataset.issueTab;C.drawer=true;renderCreator();if(C.reviewTab==='text')$('#c-text-'+C.field)?.focus();else $('#creatorPanel').scrollIntoView({block:'nearest'});return;}
   if(b.dataset.creatorPhoto){pendingSlot=b.dataset.creatorPhoto;$('#fileSlot').click();return;}
-  if(b.dataset.textSize){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){if(!designSize.has(L.id))designSize.set(L.id,L.size);L.size=clamp(Math.round((L.size+Number(b.dataset.textSize))*10)/10,8,250);if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);commit();scheduleRender();creatorRefreshInputs();}return;}
+  if(b.dataset.textSize){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){L.size=clamp(Math.round((L.size+Number(b.dataset.textSize))*10)/10,8,250);designSize.set(L.id,L.size);if(layerRole(L)==='headline'||layerRole(L)==='dek')seatSubheading(S.doc.pages[S.doc.page]);commit();scheduleRender();creatorRefreshInputs();}return;}
   if(b.dataset.textFit){const L=S.doc.layers.find(l=>l.id===b.dataset.textFit);if(L){const tight=fitFilledText([L],S.doc.layers,S.doc.w,S.doc.h);commit();scheduleRender();creatorRefreshInputs();if(tight.length)toast(tight[0]);}return;}
   if(b.dataset.catPick){pickCategory(b.dataset.catPick);return;}
   if(b.dataset.tagPick!=null){toggleTopicTag(b.dataset.tagPick);return;}

@@ -97,12 +97,29 @@ export function parsePublicUrl(input: string): LinkUrl {
   return { ok: true, url };
 }
 
+/** A fetched page sometimes starts with its own tags. Those lines are not the story. */
+function withoutPageTags(value: string): string {
+  const lines = value.split('\n');
+  let start = 0;
+  while (start < lines.length) {
+    const line = lines[start].trim();
+    if (!line || line === '---' || /^(canonical|meta-[\w:.-]+)\s*:/i.test(line)) {
+      start += 1;
+      continue;
+    }
+    break;
+  }
+  if (!start) return value;
+  const body = lines.slice(start).join('\n').trim();
+  return body.length >= 80 ? body : value;
+}
+
 export function cleanArticleText(value: string): string {
-  return value
+  return withoutPageTags(value
     .replace(/\u00a0/g, ' ')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/[ \t]{2,}/g, ' ')
-    .trim()
+    .trim())
     .slice(0, 15000);
 }

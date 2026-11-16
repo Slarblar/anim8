@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { guard, isBlobUrl } from '@/lib/scoop';
 import { brandFrom, normalizeDraft, readBrand, tagsLine, type CategoryRule } from '@/lib/scoop-brand';
 import { copyReport } from '@/lib/scoop-copycheck';
+import { parseModelJson } from '@/lib/scoop-json';
 import { incidentLocation } from '@/lib/scoop-news';
 
 /** SLC Scoop rewrites. It does not borrow another outlet's sentences. */
@@ -389,11 +390,21 @@ export async function POST(req: NextRequest) {
       if (!res.ok) return { status: res.status, raw, text: '', out: null as Record<string, unknown> | null };
       const message = JSON.parse(raw) as { content?: { type: string; text?: string }[] };
       const text = (message.content ?? []).map((block) => (block.type === 'text' ? block.text ?? '' : '')).join('');
-      const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
-      return { status: res.status, raw, text, out: JSON.parse(json) as Record<string, unknown> };
+      let out: Record<string, unknown> | null = null;
+      try { out = parseModelJson(text); }
+      catch (error) {
+        console.error('scoop draft json', error instanceof Error ? error.message : error);
+      }
+      return { status: res.status, raw, text, out };
     };
     const started = Date.now();
     let reply = await ask(45_000);
+    if (reply.status === 200 && !reply.out && Date.now() - started < 40_000) {
+      messages.push({ role: 'assistant', content: reply.text.slice(0, 8000) });
+      messages.push({ role: 'user', content: 'That reply was not valid JSON. Reply again with one JSON object only. Put line breaks inside strings as \\n. No markdown fence.' });
+      const again = await ask(20_000).catch(() => null);
+      if (again?.out) reply = again;
+    }
     if (reply.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
     if (!reply.out) {
       console.error('scoop draft failed', reply.status, reply.raw.slice(0, 500));

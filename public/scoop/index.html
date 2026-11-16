@@ -4404,8 +4404,20 @@ function zoneBudgets(page){
     return {role:z.role,x:Math.round(z.x),y:Math.round(z.y),w:Math.round(z.w),h:Math.round(z.h),perLine:budget.perLine,maxLines:limits.maxLines,minSize:limits.min,maxSize:limits.max};
   });
 }
+function articleFromDump(text){
+  const lines=String(text||'').replace(/\r\n/g,'\n').split('\n');
+  let start=0;
+  while(start<lines.length){
+    const line=lines[start].trim();
+    if(!line||line==='---'||/^(canonical|meta-[\w:.-]+)\s*:/i.test(line)){ start++; continue; }
+    break;
+  }
+  if(!start) return String(text||'');
+  const body=lines.slice(start).join('\n').trim();
+  return body.length>=80?body:String(text||'');
+}
 function aiDraftBody(excerpt,flags){
-  const body={excerpt:String(excerpt||'').slice(0,12000), followUp:!!(flags&&flags.followUp), correction:!!(flags&&flags.correction), pageCount:S.doc.pages.length,
+  const body={excerpt:articleFromDump(excerpt).slice(0,12000), followUp:!!(flags&&flags.followUp), correction:!!(flags&&flags.correction), pageCount:S.doc.pages.length,
     zones:zoneBudgets(S.doc.pages[0]), categories:BRAND_CATS, tags:BRAND_TAGS, voice:voicePayload(), layoutRefs:layoutRefsForDraft(),
     slots:S.doc.pages.flatMap((p,i)=>p.layers.filter(l=>l.slot&&l.type==='text').map(l=>({...slotBrief(l),slot:S.doc.pages.length>1?`Page ${i+1} ${l.slot}`:l.slot})))};
   if(C.link&&C.link.siteName) body.link={title:C.link.title||'',siteName:C.link.siteName,published:C.link.published||''};
@@ -6070,7 +6082,7 @@ async function creatorReadLink(){
 async function draftAnyway(){ useLinkText(); await creatorCreatePost(); }
 function useLinkText(){
   const a=C.linkPreview; if(!a||!a.text) return;
-  C.source=a.text; C.link={url:a.url,title:a.title||'',siteName:a.siteName||'',published:a.published||'',isNewsOutlet:!!a.isNewsOutlet};
+  C.source=articleFromDump(a.text); C.link={url:a.url,title:a.title||'',siteName:a.siteName||'',published:a.published||'',isNewsOutlet:!!a.isNewsOutlet};
   C.linkPreview=null; C.generated=false; C.message=''; C.error=false;
   creditSourceSlot(); commit(); creatorPersist(); renderCreator(); $('#creatorSource')?.focus();
 }
@@ -6087,6 +6099,11 @@ async function creatorCreatePost(){
   const parsed=C.inputMode==='final'?parseTeamCopy(C.teamCopy):[];
   if(parsed.length>S.doc.pages.length){C.error=true;C.message=`Your copy has ${parsed.length} pages, but this template has ${S.doc.pages.length}. Choose a longer template or remove a page separator.`;renderCreator();return;}
   const ai=C.inputMode==='ai';
+  if(ai){
+    const story=articleFromDump(C.source);
+    if(story!==C.source) C.source=story;
+    if(C.source.trim().length<40){C.error=true;C.message='That paste is page metadata, not the story. Paste the article text.';renderCreator();$('#creatorSource')?.focus();return;}
+  }
   C.busy=true;C.message='';C.error=false;C.ctrl=new AbortController();
   let templateIds=null;
   creatorJobStart(ai?['Loading your template','Writing the post','Fitting the layout']:['Loading your template','Placing your copy']);

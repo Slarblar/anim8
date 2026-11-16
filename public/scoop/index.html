@@ -1824,6 +1824,10 @@ function fitPage(page,opt){
   // A template keeps its own layout. Zones move type only after someone edits them.
   if(!page.zonesCustom){
     const H=findRole(page.layers,'headline'), D=findRole(page.layers,'dek');
+    const cap=opt.reference&&opt.reference.measure&&opt.reference.measure.headline?+opt.reference.measure.headline.capHeight:0;
+    if(H&&!designSize.has(H.id)) designSize.set(H.id,H.size);
+    if(H&&cap>=36&&cap<=90) H.size=Math.round(cap);
+    else if(H) H.size=designSize.get(H.id);
     if(opt.headlineText!=null&&H) H.text=opt.headlineText;
     if(opt.dekText!=null&&D) D.text=opt.dekText;
     seatSubheading(page);
@@ -1881,9 +1885,11 @@ function fitLooseText(changed,layers,pageW,pageH){
   for(const L of changed){
     if(!L||L.type!=='text'||!L.slot||layerLocked(L)||!shownIn(layers,L)) continue;
     if(!designSize.has(L.id)) designSize.set(L.id,L.size);
-    else L.size=designSize.get(L.id);
+    const stored=designSize.get(L.id);
+    const design=L.size>0&&L.size<stored-0.5?L.size:stored;
+    L.size=design;
     if(!String(L.text||'').trim()) continue;
-    const role=textRole(L), cap=lineCap(role), floor=sizeFloor(L,role), design=designSize.get(L.id);
+    const role=textRole(L), cap=lineCap(role), floor=sizeFloor(L,role);
     const maxH=roomBelow(L,layers,pageW,pageH);
     if(!(maxH>=12)) continue;
     let best=design;
@@ -1906,7 +1912,8 @@ function fitLooseText(changed,layers,pageW,pageH){
 function fitFilledText(changed,layers,pageW,pageH){
   const page=(S.doc&&S.doc.pages||[]).find(p=>p.layers===layers)||{w:pageW,h:pageH,layers,zones:null,spacing:null};
   if(!page.w) page.w=pageW; if(!page.h) page.h=pageH;
-  return fitPage(page,{only:changed&&changed.length?changed:null}).notes.map(n=>n.message).filter(Boolean);
+  const ref=S.doc&&S.doc.ai&&S.doc.ai.referenceId?layoutRefById(S.doc.ai.referenceId):null;
+  return fitPage(page,{only:changed&&changed.length?changed:null,reference:ref}).notes.map(n=>n.message).filter(Boolean);
 }
 function tightNote(names){
   const clean=names.filter(Boolean);
@@ -4387,6 +4394,14 @@ function layoutRefsForDraft(){
     copy:r.copy||null, zones:r.zones||null, spacing:r.spacing||null, pageW:r.pageW||null, pageH:r.pageH||null
   }));
 }
+function layoutRefById(id){
+  const usable=r=>!!(r&&r.measure&&r.measure.headline&&+r.measure.headline.capHeight>=36&&+r.measure.headline.capHeight<=90);
+  const hit=id&&POSTS.find(r=>r.id===id);
+  if(usable(hit)) return hit;
+  const first=layoutRefsForDraft().find(usable);
+  if(!first) return null;
+  return POSTS.find(r=>r.id===first.id)||first;
+}
 function zoneBudgets(page){
   const Fit=window.ScoopFit; if(!Fit) return [];
   if(!page.zones||!page.zones.length) page.zones=defaultZones(page);
@@ -4473,7 +4488,7 @@ async function fitStoryPage(page,story,shared,ref){
 }
 async function applyAiDraft(out){
   const ids=layerIdSet(S.doc);
-  const ref=POSTS.find(r=>r.id===out.referenceId)||null;
+  const ref=layoutRefById(out.referenceId);
   const source=String(out.source||'').trim();
   const shared={category:out.category||'', tags:out.tags||tagsLine(out.topicTags||[])};
   if(out.location) shared.location=out.location;
@@ -4491,7 +4506,7 @@ async function applyAiDraft(out){
   }
   foldNewTextIntoTemplate(S.doc, ids);
   for(const p of S.doc.pages) retireStackedText(p);
-  S.doc.ai={category:out.category||'', categoryReason:out.categoryReason||'', topicTags:out.topicTags||[], suggestedTags:out.suggestedTags||[], headlines:(pageSpecs[S.doc.page]||pageSpecs[0]||{}).headlines||out.headlines||[], pages:pageSpecs, chosen:chosen[S.doc.page]||0, chosenByPage:chosen, referenceId:out.referenceId||'', article:String(out.article||''), copyWarnings:Array.isArray(out.copyWarnings)?out.copyWarnings:[]};
+  S.doc.ai={category:out.category||'', categoryReason:out.categoryReason||'', topicTags:out.topicTags||[], suggestedTags:out.suggestedTags||[], headlines:(pageSpecs[S.doc.page]||pageSpecs[0]||{}).headlines||out.headlines||[], pages:pageSpecs, chosen:chosen[S.doc.page]||0, chosenByPage:chosen, referenceId:(ref&&ref.id)||'', article:String(out.article||''), copyWarnings:Array.isArray(out.copyWarnings)?out.copyWarnings:[]};
   return notes;
 }
 function creatorChoiceHTML(){
@@ -4533,7 +4548,7 @@ async function applyAltHeadline(index){
   const spec=(ai.pages&&ai.pages[S.doc.page])||{headlines:ai.headlines||[],dek:''};
   const opt=(spec.headlines||ai.headlines||[])[index]; if(!opt||!opt.lines) return;
   const page=S.doc.pages[S.doc.page];
-  const ref=POSTS.find(r=>r.id===ai.referenceId)||null;
+  const ref=layoutRefById(ai.referenceId);
   const D=findRole(page.layers,'dek');
   await ensureFonts(page.layers);
   fitPage(page,{headlineText:opt.lines.join('\n'),preferred:opt.lines,dekText:D?D.text:'',reference:ref});
@@ -5967,6 +5982,7 @@ async function creatorChooseTemplate(id){
   if(C.generated&&previous.pages.length>next.pages.length){if(!await creatorConfirm('Use a shorter template?',`This layout has ${next.pages.length} page${next.pages.length===1?'':'s'}. Extra pages will leave this post; their content is retained if you switch back.`,'Change template'))return false;}
   previous.pages.forEach((p,i)=>{const bank=C.contentCache[i]||(C.contentCache[i]={});p.layers.filter(l=>l.slot&&(C.generated||l.type==='image')).forEach(l=>{bank[l.type+':'+creatorSlotKey(l.slot)]=l.type==='text'?{text:l.text}:{src:l.src,nw:l.nw,nh:l.nh};});});
   next.pages.forEach((p,i)=>{const bank=C.contentCache[i]||{};p.layers.forEach(l=>{if(!l.slot)return;const v=bank[l.type+':'+creatorSlotKey(l.slot)];if(l.type==='text'&&C.generated)l.text=v?v.text:'';else if(l.type==='image'&&v&&v.src)Object.assign(l,v,{zoom:1,fx:.5,fy:.5,fit:'cover'});});});
+  if(previous.ai) next.ai=previous.ai;
   loadDoc(next,{fresh:false});if(C.generated)for(const p of S.doc.pages){await ensureFonts(p.layers);fitFilledText(p.layers.filter(l=>l.type==='text'&&l.slot),p.layers,p.w,p.h);}
   localStorage.setItem('scoop-builder:preferred-template',id);C.field='';commit();saveDraft();creatorPersist();renderCreator();scheduleRender();return true;
 }

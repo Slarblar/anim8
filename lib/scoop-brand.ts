@@ -198,10 +198,36 @@ export type NormalizedDraft = {
   pages: { headlines: HeadlineOption[]; dek: string }[];
 };
 
-const HEADLINE_LINE = 23;
+const HEADLINE_LINE = 24;
 const HEADLINE_MAX_LINES = 3;
 
-/** Break a headline into at most 3 lines of 23 characters, counting spaces. */
+export type HeadlineGuide = { perLine: number; lines: number; cap: number };
+
+/** The saved layout references are the header setting: cap height, line count, and a full line. */
+export function headlineGuide(refs: { measure?: unknown }[]): HeadlineGuide {
+  const caps: number[] = [];
+  const counts: number[] = [];
+  const full: number[] = [];
+  for (const ref of refs) {
+    const measure = ref && ref.measure && typeof ref.measure === 'object' ? ref.measure as { headline?: { capHeight?: unknown; lineCount?: unknown; charsPerLine?: unknown } } : null;
+    const headline = measure?.headline;
+    if (!headline) continue;
+    const cap = Math.round(Number(headline.capHeight) || 0);
+    const lines = Math.round(Number(headline.lineCount) || 0);
+    const chars = Array.isArray(headline.charsPerLine) ? headline.charsPerLine.map((n) => Math.round(Number(n) || 0)).filter((n) => n >= 8 && n <= 40) : [];
+    if (cap >= 36 && cap <= 90) caps.push(cap);
+    if (lines >= 2 && lines <= 4) counts.push(lines);
+    if (chars.length) full.push(Math.max(...chars));
+  }
+  const mid = (values: number[], fallback: number) => {
+    if (!values.length) return fallback;
+    const sorted = values.slice().sort((a, b) => a - b);
+    return sorted[Math.floor((sorted.length - 1) / 2)];
+  };
+  return { perLine: mid(full, HEADLINE_LINE), lines: mid(counts, HEADLINE_MAX_LINES), cap: mid(caps, 0) };
+}
+
+/** Break a headline into at most 3 lines. A full line matches the reference posts. */
 function wrapHeadline(lines: string[]): string[] {
   const out: string[] = [];
   for (const raw of lines) {

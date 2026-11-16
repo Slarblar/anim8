@@ -754,7 +754,14 @@ html[data-night] #creator .field-select{
 #creator .badge-row{display:flex;align-items:center;gap:8px;margin:0 0 12px}
 #creator .badge-row .pick-label{margin:0}
 #creator .badge-select,#creator .tag-select{min-width:132px}
-#creator .tag-custom{height:36px;min-height:36px;width:148px;margin:0;padding:0 12px;border:1px solid var(--c-line);border-radius:8px;background:var(--c-soft);color:var(--c-ink);font:inherit;font-size:var(--type-sm);font-weight:700}
+#creator .tag-type{
+  display:inline-flex;align-items:center;box-sizing:border-box;
+  width:148px;min-width:120px;min-height:32px;margin:0;padding:6px 10px;
+  border:1px dashed var(--c-line);border-radius:7px;background:transparent;
+  color:var(--c-ink);font:inherit;font-size:11px;font-weight:700;letter-spacing:.02em;
+}
+#creator .tag-type::placeholder{color:var(--c-muted);font-weight:600}
+#creator .tag-picks .tag-type{order:-1}
 #creator :is(.cat-row,.tag-picks) .c-button{min-height:32px;padding:6px 10px;line-height:1.15}
 #creator .review-tabs .c-button{min-height:40px;padding:8px 12px;line-height:1;align-items:center}
 #creator .review-field textarea{min-height:144px;height:auto;padding:var(--space-3) var(--space-4);font-size:var(--type-body);line-height:1.5;resize:vertical}
@@ -1345,7 +1352,9 @@ const DEFAULT_CATS=[
   {id:'SPONSORED',description:'A paid or partner placement.',when:'Use only for a sponsored template.'},
   {id:'TIP',description:'A reader tip or call for information.',when:'Use when the post asks the public for help.'}
 ];
-const DEFAULT_TAGS=['UTAH','PUBLIC SAFETY','COMMUNITY','HEALTH CARE','NATIVE AMERICAN','COURTS','POLITICS','WEATHER','BUSINESS','EDUCATION','HOUSING','TRANSIT','ENVIRONMENT','ELECTIONS'];
+const DEFAULT_TAGS=['UTAH','PUBLIC SAFETY','COMMUNITY','HEALTH CARE','COURTS','POLITICS','WEATHER','BUSINESS','EDUCATION','HOUSING','TRANSIT','ENVIRONMENT','ELECTIONS'];
+const CHIP_HIDE_CATS=new Set(['BREAKING','NEWS','UPDATE','CORRECTION','SPONSORED']);
+const CHIP_HIDE_TAGS=new Set(['NATIVE AMERICAN']);
 const DEFAULT_OUTLETS=['sltrib.com','deseret.com','ksl.com','fox13now.com','kutv.com','abc4.com','kslnewsradio.com','kuer.org','utahnewsdispatch.com','parkrecord.com','townlift.com','upr.org','cityweekly.net'];
 let BRAND_CATS=DEFAULT_CATS.map(c=>Object.assign({},c)), BRAND_TAGS=DEFAULT_TAGS.slice(), BRAND_OUTLETS=DEFAULT_OUTLETS.slice(), BRAND_EXTRA={}, NEWS_SOURCES=[];
 const NEWS_DOMAIN_SEED=['ksl.com','kutv.com','fox13now.com','sltrib.com','deseret.com','abc4.com','kslnewsradio.com','kuer.org','utahnewsdispatch.com','police.slc.gov','udot.utah.gov','weather.gov'];
@@ -4634,15 +4643,17 @@ function creatorChoiceHTML(){
   const current=currentCategory(page);
   const tagsL=tagLineLayer(page);
   const selected=tagsL?parseTagList(tagsL.text):[];
+  const cats=BRAND_CATS.filter(c=>!CHIP_HIDE_CATS.has(c.id));
   const known=new Set(BRAND_TAGS.map(tagKey));
-  const suggested=(ai.suggestedTags||[]).map(tagKey).filter(t=>t&&t!=='SLCSCOOP'&&!known.has(t));
-  const extras=selected.filter(t=>t&&!known.has(t)&&!suggested.includes(t));
+  const suggested=(ai.suggestedTags||[]).map(tagKey).filter(t=>t&&t!=='SLCSCOOP'&&!known.has(t)&&!CHIP_HIDE_TAGS.has(t));
+  const extras=selected.filter(t=>t&&!known.has(t)&&!suggested.includes(t)&&!CHIP_HIDE_TAGS.has(t));
+  const tagList=BRAND_TAGS.map(tagKey).filter(t=>t&&!CHIP_HIDE_TAGS.has(t));
   const headlines=ai.headlines||[];
   const alts=headlines.map((h,i)=>({h,i})).filter(x=>x.i!==ai.chosen&&x.h&&x.h.lines);
   const note=(page.layers||[]).map(l=>l.type==='text'?fitNote(l,page):'').filter(Boolean)[0]||'';
   const tagButton=(t,suffix)=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)}${suffix||''}</button>`;
-  return `${badgeControlHTML()}<div class="pick-label">Category</div><div class="cat-row" role="group" aria-label="Category">${BRAND_CATS.map(c=>`<button type="button" class="c-button small" data-cat-pick="${esc(c.id)}" aria-pressed="${current===c.id}">${esc(c.id)}</button>`).join('')}<span class="cat-reason">${esc(ai.categoryReason||'')}</span></div>
-    <div class="pick-label">Tags</div><div class="tag-picks" role="group" aria-label="Tags">${BRAND_TAGS.map(t=>tagButton(tagKey(t))).join('')}${suggested.map(t=>tagButton(t,' · suggested')).join('')}${extras.map(t=>tagButton(t)).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
+  return `${badgeControlHTML()}<div class="pick-label">Category</div><div class="cat-row" role="group" aria-label="Category">${cats.map(c=>`<button type="button" class="c-button small" data-cat-pick="${esc(c.id)}" aria-pressed="${current===c.id}">${esc(c.id)}</button>`).join('')}</div>
+    <div class="pick-label">Tags</div><div class="tag-picks" role="group" aria-label="Tags"><input id="creatorTagType" class="tag-type" aria-label="Type a tag" maxlength="24" autocomplete="off" placeholder="Type a tag">${tagList.map(t=>tagButton(t)).join('')}${suggested.map(t=>tagButton(t,' · suggested')).join('')}${extras.map(t=>tagButton(t)).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
     ${alts.length?`<div class="alt-heads">${alts.map(x=>`<button type="button" class="c-button" data-alt-headline="${x.i}">Use: ${esc(x.h.lines.join(' / '))}</button>`).join('')}</div>`:''}
     ${note?`<p class="fit-note">${esc(note)}</p>`:''}`;
 }
@@ -4733,8 +4744,8 @@ function tagAddSelectHTML(){
   const page=S.doc.pages[S.doc.page];
   if(!tagLineLayer(page)) return '';
   const on=new Set(parseTagList(tagLineLayer(page).text));
-  const choices=[...new Set(BRAND_TAGS.map(tagKey).concat(((S.doc.ai&&S.doc.ai.suggestedTags)||[]).map(tagKey)))].filter(t=>t&&t!=='SLCSCOOP'&&!on.has(t));
-  return `<select id="creatorTagAdd" class="field-select tag-select" aria-label="Add a tag"><option value="">Add a tag</option>${choices.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')}<option value="__custom">Custom tag…</option></select>`;
+  const choices=[...new Set(BRAND_TAGS.map(tagKey).concat(((S.doc.ai&&S.doc.ai.suggestedTags)||[]).map(tagKey)))].filter(t=>t&&t!=='SLCSCOOP'&&!on.has(t)&&!CHIP_HIDE_TAGS.has(t));
+  return `<select id="creatorTagAdd" class="field-select tag-select" aria-label="Add a tag"><option value="">Add a tag</option>${choices.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')}</select>`;
 }
 function pickBadge(key){
   const page=S.doc.pages[S.doc.page];
@@ -4812,30 +4823,7 @@ function addTopicTag(tag){
 function onTagAdd(select){
   const value=select.value;
   select.value='';
-  if(!value) return;
-  if(value!=='__custom'){ addTopicTag(value); return; }
-  const input=document.createElement('input');
-  input.className='tag-custom';
-  input.placeholder='New tag';
-  input.maxLength=24;
-  input.setAttribute('aria-label','New tag');
-  select.hidden=true;
-  select.after(input);
-  input.focus();
-  let done=false;
-  const finish=save=>{
-    if(done) return;
-    done=true;
-    const name=input.value;
-    input.remove();
-    select.hidden=false;
-    if(save) addTopicTag(name);
-  };
-  input.addEventListener('keydown',ev=>{
-    if(ev.key==='Enter'){ ev.preventDefault(); finish(true); }
-    else if(ev.key==='Escape'){ ev.preventDefault(); finish(false); }
-  });
-  input.addEventListener('blur',()=>finish(true));
+  if(value) addTopicTag(value);
 }
 async function applyAltHeadline(index){
   const ai=S.doc.ai||{};
@@ -5878,7 +5866,7 @@ async function initBackend(){
     if(d){
       BRAND_EXTRA=Object.assign({},d); delete BRAND_EXTRA.swatches; delete BRAND_EXTRA.categories; delete BRAND_EXTRA.tags; delete BRAND_EXTRA.outlets; delete BRAND_EXTRA.newsSources; delete BRAND_EXTRA.newsSearchDomains; delete BRAND_EXTRA.newsSearchModel;
       if(Array.isArray(d.categories)&&d.categories.length) BRAND_CATS=d.categories.map(c=>({id:String(c.id||'').toUpperCase(),description:String(c.description||''),when:String(c.when||'')})).filter(c=>c.id);
-      if(Array.isArray(d.tags)&&d.tags.length) BRAND_TAGS=d.tags.map(t=>String(t).toUpperCase().trim()).filter(t=>t&&t!=='SLCSCOOP');
+      if(Array.isArray(d.tags)&&d.tags.length) BRAND_TAGS=d.tags.map(t=>String(t).toUpperCase().trim()).filter(t=>t&&t!=='SLCSCOOP'&&!CHIP_HIDE_TAGS.has(t));
       if(Array.isArray(d.outlets)){ const next=d.outlets.map(outletHost).filter(Boolean); if(next.length) BRAND_OUTLETS=[...new Set(next)].slice(0,80); }
       if(Array.isArray(d.newsSources)&&d.newsSources.length) NEWS_SOURCES=d.newsSources;
       if(Array.isArray(d.newsSearchDomains)&&d.newsSearchDomains.length) NEWS_DOMAINS=d.newsSearchDomains.map(outletHost).filter(Boolean).slice(0,30);
@@ -6706,6 +6694,7 @@ document.addEventListener('change',e=>{
 window.addEventListener('pagehide',()=>{if(!S.doc)return;clearTimeout(draftT);try{localStorage.setItem(C.workspace==='builder'?'scoop-builder:template-draft':'scoop-builder:draft',snap());creatorPersist();}catch(e){}});
 
 document.addEventListener('keydown',e=>{
+  if(e.target.id==='creatorTagType'&&e.key==='Enter'){ e.preventDefault(); const name=e.target.value; e.target.value=''; addTopicTag(name); return; }
   if(e.key!=='Tab')return;
   const modal=$('#modalRoot .modal');if(!modal)return;
   const nodes=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href]')].filter(el=>!el.hidden&&el.getClientRects().length);

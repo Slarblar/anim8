@@ -421,8 +421,15 @@ html[data-night] .preview-frame{background:#151616}
 .censor-strength{display:grid;grid-template-columns:80px minmax(0,1fr) 44px;gap:8px;align-items:center;font-size:11px}
 .censor-strength input{width:100%;accent-color:var(--c-red,#ED2224)}
 .censor-strength output{text-align:right;font-variant-numeric:tabular-nums}
+#creator .preview-frame canvas{cursor:pointer}
 #creator[data-step="2"][data-tab="photo"] #creatorCanvas{touch-action:none;cursor:grab}
 #creator[data-step="2"][data-tab="photo"][data-censor="on"] #creatorCanvas{cursor:crosshair}
+body[data-workspace=creator] .modal.post-review-modal{width:min(1080px,calc(100vw - 24px));height:min(calc(100dvh - 24px),1100px);max-height:calc(100dvh - 16px);padding:12px 12px 16px;gap:10px;overflow:hidden}
+.post-review-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none}
+.post-review-bar h2{margin:0;font-size:18px}
+.post-review-bar [data-close]{width:44px;height:44px;min-height:44px;padding:0;justify-content:center}
+.post-review{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#111;border-radius:8px;overflow:hidden}
+.post-review canvas{display:block;max-width:100%;max-height:100%}
 @media (max-width:520px){ .photo-actions{grid-template-columns:1fr} .censor-btn{min-width:0} }
 </style>
 <script>try{if(localStorage.getItem('scoop-studio:night')==='1')document.documentElement.setAttribute('data-night','')}catch(e){}
@@ -706,7 +713,9 @@ html:root body[data-workspace=creator] .modal :is(.c-input,.inp)::placeholder{co
 #creator .story-flags{margin:var(--space-3) 0;gap:0}
 #creator .story-flags label{min-height:var(--control-height);font-size:var(--type-xs);gap:var(--space-2);cursor:pointer}
 #creator .story-flags input{width:20px;height:20px;margin:0;accent-color:var(--c-action);flex:none}
-#creator :is(.copy-help,.review-source) summary{min-height:var(--control-height);padding:var(--space-3) var(--space-1);cursor:pointer}
+#creator :is(.copy-help,.review-source,.photo-fold) summary{min-height:var(--control-height);padding:var(--space-3) var(--space-1);cursor:pointer}
+#creator .photo-fold{margin-top:16px;border-top:1px solid var(--c-line)}
+#creator .photo-fold summary{font-size:12px;font-weight:700}
 #creator .review-source p{padding:var(--space-3);margin:var(--space-2) 0 0;background:var(--c-soft);color:var(--c-ink);border-radius:8px;overflow-wrap:anywhere}
 
 /* Existing empty, loading, warning and error messages remain verbatim. */
@@ -959,6 +968,7 @@ html:root .toast.err{background:var(--c-error-bg);color:var(--c-error);border:1p
   html:root #creator[data-step="2"][data-drawer="false"] .c-panel{padding-bottom:var(--space-2);flex:none}
   #creator[data-step="2"][data-drawer="false"] .drawer-top{margin-bottom:0}
   html:root body[data-workspace=creator] .scrim{padding:var(--space-2);align-items:end}
+  html:root body[data-workspace=creator] .scrim:has(.post-review-modal){align-items:center;padding:8px}
   html:root body[data-workspace=creator] .modal{padding:var(--space-4);padding-bottom:max(var(--space-4),env(safe-area-inset-bottom,0px));border-radius:16px;max-height:calc(100dvh - 16px)}
   html:root body[data-workspace=creator] .modal h2{font-size:var(--type-title)}
   html:root body[data-workspace=creator] .template-picker{padding:var(--space-4)!important}
@@ -1027,7 +1037,7 @@ body[data-workspace=creator] .modal.ref-modal #refProg:empty{display:none}
 /* ===== Mobile pass: Post Creator on phones (last rule set wins; JS hooks untouched) ===== */
 @media(max-width:700px){
   /* Touch targets: 44px minimum, inputs at 16px so iOS never zooms on focus */
-  #creator :is(.c-button,.inline-button,.drawer-toggle,.field-select,select,.tag-type,.review-tabs .c-button,.seg-pills .c-button){min-height:44px}
+  #creator :is(.c-button,.inline-button,.drawer-toggle,.field-select,select,.tag-type,.review-tabs .c-button,.seg-pills .c-button,.photo-fold summary){min-height:44px}
   #creator .c-button.small{min-height:44px;font-size:12px;padding:0 12px}
   #creator :is(input:not([type=range]):not([type=checkbox]):not([type=radio]),textarea,select){font-size:16px}
   #creator input[type=range]{min-height:32px}
@@ -1111,7 +1121,7 @@ body[data-workspace=creator] .modal.ref-modal #refProg:empty{display:none}
     <section class="creator-form" aria-label="Create your post"><div id="creatorPanel" class="c-panel"></div><div id="creatorActions" class="creator-actions"></div></section>
     <aside class="creator-preview" aria-label="Live post preview">
       <div class="preview-label"><span>Post preview</span><span class="live-label"><i></i> LIVE</span></div>
-      <div class="preview-frame"><canvas id="creatorCanvas" width="540" height="675" role="img" aria-label="Your post preview"></canvas></div>
+      <div class="preview-frame"><canvas id="creatorCanvas" width="540" height="675" role="img" aria-label="Your post preview. Click or tap to review it full size."></canvas></div>
       <div class="preview-page-nav" id="creatorPages" hidden></div>
       <div class="preview-caption"><b id="creatorTemplateName">Single post</b><span id="creatorDimensions">1080 × 1350 · FEED POST</span></div>
       <div class="preview-tools" id="creatorPreviewTools" hidden><button class="c-button small" data-jump-review="text">Edit text</button><button class="c-button small" data-jump-review="photo">Add / edit photo</button></div>
@@ -6095,7 +6105,8 @@ function creatorReviewHTML(){
   const photos=S.doc.layers.filter(l=>l.type==='image'&&l.slot&&shownIn(S.doc.layers,l));
   const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select></div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
   const censorBtn=`<button class="source-photo censor-btn" id="creatorCensor" aria-pressed="${!!C.censorMode}">${CI.censor}<span><b>${C.censorMode?'Drawing…':'Censor'}</b><small>${C.censorMode?'Drag on the preview':'Mosaic, blur or bar'}</small></span></button>`;
-  const photoPanel=(photos.map((P,i)=>`<div class="photo-card"><div class="photo-actions"><button class="source-photo" data-creator-photo="${P.id}">${CI.photo}<span><b>${P.src?'Replace':'Add'} ${esc(P.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${i===0?censorBtn:''}</div>${P.src?`<p class="c-note photo-hint">Drag the photo in the preview to move it. Scroll or pinch to zoom.</p><div class="photo-controls">${[['zoom','Zoom',.5,4,P.zoom||1],['fx','Left / right',0,1,P.fx??.5],['fy','Up / down',0,1,P.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${P.id}" aria-label="${esc(P.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${P.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${P.id}">Remove</button></div></div>`:''}</div>`).join('')||`<div class="photo-actions">${censorBtn}</div><p class="c-note">This template does not use a photo.</p>`)+censorListHTML();
+  const texture=photos.length?photos.map(P=>`<div class="photo-card"><button class="source-photo" data-creator-photo="${P.id}">${CI.photo}<span><b>${P.src?'Replace':'Add'} ${esc(P.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${P.src?`<p class="c-note photo-hint">Drag the photo in the preview to move it. Scroll or pinch to zoom.</p><div class="photo-controls">${[['zoom','Zoom',.5,4,P.zoom||1],['fx','Left / right',0,1,P.fx??.5],['fy','Up / down',0,1,P.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${P.id}" aria-label="${esc(P.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${P.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${P.id}">Remove</button></div></div>`:''}</div>`).join(''):'<p class="c-note">This template does not use a photo.</p>';
+  const photoPanel=`<div class="photo-card">${censorBtn}</div>${censorListHTML()}<details class="photo-fold"><summary>Photo</summary>${texture}</details>`;
   const panel=tab==='photo'?photoPanel:tab==='article'?articlePanel():textPanel;
   return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}" aria-label="${C.drawer?'Collapse quick edits':'Expand quick edits'}"><span></span><b>Quick edits</b><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
     ${panel}
@@ -6128,6 +6139,28 @@ function renderCreatorPreview(){
   const pages=$('#creatorPages');pages.hidden=S.doc.pages.length<2;
   pages.innerHTML=S.doc.pages.length<2?'':`<button class="c-button small" data-creator-page="${S.doc.page-1}" aria-label="Previous page" ${S.doc.page===0?'disabled':''}>←</button><span>Page ${S.doc.page+1} of ${S.doc.pages.length}</span><button class="c-button small" data-creator-page="${S.doc.page+1}" aria-label="Next page" ${S.doc.page===S.doc.pages.length-1?'disabled':''}>→</button>`;
   $('#creatorUndo').disabled=S.hi<=0;$('#creatorRedo').disabled=S.hi>=S.hist.length-1;
+  if($('#postReviewCanvas')) paintPostReview();
+}
+function paintPostReview(){
+  const cv=$('#postReviewCanvas'); if(!cv||!S.doc) return;
+  const page=S.doc.pages[S.doc.page];
+  const box=cv.parentElement.getBoundingClientRect();
+  const fit=Math.min(Math.max(80,box.width)/page.w, Math.max(80,box.height)/page.h);
+  const dpr=Math.min(window.devicePixelRatio||1, 2);
+  const scale=fit*dpr;
+  cv.width=Math.max(1,Math.round(page.w*scale));
+  cv.height=Math.max(1,Math.round(page.h*scale));
+  cv.style.width=Math.round(page.w*fit)+'px';
+  cv.style.height=Math.round(page.h*fit)+'px';
+  renderDoc(cv.getContext('2d'), page, {scale});
+}
+function openPostReview(){
+  if(!S.doc||C.workspace!=='creator'||$('#postReviewCanvas')) return;
+  const m=openModal(`<div class="post-review-bar"><h2>Review post</h2><button class="btn ghost" data-close aria-label="Close review">${CI.x}</button></div><div class="post-review"><canvas id="postReviewCanvas" role="img" aria-label="Full size post"></canvas></div>`);
+  m.querySelector('.modal').classList.add('post-review-modal');
+  const paint=()=>{ if(!$('#postReviewCanvas')){ window.removeEventListener('resize', paint); return; } paintPostReview(); };
+  requestAnimationFrame(()=>requestAnimationFrame(paint));
+  window.addEventListener('resize', paint);
 }
 /* ---------- Quick edits: move/zoom the photo and censor on the preview ---------- */
 const CENSOR_MODES=[['mosaic','Mosaic'],['blur','Blur'],['solid','Bar']];
@@ -6210,14 +6243,23 @@ function setPhotoZoom(L,z){ L.zoom=clamp(Math.round(z*100)/100,.5,4); }
     if(CZ.draw){ CZ.draw.x1=hover.x; CZ.draw.y1=hover.y; renderCreatorPreview(); return; }
     const d=CZ.drag; if(!d) return;
     const dx=hover.x-d.p0.x, dy=hover.y-d.p0.y;
+    if(Math.hypot(dx,dy)/((hover.k)||1)<=10 && !d.moved) return;
+    d.moved=true;
     if(d.kind==='pan'){ d.L.fx=clamp(d.s.fx-dx/d.t.x,0,1); d.L.fy=clamp(d.s.fy-dy/d.t.y,0,1); cv.style.cursor='grabbing'; }
     else if(d.kind==='move'){ d.L.x=Math.round(d.s.x+dx); d.L.y=Math.round(d.s.y+dy); }
     else { d.L.w=Math.max(24,Math.round(d.s.w+dx)); d.L.h=Math.max(24,Math.round(d.s.h+dy)); }
     d.moved=true; refresh();
   });
-  const end=e=>{
+  const end=(e,cancel)=>{
     if(!CZ.pts.has(e.pointerId)) return;
     CZ.pts.delete(e.pointerId);
+    const wasPinch=!!CZ.pinch, wasDraw=!!CZ.draw;
+    let tap=false;
+    if(!wasPinch&&!wasDraw&&!C.censorMode){
+      const p=cvPoint(e), d=CZ.drag, k=(p&&p.k)||1;
+      const moved=!!(d&&d.p0&&Math.hypot(p.x-d.p0.x, p.y-d.p0.y)/k>10);
+      tap=!moved;
+    }
     if(CZ.pinch){ if(CZ.pts.size<2){ CZ.pinch=null; CZ.drag=null; commit(); refresh(); } return; }
     if(CZ.draw){
       const d=CZ.draw; CZ.draw=null;
@@ -6227,8 +6269,14 @@ function setPhotoZoom(L,z){ L.zoom=clamp(Math.round(z*100)/100,.5,4); }
     }
     if(CZ.drag&&CZ.drag.moved){ commit(); }
     CZ.drag=null; refresh();
+    if(tap&&!cancel) openPostReview();
   };
-  cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+  cv.addEventListener('pointerup',e=>end(e,false)); cv.addEventListener('pointercancel',e=>end(e,true));
+  cv.addEventListener('click',e=>{
+    if(e.button!==0) return;
+    if(C.step===2&&C.reviewTab==='photo') return;
+    openPostReview();
+  });
   cv.addEventListener('wheel',e=>{
     if(!active()) return;
     const p=cvPoint(e), P=creatorPhotoAt(p.x,p.y); if(!P) return;

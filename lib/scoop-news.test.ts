@@ -5,6 +5,7 @@ import {
   denverMidnight,
   failureDetail,
   groupStories,
+  incidentLocation,
   isUtahStory,
   newsSitemapFromRobots,
   normalizeNewsSources,
@@ -290,5 +291,22 @@ describe('search result ages', () => {
       { title: 'Sandy council votes on budget', url: 'https://www.fox13now.com/news/sandy-budget', published: 'November 15, 2026', summary: 'Sandy City Council in Utah voted.', location: 'Sandy' },
     ], ['https://www.fox13now.com/news/sandy-budget'], 6, now);
     expect(items).toHaveLength(0);
+  });
+});
+
+describe('incident location', () => {
+  it('uses the place the incident happened, not a sample city', () => {
+    const story = 'Troopers rammed a suspected drunk driver to protect crash crews near Park City, KUTV reports.';
+    expect(incidentLocation(story, 'South Jordan, UT')).toBe('Park City');
+    expect(incidentLocation(story, '')).toBe('Park City');
+  });
+  it('keeps the city the model named when that is where it happened', () => {
+    const story = 'South Jordan officers drew their weapons during an arrest near 10600 South.';
+    expect(incidentLocation(story, 'South Jordan, UT')).toBe('South Jordan');
+  });
+  it('uses the closest city area, and Utah when no city is named', () => {
+    expect(incidentLocation('The Salt Lake County council met Tuesday.', 'Salt Lake City, UT')).toBe('Salt Lake');
+    expect(incidentLocation('Lawmakers at the Utah legislature passed the bill.', '')).toBe('Utah');
+    expect(incidentLocation('A short note with no place.', 'South Jordan, UT')).toBe('');
   });
 });

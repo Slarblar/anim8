@@ -159,6 +159,61 @@ function anchored(value: string, outlet: string): boolean {
   return mentionsUtahTag(value) || isUtahOutlet(outlet);
 }
 
+const COUNTY_AREA: Record<string, string> = {
+  'Salt Lake County': 'Salt Lake',
+  'Utah County': 'Utah Valley',
+  'Davis County': 'Davis',
+  'Weber County': 'Ogden',
+  'Cache County': 'Logan',
+  'Summit County': 'Park City',
+  'Wasatch County': 'Heber',
+  'Washington County': 'St. George',
+  'Tooele County': 'Tooele',
+  'Iron County': 'Cedar City',
+  'Box Elder County': 'Brigham City',
+};
+
+/** A short city-area label, such as "Park City". No state, and a county becomes its closest city area. */
+export function incidentLocation(text: string, suggested = ''): string {
+  const hay = String(text || '').replace(/\breal salt lake\b/gi, ' ');
+  const hits: { name: string; index: number; length: number; kind: 'city' | 'county' }[] = [];
+  for (const place of GAZETTEER) {
+    if (place.kind !== 'city' && place.kind !== 'county') continue;
+    const match = hay.match(place.pattern);
+    if (!match || match.index == null) continue;
+    hits.push({ name: place.name, index: match.index, length: match[0].length, kind: place.kind });
+  }
+  const places = hits
+    .filter((hit) => !hits.some((other) => other !== hit && other.index <= hit.index && other.index + other.length >= hit.index + hit.length && other.length > hit.length))
+    .sort((a, b) => a.index - b.index || b.length - a.length);
+  const format = (name: string, kind: 'city' | 'county') => kind === 'city' ? name : (COUNTY_AREA[name] || name.replace(/ County$/, ''));
+  const cueRank = (index: number) => {
+    const before = hay.slice(Math.max(0, index - 40), index);
+    if (/\b(near|outside|along|off)\s+$/i.test(before)) return 3;
+    if (/\bat\s+$/i.test(before)) return 2;
+    if (/\bin\s+$/i.test(before)) return 1;
+    return 0;
+  };
+  const cued = places.reduce<{ name: string; kind: 'city' | 'county'; rank: number; index: number } | null>((best, hit) => {
+    const rank = cueRank(hit.index);
+    if (!rank) return best;
+    if (!best || rank > best.rank || (rank === best.rank && hit.index < best.index)) return { name: hit.name, kind: hit.kind, rank, index: hit.index };
+    return best;
+  }, null);
+  const named = places.find((hit) => suggested.toLowerCase().includes(hit.name.toLowerCase()));
+  if (cued && (!named || named.name !== cued.name)) return format(cued.name, cued.kind);
+  if (named) return format(named.name, named.kind);
+  const model = suggested.replace(/\s+/g, ' ').trim();
+  const modelName = model.replace(/,?\s*(UT|UTAH)$/i, '').replace(/ County$/i, '').trim();
+  if (modelName && hay.toLowerCase().includes(modelName.toLowerCase()) && !/^(statewide|utah|state of utah)$/i.test(modelName)) {
+    return modelName;
+  }
+  const city = places.find((hit) => hit.kind === 'city') || places[0];
+  if (city) return format(city.name, city.kind);
+  if (/\butah\b/i.test(hay)) return 'Utah';
+  return '';
+}
+
 function inferLocation(input: { title?: string; summary?: string; text?: string; url?: string; outlet?: string }): string {
   const hay = storyText(input);
   const outlet = `${input.outlet || ''} ${input.url || ''}`;

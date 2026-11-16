@@ -344,7 +344,8 @@ html[data-night] .creator-actions{background:#161617f2;border-color:#302f2d}
 .link-preview{border:1px solid #eadcb9;background:#fffaf0;border-radius:7px;padding:12px 14px;margin:0 0 14px;font-size:12px;line-height:1.55;color:#3c3424}.link-preview .link-meta{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a6e30}.link-preview b{display:block;margin:4px 0 6px;font-size:14px}.link-preview p{margin:8px 0 12px}
 .utah-warn{margin:8px 0 10px;font-size:13px;font-weight:700;color:#9a4d12}
 html[data-night] .utah-warn{color:#e0b774}
-.link-preview .row,.review-body .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.credit-note{margin-top:12px}
+.link-preview .row,.review-body .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.credit-note{margin:6px 0 0;padding:0;border:0;background:transparent;font-size:11px;line-height:1.35;font-weight:500;text-align:center;color:#8a8a7e}
 .c-progress{margin-top:16px;border:1px solid #eadcb9;background:#fffaf0;border-radius:7px;padding:14px 14px 12px;color:#6d5420}
 .c-progress-top{display:flex;align-items:center;gap:10px}
 .c-progress-top b{font-size:13px;font-weight:700;color:#4e3b12}
@@ -373,7 +374,8 @@ body[data-workspace=creator] .scrim.job-scrim{align-items:center;padding:16px}
 body[data-workspace=creator] .modal.job-modal{width:min(440px,100%);padding:0;gap:0;background:transparent;border:0;box-shadow:none;overflow:visible}
 .job-modal .c-progress{margin:0}
 html[data-night] body[data-workspace=creator] .modal.job-modal{background:transparent;border:0}
-html[data-night] .link-preview,html[data-night] .credit-note{background:#2a261c;border-color:#5c4d2e;color:#efeee9}
+html[data-night] .link-preview{background:#2a261c;border-color:#5c4d2e;color:#efeee9}
+html[data-night] .credit-note{background:transparent;border:0;color:#a09d95}
 .review-tabs button{min-width:0;gap:6px}
 .review-tabs svg{width:15px;height:15px;flex:none}
 .article-input{width:100%;min-height:220px;margin-top:8px;line-height:1.5;resize:vertical}
@@ -4331,6 +4333,26 @@ function tagLineLayer(page){
   if(role) return role;
   return (page.layers||[]).find(l=>l.type==='text'&&!l.dupOf&&shownIn(page.layers,l)&&/\bslcscoop\b/i.test(l.text||'')&&String(l.text).includes('|'))||null;
 }
+function looksLikePlaceLine(text){
+  const s=String(text||'').replace(/\s+/g,' ').trim();
+  return s.length>=4&&s.length<=42&&/^[A-Za-z][A-Za-z .'-]+,\s*(UT|UTAH)$/i.test(s);
+}
+function applyLocation(page, place){
+  const line=String(place||'').replace(/\s+/g,' ').trim();
+  if(!line||!page) return null;
+  const layers=page.layers||[];
+  const skip=new Set(['headline','dek','source','tag','category','static']);
+  const role=findRole(layers,'location');
+  const extras=layers.filter(L=>{
+    if(L.type!=='text'||L.dupOf||!shownIn(layers,L)||L===role) return false;
+    const r=layerRole(L);
+    if(skip.has(r)) return false;
+    return r==='location'||looksLikePlaceLine(L.text);
+  });
+  const targets=(role?[role]:[]).concat(extras);
+  for(const L of targets) L.text=line;
+  return targets[0]||null;
+}
 function applyTagLine(page, topicsOrLine){
   const line=tagsLine(Array.isArray(topicsOrLine)?topicsOrLine:parseTagList(topicsOrLine));
   const primary=tagLineLayer(page);
@@ -4434,6 +4456,7 @@ async function applyAiDraft(out){
     const own=pageSpecs[i];
     const spec=own&&Array.isArray(own.headlines)&&own.headlines.length?own:(pageSpecs[0]||{headlines:[],dek:''});
     const fit=await fitStoryPage(S.doc.pages[i], spec, shared, ref);
+    if(shared.location) applyLocation(S.doc.pages[i], shared.location);
     chosen.push(fit.chosen||0);
     for(const n of fit.notes||[]) if(n.message) notes.push((S.doc.pages.length>1?'Page '+(i+1)+' ':'')+n.message);
   }
@@ -5744,7 +5767,7 @@ function sourceLinkHTML(){
 function creditNotice(){
   const link=S.doc&&S.doc.sourceLink;
   if(!link||!link.isNewsOutlet||!link.siteName) return '';
-  return `<div class="credit-note">${CI.info}${esc('Drafted from '+link.siteName+'\'s reporting. Credit them or add your own reporting before posting.')}</div>`;
+  return `<p class="credit-note">Credit ${esc(link.siteName)}, or add your own reporting.</p>`;
 }
 function creatorReviewWarnings(){
   const root=$('#creatorReadiness');if(!root||!S.doc)return;root.hidden=C.step!==2;if(root.hidden)return;
@@ -6082,6 +6105,7 @@ async function creatorCreatePost(){
           L.text=role==='tag'?tagsLine(parseTagList(value)):value;changed.push(L);
         }
         if(copy.tags) applyTagLine(p, copy.tags);
+        if(copy.location) applyLocation(p, copy.location);
         const bank=C.contentCache[i]={};Object.entries(copy).forEach(([k,v])=>{bank['text:'+k]={text:v};if(v&&!changed.some(l=>creatorSlotKey(l.slot)===k))omitted.push(k);});
         await ensureFonts(changed);fitFilledText(changed,p.layers,p.w,p.h);
       }

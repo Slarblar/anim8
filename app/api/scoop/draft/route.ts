@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { guard, isBlobUrl } from '@/lib/scoop';
 import { brandFrom, normalizeDraft, readBrand, tagsLine, type CategoryRule } from '@/lib/scoop-brand';
 import { copyReport } from '@/lib/scoop-copycheck';
+import { incidentLocation } from '@/lib/scoop-news';
 
 /** SLC Scoop rewrites. It does not borrow another outlet's sentences. */
 const OWN_WORDS = `Write the headline, the dek, and the article in SLC Scoop's voice, not the source's. Match the voice samples: short, specific, local, and attributed. Do not reuse any run of 7 or more words from the excerpt, and do not follow its sentence order. Rewording is not new reporting: keep every fact exactly as stated.
@@ -97,7 +98,7 @@ Slot guidance (match by slot name):
 - Dek / Sub: 1-2 sentences, at most 3 lines, adding who, where and the key detail the headline leaves out. Attribute claims ("police say", "X says").
 - Category: one or two words, e.g. NEWS, BREAKING, UPDATE, COURTS, POLITICS, WEATHER, CRIME, BUSINESS, COMMUNITY.
 - Tags: at most 3 topic tags plus SLCSCOOP, four tags on the line. Example: "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
-- Location: "City, UT" style (or the state's postal code if not Utah).
+- Location: the closest city, as short as "Park City". No state, no county, no extra words. Do not copy the sample city in the slot example.
 - Source / Credit: "Source: <name>" only if the excerpt names a photo or information source.
 - Any other slot: follow its example text's role and length.
 
@@ -217,6 +218,7 @@ ${zoneText || 'No zones were sent.'}
 
 ${HEADLINE_RULE}
 Give 3 headline options. Each option's lines array is those graphic lines. The dek is at most 3 lines and does not repeat the headline.
+Location is the closest city, a few words at most, such as "Park City". No state abbreviation and no "County". "Near Park City" means Park City. Use "Utah" only when the story names no city. Do not keep a sample city, the outlet's home city, or the city where an agency is based when the incident happened somewhere else. The location in the JSON example shows the short form only.
 ${pageCount > 1 ? `This template has ${pageCount} pages. Return a pages array of ${pageCount} items. Each item has its own headlines (3 options) and dek. Page 1 is the cover. Later pages continue the same story without repeating the cover headline.` : 'Return a single cover. pages may be omitted.'}
 
 Layout references show line count, density, and spacing. Their events are not this story. Never reuse their names, numbers, places, or quotes. Follow a reference's line count only when each of your lines still fills the box. Do not copy a one-word line. Set referenceId to the reference this story should follow, or "" if none apply.
@@ -230,7 +232,7 @@ ${excerpt}
 """
 
 Reply with JSON only, no prose and no code fence:
-{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Salt Lake City, UT","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
+{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Park City","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
 }
 
 async function layoutImage(url: string) {
@@ -421,6 +423,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fields, notes: typeof out.notes === 'string' ? out.notes : '', copyWarnings });
     }
     const draft = normalizeDraft(out, brand, flags, layoutRefs.map((ref) => ref.id));
+    draft.location = incidentLocation(excerpt, draft.location);
     return NextResponse.json({
       ...draft,
       tags: tagsLine(draft.topicTags),

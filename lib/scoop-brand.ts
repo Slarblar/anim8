@@ -259,8 +259,17 @@ function tagKey(tag: string) {
   return tag.toUpperCase().replace(/\s+/g, ' ').trim();
 }
 
+/** Three topic tags plus SLCSCOOP. Four tags is the whole line. */
 export function tagsLine(topics: string[]): string {
-  const body = topics.map(tagKey).filter((tag) => tag && tag !== 'SLCSCOOP');
+  const body: string[] = [];
+  const seen = new Set<string>();
+  for (const topic of topics) {
+    const tag = tagKey(topic);
+    if (!tag || tag === 'SLCSCOOP' || seen.has(tag)) continue;
+    seen.add(tag);
+    body.push(tag);
+    if (body.length >= 3) break;
+  }
   return body.concat('SLCSCOOP').join('  |  ');
 }
 
@@ -295,7 +304,8 @@ export function normalizeDraft(
   const topicTags: string[] = [];
   const suggestedTags: string[] = [];
   const seen = new Set<string>();
-  const incoming = (Array.isArray(row.topicTags) ? row.topicTags : []).concat(Array.isArray(row.suggestedTags) ? row.suggestedTags : []);
+  const fromLine = typeof row.tags === 'string' ? row.tags.split(/[|,]/) : [];
+  const incoming = (Array.isArray(row.topicTags) ? row.topicTags : []).concat(fromLine).concat(Array.isArray(row.suggestedTags) ? row.suggestedTags : []);
   for (const item of incoming) {
     const tag = tagKey(String(item ?? ''));
     if (!tag || tag === 'SLCSCOOP' || seen.has(tag)) continue;

@@ -279,6 +279,8 @@ body[data-workspace=builder] #app{grid-template-rows:auto 34px minmax(0,1fr)}
 .story-flags label{display:flex;gap:8px;align-items:center;font-size:12px;min-height:32px}
 .alt-heads{flex-direction:column;align-items:stretch}
 .alt-heads button,.tag-picks button{text-align:left}
+.cat-row button[aria-pressed=true],.tag-picks button[aria-pressed=true]{background:#262726;color:#fff;border-color:#262726}
+html[data-night] .cat-row button[aria-pressed=true],html[data-night] .tag-picks button[aria-pressed=true]{background:#efeee9;color:#151616;border-color:#efeee9}
 html[data-night] .cat-reason{color:#a09d95}
 html[data-night] .fit-note{color:#e0b774}
 html[data-night]{--c-ink:#efeee9;--c-muted:#a09d95;--c-line:#3a3a3c;--c-bg:#0e0e0f;color-scheme:dark}
@@ -3781,7 +3783,34 @@ function saveBrandLists(){
   if(model) NEWS_MODEL=model.value==='sonnet'?'sonnet':'haiku';
   cap.db.doc('brand/settings').set(brandDoc()).then(()=>toast('Saved categories and tags')).catch(()=>toast('Couldn\'t save brand settings.',true));
 }
-function tagsLine(topics){ return (topics||[]).map(t=>String(t).toUpperCase().trim()).filter(t=>t&&t!=='SLCSCOOP').concat(['SLCSCOOP']).join('  |  '); }
+function parseTagList(value){
+  return String(value||'').split('|').map(s=>s.trim().toUpperCase()).filter(s=>s&&s!=='SLCSCOOP');
+}
+function tagsLine(topics){
+  const body=[], seen=new Set();
+  for(const topic of topics||[]){
+    const tag=String(topic).toUpperCase().trim();
+    if(!tag||tag==='SLCSCOOP'||seen.has(tag)) continue;
+    seen.add(tag); body.push(tag);
+    if(body.length>=3) break;
+  }
+  return body.concat(['SLCSCOOP']).join('  |  ');
+}
+function tagLineLayer(page){
+  const role=findRole(page.layers,'tag');
+  if(role) return role;
+  return (page.layers||[]).find(l=>l.type==='text'&&!l.dupOf&&shownIn(page.layers,l)&&/\bslcscoop\b/i.test(l.text||'')&&String(l.text).includes('|'))||null;
+}
+function applyTagLine(page, topicsOrLine){
+  const line=tagsLine(Array.isArray(topicsOrLine)?topicsOrLine:parseTagList(topicsOrLine));
+  const primary=tagLineLayer(page);
+  if(primary) primary.text=line;
+  for(const L of page.layers||[]){
+    if(L===primary||L.type!=='text'||L.dupOf||!shownIn(page.layers,L)) continue;
+    if(layerRole(L)==='tag'||(/\bslcscoop\b/i.test(L.text||'')&&String(L.text).includes('|'))) L.text=line;
+  }
+  return primary;
+}
 function layoutRefsForDraft(){
   const id=typeof creatorSelected==='function'?creatorSelected():'';
   return POSTS.slice().sort((a,b)=>((b.templateId===id)-(a.templateId===id))||((b.createdAt||0)-(a.createdAt||0))).slice(0,3).map(r=>({
@@ -3837,8 +3866,9 @@ function writeSlots(page,fields){
     if(!Object.prototype.hasOwnProperty.call(fields,key)) continue;
     const role=layerRole(L);
     if(SINGLE_ROLES.includes(role)&&findRole(page.layers,role)!==L) continue;
-    L.text=fields[key];
+    L.text=key==='tags'?tagsLine(parseTagList(fields[key])):fields[key];
   }
+  if(Object.prototype.hasOwnProperty.call(fields,'tags')) applyTagLine(page, fields.tags);
 }
 async function fitStoryPage(page,story,shared,ref){
   const options=(story&&Array.isArray(story.headlines)?story.headlines:[]).filter(o=>o&&Array.isArray(o.lines)&&o.lines.join('').trim());
@@ -3887,14 +3917,14 @@ function creatorChoiceHTML(){
   const page=S.doc.pages[S.doc.page];
   const cat=findRole(page.layers,'category');
   const current=String(cat&&cat.text||ai.category||'').trim().toUpperCase();
-  const tagsL=findRole(page.layers,'tag');
-  const selected=tagsL?String(tagsL.text||'').split('|').map(s=>s.trim().toUpperCase()).filter(s=>s&&s!=='SLCSCOOP'):[];
-  const suggested=(ai.suggestedTags||[]).map(t=>String(t).toUpperCase()).filter(t=>t&&!selected.includes(t)&&!BRAND_TAGS.includes(t));
+  const tagsL=tagLineLayer(page);
+  const selected=tagsL?parseTagList(tagsL.text):[];
+  const suggested=(ai.suggestedTags||[]).map(t=>String(t).toUpperCase().trim()).filter(t=>t&&t!=='SLCSCOOP'&&!BRAND_TAGS.includes(t));
   const headlines=ai.headlines||[];
   const alts=headlines.map((h,i)=>({h,i})).filter(x=>x.i!==ai.chosen&&x.h&&x.h.lines);
   const note=(page.layers||[]).map(l=>l.type==='text'?fitNote(l,page):'').filter(Boolean)[0]||'';
   return `<div class="cat-row" role="group" aria-label="Category">${BRAND_CATS.map(c=>`<button type="button" class="c-button small" data-cat-pick="${esc(c.id)}" aria-pressed="${current===c.id}">${esc(c.id)}</button>`).join('')}<span class="cat-reason">${esc(ai.categoryReason||'')}</span></div>
-    <div class="tag-picks" role="group" aria-label="Topic tags">${BRAND_TAGS.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)}</button>`).join('')}${suggested.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="false">${esc(t)} · suggested</button>`).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
+    <div class="tag-picks" role="group" aria-label="Topic tags">${BRAND_TAGS.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)}</button>`).join('')}${suggested.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)} · suggested</button>`).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
     ${alts.length?`<div class="alt-heads">${alts.map(x=>`<button type="button" class="c-button" data-alt-headline="${x.i}">Use: ${esc(x.h.lines.join(' / '))}</button>`).join('')}</div>`:''}
     ${note?`<p class="fit-note">${esc(note)}</p>`:''}`;
 }
@@ -3905,11 +3935,14 @@ function pickCategory(id){
   commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
 }
 function toggleTopicTag(tag){
-  const page=S.doc.pages[S.doc.page], L=findRole(page.layers,'tag'); if(!L) return;
+  const page=S.doc.pages[S.doc.page], L=tagLineLayer(page); if(!L){ toast('This template has no tag line.',true); return; }
   const key=String(tag).toUpperCase().trim();
-  let tags=String(L.text||'').split('|').map(s=>s.trim().toUpperCase()).filter(s=>s&&s!=='SLCSCOOP');
-  tags=tags.includes(key)?tags.filter(t=>t!==key):tags.concat(key);
-  L.text=tagsLine(tags);
+  if(!key||key==='SLCSCOOP') return;
+  let tags=parseTagList(L.text);
+  if(tags.includes(key)) tags=tags.filter(t=>t!==key);
+  else if(tags.length>=3){ toast('Four tags is the maximum, including SLCSCOOP.'); return; }
+  else tags=tags.concat(key);
+  applyTagLine(page, tags);
   const zone=zoneFor(page,'tag'); if(zone) fitOneLine(L,zone,'tag');
   commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
 }
@@ -5515,8 +5548,10 @@ async function creatorCreatePost(){
         for(const L of p.layers.filter(l=>l.slot&&l.type==='text'&&!l.dupOf)){
           const role=layerRole(L);
           if(SINGLE_ROLES.includes(role)&&findRole(p.layers,role)!==L) continue;
-          L.text=String(copy[creatorSlotKey(L.slot)]||'');changed.push(L);
+          const value=String(copy[creatorSlotKey(L.slot)]||'');
+          L.text=role==='tag'?tagsLine(parseTagList(value)):value;changed.push(L);
         }
+        if(copy.tags) applyTagLine(p, copy.tags);
         const bank=C.contentCache[i]={};Object.entries(copy).forEach(([k,v])=>{bank['text:'+k]={text:v};if(v&&!changed.some(l=>creatorSlotKey(l.slot)===k))omitted.push(k);});
         await ensureFonts(changed);fitFilledText(changed,p.layers,p.w,p.h);
       }

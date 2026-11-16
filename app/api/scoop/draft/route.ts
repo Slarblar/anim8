@@ -96,7 +96,7 @@ Slot guidance (match by slot name):
 - Headline: the single most newsworthy fact, active voice, present tense, specific. Use single quotes for any quoted phrase. ${HEADLINE_RULE}
 - Dek / Sub: 1-2 sentences, at most 3 lines, adding who, where and the key detail the headline leaves out. Attribute claims ("police say", "X says").
 - Category: one or two words, e.g. NEWS, BREAKING, UPDATE, COURTS, POLITICS, WEATHER, CRIME, BUSINESS, COMMUNITY.
-- Tags: 3-4 topic tags separated by "  |  " ending with SLCSCOOP, e.g. "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
+- Tags: at most 3 topic tags plus SLCSCOOP, four tags on the line. Example: "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
 - Location: "City, UT" style (or the state's postal code if not Utah).
 - Source / Credit: "Source: <name>" only if the excerpt names a photo or information source.
 - Any other slot: follow its example text's role and length.
@@ -208,9 +208,9 @@ ${categoryBlock(categories)}
 ${flags.correction ? 'The editor marked this as a correction. Set category to CORRECTION.' : 'Do not choose CORRECTION. The editor did not mark this as a correction.'}
 ${flags.followUp ? 'The editor marked this as a follow-up, so UPDATE is allowed when this is a new development on a story already posted.' : 'Do not choose UPDATE. The editor did not mark this as a follow-up.'}
 
-Topic tags — pick up to 3 from this list, not counting SLCSCOOP (the fitter adds SLCSCOOP):
+Topic tags — pick at most 3 from this list. The fitter adds SLCSCOOP, so the line is four tags and no more:
 ${tags.join(', ')}
-If a useful tag is missing, put it in suggestedTags and do not include it in topicTags.
+If a useful tag is missing from the list, put it in suggestedTags and do not include it in topicTags.
 
 Text zones and the character budget at the target size:
 ${zoneText || 'No zones were sent.'}

@@ -750,7 +750,11 @@ html[data-night] #creator .field-select{
   background-color:var(--c-soft);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23b3b1a9' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
-#creator .badge-select{min-width:132px}
+#creator .pick-label{display:block;margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted)}
+#creator .badge-row{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+#creator .badge-row .pick-label{margin:0}
+#creator .badge-select,#creator .tag-select{min-width:132px}
+#creator .tag-custom{height:36px;min-height:36px;width:148px;margin:0;padding:0 12px;border:1px solid var(--c-line);border-radius:8px;background:var(--c-soft);color:var(--c-ink);font:inherit;font-size:var(--type-sm);font-weight:700}
 #creator :is(.cat-row,.tag-picks) .c-button{min-height:32px;padding:6px 10px;line-height:1.15}
 #creator .review-tabs .c-button{min-height:40px;padding:8px 12px;line-height:1;align-items:center}
 #creator .review-field textarea{min-height:144px;height:auto;padding:var(--space-3) var(--space-4);font-size:var(--type-body);line-height:1.5;resize:vertical}
@@ -1579,6 +1583,7 @@ function roleOfLabel(label){
 }
 function layerRole(L){
   if(!L||L.type!=='text') return '';
+  if(badgeKey(L)) return '';
   return roleOfLabel(L.slot)||roleOfLabel(L.name);
 }
 const SINGLE_ROLES=['headline','dek','category','tag','location','source'];
@@ -4460,9 +4465,11 @@ function tagsLine(topics){
   return body.concat(['SLCSCOOP']).join('  |  ');
 }
 function tagLineLayer(page){
-  const role=findRole(page.layers,'tag');
-  if(role) return role;
-  return (page.layers||[]).find(l=>l.type==='text'&&!l.dupOf&&shownIn(page.layers,l)&&/\bslcscoop\b/i.test(l.text||'')&&String(l.text).includes('|'))||null;
+  const layers=page&&page.layers||[];
+  const texts=layers.filter(l=>l.type==='text'&&!l.dupOf&&shownIn(layers,l)&&!badgeKey(l));
+  const line=texts.find(l=>/\bslcscoop\b/i.test(l.text||'')&&String(l.text).includes('|'));
+  if(line) return line;
+  return findRole(layers,'tag')||texts.find(l=>/\bslcscoop\b/i.test(l.text||''))||null;
 }
 function looksLikePlaceLine(text){
   const s=String(text||'').replace(/\s+/g,' ').trim();
@@ -4627,12 +4634,15 @@ function creatorChoiceHTML(){
   const current=currentCategory(page);
   const tagsL=tagLineLayer(page);
   const selected=tagsL?parseTagList(tagsL.text):[];
-  const suggested=(ai.suggestedTags||[]).map(tagKey).filter(t=>t&&t!=='SLCSCOOP'&&!BRAND_TAGS.map(tagKey).includes(t));
+  const known=new Set(BRAND_TAGS.map(tagKey));
+  const suggested=(ai.suggestedTags||[]).map(tagKey).filter(t=>t&&t!=='SLCSCOOP'&&!known.has(t));
+  const extras=selected.filter(t=>t&&!known.has(t)&&!suggested.includes(t));
   const headlines=ai.headlines||[];
   const alts=headlines.map((h,i)=>({h,i})).filter(x=>x.i!==ai.chosen&&x.h&&x.h.lines);
   const note=(page.layers||[]).map(l=>l.type==='text'?fitNote(l,page):'').filter(Boolean)[0]||'';
-  return `<div class="cat-row" role="group" aria-label="Category">${BRAND_CATS.map(c=>`<button type="button" class="c-button small" data-cat-pick="${esc(c.id)}" aria-pressed="${current===c.id}">${esc(c.id)}</button>`).join('')}<span class="cat-reason">${esc(ai.categoryReason||'')}</span></div>
-    <div class="tag-picks" role="group" aria-label="Topic tags">${BRAND_TAGS.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(tagKey(t))}" aria-pressed="${selected.includes(tagKey(t))}">${esc(tagKey(t))}</button>`).join('')}${suggested.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)} · suggested</button>`).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
+  const tagButton=(t,suffix)=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)}${suffix||''}</button>`;
+  return `${badgeControlHTML()}<div class="pick-label">Category</div><div class="cat-row" role="group" aria-label="Category">${BRAND_CATS.map(c=>`<button type="button" class="c-button small" data-cat-pick="${esc(c.id)}" aria-pressed="${current===c.id}">${esc(c.id)}</button>`).join('')}<span class="cat-reason">${esc(ai.categoryReason||'')}</span></div>
+    <div class="pick-label">Tags</div><div class="tag-picks" role="group" aria-label="Tags">${BRAND_TAGS.map(t=>tagButton(tagKey(t))).join('')}${suggested.map(t=>tagButton(t,' · suggested')).join('')}${extras.map(t=>tagButton(t)).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
     ${alts.length?`<div class="alt-heads">${alts.map(x=>`<button type="button" class="c-button" data-alt-headline="${x.i}">Use: ${esc(x.h.lines.join(' / '))}</button>`).join('')}</div>`:''}
     ${note?`<p class="fit-note">${esc(note)}</p>`:''}`;
 }
@@ -4683,26 +4693,57 @@ function showBadge(page, key){
   for(const L of all) L.visible=badgeKey(L)===want;
   return true;
 }
+function badgeWord(key){
+  const want=String(key||'').toLowerCase();
+  return {news:'NEWS',sponsored:'SPONSORED',correction:'CORRECTION',breaking:'BREAKING',update:'UPDATE',developing:'DEVELOPING',missing:'MISSING'}[want]||'';
+}
+function badgeTextLayers(page){
+  const layers=page&&page.layers||[];
+  return layers.filter(L=>{
+    if(L.type!=='text'||L.dupOf||!shownIn(layers,L)||badgeKey(L)) return false;
+    if(String(L.text||'').includes('|')||/\bslcscoop\b/i.test(L.text||'')) return false;
+    const role=layerRole(L);
+    if(role==='tag'||role==='headline'||role==='dek'||role==='source'||role==='location') return false;
+    const name=((L.slot||'')+' '+(L.name||'')).toLowerCase();
+    if(/\bbadge\b|kicker/.test(name)) return true;
+    return L.bg==='box'&&!!badgeWord(L.text);
+  });
+}
 function badgeSelectHTML(){
   const page=S.doc.pages[S.doc.page];
   const images=badgeImages(page);
+  const texts=badgeTextLayers(page);
+  let keys=[], current='';
   if(images.length){
     const have=[...new Set(images.map(badgeKey))];
-    const keys=BADGE_ORDER.filter(k=>have.includes(k)).concat(have.filter(k=>!BADGE_ORDER.includes(k)));
-    const current=activeBadge(page)||keys[0];
-    return `<select id="creatorBadge" class="field-select badge-select" data-badge-kind="image" aria-label="Badge">${keys.map(k=>`<option value="${esc(k)}" ${k===current?'selected':''}>${esc(BADGE_LABELS[k]||badgeName(k))}</option>`).join('')}</select>`;
+    keys=BADGE_ORDER.filter(k=>have.includes(k)).concat(have.filter(k=>!BADGE_ORDER.includes(k)));
+    current=activeBadge(page)||keys[0];
+  }else if(texts.length){
+    keys=BADGE_ORDER.slice();
+    current=badgeWord(texts[0].text)?tagKey(texts[0].text).toLowerCase():keys[0];
   }
-  const layers=categoryLayers(page);
-  if(!layers.length) return '';
-  const badge=layers.find(L=>L.bg==='box')||layers[0];
-  const current=tagKey((badge&&badge.text)||'');
-  const ids=BRAND_CATS.map(c=>c.id);
-  const options=(current&&!ids.includes(current)?[current]:[]).concat(ids);
-  return `<select id="creatorBadge" class="field-select badge-select" data-badge-kind="text" aria-label="Badge">${options.map(id=>`<option value="${esc(id)}" ${id===current?'selected':''}>${esc(badgeName(id))}</option>`).join('')}</select>`;
+  if(!keys.length) return '';
+  return `<select id="creatorBadge" class="field-select badge-select" aria-label="Badge">${keys.map(k=>`<option value="${esc(k)}" ${k===current?'selected':''}>${esc(BADGE_LABELS[k]||badgeName(k))}</option>`).join('')}</select>`;
+}
+function badgeControlHTML(){
+  const select=badgeSelectHTML();
+  return select?`<div class="badge-row"><span class="pick-label">Badge</span>${select}</div>`:'';
+}
+function tagAddSelectHTML(){
+  const page=S.doc.pages[S.doc.page];
+  if(!tagLineLayer(page)) return '';
+  const on=new Set(parseTagList(tagLineLayer(page).text));
+  const choices=[...new Set(BRAND_TAGS.map(tagKey).concat(((S.doc.ai&&S.doc.ai.suggestedTags)||[]).map(tagKey)))].filter(t=>t&&t!=='SLCSCOOP'&&!on.has(t));
+  return `<select id="creatorTagAdd" class="field-select tag-select" aria-label="Add a tag"><option value="">Add a tag</option>${choices.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')}<option value="__custom">Custom tag…</option></select>`;
 }
 function pickBadge(key){
   const page=S.doc.pages[S.doc.page];
-  if(!showBadge(page, key)) return;
+  const word=badgeWord(key);
+  if(!word) return;
+  const swapped=showBadge(page, key);
+  const texts=badgeTextLayers(page);
+  for(const L of texts){ L.text=word; fitBadgeWidth(L); }
+  if(!swapped&&!texts.length) return;
   commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
 }
 function pickCategory(id){
@@ -4724,20 +4765,10 @@ function paintTagPicks(tags){
     btn.setAttribute('aria-pressed',on.has(tagKey(btn.dataset.tagPick))?'true':'false');
   });
 }
-function toggleTopicTag(tag, button){
-  const page=S.doc.pages[S.doc.page], L=tagLineLayer(page); if(!L){ toast('This template has no tag line.',true); return; }
-  const key=tagKey(tag);
-  if(!key||key==='SLCSCOOP') return;
-  const now=performance.now();
-  if(lastTagToggle.key===key&&now-lastTagToggle.at<80) return;
-  const pressed=!!(button&&button.getAttribute('aria-pressed')==='true');
-  let tags=parseTagList(L.text);
-  const has=tags.includes(key);
-  if(has||pressed) tags=tags.filter(t=>t!==key);
-  else if(tags.length>=3){ toast('Four tags is the maximum, including SLCSCOOP.'); return; }
-  else tags=tags.concat(key);
-  lastTagToggle={key,at:now};
-  tagTextLock={id:L.id,at:now};
+function writeTopicTags(page, tags){
+  const L=tagLineLayer(page);
+  if(!L){ toast('This template has no tag line.',true); return; }
+  tagTextLock={id:L.id,at:performance.now()};
   applyTagLine(page, tags);
   const fitted=tagLineLayer(page);
   const zone=zoneFor(page,'tag');
@@ -4753,6 +4784,58 @@ function toggleTopicTag(tag, button){
   });
   commit(); scheduleRender();
   if(C.workspace==='creator') requestAnimationFrame(()=>{ if(C.workspace==='creator') renderCreator(); });
+}
+function toggleTopicTag(tag, button){
+  const page=S.doc.pages[S.doc.page], L=tagLineLayer(page); if(!L){ toast('This template has no tag line.',true); return; }
+  const key=tagKey(tag);
+  if(!key||key==='SLCSCOOP') return;
+  const now=performance.now();
+  if(lastTagToggle.key===key&&now-lastTagToggle.at<80) return;
+  const pressed=!!(button&&button.getAttribute('aria-pressed')==='true');
+  let tags=parseTagList(L.text);
+  const has=tags.includes(key);
+  if(has||pressed) tags=tags.filter(t=>t!==key);
+  else if(tags.length>=3){ toast('Four tags is the maximum, including SLCSCOOP.'); return; }
+  else tags=tags.concat(key);
+  lastTagToggle={key,at:now};
+  writeTopicTags(page, tags);
+}
+function addTopicTag(tag){
+  const page=S.doc.pages[S.doc.page], L=tagLineLayer(page); if(!L){ toast('This template has no tag line.',true); return; }
+  const key=tagKey(tag).replace(/[^A-Z0-9 &'./-]/g,'').slice(0,24);
+  if(!key||key==='SLCSCOOP') return;
+  const tags=parseTagList(L.text);
+  if(tags.includes(key)) return;
+  if(tags.length>=3){ toast('Four tags is the maximum, including SLCSCOOP.'); return; }
+  writeTopicTags(page, tags.concat(key));
+}
+function onTagAdd(select){
+  const value=select.value;
+  select.value='';
+  if(!value) return;
+  if(value!=='__custom'){ addTopicTag(value); return; }
+  const input=document.createElement('input');
+  input.className='tag-custom';
+  input.placeholder='New tag';
+  input.maxLength=24;
+  input.setAttribute('aria-label','New tag');
+  select.hidden=true;
+  select.after(input);
+  input.focus();
+  let done=false;
+  const finish=save=>{
+    if(done) return;
+    done=true;
+    const name=input.value;
+    input.remove();
+    select.hidden=false;
+    if(save) addTopicTag(name);
+  };
+  input.addEventListener('keydown',ev=>{
+    if(ev.key==='Enter'){ ev.preventDefault(); finish(true); }
+    else if(ev.key==='Escape'){ ev.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur',()=>finish(true));
 }
 async function applyAltHeadline(index){
   const ai=S.doc.ai||{};
@@ -5925,7 +6008,7 @@ function creatorReviewHTML(){
   const texts=creatorTextSlots();
   const L=texts.find(l=>l.id===C.field)||texts[0];if(L)C.field=L.id;
   const photos=S.doc.layers.filter(l=>l.type==='image'&&l.slot&&shownIn(S.doc.layers,l));
-  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select>${badgeSelectHTML()}</div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
+  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select>${tagAddSelectHTML()}</div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
   const photoPanel=photos.map(P=>`<div class="photo-card"><button class="source-photo" data-creator-photo="${P.id}">${CI.photo}<span><b>${P.src?'Replace':'Add'} ${esc(P.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${P.src?`<div class="photo-controls">${[['zoom','Zoom',1,4,P.zoom||1],['fx','Left / right',0,1,P.fx??.5],['fy','Up / down',0,1,P.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${P.id}" aria-label="${esc(P.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${P.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${P.id}">Remove</button></div></div>`:''}</div>`).join('')||'<p class="c-note">This template does not use a photo.</p>';
   const panel=tab==='photo'?photoPanel:tab==='article'?articlePanel():textPanel;
   return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}" aria-label="${C.drawer?'Collapse quick edits':'Expand quick edits'}"><span></span><b>Quick edits</b><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
@@ -6615,7 +6698,8 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   if(C.workspace!=='creator')return;
-  if(e.target.id==='creatorBadge'){if(e.target.dataset.badgeKind==='image')pickBadge(e.target.value);else pickCategory(e.target.value);return;}
+  if(e.target.id==='creatorBadge'){pickBadge(e.target.value);return;}
+  if(e.target.id==='creatorTagAdd'){onTagAdd(e.target);return;}
   if(e.target.id==='creatorField'){clearTimeout(fillT);commit();C.field=e.target.value;renderCreator();}
   if(e.target.dataset.photoProp||e.target.dataset.creatorText){clearTimeout(fillT);commit();}
 });

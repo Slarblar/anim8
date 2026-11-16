@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guard, isBlobUrl } from '@/lib/scoop';
 import { brandFrom, normalizeDraft, readBrand, tagsLine, type CategoryRule } from '@/lib/scoop-brand';
+import { copyReport } from '@/lib/scoop-copycheck';
+
+/** SLC Scoop rewrites. It does not borrow another outlet's sentences. */
+const OWN_WORDS = `Write the headline, the dek, and the article in SLC Scoop's voice, not the source's. Match the voice samples: short, specific, local, and attributed. Do not reuse any run of 7 or more words from the excerpt, and do not follow its sentence order. Rewording is not new reporting: keep every fact exactly as stated.
+Direct quotes are the exception: keep a quote word for word, inside quotation marks, and name who said it. Never change, trim, or invent a quote.`;
+
+const ARTICLE_RULE = (outlet: string) => `article: the website story, in the same voice as the graphic. 150 to 300 words, 3 to 5 short paragraphs separated by a blank line.
+SLC Scoop sounds like a Salt Lake desk talking to a neighbor: direct, factual, local. Short sentences. Name the place. Say who did what. No clickbait, no opinion, no emoji, no "here's what we know," no sign-off.
+- Open on the newest fact: who, what, where, when.
+- Then the detail a reader here needs, attributed ("police said", "the city says").${outlet ? `
+- The facts come from ${outlet}. Credit them in the first or second paragraph ("${outlet} first reported", "according to ${outlet}") and attribute claims that only they report. Do not present their reporting as SLC Scoop's own.` : ''}
+- No headline, no byline, nothing that is not in the excerpt.
+- If the excerpt is too thin for 150 words, write fewer. Never pad.`;
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -87,6 +100,8 @@ Slot guidance (match by slot name):
 - Location: "City, UT" style (or the state's postal code if not Utah).
 - Source / Credit: "Source: <name>" only if the excerpt names a photo or information source.
 - Any other slot: follow its example text's role and length.
+
+${OWN_WORDS}
 
 Each slot has maxChars (a hard limit so it fits the layout) and an example showing its role. "caps": true means it is displayed uppercase, so write it in normal case.
 
@@ -184,6 +199,10 @@ function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: Category
 
 Use only facts stated in the excerpt. Never invent names, numbers, places, quotes, or causes.
 
+${OWN_WORDS}
+
+${ARTICLE_RULE(link ? link.siteName : '')}
+
 Categories — pick exactly one id from this list:
 ${categoryBlock(categories)}
 ${flags.correction ? 'The editor marked this as a correction. Set category to CORRECTION.' : 'Do not choose CORRECTION. The editor did not mark this as a correction.'}
@@ -202,7 +221,7 @@ ${pageCount > 1 ? `This template has ${pageCount} pages. Return a pages array of
 
 Layout references show line count, density, and spacing. Their events are not this story. Never reuse their names, numbers, places, or quotes. Follow a reference's line count only when each of your lines still fills the box. Do not copy a one-word line. Set referenceId to the reference this story should follow, or "" if none apply.
 ${examples ? `\n${examples}` : '\nNo layout references were sent.'}
-${voiceText ? `\nVoice samples, for cadence only. Do not reuse their facts.\n\n${voiceText}` : ''}
+${voiceText ? `\nVoice samples are SLC Scoop's cadence for the dek and the website article. Do not reuse their facts. Headlines still follow the headline rule.\n\n${voiceText}` : ''}
 
 ${attribution(link)}
 Excerpt:
@@ -211,7 +230,7 @@ ${excerpt}
 """
 
 Reply with JSON only, no prose and no code fence:
-{"category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Salt Lake City, UT","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
+{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Salt Lake City, UT","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
 }
 
 async function layoutImage(url: string) {
@@ -262,7 +281,33 @@ function fieldsFrom(draft: ReturnType<typeof normalizeDraft>, slots: Slot[]) {
   return fields;
 }
 
-/** POST /api/scoop/draft  { excerpt, slots, references? } → { fields, notes } */
+function cleanArticle(value: unknown): string {
+  return String(value ?? '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n\n')
+    .slice(0, 4000);
+}
+
+/** The words a draft wrote, by field, for the copy check. */
+function draftText(out: Record<string, unknown>, layout: boolean): Record<string, string> {
+  if (!layout) {
+    const fields = (out.fields && typeof out.fields === 'object' ? out.fields : {}) as Record<string, unknown>;
+    return Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, String(v ?? '')]));
+  }
+  const heads = Array.isArray(out.headlines) ? out.headlines : [];
+  const pages = Array.isArray(out.pages) ? out.pages : [];
+  const lines = (h: unknown) => (h && typeof h === 'object' && Array.isArray((h as { lines?: unknown }).lines) ? (h as { lines: unknown[] }).lines.join(' ') : '');
+  return {
+    headline: heads.map(lines).join(' / '),
+    dek: [String(out.dek ?? ''), ...pages.map((p) => String((p as { dek?: unknown })?.dek ?? ''))].join(' '),
+    article: String(out.article ?? ''),
+  };
+}
+
+/** POST /api/scoop/draft  { excerpt, slots, references? } → { fields, notes, article, copyWarnings } */
 export async function POST(req: NextRequest) {
   const denied = guard(req);
   if (denied) return denied;
@@ -327,45 +372,61 @@ export async function POST(req: NextRequest) {
         text: layoutPrompt(excerpt, zones, brand.categories, brand.tags, layoutRefs, voice, Math.min(6, Math.max(1, Math.round(Number(body.pageCount) || 1))), flags, link),
       });
     }
-    const res = await fetch(ANTHROPIC_URL, {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: layout ? 2200 : 1500,
-        system: layout
-          ? 'You write Instagram news graphics for SLC Scoop, an independent Salt Lake City news outlet. Tagline: "Reprogramming the news." Voice: direct, factual, local, no clickbait, no opinion, no emoji. You never choose pixel sizes or coordinates. Reply with JSON only.'
-          : systemPrompt(voice),
-        messages: [{ role: 'user', content: layout ? content : buildPrompt(excerpt, slots, link) }],
-      }),
-    });
-    if (res.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-    const raw = await res.text();
-    if (!res.ok) {
-      console.error('scoop draft failed', res.status, raw.slice(0, 500));
+    const system = layout
+      ? 'You write Instagram news graphics and the website story for SLC Scoop, an independent Salt Lake City news outlet. Tagline: "Reprogramming the news." Voice: direct, factual, local, short sentences, no clickbait, no opinion, no emoji. Rewrite in that voice. Never copy a source\'s sentences. You never choose pixel sizes or coordinates. Reply with JSON only.'
+      : systemPrompt(voice);
+    const messages: { role: 'user' | 'assistant'; content: unknown }[] = [{ role: 'user', content: layout ? content : buildPrompt(excerpt, slots, link) }];
+    const ask = async (ms: number) => {
+      const res = await fetch(ANTHROPIC_URL, {
+        method: 'POST',
+        signal: AbortSignal.timeout(ms),
+        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: MODEL, max_tokens: layout ? 3200 : 1500, system, messages }),
+      });
+      const raw = await res.text();
+      if (!res.ok) return { status: res.status, raw, text: '', out: null as Record<string, unknown> | null };
+      const message = JSON.parse(raw) as { content?: { type: string; text?: string }[] };
+      const text = (message.content ?? []).map((block) => (block.type === 'text' ? block.text ?? '' : '')).join('');
+      const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+      return { status: res.status, raw, text, out: JSON.parse(json) as Record<string, unknown> };
+    };
+    const started = Date.now();
+    let reply = await ask(45_000);
+    if (reply.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+    if (!reply.out) {
+      console.error('scoop draft failed', reply.status, reply.raw.slice(0, 500));
       return NextResponse.json({ error: 'draft_failed' }, { status: 502 });
     }
-    const message = JSON.parse(raw) as { content?: { type: string; text?: string }[] };
-    const text = (message.content ?? []).map((block) => (block.type === 'text' ? block.text ?? '' : '')).join('');
-    const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
-    const out = JSON.parse(json) as { fields?: Record<string, unknown>; notes?: unknown };
+    let copied = copyReport(excerpt, draftText(reply.out, layout));
+    if (copied.length && Date.now() - started < 22_000) {
+      messages.push({ role: 'assistant', content: reply.text });
+      messages.push({
+        role: 'user',
+        content: `These parts copy the source word for word:\n${copied.map((c) => `- ${c.field}: "${c.phrases.join('", "')}"`).join('\n')}\nRewrite those fields in SLC Scoop's voice, with the same facts. Keep direct quotes exact and in quotation marks. Reply with the complete JSON again, same shape.`,
+      });
+      const second = await ask(55_000 - (Date.now() - started)).catch(() => null);
+      if (second?.out) {
+        const again = copyReport(excerpt, draftText(second.out, layout));
+        if (again.length <= copied.length) { reply = second; copied = again; }
+      }
+    }
+    const out = reply.out as { fields?: Record<string, unknown>; notes?: unknown; article?: unknown };
+    const copyWarnings = copied.map((c) => `${c.field} repeats the source: "${c.phrases[0]}"`);
     if (!layout) {
       const fields: Record<string, string> = {};
       for (const slot of slots) {
         const value = out.fields?.[slot.slot];
         if (typeof value === 'string') fields[slot.slot] = value.slice(0, slot.maxChars + 40);
       }
-      return NextResponse.json({ fields, notes: typeof out.notes === 'string' ? out.notes : '' });
+      return NextResponse.json({ fields, notes: typeof out.notes === 'string' ? out.notes : '', copyWarnings });
     }
     const draft = normalizeDraft(out, brand, flags, layoutRefs.map((ref) => ref.id));
     return NextResponse.json({
       ...draft,
       tags: tagsLine(draft.topicTags),
       fields: fieldsFrom(draft, slots),
+      article: cleanArticle(out.article),
+      copyWarnings,
     });
   } catch (err) {
     console.error('scoop draft failed', err);

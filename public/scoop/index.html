@@ -372,6 +372,11 @@ body[data-workspace=creator] .modal.job-modal{width:min(440px,100%);padding:0;ga
 .job-modal .c-progress{margin:0}
 html[data-night] body[data-workspace=creator] .modal.job-modal{background:transparent;border:0}
 html[data-night] .link-preview,html[data-night] .credit-note{background:#2a261c;border-color:#5c4d2e;color:#efeee9}
+.review-tabs button{min-width:0;gap:6px}
+.review-tabs svg{width:15px;height:15px;flex:none}
+.article-input{width:100%;min-height:220px;margin-top:8px;line-height:1.5;resize:vertical}
+.c-note.warn{color:#9a3b2f}
+html[data-night] .c-note.warn{color:#e7b2a8}
 html[data-night] .link-preview .link-meta{color:#e0b774}
 html[data-night] .template-star{background:#161617;color:#a09d95}
 html[data-night] .template-star[aria-pressed=true]{color:#e0b774}
@@ -3874,7 +3879,7 @@ async function applyAiDraft(out){
   }
   foldNewTextIntoTemplate(S.doc, ids);
   for(const p of S.doc.pages) retireStackedText(p);
-  S.doc.ai={category:out.category||'', categoryReason:out.categoryReason||'', topicTags:out.topicTags||[], suggestedTags:out.suggestedTags||[], headlines:(pageSpecs[S.doc.page]||pageSpecs[0]||{}).headlines||out.headlines||[], pages:pageSpecs, chosen:chosen[S.doc.page]||0, chosenByPage:chosen, referenceId:out.referenceId||''};
+  S.doc.ai={category:out.category||'', categoryReason:out.categoryReason||'', topicTags:out.topicTags||[], suggestedTags:out.suggestedTags||[], headlines:(pageSpecs[S.doc.page]||pageSpecs[0]||{}).headlines||out.headlines||[], pages:pageSpecs, chosen:chosen[S.doc.page]||0, chosenByPage:chosen, referenceId:out.referenceId||'', article:String(out.article||''), copyWarnings:Array.isArray(out.copyWarnings)?out.copyWarnings:[]};
   return notes;
 }
 function creatorChoiceHTML(){
@@ -4970,6 +4975,7 @@ const CI={
  spark:ico('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/>'),
  check:ico('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'),
  text:ico('<path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/>'),
+ article:ico('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>'),
  photo:ico('<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'),
  lock:ico('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
  info:ico('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'),
@@ -5073,12 +5079,15 @@ function renderCreatorTemplates(){
 }
 function creatorTextSlots(){return S.doc.layers.filter(l=>l.type==='text'&&l.slot&&shownIn(S.doc.layers,l)).sort((a,b)=>({headline:0,supporting:1}[creatorSlotKey(a.slot)]??2)-({headline:0,supporting:1}[creatorSlotKey(b.slot)]??2)||a.y-b.y);}
 function creatorReviewHTML(){
-  const text=C.reviewTab==='text',texts=creatorTextSlots();
+  const tab=C.reviewTab==='photo'?'photo':C.reviewTab==='article'?'article':'text';
+  const texts=creatorTextSlots();
   const L=texts.find(l=>l.id===C.field)||texts[0];if(L)C.field=L.id;
   const photos=S.doc.layers.filter(l=>l.type==='image'&&l.slot&&shownIn(S.doc.layers,l));
-  return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}"><span></span><b>Quick edits</b><i>${C.drawer?'⌄':'⌃'}</i></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${text}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${!text}">${CI.photo}Photo</button></div>
-    ${text?(L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>'):
-    photos.map(L=>`<div class="photo-card"><button class="source-photo" data-creator-photo="${L.id}">${CI.photo}<span><b>${L.src?'Replace':'Add'} ${esc(L.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${L.src?`<div class="photo-controls">${[['zoom','Zoom',1,4,L.zoom||1],['fx','Left / right',0,1,L.fx??.5],['fy','Up / down',0,1,L.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${L.id}" aria-label="${esc(L.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${L.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${L.id}">Remove</button></div></div>`:''}</div>`).join('')||'<p class="c-note">This template does not use a photo.</p>'}
+  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
+  const photoPanel=photos.map(P=>`<div class="photo-card"><button class="source-photo" data-creator-photo="${P.id}">${CI.photo}<span><b>${P.src?'Replace':'Add'} ${esc(P.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${P.src?`<div class="photo-controls">${[['zoom','Zoom',1,4,P.zoom||1],['fx','Left / right',0,1,P.fx??.5],['fy','Up / down',0,1,P.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${P.id}" aria-label="${esc(P.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${P.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${P.id}">Remove</button></div></div>`:''}</div>`).join('')||'<p class="c-note">This template does not use a photo.</p>';
+  const panel=tab==='photo'?photoPanel:tab==='article'?articlePanel():textPanel;
+  return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}"><span></span><b>Quick edits</b><i>${C.drawer?'⌄':'⌃'}</i></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
+    ${panel}
     ${C.message?`<p class="c-note" role="status">${esc(C.message)}</p>`:''}<details class="review-source"><summary>View original ${C.inputMode==='ai'?'source':'team copy'}</summary>${sourceLinkHTML()}<p>${esc(C.inputMode==='ai'?C.source:C.teamCopy)}</p></details></div>`;
 }
 function renderCreator(){
@@ -5123,6 +5132,47 @@ function creatorIssues(){
       if(label)issues.push({page:i,id:l.id,tab:l.type==='image'?'photo':'text',label:(S.doc.pages.length>1?'P'+(i+1)+' · ':'')+label});
     }
   });return issues;
+}
+function articleWords(t){ return String(t||'').trim().split(/\s+/).filter(Boolean).length; }
+function articlePanel(){
+  const ai=S.doc&&S.doc.ai||{};
+  const text=ai.article||'', warn=ai.copyWarnings||[];
+  return `<div class="review-field"><div class="field-top"><b>Website article</b><small id="articleCount">${articleWords(text)} words</small></div>
+    <textarea class="c-input article-input" id="creatorArticle" rows="12" placeholder="The website story, in SLC Scoop's voice.">${esc(text)}</textarea>
+    ${warn.length?`<p class="c-note warn">Still close to the source wording. Reword these before posting: ${warn.map(esc).join(' · ')}</p>`:''}
+    <p class="c-note">Download includes this with the Instagram caption in one text file. Each section is ready to paste.</p></div>`;
+}
+function websiteHeadline(text){
+  const s=String(text||'').trim();
+  if(!s||s!==s.toUpperCase()) return s;
+  return s.toLowerCase().replace(/(^|[:.]\s+)([a-z])/g,(m,a,b)=>a+b.toUpperCase());
+}
+function websitePaste(){
+  const page=S.doc.pages[0];
+  const get=r=>{ const L=findRole(page.layers,r); return L?String(L.text||'').replace(/\s*\n\s*/g,' ').trim():''; };
+  const head=websiteHeadline(get('headline'));
+  const article=String(S.doc.ai&&S.doc.ai.article||'').trim();
+  return [head, article||get('dek')].filter(Boolean).join('\n\n');
+}
+function postCopyTxt(caption){
+  return ['INSTAGRAM','',String(caption||'').trim(),'','WEBSITE','',websitePaste(),''].join('\n');
+}
+async function ensureCaption(){
+  const saved=S.doc&&S.doc.ai&&String(S.doc.ai.caption||'').trim();
+  if(saved) return saved;
+  const fallback=composedCaption();
+  const article=String((C.inputMode==='ai'?C.source:C.teamCopy)||'').trim();
+  if(Backend.mode!=='server'||article.length<80||onlyUrl(article)) return fallback;
+  try{
+    const p=captionParts();
+    const out=await api('/caption',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
+      excerpt:article.slice(0,12000), headline:p.headline, dek:p.dek, source:p.source, location:p.location, tags:p.tags.join(' '),
+      siteName:C.link&&C.link.siteName||'', articleTitle:C.link&&C.link.title||''
+    })});
+    const caption=String(out&&out.caption||'').trim();
+    if(caption){ S.doc.ai=S.doc.ai||{}; S.doc.ai.caption=caption; return caption; }
+  }catch(e){}
+  return fallback;
 }
 function sourceLinkHTML(){
   const link=S.doc&&S.doc.sourceLink, href=link&&onlyUrl(link.url);
@@ -5559,14 +5609,19 @@ function openCaptionModal(saved){
   const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Instagram caption</h2><button class="btn ghost" data-close aria-label="Close caption">${CI.x}</button></div><p class="note" id="igNote">${esc(saved)}</p><textarea class="inp caption-box" id="igCaption" aria-label="Recommended Instagram caption"></textarea><div class="acts"><button class="btn" data-close>Done</button><button class="btn primary" id="igCopy">${CI.copy}Copy caption</button></div>`);
   m.querySelector('.modal').classList.add('caption-modal');
   const box=$('#igCaption',m);
-  box.value=composedCaption();
+  const savedCaption=S.doc&&S.doc.ai&&String(S.doc.ai.caption||'').trim();
+  box.value=savedCaption||composedCaption();
   let edited=false;
-  box.addEventListener('input',()=>{ edited=true; });
+  box.addEventListener('input',()=>{ edited=true; S.doc.ai=S.doc.ai||{}; S.doc.ai.caption=box.value; });
   $('#igCopy',m).onclick=async()=>{
     try{ await navigator.clipboard.writeText(box.value); $('#igNote',m).textContent='Copied. Paste it into Instagram.'; }
     catch(e){ box.focus(); box.select(); $('#igNote',m).textContent='Select the caption and copy it.'; }
   };
   const article=String((C.inputMode==='ai'?C.source:C.teamCopy)||'').trim();
+  if(savedCaption){
+    $('#igNote',m).textContent=saved+' Recommended from the article. Edit it if you want, then copy it into Instagram.';
+    return;
+  }
   if(Backend.mode!=='server'||article.length<80||onlyUrl(article)){
     $('#igNote',m).textContent=saved+' Recommended from this post. Copy it into Instagram.';
     return;
@@ -5579,13 +5634,14 @@ function openCaptionModal(saved){
   })}).then(out=>{
     if(!m.isConnected||edited||!out||!out.caption) return;
     box.value=String(out.caption).trim();
+    S.doc.ai=S.doc.ai||{}; S.doc.ai.caption=box.value;
     $('#igNote',m).textContent='Recommended from the article. Edit it if you want, then copy it into Instagram.';
   }).catch(()=>{ if(m.isConnected) $('#igNote',m).textContent=saved+' Recommended from this post. Copy it into Instagram.'; });
 }
 async function creatorExport(){
   clearTimeout(fillT);commit();
   let ready=[]; let generation=0;
-  const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Export post</h2><button class="btn ghost" data-close aria-label="Close export">${CI.x}</button></div><img class="creator-export-preview" id="cePreview" alt="Final exported post preview"><div class="note" id="ceDimensions"></div><div class="note warn" id="ceWarning"></div><div class="note" role="status" id="ceMessage">Preparing a PNG and a WebP at 2×…</div><div class="export-main"><button class="btn" id="ceShare" hidden disabled>${CI.share}Share</button><button class="btn primary" id="ceDownload" disabled>${CI.download}Download</button></div>`);
+  const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Export post</h2><button class="btn ghost" data-close aria-label="Close export">${CI.x}</button></div><img class="creator-export-preview" id="cePreview" alt="Final exported post preview"><div class="note" id="ceDimensions"></div><div class="note warn" id="ceWarning"></div><div class="note" role="status" id="ceMessage">Preparing the images and the copy file…</div><div class="export-main"><button class="btn" id="ceShare" hidden disabled>${CI.share}Share</button><button class="btn primary" id="ceDownload" disabled>${CI.download}Download</button></div>`);
   let localUrls=[];
   const revoke=()=>{ localUrls.forEach(URL.revokeObjectURL); localUrls=[]; };
   const observer=new MutationObserver(()=>{ if(!m.isConnected){ generation++; revoke(); observer.disconnect(); } });
@@ -5606,13 +5662,18 @@ async function creatorExport(){
       files.push({name:stem+suffix+'.png', blob:pair.png});
       if(pair.webp.type==='image/webp') files.push({name:stem+suffix+'.webp', blob:pair.webp});
     }
+    if(seq!==generation) return;
+    $('#ceMessage',m).textContent='Writing the Instagram caption…';
+    const caption=await ensureCaption();
+    if(seq!==generation) return;
+    files.push({name:stem+'.txt', blob:new Blob([postCopyTxt(caption)],{type:'text/plain'})});
     ready=files;
     const url=URL.createObjectURL(files[0].blob); localUrls.push(url); $('#cePreview',m).src=url;
     const pngs=files.filter(f=>f.name.endsWith('.png')).map(f=>new File([f.blob],f.name,{type:'image/png'}));
     const canShare=!!navigator.canShare&&navigator.canShare({files:pngs});
     $('#ceShare',m).hidden=!canShare; $('#ceShare',m).disabled=!canShare;
     $('#ceDownload',m).disabled=false;
-    $('#ceMessage',m).textContent=files.some(f=>f.name.endsWith('.webp'))?'Download saves a PNG and a WebP for each page.':'Download saves a PNG. This browser can’t make a WebP.';
+    $('#ceMessage',m).textContent=(files.some(f=>f.name.endsWith('.webp'))?'Download saves a PNG and a WebP for each page,':'Download saves a PNG,')+' plus a text file with the Instagram caption and the website article.';
     $('#ceShare',m).onclick=async()=>{
       try{ await navigator.share({files:pngs}); $('#ceMessage',m).textContent='Shared. The PNG is the one to post.'; }
       catch(e){ $('#ceMessage',m).textContent=e.name==='AbortError'?'Sharing cancelled.':'Sharing is unavailable. Use Download.'; }
@@ -5693,6 +5754,7 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('input',e=>{
   if(C.workspace!=='creator')return;const el=e.target;
+  if(el.id==='creatorArticle'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.article=el.value;const c=$('#articleCount');if(c)c.textContent=articleWords(el.value)+' words';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
   if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint&&C.inputMode==='ai')hint.textContent=url?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.';$('#sourceCount').textContent=el.value.length.toLocaleString()+' / 12,000';const next=$('#creatorNext');if(next&&!C.busy)next.innerHTML=creatorActionInner();creatorPersist();}
   if(el.id==='creatorTemplateSearch'){C.query=el.value;renderCreatorTemplates();}
   if(el.dataset.creatorText){const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}

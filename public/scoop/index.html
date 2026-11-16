@@ -274,6 +274,7 @@ body[data-workspace=builder] #app{grid-template-rows:auto 34px minmax(0,1fr)}
 .night-toggle[aria-pressed=true] .icon-sun{display:block}
 .fit-note{margin:8px 0 0;font-size:12px;line-height:1.45;color:#8c7134}
 .cat-row,.tag-picks,.alt-heads,.story-flags{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
+.cat-row button,.tag-picks button{touch-action:manipulation}
 .cat-reason{flex:1 1 160px;font-size:12px;line-height:1.4;color:#717168}
 .story-flags{flex-direction:column;align-items:flex-start;gap:8px}
 .story-flags label{display:flex;gap:8px;align-items:center;font-size:12px;min-height:32px}
@@ -724,16 +725,34 @@ html:root .news-source{overflow-wrap:anywhere}
 html:root .news-source.failed{padding:var(--space-3);margin-top:var(--space-2);border-radius:8px;border-color:var(--c-error-line);background:var(--c-error-bg);color:var(--c-error)}
 
 /* Review: larger copy fields, aligned tools, clear article guidance. */
-#creator .drawer-top{gap:var(--space-3);margin-bottom:var(--space-3)}
-#creator .drawer-toggle{font-size:var(--type-body);gap:var(--space-2);color:var(--c-ink);min-height:var(--control-height)}
-#creator .drawer-toggle i{color:var(--c-muted)}
+#creator .drawer-top{gap:var(--space-3);margin-bottom:var(--space-3);align-items:center}
+#creator .drawer-toggle{display:inline-flex;align-items:center;font-size:var(--type-body);gap:6px;color:var(--c-ink);min-height:36px;line-height:1;padding:0}
+#creator .drawer-toggle b{line-height:1}
+#creator .drawer-toggle .chev{width:16px;height:16px;display:block;flex:none;color:var(--c-muted)}
+#creator .drawer-toggle[aria-expanded="false"] .chev{transform:rotate(180deg)}
 #creator .review-tabs{gap:var(--space-2);padding-bottom:var(--space-4);margin-bottom:var(--space-4);border-color:var(--c-line)}
 #creator .review-tabs .c-button{min-height:var(--control-height);font-size:var(--type-sm);padding:var(--space-2);gap:var(--space-2)}
 #creator :is(.cat-row,.tag-picks,.alt-heads){gap:var(--space-2);margin-bottom:var(--space-3)}
 #creator .cat-reason:empty{display:none}
 #creator .review-field{padding:var(--space-4) 0;border-color:var(--c-line)}
 #creator .review-field:last-child{padding-bottom:0}
-#creator .field-select{min-height:var(--control-height);max-width:100%;width:auto;padding:var(--space-2) var(--space-3);font-size:var(--type-sm)}
+#creator .field-picks{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;flex:1}
+#creator .field-select{
+  appearance:none;-webkit-appearance:none;
+  height:36px;min-height:36px;max-width:100%;width:auto;
+  margin:0;padding:0 30px 0 12px;font-size:var(--type-sm);line-height:1;font-weight:700;
+  border:1px solid var(--c-line);border-radius:8px;color:var(--c-ink);
+  background-color:var(--c-soft);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%2365655e' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;background-size:14px 14px;
+}
+html[data-night] #creator .field-select{
+  background-color:var(--c-soft);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%23b3b1a9' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+#creator .badge-select{min-width:132px}
+#creator :is(.cat-row,.tag-picks) .c-button{min-height:32px;padding:6px 10px;line-height:1.15}
+#creator .review-tabs .c-button{min-height:40px;padding:8px 12px;line-height:1;align-items:center}
 #creator .review-field textarea{min-height:144px;height:auto;padding:var(--space-3) var(--space-4);font-size:var(--type-body);line-height:1.5;resize:vertical}
 #creator .review-field .article-input{min-height:320px;height:clamp(320px,42dvh,480px);margin-top:0}
 #creator .review-field:has(#creatorArticle:placeholder-shown) #creatorArticle{background:var(--c-soft);border-style:dashed}
@@ -890,18 +909,18 @@ html:root .toast.err{background:var(--c-error-bg);color:var(--c-error);border:1p
     border-radius:16px 16px 0 0;overflow-y:auto;overscroll-behavior-y:contain;
     scroll-padding-block:var(--space-4);box-shadow:0 -4px 16px var(--c-shadow);
   }
-  #creator[data-step="2"] .drawer-top{min-height:var(--control-height);margin:0 0 var(--space-2);gap:var(--space-2)}
-  #creator .drawer-toggle{min-height:var(--control-height);font-size:var(--type-sm)}
-  #creator .drawer-toggle>span{background:var(--c-border-strong);width:24px;height:4px}
-  #creator .drawer-top .inline-button{font-size:var(--type-xs);min-height:var(--control-height)}
+  #creator[data-step="2"] .drawer-top{min-height:40px;margin:0 0 var(--space-2);gap:var(--space-2);align-items:center}
+  #creator .drawer-toggle{min-height:40px;font-size:var(--type-sm)}
+  #creator .drawer-toggle>span{background:var(--c-border-strong);width:24px;height:4px;align-self:center}
+  #creator .drawer-top .inline-button{font-size:var(--type-xs);min-height:40px;display:inline-flex;align-items:center}
   #creator .review-tabs{padding-bottom:var(--space-3);margin-bottom:var(--space-3)}
-  #creator .review-tabs .c-button{font-size:var(--type-xs);min-height:var(--control-height)}
+  #creator .review-tabs .c-button{font-size:var(--type-xs);min-height:40px;padding:8px 12px}
+  #creator .field-select{height:40px;min-height:40px;font-size:var(--type-body)}
   #creator[data-step="2"] :is(.cat-row,.tag-picks){flex-wrap:nowrap;overflow-x:auto;gap:var(--space-2);padding:var(--space-1);scroll-padding-inline:var(--space-1)}
   #creator[data-step="2"] :is(.cat-row,.tag-picks) button{flex:none;white-space:nowrap}
   #creator[data-step="2"] .cat-reason{flex:0 0 176px}
   #creator .review-field textarea{min-height:160px;height:160px;line-height:1.5}
   #creator .review-field .article-input{min-height:288px;height:clamp(288px,44dvh,448px)}
-  #creator .field-select{min-height:var(--control-height);max-width:100%;font-size:var(--type-body)}
   #creator .text-tools{gap:var(--space-2);margin-top:var(--space-3)}
   #creator .text-tools .fit{margin-left:0}
   html:root #creator[data-step="2"][data-drawer="false"] .c-panel{padding-bottom:var(--space-2);flex:none}
@@ -2030,9 +2049,11 @@ function photoViewH(L){
 function coverDims(L,img){
   const nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height;
   if(L.fit==='stretch') return {dw:L.w,dh:L.h,dx:0,dy:0};
-  const viewH=photoViewH(L);
-  const s=(L.fit==='contain'?Math.min(L.w/nw,viewH/nh):Math.max(L.w/nw,viewH/nh))*(L.zoom||1);
-  const dw=nw*s, dh=nh*s; return {dw,dh,dx:(L.w-dw)*(L.fx??.5),dy:(viewH-dh)*(L.fy??.5)};
+  const s=(L.fit==='contain'?Math.min(L.w/nw,L.h/nh):Math.max(L.w/nw,L.h/nh))*(L.zoom||1);
+  const dw=nw*s, dh=nh*s;
+  // Vertical pan runs through the photo above the paper. Scale stays the full frame, so 0–100 is not a zoom.
+  const spanY=Math.min(photoViewH(L), L.h);
+  return {dw,dh,dx:(L.w-dw)*(L.fx??.5),dy:(spanY-dh)*(L.fy??.5)};
 }
 function applyImageFilter(ctx,L,sc){
   const f=[];
@@ -4422,13 +4443,16 @@ function saveBrandLists(){
   if(model) NEWS_MODEL=model.value==='sonnet'?'sonnet':'haiku';
   cap.db.doc('brand/settings').set(brandDoc()).then(()=>toast('Saved categories and tags')).catch(()=>toast('Couldn\'t save brand settings.',true));
 }
+function tagKey(tag){
+  return String(tag||'').toUpperCase().replace(/\s+/g,' ').trim();
+}
 function parseTagList(value){
-  return String(value||'').split('|').map(s=>s.trim().toUpperCase()).filter(s=>s&&s!=='SLCSCOOP');
+  return String(value||'').split('|').map(tagKey).filter(s=>s&&s!=='SLCSCOOP');
 }
 function tagsLine(topics){
   const body=[], seen=new Set();
   for(const topic of topics||[]){
-    const tag=String(topic).toUpperCase().trim();
+    const tag=tagKey(topic);
     if(!tag||tag==='SLCSCOOP'||seen.has(tag)) continue;
     seen.add(tag); body.push(tag);
     if(body.length>=3) break;
@@ -4595,36 +4619,142 @@ async function applyAiDraft(out){
 function creatorChoiceHTML(){
   const ai=S.doc.ai||{};
   const page=S.doc.pages[S.doc.page];
-  const cat=findRole(page.layers,'category');
-  const current=String(cat&&cat.text||ai.category||'').trim().toUpperCase();
+  const badgeLayers=categoryLayers(page);
+  const badge=badgeLayers.find(L=>L.bg==='box')||badgeLayers[0];
+  const current=tagKey((badge&&badge.text)||ai.category||'');
   const tagsL=tagLineLayer(page);
   const selected=tagsL?parseTagList(tagsL.text):[];
-  const suggested=(ai.suggestedTags||[]).map(t=>String(t).toUpperCase().trim()).filter(t=>t&&t!=='SLCSCOOP'&&!BRAND_TAGS.includes(t));
+  const suggested=(ai.suggestedTags||[]).map(tagKey).filter(t=>t&&t!=='SLCSCOOP'&&!BRAND_TAGS.map(tagKey).includes(t));
   const headlines=ai.headlines||[];
   const alts=headlines.map((h,i)=>({h,i})).filter(x=>x.i!==ai.chosen&&x.h&&x.h.lines);
   const note=(page.layers||[]).map(l=>l.type==='text'?fitNote(l,page):'').filter(Boolean)[0]||'';
   return `<div class="cat-row" role="group" aria-label="Category">${BRAND_CATS.map(c=>`<button type="button" class="c-button small" data-cat-pick="${esc(c.id)}" aria-pressed="${current===c.id}">${esc(c.id)}</button>`).join('')}<span class="cat-reason">${esc(ai.categoryReason||'')}</span></div>
-    <div class="tag-picks" role="group" aria-label="Topic tags">${BRAND_TAGS.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)}</button>`).join('')}${suggested.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)} · suggested</button>`).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
+    <div class="tag-picks" role="group" aria-label="Topic tags">${BRAND_TAGS.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(tagKey(t))}" aria-pressed="${selected.includes(tagKey(t))}">${esc(tagKey(t))}</button>`).join('')}${suggested.map(t=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)} · suggested</button>`).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
     ${alts.length?`<div class="alt-heads">${alts.map(x=>`<button type="button" class="c-button" data-alt-headline="${x.i}">Use: ${esc(x.h.lines.join(' / '))}</button>`).join('')}</div>`:''}
     ${note?`<p class="fit-note">${esc(note)}</p>`:''}`;
 }
-function pickCategory(id){
-  const page=S.doc.pages[S.doc.page], L=findRole(page.layers,'category'); if(!L) return;
-  L.text=id; const zone=zoneFor(page,'category'); if(zone) fitOneLine(L,zone,'category');
-  S.doc.ai=Object.assign({headlines:[],chosen:0},S.doc.ai,{category:id,categoryReason:'Chosen by you.'});
+function badgeName(id){
+  const s=String(id||'').trim();
+  if(!s) return 'Badge';
+  return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase();
+}
+function categoryLayers(page){
+  const layers=page&&page.layers||[];
+  const known=new Set(BRAND_CATS.map(c=>c.id));
+  const role=findRole(layers,'category');
+  const extras=layers.filter(L=>{
+    if(L.type!=='text'||L.dupOf||!shownIn(layers,L)||L===role) return false;
+    const r=layerRole(L);
+    if(r&&r!=='category') return false;
+    if(r==='category') return true;
+    const name=((L.slot||'')+' '+(L.name||'')).toLowerCase();
+    if(/badge|category|kicker/.test(name)) return true;
+    const text=tagKey(L.text);
+    return known.has(text)&&!String(L.text||'').includes('|');
+  });
+  return (role?[role]:[]).concat(extras);
+}
+function fitBadgeWidth(L){
+  if(!L||L.bg!=='box') return;
+  const w=measureLineWidth(textMeasureCtx(),L,String(L.text||''),L.size||24);
+  L.w=Math.max(64, Math.ceil(w+((+L.padX||0)*2)+8));
+}
+const BADGE_ORDER=['news','sponsored','correction','breaking','update','developing','missing'];
+const BADGE_LABELS={news:'News',sponsored:'Sponsored',correction:'Corrections',breaking:'Breaking',update:'Update',developing:'Developing',missing:'Missing'};
+function badgeKey(L){
+  const raw=((L&&L.slot)||'')+' '+((L&&L.name)||'');
+  const m=raw.toLowerCase().match(/\btag[:_\-\s]+([a-z]+)/);
+  return m?m[1]:'';
+}
+function badgeImages(page){
+  return (page&&page.layers||[]).filter(L=>L.type==='image'&&badgeKey(L)&&!L.dupOf);
+}
+function activeBadge(page){
+  const shown=badgeImages(page).find(L=>L.visible!==false&&shownIn(page.layers,L));
+  return shown?badgeKey(shown):'';
+}
+function showBadge(page, key){
+  const want=String(key||'').toLowerCase();
+  const all=badgeImages(page);
+  if(!all.some(L=>badgeKey(L)===want)) return false;
+  for(const L of all) L.visible=badgeKey(L)===want;
+  return true;
+}
+function badgeSelectHTML(){
+  const page=S.doc.pages[S.doc.page];
+  const images=badgeImages(page);
+  if(images.length){
+    const have=[...new Set(images.map(badgeKey))];
+    const keys=BADGE_ORDER.filter(k=>have.includes(k)).concat(have.filter(k=>!BADGE_ORDER.includes(k)));
+    const current=activeBadge(page)||keys[0];
+    return `<select id="creatorBadge" class="field-select badge-select" data-badge-kind="image" aria-label="Badge">${keys.map(k=>`<option value="${esc(k)}" ${k===current?'selected':''}>${esc(BADGE_LABELS[k]||badgeName(k))}</option>`).join('')}</select>`;
+  }
+  const layers=categoryLayers(page);
+  if(!layers.length) return '';
+  const badge=layers.find(L=>L.bg==='box')||layers[0];
+  const current=tagKey((badge&&badge.text)||'');
+  const ids=BRAND_CATS.map(c=>c.id);
+  const options=(current&&!ids.includes(current)?[current]:[]).concat(ids);
+  return `<select id="creatorBadge" class="field-select badge-select" data-badge-kind="text" aria-label="Badge">${options.map(id=>`<option value="${esc(id)}" ${id===current?'selected':''}>${esc(badgeName(id))}</option>`).join('')}</select>`;
+}
+function pickBadge(key){
+  const page=S.doc.pages[S.doc.page];
+  if(!showBadge(page, key)){ toast('This template has no badge.',true); return; }
+  const word=tagKey(key==='correction'?'CORRECTION':key);
+  for(const L of categoryLayers(page)){ L.text=word; fitBadgeWidth(L); }
+  if(S.doc.ai) S.doc.ai.category=word;
   commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
 }
-function toggleTopicTag(tag){
+function pickCategory(id){
+  const page=S.doc.pages[S.doc.page];
+  const key=tagKey(id);
+  if(!key) return;
+  const layers=categoryLayers(page);
+  for(const L of layers){ L.text=key; fitBadgeWidth(L); }
+  const primary=findRole(page.layers,'category');
+  if(page.zonesCustom&&primary){ const zone=zoneFor(page,'category'); if(zone) fitOneLine(primary,zone,'category'); }
+  const imageKey={NEWS:'news',SPONSORED:'sponsored',CORRECTION:'correction',BREAKING:'breaking',UPDATE:'update'}[key];
+  const swapped=imageKey?showBadge(page, imageKey):false;
+  if(!layers.length&&!swapped) return;
+  S.doc.ai=Object.assign({headlines:[],chosen:0},S.doc.ai,{category:key,categoryReason:'Chosen by you.'});
+  commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
+}
+let lastTagToggle={key:'',at:0}, tagTextLock=null;
+function paintTagPicks(tags){
+  const on=new Set(tags);
+  document.querySelectorAll('[data-tag-pick]').forEach(btn=>{
+    btn.setAttribute('aria-pressed',on.has(tagKey(btn.dataset.tagPick))?'true':'false');
+  });
+}
+function toggleTopicTag(tag, button){
   const page=S.doc.pages[S.doc.page], L=tagLineLayer(page); if(!L){ toast('This template has no tag line.',true); return; }
-  const key=String(tag).toUpperCase().trim();
+  const key=tagKey(tag);
   if(!key||key==='SLCSCOOP') return;
+  const now=performance.now();
+  if(lastTagToggle.key===key&&now-lastTagToggle.at<80) return;
+  const pressed=!!(button&&button.getAttribute('aria-pressed')==='true');
   let tags=parseTagList(L.text);
-  if(tags.includes(key)) tags=tags.filter(t=>t!==key);
+  const has=tags.includes(key);
+  if(has||pressed) tags=tags.filter(t=>t!==key);
   else if(tags.length>=3){ toast('Four tags is the maximum, including SLCSCOOP.'); return; }
   else tags=tags.concat(key);
+  lastTagToggle={key,at:now};
+  tagTextLock={id:L.id,at:now};
   applyTagLine(page, tags);
-  const zone=zoneFor(page,'tag'); if(zone) fitOneLine(L,zone,'tag');
-  commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
+  const fitted=tagLineLayer(page);
+  const zone=zoneFor(page,'tag');
+  if(zone&&fitted){ try{ fitOneLine(fitted,zone,'tag'); }catch(e){} }
+  applyTagLine(page, tags);
+  if(S.doc.ai) S.doc.ai.topicTags=tags.slice();
+  paintTagPicks(tags);
+  const shown=tagLineLayer(page);
+  document.querySelectorAll('[data-creator-text]').forEach(el=>{
+    if(!shown||el.dataset.creatorText!==shown.id) return;
+    el.value=shown.text;
+    const count=$('#c-count-'+shown.id); if(count) count.textContent=el.value.length+' characters';
+  });
+  commit(); scheduleRender();
+  if(C.workspace==='creator') requestAnimationFrame(()=>{ if(C.workspace==='creator') renderCreator(); });
 }
 async function applyAltHeadline(index){
   const ai=S.doc.ai||{};
@@ -5797,10 +5927,10 @@ function creatorReviewHTML(){
   const texts=creatorTextSlots();
   const L=texts.find(l=>l.id===C.field)||texts[0];if(L)C.field=L.id;
   const photos=S.doc.layers.filter(l=>l.type==='image'&&l.slot&&shownIn(S.doc.layers,l));
-  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
+  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select>${badgeSelectHTML()}</div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
   const photoPanel=photos.map(P=>`<div class="photo-card"><button class="source-photo" data-creator-photo="${P.id}">${CI.photo}<span><b>${P.src?'Replace':'Add'} ${esc(P.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${P.src?`<div class="photo-controls">${[['zoom','Zoom',1,4,P.zoom||1],['fx','Left / right',0,1,P.fx??.5],['fy','Up / down',0,1,P.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${P.id}" aria-label="${esc(P.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${P.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${P.id}">Remove</button></div></div>`:''}</div>`).join('')||'<p class="c-note">This template does not use a photo.</p>';
   const panel=tab==='photo'?photoPanel:tab==='article'?articlePanel():textPanel;
-  return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}"><span></span><b>Quick edits</b><i>${C.drawer?'⌄':'⌃'}</i></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
+  return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}" aria-label="${C.drawer?'Collapse quick edits':'Expand quick edits'}"><span></span><b>Quick edits</b><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
     ${panel}
     ${C.message?`<p class="c-note" role="status">${esc(C.message)}</p>`:''}<details class="review-source"><summary>View original ${C.inputMode==='ai'?'source':'team copy'}</summary>${sourceLinkHTML()}<p>${esc(C.inputMode==='ai'?C.source:C.teamCopy)}</p></details></div>`;
 }
@@ -5810,7 +5940,9 @@ function renderCreator(){
   $('#creatorTitle').textContent=C.step===0?'What’s the story?':'Review your post';
   $('#creatorSubtitle').textContent=C.step===0?'Paste. Preview. Post.':'A quick edit, then it’s ready to share.';
   document.querySelectorAll('.creator-steps [data-step]').forEach(b=>{if(+b.dataset.step===C.step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');b.disabled=C.busy||(+b.dataset.step===2&&!C.generated);});
-  $('#creatorPanel').innerHTML=C.step===0?creatorStoryHTML():creatorReviewHTML();
+  const panel=$('#creatorPanel'), kept=panel?panel.scrollTop:0;
+  panel.innerHTML=C.step===0?creatorStoryHTML():creatorReviewHTML();
+  if(panel) panel.scrollTop=kept;
   $('#creatorActions').innerHTML=`${C.step===0?`<span class="save-caption">${CI.lock}<span>Saved on this device</span></span>`:'<button class="c-button c-back" id="creatorBack">'+CI.back+'Story</button>'}<button class="c-button primary" id="creatorNext" ${C.busy?'disabled':''}>${creatorActionInner()}</button>`;
   $('#creatorUndoRow').hidden=C.step!==2;$('#creatorPreviewTools').hidden=true;
   $('#creatorPreviewHint').textContent=C.step===2?'Your layout is locked. Your words are yours.':'Your saved layout is ready to fill.';
@@ -6455,7 +6587,7 @@ document.addEventListener('click',async e=>{
   if(b.dataset.textSize){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){L.size=clamp(Math.round((L.size+Number(b.dataset.textSize))*10)/10,8,250);designSize.set(L.id,L.size);if(layerRole(L)==='headline'||layerRole(L)==='dek')seatSubheading(S.doc.pages[S.doc.page]);commit();scheduleRender();creatorRefreshInputs();}return;}
   if(b.dataset.textFit){const L=S.doc.layers.find(l=>l.id===b.dataset.textFit);if(L){const tight=fitFilledText([L],S.doc.layers,S.doc.w,S.doc.h);commit();scheduleRender();creatorRefreshInputs();if(tight.length)toast(tight[0]);}return;}
   if(b.dataset.catPick){pickCategory(b.dataset.catPick);return;}
-  if(b.dataset.tagPick!=null){toggleTopicTag(b.dataset.tagPick);return;}
+  if(b.dataset.tagPick!=null){toggleTopicTag(b.dataset.tagPick,b);return;}
   if(b.dataset.altHeadline!=null){applyAltHeadline(+b.dataset.altHeadline);return;}
   if(b.dataset.photoReset||b.dataset.photoRemove){const L=S.doc.layers.find(l=>l.id===(b.dataset.photoReset||b.dataset.photoRemove));if(L){if(b.dataset.photoRemove)L.src=null;else Object.assign(L,{fx:.5,fy:.5,zoom:1});commit();scheduleRender();renderCreator();}return;}
   switch(b.id){
@@ -6480,11 +6612,12 @@ document.addEventListener('input',e=>{
   if(el.id==='creatorArticle'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.article=el.value;const c=$('#articleCount');if(c)c.textContent=articleWords(el.value)+' words';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
   if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint&&C.inputMode==='ai')hint.textContent=url?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.';$('#sourceCount').textContent=el.value.length.toLocaleString()+' / 12,000';const next=$('#creatorNext');if(next&&!C.busy)next.innerHTML=creatorActionInner();creatorPersist();}
   if(el.id==='creatorTemplateSearch'){C.query=el.value;renderCreatorTemplates();}
-  if(el.dataset.creatorText){const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
+  if(el.dataset.creatorText){if(!el.isConnected)return;if(tagTextLock&&el.dataset.creatorText===tagTextLock.id&&document.activeElement!==el&&performance.now()-tagTextLock.at<400)return;const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
   if(el.dataset.photoProp){const L=S.doc.layers.find(l=>l.id===el.dataset.layer);if(L){L[el.dataset.photoProp]=+el.value;el.nextElementSibling.textContent=Math.round(+el.value*100)+'%';scheduleRender();}}
 });
 document.addEventListener('change',e=>{
   if(C.workspace!=='creator')return;
+  if(e.target.id==='creatorBadge'){if(e.target.dataset.badgeKind==='image')pickBadge(e.target.value);else pickCategory(e.target.value);return;}
   if(e.target.id==='creatorField'){clearTimeout(fillT);commit();C.field=e.target.value;renderCreator();}
   if(e.target.dataset.photoProp||e.target.dataset.creatorText){clearTimeout(fillT);commit();}
 });

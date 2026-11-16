@@ -4616,12 +4616,15 @@ async function applyAiDraft(out){
   S.doc.ai={category:out.category||'', categoryReason:out.categoryReason||'', topicTags:out.topicTags||[], suggestedTags:out.suggestedTags||[], headlines:(pageSpecs[S.doc.page]||pageSpecs[0]||{}).headlines||out.headlines||[], pages:pageSpecs, chosen:chosen[S.doc.page]||0, chosenByPage:chosen, referenceId:(ref&&ref.id)||'', article:String(out.article||''), copyWarnings:Array.isArray(out.copyWarnings)?out.copyWarnings:[]};
   return notes;
 }
+function currentCategory(page){
+  const layers=categoryLayers(page);
+  const written=layers.find(L=>L.bg==='box')||layers[0];
+  return tagKey((written&&written.text)||(S.doc.ai&&S.doc.ai.category)||'');
+}
 function creatorChoiceHTML(){
   const ai=S.doc.ai||{};
   const page=S.doc.pages[S.doc.page];
-  const badgeLayers=categoryLayers(page);
-  const badge=badgeLayers.find(L=>L.bg==='box')||badgeLayers[0];
-  const current=tagKey((badge&&badge.text)||ai.category||'');
+  const current=currentCategory(page);
   const tagsL=tagLineLayer(page);
   const selected=tagsL?parseTagList(tagsL.text):[];
   const suggested=(ai.suggestedTags||[]).map(tagKey).filter(t=>t&&t!=='SLCSCOOP'&&!BRAND_TAGS.map(tagKey).includes(t));
@@ -4699,24 +4702,19 @@ function badgeSelectHTML(){
 }
 function pickBadge(key){
   const page=S.doc.pages[S.doc.page];
-  if(!showBadge(page, key)){ toast('This template has no badge.',true); return; }
-  const word=tagKey(key==='correction'?'CORRECTION':key);
-  for(const L of categoryLayers(page)){ L.text=word; fitBadgeWidth(L); }
-  if(S.doc.ai) S.doc.ai.category=word;
+  if(!showBadge(page, key)) return;
   commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
 }
 function pickCategory(id){
   const page=S.doc.pages[S.doc.page];
   const key=tagKey(id);
   if(!key) return;
+  const next=currentCategory(page)===key?'':key;
   const layers=categoryLayers(page);
-  for(const L of layers){ L.text=key; fitBadgeWidth(L); }
+  for(const L of layers){ L.text=next; fitBadgeWidth(L); }
   const primary=findRole(page.layers,'category');
-  if(page.zonesCustom&&primary){ const zone=zoneFor(page,'category'); if(zone) fitOneLine(primary,zone,'category'); }
-  const imageKey={NEWS:'news',SPONSORED:'sponsored',CORRECTION:'correction',BREAKING:'breaking',UPDATE:'update'}[key];
-  const swapped=imageKey?showBadge(page, imageKey):false;
-  if(!layers.length&&!swapped) return;
-  S.doc.ai=Object.assign({headlines:[],chosen:0},S.doc.ai,{category:key,categoryReason:'Chosen by you.'});
+  if(next&&page.zonesCustom&&primary){ const zone=zoneFor(page,'category'); if(zone) fitOneLine(primary,zone,'category'); }
+  S.doc.ai=Object.assign({headlines:[],chosen:0},S.doc.ai,{category:next,categoryReason:next?'Chosen by you.':''});
   commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
 }
 let lastTagToggle={key:'',at:0}, tagTextLock=null;

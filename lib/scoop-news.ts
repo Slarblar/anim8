@@ -173,7 +173,7 @@ const COUNTY_AREA: Record<string, string> = {
   'Box Elder County': 'Brigham City',
 };
 
-/** A short city-area label, such as "Park City". No state, and a county becomes its closest city area. */
+/** Closest city plus state, such as "Logan, UT". A county becomes its closest city area. */
 export function incidentLocation(text: string, suggested = ''): string {
   const hay = String(text || '').replace(/\breal salt lake\b/gi, ' ');
   const hits: { name: string; index: number; length: number; kind: 'city' | 'county' }[] = [];
@@ -186,7 +186,7 @@ export function incidentLocation(text: string, suggested = ''): string {
   const places = hits
     .filter((hit) => !hits.some((other) => other !== hit && other.index <= hit.index && other.index + other.length >= hit.index + hit.length && other.length > hit.length))
     .sort((a, b) => a.index - b.index || b.length - a.length);
-  const format = (name: string, kind: 'city' | 'county') => kind === 'city' ? name : (COUNTY_AREA[name] || name.replace(/ County$/, ''));
+  const format = (name: string, kind: 'city' | 'county') => `${kind === 'city' ? name : (COUNTY_AREA[name] || name.replace(/ County$/, ''))}, UT`;
   const cueRank = (index: number) => {
     const before = hay.slice(Math.max(0, index - 40), index);
     if (/\b(near|outside|along|off)\s+$/i.test(before)) return 3;
@@ -206,7 +206,7 @@ export function incidentLocation(text: string, suggested = ''): string {
   const model = suggested.replace(/\s+/g, ' ').trim();
   const modelName = model.replace(/,?\s*(UT|UTAH)$/i, '').replace(/ County$/i, '').trim();
   if (modelName && hay.toLowerCase().includes(modelName.toLowerCase()) && !/^(statewide|utah|state of utah)$/i.test(modelName)) {
-    return modelName;
+    return `${modelName}, UT`;
   }
   const city = places.find((hit) => hit.kind === 'city') || places[0];
   if (city) return format(city.name, city.kind);

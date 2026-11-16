@@ -5,14 +5,14 @@ import { copyReport } from '@/lib/scoop-copycheck';
 import { incidentLocation } from '@/lib/scoop-news';
 
 /** SLC Scoop rewrites. It does not borrow another outlet's sentences. */
-const OWN_WORDS = `Write the headline, the dek, and the article in SLC Scoop's voice, not the source's. Match the voice samples: short, specific, local, and attributed. Do not reuse any run of 7 or more words from the excerpt, and do not follow its sentence order. Rewording is not new reporting: keep every fact exactly as stated.
+const OWN_WORDS = `Write the headline, the dek, and the article in SLC Scoop's voice, not the source's. Match the voice samples: short, specific, and local. Do not reuse any run of 7 or more words from the excerpt, and do not follow its sentence order. Rewording is not new reporting: keep every fact exactly as stated.
 Direct quotes are the exception: keep a quote word for word, inside quotation marks, and name who said it. Never change, trim, or invent a quote.`;
 
 const ARTICLE_RULE = (outlet: string) => `article: the website story, in the same voice as the graphic. 150 to 300 words, 3 to 5 short paragraphs separated by a blank line.
 SLC Scoop sounds like a Salt Lake desk talking to a neighbor: direct, factual, local. Short sentences. Name the place. Say who did what. No clickbait, no opinion, no emoji, no "here's what we know," no sign-off.
 - Open on the newest fact: who, what, where, when.
-- Then the detail a reader here needs, attributed ("police said", "the city says").${outlet ? `
-- The facts come from ${outlet}. Credit them in the first or second paragraph ("${outlet} first reported", "according to ${outlet}") and attribute claims that only they report. Do not present their reporting as SLC Scoop's own.` : ''}
+- Then the detail a reader here needs. Name a person or agency only when they said or did something ("police said").${outlet ? `
+- Name ${outlet} once, in the first or second paragraph. After that, do not name the outlet again and do not keep saying who reported the incident. The Source line already credits them.` : ''}
 - No headline, no byline, nothing that is not in the excerpt.
 - If the excerpt is too thin for 150 words, write fewer. Never pad.`;
 
@@ -85,7 +85,7 @@ function attribution(link: { title: string; siteName: string; published: string 
   if (!link) return '';
   const headline = link.title ? `, headline “${link.title}”` : '';
   const when = link.published ? `, published ${link.published}` : '';
-  return `\nThe facts below come from ${link.siteName}${headline}${when}. When a fact appears only in this excerpt, attribute it to ${link.siteName} (“${link.siteName} reports” or “according to ${link.siteName}”). Do not present those claims as SLC Scoop’s own reporting.\n`;
+  return `\nThe facts below come from ${link.siteName}${headline}${when}. The Source line is the outlet credit. Do not name ${link.siteName} in the headline or the dek. In the article, name ${link.siteName} once, then do not mention the outlet again. Do not present the reporting as SLC Scoop’s own.\n`;
 }
 
 const HEADLINE_RULE = 'Headline rule: each line is at most 23 characters, counting spaces. Use 2 lines, or 3 when the fact needs a third. A full line is close to 23 characters. Do not put one word on a line. Put a newline between lines. Do not write a fourth line.';
@@ -95,10 +95,10 @@ function buildPrompt(excerpt: string, slots: Slot[], link: { title: string; site
 
 Slot guidance (match by slot name):
 - Headline: the single most newsworthy fact, active voice, present tense, specific. Use single quotes for any quoted phrase. ${HEADLINE_RULE}
-- Dek / Sub: 1-2 sentences, at most 3 lines, adding who, where and the key detail the headline leaves out. Attribute claims ("police say", "X says").
+- Dek / Sub: 1-2 sentences, at most 3 lines, adding who, where and the key detail the headline leaves out. You may say what police or an official said. Do not name the outlet. The Source line already credits them.
 - Category: one or two words, e.g. NEWS, BREAKING, UPDATE, COURTS, POLITICS, WEATHER, CRIME, BUSINESS, COMMUNITY.
 - Tags: at most 3 topic tags plus SLCSCOOP, four tags on the line. Example: "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
-- Location: the closest city, as short as "Park City". No state, no county, no extra words. Do not copy the sample city in the slot example.
+- Location: the closest city and the state, always "Logan, UT". No county, no extra words. Do not copy the sample city in the slot example.
 - Source / Credit: "Source: <name>" only if the excerpt names a photo or information source.
 - Any other slot: follow its example text's role and length.
 
@@ -217,8 +217,8 @@ Text zones and the character budget at the target size:
 ${zoneText || 'No zones were sent.'}
 
 ${HEADLINE_RULE}
-Give 3 headline options. Each option's lines array is those graphic lines. The dek is at most 3 lines and does not repeat the headline.
-Location is the closest city, a few words at most, such as "Park City". No state abbreviation and no "County". "Near Park City" means Park City. Use "Utah" only when the story names no city. Do not keep a sample city, the outlet's home city, or the city where an agency is based when the incident happened somewhere else. The location in the JSON example shows the short form only.
+Give 3 headline options. Each option's lines array is those graphic lines. The dek is at most 3 lines and does not repeat the headline. Do not name the outlet in the headline or the dek.
+Location is the closest city and the state, always written "Logan, UT". "Near Logan" means Logan, UT. Do not drop the comma or the UT. Use "Utah" only when the story names no city. Do not keep a sample city, the outlet's home city, or the city where an agency is based when the incident happened somewhere else. The city in the JSON example is the format only.
 ${pageCount > 1 ? `This template has ${pageCount} pages. Return a pages array of ${pageCount} items. Each item has its own headlines (3 options) and dek. Page 1 is the cover. Later pages continue the same story without repeating the cover headline.` : 'Return a single cover. pages may be omitted.'}
 
 Layout references show line count, density, and spacing. Their events are not this story. Never reuse their names, numbers, places, or quotes. Follow a reference's line count only when each of your lines still fills the box. Do not copy a one-word line. Set referenceId to the reference this story should follow, or "" if none apply.
@@ -232,7 +232,7 @@ ${excerpt}
 """
 
 Reply with JSON only, no prose and no code fence:
-{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Park City","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
+{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Logan, UT","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
 }
 
 async function layoutImage(url: string) {

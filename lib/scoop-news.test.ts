@@ -297,15 +297,15 @@ describe('search result ages', () => {
 describe('incident location', () => {
   it('uses the place the incident happened, not a sample city', () => {
     const story = 'Troopers rammed a suspected drunk driver to protect crash crews near Park City, KUTV reports.';
-    expect(incidentLocation(story, 'South Jordan, UT')).toBe('Park City');
-    expect(incidentLocation(story, '')).toBe('Park City');
+    expect(incidentLocation(story, 'South Jordan, UT')).toBe('Park City, UT');
+    expect(incidentLocation(story, '')).toBe('Park City, UT');
   });
   it('keeps the city the model named when that is where it happened', () => {
     const story = 'South Jordan officers drew their weapons during an arrest near 10600 South.';
-    expect(incidentLocation(story, 'South Jordan, UT')).toBe('South Jordan');
+    expect(incidentLocation(story, 'South Jordan, UT')).toBe('South Jordan, UT');
   });
-  it('uses the closest city area, and Utah when no city is named', () => {
-    expect(incidentLocation('The Salt Lake County council met Tuesday.', 'Salt Lake City, UT')).toBe('Salt Lake');
+  it('uses the closest city and state, and Utah when no city is named', () => {
+    expect(incidentLocation('The Salt Lake County council met Tuesday.', 'Salt Lake City, UT')).toBe('Salt Lake, UT');
     expect(incidentLocation('Lawmakers at the Utah legislature passed the bill.', '')).toBe('Utah');
     expect(incidentLocation('A short note with no place.', 'South Jordan, UT')).toBe('');
   });

@@ -1278,10 +1278,26 @@ const T = o=>Object.assign(BASE(),{type:'text',web:false,text:'Text',font:'Archi
 const SH = o=>Object.assign(BASE(),{type:'shape',web:false,shape:'rect',fill:'#ED2224',grad:false,fill2:'#000000',fill2Alpha:0,gradAngle:90,stroke:'#000000',strokeW:0,radius:0,rough:18,seed:7,edges:'both'},o);
 const IM = o=>Object.assign(BASE(),{type:'image',web:true,role:'design',src:null,nw:0,nh:0,fit:'cover',fx:.5,fy:.5,zoom:1,flipX:false,flipY:false,bright:100,contrast:100,sat:100,gray:0,blur:0},o);
 const RD = o=>Object.assign(BASE(),{type:'redact',web:true,name:'Redaction',mode:'mosaic',block:28,blurRadius:24,solidColor:'#000000',shape:'rect',strokes:[]},o);
+// The website image is the photo plus its overlays and textures. The site renders headline, tags, logo and
+// everything else itself, so text, logos, icons and layout shapes never go in.
+const WEB_KEEP_NAME=/texture|grain|grunge|dust|noise|scratch|overlay|fade|gradient|vignette|shade|shadow|tint|light ?leak|halftone|film|smoke|haze|glow/i;
+const WEB_SKIP_NAME=/logo|wordmark|masthead|icon|\bpin\b|arrow|badge|button|\bqr\b|handle|follow|watermark/i;
 function defaultWeb(L){
-  if(!L) return false;
+  if(!L||L.type==='folder'||L.psdRef) return false;
   if(L.type==='redact') return true;
-  return L.type==='image'&&L.role==='photo';
+  if(L.type==='text') return false;
+  const name=String(L.name||'')+' '+String(L.slot||'');
+  if(L.type==='image'){
+    if(L.role==='photo'||/^photo$/i.test(String(L.slot||''))) return true;
+    if(WEB_KEEP_NAME.test(name)) return true;
+    if(WEB_SKIP_NAME.test(name)||(typeof isLogoLayer==='function'&&isLogoLayer(L))) return false;
+    return true;
+  }
+  if(L.type==='shape'){
+    if(L.shape==='pin'||L.shape==='arrow') return false;
+    return !!L.grad||WEB_KEEP_NAME.test(name);
+  }
+  return false;
 }
 function ensureLayerWeb(L){
   if(!L||L.type==='folder') return;
@@ -1293,9 +1309,17 @@ function ensureLayerWeb(L){
     if(!L.solidColor) L.solidColor='#000000';
     if(L.shape!=='ellipse'&&L.shape!=='brush') L.shape='rect';
     if(!Array.isArray(L.strokes)) L.strokes=[];
-  } else if(typeof L.web!=='boolean') L.web=defaultWeb(L);
+  } else if(L.type==='text') L.web=false;
+  else if(L.webSet!==true) L.web=defaultWeb(L);
 }
-function layerWeb(L){ if(!L||L.type==='folder') return false; if(L.type==='redact') return true; return L.web===true; }
+// webSet marks a choice someone made by hand (layer toggle, or web:/noweb: in a PSD layer name). Otherwise the rules decide.
+function layerWeb(L){
+  if(!L||L.type==='folder') return false;
+  if(L.type==='redact') return true;
+  if(L.type==='text') return false;
+  if(L.webSet===true) return L.web===true;
+  return defaultWeb(L);
+}
 
 const KINDS = [
   {id:'single', name:'Single post', w:1080, h:1350, pages:1, layout:'feed'},
@@ -3368,9 +3392,9 @@ function psdBox(layer){
 }
 function round2(n){ return Math.round(n*100)/100; }
 function applyPsdWeb(L, meta, parentWeb){
-  if(meta.web!==null) L.web=meta.web;
-  else if(typeof parentWeb==='boolean') L.web=parentWeb;
-  else if(L.type==='image'&&L.role!=='photo') L.web=false;
+  if(meta.web!==null){ L.web=meta.web; L.webSet=true; }
+  else if(typeof parentWeb==='boolean'){ L.web=parentWeb; L.webSet=true; }
+  else { delete L.webSet; L.web=defaultWeb(L); }
 }
 async function importPsdLeaf(layer, opacity, hidden, report, out, page, parentWeb){
   const meta=parsePsdName(layer.name);
@@ -4335,7 +4359,7 @@ llist.addEventListener('click',e=>{
   const fold=e.target.closest('[data-fold]');
   if(fold){ const L=S.doc.layers.find(l=>l.id===fold.dataset.fold); if(L&&L.type==='folder'){ L.open=L.open===false; commit(); renderLayers(); } return; }
   const web=e.target.closest('[data-web]');
-  if(web){ const L=S.doc.layers.find(l=>l.id===web.dataset.web); if(L&&L.type!=='redact'&&L.type!=='folder'){ L.web=!layerWeb(L); commit(); scheduleRender(); renderLayers(); renderProps(true); } return; }
+  if(web){ const L=S.doc.layers.find(l=>l.id===web.dataset.web); if(L&&L.type!=='redact'&&L.type!=='folder'&&L.type!=='text'){ L.web=!layerWeb(L); L.webSet=true; commit(); scheduleRender(); renderLayers(); renderProps(true); } return; }
   const v=e.target.closest('[data-vis]'), k=e.target.closest('[data-lock]');
   if(v){ const L=S.doc.layers.find(l=>l.id===v.dataset.vis); L.visible=!L.visible; commit(); scheduleRender(); renderLayers(); return; }
   if(k){ const L=S.doc.layers.find(l=>l.id===k.dataset.lock); L.locked=!L.locked; commit(); scheduleRender(); renderLayers(); renderProps(true); return; }
@@ -5091,7 +5115,7 @@ function layerHTML(){
     <div class="fld"><label for="f-name">Name</label><input class="inp" id="f-name" data-p="name" data-t="str" placeholder="${esc(layerLabel(L))}"></div>
     <label class="chk"><input type="checkbox" id="f-_slot" data-p="_slot" data-t="bool">Quick-fill slot</label>
     ${L.type==='image'&&!L.psdRef?`<label class="chk"><input type="checkbox" id="f-role" data-p="role" data-t="bool">Photo slot (cleared when saving templates)</label>`:''}
-    ${L.type==='redact'?'<div class="note">Always applied</div>':`<label class="chk"><input type="checkbox" id="f-web" data-p="web" data-t="bool">Include in web image</label>`}
+    ${L.type==='redact'?'<div class="note">Always applied</div>':L.type==='text'?'<div class="note">Text is never in the website image. The site adds it.</div>':`<label class="chk"><input type="checkbox" id="f-web" data-p="web" data-t="bool">Include in web image</label>`}
     ${L.type==='folder'?'':`<label class="chk"><input type="checkbox" id="f-clip" data-p="clip" data-t="bool" ${canClipLayer(L)?'':'disabled'}>Clip to layer below</label>`}
     ${L.slot?`<div class="fld"><label for="f-slot">Slot label</label><input class="inp" id="f-slot" data-p="slot" data-t="str"></div>`:''}
   </div>`;
@@ -5226,6 +5250,7 @@ function applyField(el,isChange){
   if(p==='_bg'){ S.doc.bg=v; scheduleRender(); return; }
   if(p==='_size'){ if(v){ const [w,h]=v.split('x').map(Number); S.doc.w=w; S.doc.h=h; scheduleRender(); fitView(); renderProps(true);} return; }
   const L=sel(); if(!L) return;
+  if(p==='web') L.webSet=true;
   if(p==='_slot'){ L.slot = v ? (L.slot || L.name || (L.type==='image'?'Photo':layerLabel(L).slice(0,18))) : ''; }
   else if(p==='role'){ L.role = v ? 'photo' : 'design'; }
   else if(p==='font'){ L.font=v; const f=allFonts().find(x=>x.family===v); if(BRAND_FONT_FAMILIES.has(v)){ L.weight=400; L.italic=false; } else if(f&&!f.weights.includes(L.weight)) L.weight=f.weights.reduce((a,b)=>Math.abs(b-L.weight)<Math.abs(a-L.weight)?b:a); ensureFonts([L]); }
@@ -5730,10 +5755,42 @@ async function renderPageFormats(page){
   const blob=(mime,q)=>new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),mime,q); }catch(e){ rej(e); } });
   return { png:await blob('image/png'), webp:await blob('image/webp',1) };
 }
+// The area the website image covers: the photo frame(s), so no empty band is left where the paper and text were.
+function webCropRect(page){
+  const layers=page.layers||[];
+  const photos=layers.filter(L=>L.type==='image'&&(L.role==='photo'||/^photo$/i.test(String(L.slot||'')))&&L.src&&shownIn(layers,L));
+  if(!photos.length) return {x:0,y:0,w:page.w,h:page.h};
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(const L of photos){
+    const b=layerBounds(L);
+    // Stop where the paper panel starts: below that line the photo is covered in the post.
+    const edge=paperTopY(layers);
+    const bottom=edge>b.y+24&&edge<b.y+b.h-8?edge:b.y+b.h;
+    x0=Math.min(x0,b.x); y0=Math.min(y0,b.y); x1=Math.max(x1,b.x+b.w); y1=Math.max(y1,bottom);
+  }
+  x0=Math.max(0,Math.floor(x0)); y0=Math.max(0,Math.floor(y0)); x1=Math.min(page.w,Math.ceil(x1)); y1=Math.min(page.h,Math.ceil(y1));
+  if(x1-x0<64||y1-y0<64) return {x:0,y:0,w:page.w,h:page.h};
+  return {x:x0,y:y0,w:x1-x0,h:y1-y0};
+}
+// Shaves rows/columns that are only the page background (e.g. where a footer panel was left out).
+function trimPlainEdges(canvas,r,bg){
+  let data; try{ data=canvas.getContext('2d').getImageData(r.x,r.y,r.w,r.h).data; }catch(e){ return r; }
+  const hex=String(bg||'#000000').replace('#','').padEnd(6,'0');
+  const br=parseInt(hex.slice(0,2),16), bgc=parseInt(hex.slice(2,4),16), bb=parseInt(hex.slice(4,6),16);
+  const plain=(i)=>Math.abs(data[i]-br)<10&&Math.abs(data[i+1]-bgc)<10&&Math.abs(data[i+2]-bb)<10;
+  const rowPlain=y=>{ let n=0; for(let x=0;x<r.w;x++) if(plain((y*r.w+x)*4)) n++; return n>=r.w*0.985; };
+  const colPlain=x=>{ let n=0; for(let y=top;y<bot;y++) if(plain((y*r.w+x)*4)) n++; return n>=(bot-top)*0.985; };
+  let top=0, bot=r.h; while(top<bot-64&&rowPlain(top)) top++; while(bot>top+64&&rowPlain(bot-1)) bot--;
+  let left=0, right=r.w; while(left<right-64&&colPlain(left)) left++; while(right>left+64&&colPlain(right-1)) right--;
+  return {x:r.x+left,y:r.y+top,w:right-left,h:bot-top};
+}
 async function renderWebBlob(page){
   await allImagesReady(page); await ensureFonts(page.layers);
-  const c=document.createElement('canvas'); c.width=page.w; c.height=page.h;
-  renderWeb(c.getContext('2d'),page,{scale:1});
+  const full=document.createElement('canvas'); full.width=page.w; full.height=page.h;
+  renderWeb(full.getContext('2d'),page,{scale:1});
+  const r=trimPlainEdges(full,webCropRect(page),page.bg);
+  const c=document.createElement('canvas'); c.width=r.w; c.height=r.h;
+  c.getContext('2d').drawImage(full,r.x,r.y,r.w,r.h,0,0,r.w,r.h);
   const blob=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/webp',0.9); }catch(e){ rej(e); } });
   if(blob.type==='image/webp') return {blob,ext:'webp'};
   const png=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/png'); }catch(e){ rej(e); } });
@@ -6861,11 +6918,11 @@ async function creatorExport(){
   observer.observe($('#modalRoot'),{childList:true});
   const missing=S.doc.pages.flatMap((p,i)=>p.layers.filter(l=>l.slot&&l.type==='image'&&!l.src&&shownIn(p.layers,l)).map(l=>`Page ${i+1}: ${l.slot}`));
   $('#ceWarning',m).textContent=missing.length?'Empty photos export as blank. '+missing.join(' · '):hiddenRedactions()?'A hidden redaction will not appear in the export.':'';
-  $('#ceDimensions',m).textContent=`${S.doc.w*2} × ${S.doc.h*2} px · PNG and WebP`;
+  $('#ceDimensions',m).textContent=`Instagram PNG ${S.doc.w*2} × ${S.doc.h*2} px · website WebP ${S.doc.w} × ${S.doc.h} px`;
   const seq=++generation;
   try{
     const stem=defaultName()||'post';
-    const files=[];
+    const files=[]; const webNotes=[];
     for(let i=0;i<S.doc.pages.length;i++){
       const page=S.doc.pages[i];
       if(page.layers.some(l=>l.type==='image'&&l.src&&shownIn(page.layers,l)&&loadEntry(l.src)?.state==='err')) throw new Error('missing_image');
@@ -6873,7 +6930,13 @@ async function creatorExport(){
       if(seq!==generation) return;
       const suffix=S.doc.pages.length>1?'-'+(i+1):'';
       files.push({name:stem+suffix+'.png', blob:pair.png});
-      if(pair.webp.type==='image/webp') files.push({name:stem+suffix+'.webp', blob:pair.webp});
+      // Website image: photo, overlays and textures only (no text, logo, badge or icons).
+      const issue=webExportIssues(page);
+      if(issue&&issue.blocked&&issue.blocked.length){ webNotes.push((S.doc.pages.length>1?'Page '+(i+1)+': ':'')+webBlockMessage(issue)); continue; }
+      if(issue&&issue.empty){ webNotes.push((S.doc.pages.length>1?'Page '+(i+1)+': ':'')+webEmptyMessage()); continue; }
+      const web=await renderWebBlob(page);
+      if(seq!==generation) return;
+      files.push({name:stem+suffix+'.'+web.ext, blob:web.blob, web:true});
     }
     if(seq!==generation) return;
     $('#ceMessage',m).textContent='Writing the Instagram caption…';
@@ -6886,7 +6949,8 @@ async function creatorExport(){
     const canShare=!!navigator.canShare&&navigator.canShare({files:pngs});
     $('#ceShare',m).hidden=!canShare; $('#ceShare',m).disabled=!canShare;
     $('#ceDownload',m).disabled=false;
-    $('#ceMessage',m).textContent=(files.some(f=>f.name.endsWith('.webp'))?'Download saves a PNG and a WebP for each page,':'Download saves a PNG,')+' plus a text file with the Instagram caption and the website article.';
+    $('#ceMessage',m).textContent=(files.some(f=>f.web)?'Download saves the Instagram PNG and a website image (photo, overlays and textures only) for each page,':'Download saves the Instagram PNG,')+' plus a text file with the Instagram caption and the website article.';
+    if(webNotes.length) $('#ceWarning',m).textContent=[$('#ceWarning',m).textContent,...webNotes].filter(Boolean).join(' ');
     $('#ceShare',m).onclick=async()=>{
       try{ await navigator.share({files:pngs}); $('#ceMessage',m).textContent='Shared. The PNG is the one to post.'; }
       catch(e){ $('#ceMessage',m).textContent=e.name==='AbortError'?'Sharing cancelled.':'Sharing is unavailable. Use Download.'; }

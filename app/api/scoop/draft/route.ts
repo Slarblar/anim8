@@ -3,6 +3,7 @@ import { guard, isBlobUrl } from '@/lib/scoop';
 import { brandFrom, normalizeDraft, readBrand, tagsLine, type CategoryRule } from '@/lib/scoop-brand';
 import { copyReport } from '@/lib/scoop-copycheck';
 import { parseModelJson } from '@/lib/scoop-json';
+import { cleanArticleText } from '@/lib/scoop-link';
 import { incidentLocation } from '@/lib/scoop-news';
 
 /** SLC Scoop rewrites. It does not borrow another outlet's sentences. */
@@ -178,6 +179,16 @@ function categoryBlock(categories: CategoryRule[]) {
     .join('\n');
 }
 
+function measureNote(measure: unknown): string {
+  if (!measure || typeof measure !== 'object') return '';
+  const row = measure as { headline?: { lineCount?: unknown }; dek?: { lineCount?: unknown }; density?: unknown };
+  const headline = Math.round(Number(row.headline?.lineCount) || 0);
+  const dek = Math.round(Number(row.dek?.lineCount) || 0);
+  const density = typeof row.density === 'string' ? row.density.replace(/\s+/g, ' ').trim().slice(0, 24) : '';
+  const bits = [headline ? `${headline} headline lines` : '', dek ? `${dek} dek lines` : '', density].filter(Boolean);
+  return bits.length ? `Layout: ${bits.join(', ')}.` : '';
+}
+
 function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: CategoryRule[], tags: string[], refs: LayoutRef[], voice: VoiceRef[], pageCount: number, flags: { followUp: boolean; correction: boolean }, link: { title: string; siteName: string; published: string } | null) {
   const zoneText = zones
     .map((z) => z.role === 'headline'
@@ -190,7 +201,8 @@ function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: Category
       if (ref.copy.headline) parts.push(`Headline:\n${ref.copy.headline}`);
       if (ref.copy.dek) parts.push(`Dek:\n${ref.copy.dek}`);
       if (ref.copy.category || ref.copy.tags) parts.push(`Category: ${ref.copy.category || '—'}\nTags: ${ref.copy.tags || '—'}`);
-      if (ref.measure) parts.push(`Measured:\n${JSON.stringify(ref.measure)}`);
+      const measured = measureNote(ref.measure);
+      if (measured) parts.push(measured);
       return parts.join('\n');
     })
     .join('\n\n');
@@ -336,7 +348,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }
-  const excerpt = typeof body.excerpt === 'string' ? body.excerpt.slice(0, 12000).trim() : '';
+  const excerpt = cleanArticleText(typeof body.excerpt === 'string' ? body.excerpt : '').slice(0, 12000).trim();
   const slots = (Array.isArray(body.slots) ? body.slots : [])
     .slice(0, 20)
     .filter((s): s is Slot => !!s && typeof (s as Slot).slot === 'string')
@@ -399,10 +411,10 @@ export async function POST(req: NextRequest) {
     };
     const started = Date.now();
     let reply = await ask(45_000);
-    if (reply.status === 200 && !reply.out && Date.now() - started < 40_000) {
+    if (reply.status === 200 && !reply.out) {
       messages.push({ role: 'assistant', content: reply.text.slice(0, 8000) });
-      messages.push({ role: 'user', content: 'That reply was not valid JSON. Reply again with one JSON object only. Put line breaks inside strings as \\n. No markdown fence.' });
-      const again = await ask(20_000).catch(() => null);
+      messages.push({ role: 'user', content: 'That reply was not valid JSON. Reply again with one JSON object only. Separate list items with commas. Put line breaks inside strings as \\n. No markdown fence.' });
+      const again = await ask(25_000).catch(() => null);
       if (again?.out) reply = again;
     }
     if (reply.status === 429) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });

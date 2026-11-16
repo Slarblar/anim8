@@ -19,6 +19,25 @@ describe('parseModelJson', () => {
     const text = '{"dek":"She said \\"stop\\".\nNext line.\u0001"}';
     expect(parseModelJson(text).dek).toBe('She said "stop".\nNext line.');
   });
+
+  it('inserts a missing comma between list items', () => {
+    const text = '{"topicTags":["UTAH"\n"PUBLIC SAFETY"],"headlines":[{"lines":["CHILD CALLS 911" "AFTER UTV CRASH"]}]}';
+    const out = parseModelJson(text);
+    expect(out.topicTags).toEqual(['UTAH', 'PUBLIC SAFETY']);
+    expect(out.headlines).toEqual([{ lines: ['CHILD CALLS 911', 'AFTER UTV CRASH'] }]);
+  });
+
+  it('uses the post when a measurement object comes first', () => {
+    const text = '{"headline":{"capHeight":54,"lineCount":3}}\n{"category":"NEWS","headlines":[{"lines":["CHILD CALLS 911","AFTER UTV CRASH"]}],"dek":"Near Logan."}';
+    const out = parseModelJson(text);
+    expect(out.category).toBe('NEWS');
+    expect(out.dek).toBe('Near Logan.');
+  });
+
+  it('closes a reply that was cut off', () => {
+    const text = '{"headlines":[{"lines":["CHILD CALLS 911","AFTER UTV CRASH"]}],"dek":"Near Logan."';
+    expect(parseModelJson(text).dek).toBe('Near Logan.');
+  });
 });
 
 describe('cleanArticleText', () => {

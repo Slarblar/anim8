@@ -428,6 +428,536 @@ html[data-night] .story-option{color:#efeee9;border-color:#3a3a3c}
 html[data-night] .story-option small{color:#a09d95}
 html[data-night] .news-source.failed{background:#2a201e;border-color:#5c3a34;color:#efeee9}
 </style>
+<style>
+
+/* Post Studio polish. Presentation only; builder, canvas and export logic stay intact.
+   Both themes share the spacing, type and motion scales below. */
+:root{
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --fast:120ms;
+  --base:200ms;
+  --slow:320ms;
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-5:24px;
+  --space-6:32px;
+  --type-xs:12px;
+  --type-sm:14px;
+  --type-body:16px;
+  --type-title:24px;
+  --type-display:32px;
+  --control-height:44px;
+  --c-ink:#20201f;
+  --c-muted:#65655e;
+  --c-line:#deded6;
+  --c-bg:#f5f5f1;
+  --c-red:#ed2224;
+  --c-surface:#ffffff;
+  --c-soft:#f0f0eb;
+  --c-hover:#e9e9e2;
+  --c-pressed:#dfdfd6;
+  --c-border-strong:#aaa99f;
+  --c-placeholder:#707067;
+  --c-action:#d91f26;
+  --c-action-hover:#bd171f;
+  --c-action-active:#a4131b;
+  --c-on-action:#ffffff;
+  --c-selected:#262827;
+  --c-on-selected:#ffffff;
+  --c-selection-tint:#fbe9e8;
+  --c-preview:#eaeae4;
+  --c-success:#3d6b45;
+  --c-success-bg:#e7efe3;
+  --c-warning:#815d1e;
+  --c-warning-bg:#fff7e8;
+  --c-warning-line:#dbc69a;
+  --c-error:#b02029;
+  --c-error-bg:#fff0ef;
+  --c-error-line:#e6b2b4;
+  --c-focus:#b91c24;
+  --c-focus-halo:#b91c2426;
+  --c-skeleton:#d9d9d0;
+  --c-shimmer:#ffffffb3;
+  --c-scrim:#10111280;
+  --c-actions:#fffffff5;
+  --c-shadow:#1516160a;
+  --c-modal-shadow:#15161633;
+  --c-toast-bg:#20201f;
+  --c-toast-ink:#ffffff;
+  --c-nav-bg:#151616;
+  --c-nav-ink:#ffffff;
+  --c-nav-muted:#b8bab4;
+  --c-nav-line:#454646;
+  --c-nav-hover:#303131;
+  --c-nav-focus:#ffb0b3;
+}
+html[data-night]{
+  --c-ink:#efeee9;
+  --c-muted:#b3b1a9;
+  --c-line:#3a3a3c;
+  --c-bg:#0e0e0f;
+  --c-red:#ed2224;
+  --c-surface:#161617;
+  --c-soft:#1d1d1f;
+  --c-hover:#29292c;
+  --c-pressed:#333336;
+  --c-border-strong:#77767b;
+  --c-placeholder:#aaa8a1;
+  --c-action:#d91f26;
+  --c-action-hover:#bd171f;
+  --c-action-active:#a4131b;
+  --c-on-action:#ffffff;
+  --c-selected:#efeee9;
+  --c-on-selected:#151616;
+  --c-selection-tint:#382023;
+  --c-preview:#121214;
+  --c-success:#b7d2ae;
+  --c-success-bg:#243024;
+  --c-warning:#e5c184;
+  --c-warning-bg:#2a261c;
+  --c-warning-line:#6b5833;
+  --c-error:#ffb6bb;
+  --c-error-bg:#321d22;
+  --c-error-line:#82505a;
+  --c-focus:#ff9396;
+  --c-focus-halo:#ff939629;
+  --c-skeleton:#39393e;
+  --c-shimmer:#ffffff24;
+  --c-scrim:#050506b3;
+  --c-actions:#161617f5;
+  --c-shadow:#00000026;
+  --c-modal-shadow:#00000066;
+  --c-toast-bg:#efeee9;
+  --c-toast-ink:#151616;
+  --c-nav-bg:#151616;
+  --c-nav-ink:#ffffff;
+  --c-nav-muted:#b8bab4;
+  --c-nav-line:#454646;
+  --c-nav-hover:#303131;
+  --c-nav-focus:#ffb0b3;
+}
+
+/* Consistent theme aliases, without recoloring the desktop artboard workspace. */
+html:root #creator,
+html:root body[data-workspace=creator] .modal{
+  --text:var(--c-ink);
+  --muted:var(--c-muted);
+  --faint:var(--c-muted);
+  --panel:var(--c-surface);
+  --panel2:var(--c-soft);
+  --line:var(--c-line);
+  --raise:var(--c-hover);
+  color:var(--c-ink);
+  font-size:var(--type-sm);
+  line-height:1.5;
+}
+html:root body[data-workspace=creator]{color:var(--c-ink);background:var(--c-bg)}
+html:root .studio-nav{
+  background:var(--c-nav-bg);color:var(--c-nav-ink);border-color:var(--c-nav-line);
+  gap:var(--space-6);
+}
+html:root .studio-brand{gap:var(--space-4)}
+html:root .studio-brand span{color:var(--c-nav-muted);border-color:var(--c-nav-line)}
+html:root .studio-status{gap:var(--space-2);font-size:var(--type-xs);color:var(--c-nav-muted)}
+html:root .workspace-nav{gap:var(--space-2)}
+html:root .workspace-nav button{font-size:var(--type-xs);padding:var(--space-2) var(--space-4);color:var(--c-nav-muted)}
+html:root .workspace-nav button[aria-pressed=true],
+html:root .night-toggle[aria-pressed=true]{background:var(--c-nav-hover);color:var(--c-nav-ink);border-color:var(--c-nav-line)}
+html:root .night-toggle{width:var(--control-height);height:var(--control-height);color:var(--c-nav-muted)}
+html:root .workspace-nav button,html:root .night-toggle{min-height:var(--control-height);border-radius:8px}
+
+#creator{padding:var(--space-6) var(--space-5) calc(96px + env(safe-area-inset-bottom,0px))}
+#creator .creator-heading{gap:var(--space-4);margin-bottom:var(--space-5)}
+#creator .creator-heading h1{font-size:var(--type-display);line-height:1.2;letter-spacing:-.03em;margin:0 0 var(--space-2);color:var(--c-ink)}
+#creator .creator-heading p:last-child{font-size:var(--type-sm);line-height:1.5;color:var(--c-muted)}
+#creator .creator-steps{gap:var(--space-6);margin-bottom:var(--space-5);border-color:var(--c-line)}
+#creator .creator-steps button{gap:var(--space-2);min-height:48px;padding:var(--space-2) 0;font-size:var(--type-sm);color:var(--c-muted)}
+#creator .creator-steps button[aria-current=step]{color:var(--c-ink)}
+#creator .step-num{width:24px;height:24px;font-size:var(--type-xs);border-color:var(--c-border-strong);color:var(--c-muted)}
+#creator .creator-steps button[aria-current=step] .step-num{background:var(--c-action);border-color:var(--c-action);color:var(--c-on-action)}
+#creator .creator-steps .done .step-num{background:var(--c-success-bg);border-color:var(--c-success-bg);color:var(--c-success)}
+#creator .creator-grid{gap:var(--space-5)}
+html:root #creator .c-panel{padding:var(--space-5);background:var(--c-surface);border-color:var(--c-line);border-radius:12px;box-shadow:0 4px 16px var(--c-shadow)}
+#creator .c-panel h2{font-size:var(--type-title);line-height:1.25;letter-spacing:-.02em;color:var(--c-ink);margin:0 0 var(--space-2)}
+#creator .c-panel .sub{font-size:var(--type-sm);line-height:1.5;margin-bottom:var(--space-5)}
+
+/* Controls: a 44px minimum target, shared states, and an explicit keyboard ring. */
+#creator button,
+html:root body[data-workspace=creator] .modal button{min-height:var(--control-height);touch-action:manipulation}
+#creator .c-button,
+html:root body[data-workspace=creator] .modal .btn,
+html:root body[data-workspace=creator] .modal .c-button{
+  min-height:var(--control-height);height:auto;min-width:var(--control-height);
+  padding:var(--space-2) var(--space-4);gap:var(--space-2);border-radius:8px;
+  background:var(--c-surface);border:1px solid var(--c-line);color:var(--c-ink);
+  font-size:var(--type-sm);font-weight:700;line-height:1.4;
+}
+#creator .c-button.small,
+html:root body[data-workspace=creator] .modal .c-button.small{font-size:var(--type-xs);padding:var(--space-2) var(--space-3)}
+#creator .c-button.flat,
+html:root body[data-workspace=creator] .modal .btn.ghost{background:transparent;border-color:transparent}
+#creator .c-button.primary,
+html:root body[data-workspace=creator] .modal .btn.primary{background:var(--c-action);border-color:var(--c-action);color:var(--c-on-action)}
+#creator .c-button.dark,
+#creator :is(.review-tabs,.cat-row,.tag-picks) button[aria-pressed=true],
+html:root body[data-workspace=creator] .template-filters button[aria-pressed=true]{background:var(--c-selected);color:var(--c-on-selected);border-color:var(--c-selected)}
+#creator :is(.inline-button,.field-top button){font-size:var(--type-xs);line-height:1.5;padding:var(--space-2) var(--space-1);color:var(--c-muted)}
+
+@media(hover:hover){
+  #creator :is(.c-button,.template-current,.source-photo,.story-refresh,.story-option):not(:disabled):hover,
+  html:root body[data-workspace=creator] .modal :is(.btn,.c-button,.template-filters button):not(:disabled):hover{background:var(--c-hover);border-color:var(--c-border-strong)}
+  #creator .c-button.primary:not(:disabled):hover,
+  html:root body[data-workspace=creator] .modal .btn.primary:not(:disabled):hover{background:var(--c-action-hover);border-color:var(--c-action-hover);color:var(--c-on-action)}
+  #creator :is(.review-tabs,.cat-row,.tag-picks) button[aria-pressed=true]:not(:disabled):hover,
+  #creator .c-button.dark:not(:disabled):hover,
+  html:root body[data-workspace=creator] .template-filters button[aria-pressed=true]:not(:disabled):hover{background:var(--c-selected);color:var(--c-on-selected);border-color:var(--c-border-strong)}
+  #creator :is(.inline-button,.field-top button):not(:disabled):hover{color:var(--c-ink)}
+  html:root .studio-nav button:not(:disabled):hover{background:var(--c-nav-hover);color:var(--c-nav-ink)}
+}
+#creator :is(.c-button,.template-current,.source-photo,.story-refresh,.story-option):not(:disabled):active,
+html:root body[data-workspace=creator] .modal :is(.btn,.c-button):not(:disabled):active{background:var(--c-pressed)}
+#creator .c-button.primary:not(:disabled):active,
+html:root body[data-workspace=creator] .modal .btn.primary:not(:disabled):active{background:var(--c-action-active);border-color:var(--c-action-active)}
+#creator :is(.review-tabs,.cat-row,.tag-picks) button[aria-pressed=true]:not(:disabled):active,
+#creator .c-button.dark:not(:disabled):active{background:var(--c-selected);color:var(--c-on-selected)}
+#creator :is(button,input,select,textarea):disabled,
+html:root body[data-workspace=creator] .modal :is(button,input,select,textarea):disabled{opacity:.55;cursor:not-allowed}
+/* Reset the old unconditional hover treatment on disabled buttons. */
+#creator .c-button:disabled:hover,
+html:root body[data-workspace=creator] .modal .btn:disabled:hover{background:var(--c-surface);border-color:var(--c-line)}
+#creator .c-button.primary:disabled:hover,
+html:root body[data-workspace=creator] .modal .btn.primary:disabled:hover{background:var(--c-action);border-color:var(--c-action)}
+#creator :is(.cat-row,.tag-picks) button[aria-pressed=true]:disabled:hover{background:var(--c-selected);color:var(--c-on-selected);border-color:var(--c-selected)}
+
+html:root :is(button,a,input,select,textarea,summary,[tabindex],[contenteditable=true]):focus-visible{
+  outline:3px solid var(--c-focus);outline-offset:3px;
+}
+html:root #creator :focus-visible,
+html:root body[data-workspace=creator] .modal :focus-visible{
+  outline:3px solid var(--c-focus);outline-offset:3px;
+}
+html:root .studio-nav :focus-visible{outline:3px solid var(--c-nav-focus);outline-offset:3px}
+html:root body[data-workspace=builder] :focus-visible{outline-color:var(--c-nav-focus)}
+#creator :is(input,textarea,select,button,summary){scroll-margin-block:var(--space-4)}
+#creator a,html:root body[data-workspace=creator] .modal a{color:var(--c-ink);text-underline-offset:3px;overflow-wrap:anywhere}
+
+/* Story and Review use the same field, label and supporting-text hierarchy. */
+#creator :is(.c-input,.field-select),
+html:root body[data-workspace=creator] .modal :is(.c-input,.inp,.sel){
+  background:var(--c-surface);color:var(--c-ink);border:1px solid var(--c-line);
+  border-radius:8px;padding:var(--space-3) var(--space-4);font-size:var(--type-body);line-height:1.5;
+}
+#creator :is(.c-input,.field-select):focus,
+html:root body[data-workspace=creator] .modal :is(.c-input,.inp,.sel):focus{border-color:var(--c-focus);box-shadow:0 0 0 3px var(--c-focus-halo)}
+#creator .c-input::placeholder,
+html:root body[data-workspace=creator] .modal :is(.c-input,.inp)::placeholder{color:var(--c-placeholder);opacity:1}
+#creator .c-source{min-height:224px}
+#creator .field-top{gap:var(--space-2);margin-bottom:var(--space-2);flex-wrap:wrap}
+#creator .field-top :is(label,b){font-size:var(--type-sm);font-weight:700}
+#creator .field-top small{font-size:var(--type-xs);color:var(--c-muted);font-variant-numeric:tabular-nums}
+#creator .field-foot{gap:var(--space-3);margin:var(--space-2) 0 var(--space-5);font-size:var(--type-xs);line-height:1.5;color:var(--c-muted);flex-wrap:wrap}
+#creator #sourceHint{flex:1 1 200px}
+#creator #sourceCount{white-space:nowrap;font-variant-numeric:tabular-nums}
+#creator :is(.c-note,.copy-help,.review-source,.cat-reason,.template-foot,.save-caption,.preview-hint){font-size:var(--type-xs);line-height:1.5;color:var(--c-muted)}
+#creator .c-note{margin:var(--space-3) 0}
+#creator .c-input-label{font-size:var(--type-sm);margin:var(--space-4) 0 var(--space-2)}
+#creator .input-modes{padding:var(--space-1);gap:var(--space-1);margin-bottom:var(--space-5);border-color:var(--c-line);background:var(--c-soft);border-radius:8px}
+#creator .input-modes button{min-height:var(--control-height);font-size:var(--type-xs);line-height:1.4;padding:var(--space-2);gap:var(--space-2);color:var(--c-muted);border-radius:4px}
+#creator .input-modes button[aria-pressed=true]{background:var(--c-surface);color:var(--c-ink);box-shadow:0 1px 4px var(--c-shadow)}
+#creator .template-current{padding:var(--space-3);gap:var(--space-3);margin-bottom:var(--space-5);border-radius:8px;border-color:var(--c-line);background:var(--c-soft);color:var(--c-ink)}
+#creator .template-current-image{width:40px;height:48px;background:var(--c-skeleton)}
+#creator .template-current>span:nth-child(2){gap:var(--space-1)}
+#creator .template-current :is(small,span span){font-size:var(--type-xs);line-height:1.4;color:var(--c-muted);letter-spacing:0}
+#creator .template-current b{font-size:var(--type-sm);color:var(--c-ink);overflow-wrap:anywhere}
+#creator .template-current>strong{font-size:var(--type-xs);gap:var(--space-2);color:var(--c-ink)}
+#creator .source-photo{padding:var(--space-4);gap:var(--space-3);margin-top:var(--space-4);background:var(--c-soft);color:var(--c-ink);border-color:var(--c-border-strong);border-radius:8px}
+#creator .source-photo b{font-size:var(--type-sm);color:var(--c-ink)}
+#creator .source-photo small{font-size:var(--type-xs);line-height:1.5;color:var(--c-muted);margin-top:var(--space-1)}
+#creator .source-photo>svg,#creator .source-photo>span:last-child{color:var(--c-muted)}
+#creator .template-current:has(+ .source-photo){margin-bottom:var(--space-3)}
+#creator .template-current + .source-photo{margin-top:0;margin-bottom:var(--space-5)}
+#creator .story-flags{margin:var(--space-3) 0;gap:0}
+#creator .story-flags label{min-height:var(--control-height);font-size:var(--type-xs);gap:var(--space-2);cursor:pointer}
+#creator .story-flags input{width:20px;height:20px;margin:0;accent-color:var(--c-action);flex:none}
+#creator :is(.copy-help,.review-source) summary{min-height:var(--control-height);padding:var(--space-3) var(--space-1);cursor:pointer}
+#creator .review-source p{padding:var(--space-3);margin:var(--space-2) 0 0;background:var(--c-soft);color:var(--c-ink);border-radius:8px;overflow-wrap:anywhere}
+
+/* Existing empty, loading, warning and error messages remain verbatim. */
+#creator .c-error,
+#creator .c-notice,
+#creator .link-preview,
+#creator .c-note.warn,
+#creator .news-status,
+html:root body[data-workspace=creator] .modal #ceMessage,
+html:root body[data-workspace=creator] .modal #ceWarning:not(:empty){
+  padding:var(--space-3) var(--space-4);border:1px solid var(--c-line);border-radius:8px;
+  font-size:var(--type-sm);line-height:1.5;overflow-wrap:anywhere;
+}
+#creator .c-error{background:var(--c-error-bg);color:var(--c-error);border-color:var(--c-error-line);border-inline-start-width:4px;margin-top:var(--space-4)}
+#creator :is(.c-notice,.link-preview,.c-note.warn){background:var(--c-warning-bg);color:var(--c-warning);border-color:var(--c-warning-line)}
+#creator .c-notice{margin-top:var(--space-4)}
+#creator .link-preview{margin:var(--space-3) 0}
+#creator .link-preview .link-meta{font-size:var(--type-xs);color:var(--c-warning);letter-spacing:.04em}
+#creator .link-preview b{font-size:var(--type-body);margin:var(--space-2) 0;color:var(--c-ink)}
+#creator .link-preview p{margin:var(--space-2) 0 var(--space-3)}
+#creator .utah-warn,#creator .fit-note{color:var(--c-warning);font-size:var(--type-xs);line-height:1.5;margin:var(--space-2) 0}
+#creator .story-picks{margin-top:var(--space-5);padding-top:var(--space-5);border-top:1px solid var(--c-line)}
+#creator .story-head{gap:var(--space-3)}
+#creator .story-head h2{font-size:var(--type-body);letter-spacing:0;margin:0}
+#creator .story-picks>.note{margin:var(--space-2) 0 0;font-size:var(--type-xs);color:var(--c-muted)}
+#creator .story-refresh{min-height:var(--control-height);padding:var(--space-2) var(--space-3);border-radius:8px;flex:none;font-size:var(--type-xs);background:var(--c-soft);color:var(--c-ink);border-color:var(--c-line)}
+#creator .story-options{gap:var(--space-2);margin-top:var(--space-3)}
+#creator .story-options:empty{margin:0}
+#creator .story-option{padding:var(--space-4);border-radius:8px;background:var(--c-surface);border-color:var(--c-line);color:var(--c-ink);overflow-wrap:anywhere}
+#creator .story-option b{font-size:var(--type-sm);line-height:1.5}
+#creator .story-option small{font-size:var(--type-xs);color:var(--c-muted);margin-top:var(--space-1)}
+#creator .story-picks .news-status{margin-top:var(--space-3);background:var(--c-soft);border-style:dashed}
+#creator .story-picks.has-error{border-top-color:var(--c-error-line)}
+#creator .story-picks.has-error .news-status{background:var(--c-error-bg);border-color:var(--c-error-line);border-style:solid;border-inline-start-width:4px;color:var(--c-error)}
+#creator .story-picks.has-error .story-refresh{border-color:var(--c-error-line);color:var(--c-error)}
+#creator .story-picks.is-loading .news-status{border-style:solid}
+html:root .news-source{overflow-wrap:anywhere}
+html:root .news-source.failed{padding:var(--space-3);margin-top:var(--space-2);border-radius:8px;border-color:var(--c-error-line);background:var(--c-error-bg);color:var(--c-error)}
+
+/* Review: larger copy fields, aligned tools, clear article guidance. */
+#creator .drawer-top{gap:var(--space-3);margin-bottom:var(--space-3)}
+#creator .drawer-toggle{font-size:var(--type-body);gap:var(--space-2);color:var(--c-ink);min-height:var(--control-height)}
+#creator .drawer-toggle i{color:var(--c-muted)}
+#creator .review-tabs{gap:var(--space-2);padding-bottom:var(--space-4);margin-bottom:var(--space-4);border-color:var(--c-line)}
+#creator .review-tabs .c-button{min-height:var(--control-height);font-size:var(--type-sm);padding:var(--space-2);gap:var(--space-2)}
+#creator :is(.cat-row,.tag-picks,.alt-heads){gap:var(--space-2);margin-bottom:var(--space-3)}
+#creator .cat-reason:empty{display:none}
+#creator .review-field{padding:var(--space-4) 0;border-color:var(--c-line)}
+#creator .review-field:last-child{padding-bottom:0}
+#creator .field-select{min-height:var(--control-height);max-width:100%;width:auto;padding:var(--space-2) var(--space-3);font-size:var(--type-sm)}
+#creator .review-field textarea{min-height:144px;height:auto;padding:var(--space-3) var(--space-4);font-size:var(--type-body);line-height:1.5;resize:vertical}
+#creator .review-field .article-input{min-height:320px;height:clamp(320px,42dvh,480px);margin-top:0}
+#creator .review-field:has(#creatorArticle:placeholder-shown) #creatorArticle{background:var(--c-soft);border-style:dashed}
+#creator .review-field:has(.c-note.warn) #creatorArticle{border-color:var(--c-warning-line)}
+#creator .review-field:has(#creatorArticle)>.c-note{padding:var(--space-3);border:1px solid var(--c-line);border-radius:8px;background:var(--c-soft);margin:var(--space-3) 0 0}
+#creator .review-field:has(#creatorArticle)>.c-note.warn{background:var(--c-warning-bg);border-color:var(--c-warning-line);color:var(--c-warning)}
+#creator .text-tools{gap:var(--space-2);margin-top:var(--space-3)}
+#creator .text-tools .c-button{min-width:var(--control-height);min-height:var(--control-height);font-size:var(--type-xs);padding:var(--space-2)}
+#creator .text-tools output{min-width:var(--control-height);font-size:var(--type-xs);color:var(--c-muted)}
+#creator .text-tools .fit{font-size:var(--type-xs)}
+#creator .photo-card{padding:var(--space-4) 0}
+#creator .photo-card .source-photo{margin-top:0}
+#creator .photo-controls{gap:var(--space-3);margin-top:var(--space-4)}
+#creator .photo-controls label{gap:var(--space-3);font-size:var(--type-xs);min-height:var(--control-height);color:var(--c-muted)}
+#creator .photo-controls input[type=range]{height:var(--control-height);min-height:var(--control-height);min-width:0;accent-color:var(--c-action)}
+#creator .photo-controls output{font-size:var(--type-xs)}
+#creator .review-source{margin-top:var(--space-3)}
+
+/* Preview chrome only; no canvas dimensions, font assets or layer styles change. */
+html:root #creator .creator-preview{padding:var(--space-5);border-color:var(--c-line);border-radius:12px;background:var(--c-preview)}
+#creator .preview-label{font-size:var(--type-xs);margin-bottom:var(--space-4);color:var(--c-muted);gap:var(--space-2);letter-spacing:.06em}
+#creator .live-label{font-size:var(--type-xs);gap:var(--space-1);padding:var(--space-1) var(--space-2);background:var(--c-success-bg);color:var(--c-success);letter-spacing:0}
+#creator .live-label i{background:var(--c-success)}
+#creator .preview-caption{gap:var(--space-1);margin-top:var(--space-4)}
+#creator .preview-caption b{font-size:var(--type-sm)}
+#creator .preview-caption span{font-size:var(--type-xs);color:var(--c-muted)}
+#creator .preview-hint{margin:var(--space-4) 0 0}
+#creator :is(.preview-page-nav,.preview-undo){gap:var(--space-2);margin-top:var(--space-3);font-size:var(--type-xs)}
+#creator .readiness{margin-top:var(--space-4)}
+#creator .readiness-label{font-size:var(--type-xs);letter-spacing:.04em;margin-bottom:var(--space-2);color:var(--c-muted)}
+#creator .readiness-list{gap:var(--space-2)}
+#creator .readiness-list button{padding:var(--space-2) var(--space-3);gap:var(--space-2);font-size:var(--type-xs);background:var(--c-warning-bg);border-color:var(--c-warning-line);color:var(--c-warning);border-radius:8px}
+#creator .ready-note{font-size:var(--type-xs);color:var(--c-success);gap:var(--space-2)}
+#creator .creator-actions{gap:var(--space-2);margin-top:var(--space-4);padding:var(--space-3);background:var(--c-actions);border-color:var(--c-line);box-shadow:0 4px 16px var(--c-shadow)}
+#creator .creator-actions .primary{min-height:48px;font-size:var(--type-sm)}
+#creator .save-caption{font-size:var(--type-xs);gap:var(--space-2);color:var(--c-muted)}
+
+/* Dialogs, existing job progress and export status. */
+html:root body[data-workspace=creator] .scrim{background:var(--c-scrim);padding:var(--space-4)}
+html:root body[data-workspace=creator] .modal{background:var(--c-surface);border-color:var(--c-line);border-radius:12px;padding:var(--space-5);gap:var(--space-4);box-shadow:0 24px 64px var(--c-modal-shadow);scroll-padding:var(--space-4)}
+html:root body[data-workspace=creator] .modal h2{font-size:var(--type-title);line-height:1.25;letter-spacing:-.02em}
+html:root body[data-workspace=creator] .modal .note{font-size:var(--type-sm);line-height:1.5;color:var(--c-muted);overflow-wrap:anywhere}
+html:root body[data-workspace=creator] .modal [data-close].ghost{width:var(--control-height);height:var(--control-height);min-height:var(--control-height);padding:0;flex:none}
+html:root body[data-workspace=creator] .modal .row:has([data-close]){flex-wrap:nowrap;gap:var(--space-3)}
+html:root body[data-workspace=creator] .modal #ceMessage{margin:0;background:var(--c-soft);color:var(--c-ink);min-height:48px}
+html:root body[data-workspace=creator] .modal #ceWarning:not(:empty){background:var(--c-warning-bg);border-color:var(--c-warning-line);color:var(--c-warning)}
+html:root body[data-workspace=creator] .modal #ceWarning:empty{display:none}
+html:root body[data-workspace=creator] .modal #cePreview:not([src]){display:none}
+html:root body[data-workspace=creator] .export-main{gap:var(--space-2)}
+html:root body[data-workspace=creator] .export-main .btn{min-height:48px}
+html:root body[data-workspace=creator] .caption-modal .caption-box{padding:var(--space-4);font-size:var(--type-body);line-height:1.5}
+html:root body[data-workspace=creator] .modal.job-modal{width:min(480px,100%);padding:0;gap:0;background:transparent;border:0;box-shadow:none}
+html:root .c-progress{padding:var(--space-5);margin-top:var(--space-4);border-radius:12px;background:var(--c-surface);border-color:var(--c-line);color:var(--c-ink)}
+html:root .job-modal .c-progress{margin:0;box-shadow:0 24px 64px var(--c-modal-shadow)}
+html:root .c-progress-top{gap:var(--space-3);flex-wrap:wrap}
+html:root .c-progress-top b{font-size:var(--type-body);line-height:1.5;color:var(--c-ink);flex:1 1 180px}
+html:root .c-progress-top span{font-size:var(--type-xs);color:var(--c-muted);font-variant-numeric:tabular-nums}
+html:root .c-progress .inline-button{min-height:var(--control-height);padding:var(--space-2);font-size:var(--type-xs);color:var(--c-ink)}
+html:root .c-progress-track{height:8px;margin:var(--space-4) 0;background:var(--c-soft);position:relative;isolation:isolate}
+html:root .c-progress-track span{background:var(--c-action)}
+html:root .c-progress ol{gap:var(--space-3)}
+html:root .c-progress li{gap:var(--space-2);font-size:var(--type-sm);line-height:1.5;color:var(--c-muted)}
+html:root .c-progress li:before{border-color:var(--c-border-strong)}
+html:root .c-progress li.on{color:var(--c-ink)}
+html:root .c-progress li.on:before{background:var(--c-action);border-color:var(--c-action);box-shadow:none}
+html:root .c-progress li.done{color:var(--c-success)}
+html:root .c-progress li.done:before{background:var(--c-success);border-color:var(--c-success)}
+html:root .c-progress p{margin:var(--space-3) 0 0;font-size:var(--type-xs);line-height:1.5;color:var(--c-muted)}
+
+/* A small progress surface, never an animated layout property or spinner.
+   Export has no DOM error flag: its existing live status stays visible in every state.
+   The export sheen runs finitely, so a preparation failure cannot shimmer forever. */
+#creator .story-picks.is-loading .story-options,
+html:root body[data-workspace=creator] .modal #ceMessage{position:relative;isolation:isolate;overflow:hidden}
+#creator .story-picks.is-loading .story-options{padding-top:var(--space-4)}
+#creator .story-picks.is-loading .story-options:before,
+html:root body[data-workspace=creator] .modal:has(#ceDownload:disabled):has(#cePreview:not([src])) #ceMessage:before{
+  content:"";position:absolute;inset:0 0 auto;height:4px;border-radius:4px;background:var(--c-skeleton);pointer-events:none;
+}
+html:root body[data-workspace=creator] .modal:has(#ceDownload:disabled):has(#cePreview:not([src])) #ceMessage{padding-top:var(--space-4)}
+#creator .story-picks.is-loading .story-options:after,
+html:root .c-progress-track:after,
+html:root body[data-workspace=creator] .modal:has(#ceDownload:disabled):has(#cePreview:not([src])) #ceMessage:after{
+  content:"";position:absolute;inset:0 auto auto 0;width:40%;height:4px;border-radius:4px;
+  background:linear-gradient(90deg,transparent,var(--c-shimmer),transparent);pointer-events:none;opacity:0;
+}
+html:root .c-progress-track:after{height:100%}
+
+/* Template/caption dialogs use the same spacing and control system. */
+html:root body[data-workspace=creator] .template-picker{padding:var(--space-5)!important}
+html:root body[data-workspace=creator] .template-search{margin:0;font-size:var(--type-body)}
+html:root body[data-workspace=creator] .template-filters{gap:var(--space-2);margin:0;padding:var(--space-1)}
+html:root body[data-workspace=creator] .template-filters button{min-height:var(--control-height);padding:var(--space-2) var(--space-3);font-size:var(--type-xs);background:var(--c-soft);border-color:var(--c-line);color:var(--c-muted);border-radius:8px}
+html:root body[data-workspace=creator] .template-filters button[aria-pressed=true]{background:var(--c-selected);border-color:var(--c-selected);color:var(--c-on-selected)}
+html:root body[data-workspace=creator] .creator-templates{gap:var(--space-5) var(--space-4)}
+html:root body[data-workspace=creator] .creator-template{color:var(--c-ink)}
+html:root body[data-workspace=creator] .creator-template .ct-thumb{padding:var(--space-2);background:var(--c-soft);border-radius:8px}
+html:root body[data-workspace=creator] .creator-template[aria-pressed=true] .ct-thumb{background:var(--c-selection-tint);border-color:var(--c-action)}
+html:root body[data-workspace=creator] .creator-template b{font-size:var(--type-sm);line-height:1.5;margin:var(--space-2) 0 var(--space-1)}
+html:root body[data-workspace=creator] .creator-template small{font-size:var(--type-xs);color:var(--c-muted);padding-right:48px}
+html:root body[data-workspace=creator] .template-star{width:var(--control-height);height:var(--control-height);right:0;background:var(--c-surface);color:var(--c-muted)}
+html:root body[data-workspace=creator] .template-star[aria-pressed=true]{color:var(--c-warning)}
+html:root body[data-workspace=creator] .more-templates{margin:var(--space-5) 0 var(--space-4);background:var(--c-soft)}
+html:root body[data-workspace=creator] .more-templates span{font-size:var(--type-xs);color:var(--c-muted)}
+html:root body[data-workspace=creator] .template-empty{padding:var(--space-5) var(--space-4);border-color:var(--c-border-strong);background:var(--c-soft);color:var(--c-muted);font-size:var(--type-sm);border-radius:8px}
+html:root body[data-workspace=creator] .template-foot{font-size:var(--type-xs);line-height:1.5;color:var(--c-muted);margin:0}
+html:root .toast{font-size:var(--type-sm);line-height:1.5;padding:var(--space-3) var(--space-4);border-radius:8px;background:var(--c-toast-bg);color:var(--c-toast-ink);box-shadow:0 8px 24px var(--c-modal-shadow);overflow-wrap:anywhere;text-align:center}
+html:root .toast.err{background:var(--c-error-bg);color:var(--c-error);border:1px solid var(--c-error-line)}
+
+@media(max-width:1023px){
+  #creator .creator-grid{gap:var(--space-4)}
+  html:root #creator .c-panel,html:root #creator .creator-preview{padding:var(--space-4)}
+}
+@media(max-width:700px){
+  html:root .studio-nav{height:56px;padding:0 var(--space-4);gap:var(--space-2)}
+  html:root .workspace-nav{gap:var(--space-1)}
+  html:root .workspace-nav button{font-size:var(--type-xs);padding:var(--space-2)}
+  #creator{padding:var(--space-5) var(--space-4) calc(96px + env(safe-area-inset-bottom,0px))}
+  #creator .creator-heading{margin-bottom:var(--space-4)}
+  #creator .creator-heading h1{font-size:var(--type-title)}
+  #creator .creator-heading p:last-child{font-size:var(--type-xs)}
+  #creator .creator-heading .new-post,
+  #creator[data-step="2"] .creator-heading .new-post{width:var(--control-height);height:var(--control-height);min-width:var(--control-height);min-height:var(--control-height);margin:0;padding:0}
+  #creator .creator-steps{gap:var(--space-5);margin-bottom:var(--space-4)}
+  #creator .creator-steps button{min-height:48px;font-size:var(--type-xs);gap:var(--space-2)}
+  #creator .creator-grid{gap:var(--space-4)}
+  #creator .input-modes,#creator .template-current{margin-bottom:var(--space-4)}
+  #creator .c-source{min-height:224px}
+  #creator .creator-actions{position:fixed;gap:var(--space-3);margin:0;padding:var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom,0px));min-height:80px;border-radius:0;background:var(--c-actions);border-color:var(--c-line)}
+  #creator .creator-actions .primary{min-width:0;flex:1;min-height:48px}
+  #creator .creator-actions .save-caption{width:auto;flex:0 1 104px;font-size:var(--type-xs);line-height:1.4}
+  #creator .creator-actions .c-back{min-width:80px;font-size:var(--type-sm)}
+  #creator[data-step="2"]{
+    height:calc(100dvh - 56px - 80px - env(safe-area-inset-bottom,0px));
+    min-height:0;padding:var(--space-2) 0 0;
+  }
+  #creator[data-step="2"] .creator-heading{padding:0 var(--space-4);margin-bottom:var(--space-2);gap:var(--space-2)}
+  #creator[data-step="2"] .creator-heading h1{font-size:var(--type-body);margin:0}
+  #creator[data-step="2"] .creator-grid{gap:0}
+  html:root #creator[data-step="2"] .creator-preview{
+    flex:1 1 0;min-height:160px;padding:0 var(--space-4) var(--space-3);border:0;border-radius:0;background:transparent;
+  }
+  html:root #creator[data-step="2"] .creator-preview:has(.preview-page-nav:not([hidden])){min-height:192px}
+  #creator[data-step="2"] .preview-undo{top:var(--space-1);right:var(--space-4);gap:var(--space-1);margin:0}
+  #creator[data-step="2"] .preview-undo .c-button{min-height:var(--control-height);min-width:var(--control-height);padding:var(--space-2);font-size:var(--type-xs);background:var(--c-surface)}
+  #creator[data-step="2"] .preview-page-nav{margin:var(--space-2) 0 0;gap:var(--space-3)}
+  #creator[data-step="2"] .preview-page-nav button{min-height:var(--control-height)}
+  #creator[data-step="2"] .readiness{margin:var(--space-2) 0 0}
+  #creator[data-step="2"] .readiness-list{gap:var(--space-2);padding:var(--space-1)}
+  #creator[data-step="2"] .readiness-list button{min-height:var(--control-height);font-size:var(--type-xs);padding:var(--space-2) var(--space-3)}
+  #creator[data-step="2"] .ready-note{font-size:var(--type-xs)}
+  html:root #creator[data-step="2"] .c-panel{
+    flex:0 1 auto;min-height:0;max-height:64dvh;padding:var(--space-2) var(--space-4) var(--space-5);
+    border-radius:16px 16px 0 0;overflow-y:auto;overscroll-behavior-y:contain;
+    scroll-padding-block:var(--space-4);box-shadow:0 -4px 16px var(--c-shadow);
+  }
+  #creator[data-step="2"] .drawer-top{min-height:var(--control-height);margin:0 0 var(--space-2);gap:var(--space-2)}
+  #creator .drawer-toggle{min-height:var(--control-height);font-size:var(--type-sm)}
+  #creator .drawer-toggle>span{background:var(--c-border-strong);width:24px;height:4px}
+  #creator .drawer-top .inline-button{font-size:var(--type-xs);min-height:var(--control-height)}
+  #creator .review-tabs{padding-bottom:var(--space-3);margin-bottom:var(--space-3)}
+  #creator .review-tabs .c-button{font-size:var(--type-xs);min-height:var(--control-height)}
+  #creator[data-step="2"] :is(.cat-row,.tag-picks){flex-wrap:nowrap;overflow-x:auto;gap:var(--space-2);padding:var(--space-1);scroll-padding-inline:var(--space-1)}
+  #creator[data-step="2"] :is(.cat-row,.tag-picks) button{flex:none;white-space:nowrap}
+  #creator[data-step="2"] .cat-reason{flex:0 0 176px}
+  #creator .review-field textarea{min-height:160px;height:160px;line-height:1.5}
+  #creator .review-field .article-input{min-height:288px;height:clamp(288px,44dvh,448px)}
+  #creator .field-select{min-height:var(--control-height);max-width:100%;font-size:var(--type-body)}
+  #creator .text-tools{gap:var(--space-2);margin-top:var(--space-3)}
+  #creator .text-tools .fit{margin-left:0}
+  html:root #creator[data-step="2"][data-drawer="false"] .c-panel{padding-bottom:var(--space-2);flex:none}
+  #creator[data-step="2"][data-drawer="false"] .drawer-top{margin-bottom:0}
+  html:root body[data-workspace=creator] .scrim{padding:var(--space-2);align-items:end}
+  html:root body[data-workspace=creator] .modal{padding:var(--space-4);padding-bottom:max(var(--space-4),env(safe-area-inset-bottom,0px));border-radius:16px;max-height:calc(100dvh - 16px)}
+  html:root body[data-workspace=creator] .modal h2{font-size:var(--type-title)}
+  html:root body[data-workspace=creator] .template-picker{padding:var(--space-4)!important}
+  html:root body[data-workspace=creator] .template-picker .creator-templates{gap:var(--space-5) var(--space-3)}
+  html:root body[data-workspace=creator] .scrim:has(.caption-modal){padding:0}
+  html:root body[data-workspace=creator] .caption-modal{max-height:100dvh;border-radius:16px 16px 0 0}
+  html:root body[data-workspace=creator] .scrim.job-scrim{align-items:center;padding:var(--space-4)}
+  html:root body[data-workspace=creator] .modal.job-modal{padding:0;background:transparent;border:0}
+  html:root .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 32px)}
+}
+/* Short screens and the on-screen keyboard can use normal document scrolling. */
+@media(max-width:700px) and (max-height:600px){
+  #creator[data-step="2"]{height:auto;min-height:0;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  html:root #creator[data-step="2"] .creator-preview{flex:none;height:200px;min-height:200px}
+  html:root #creator[data-step="2"] .c-panel{max-height:none;overflow:visible}
+}
+
+/* Every animated declaration is opt-in. Only opacity and transform interpolate. */
+@media(prefers-reduced-motion:no-preference){
+  #creator button,
+  .studio-nav button,
+  body[data-workspace=creator] .modal button{
+    transition:transform var(--fast) var(--ease),opacity var(--fast) var(--ease);
+  }
+  #creator button:not(:disabled):active,
+  .studio-nav button:not(:disabled):active,
+  body[data-workspace=creator] .modal button:not(:disabled):active{transform:scale(.98)}
+  #creator[data-step="0"] .c-panel{animation:studio-panel-in var(--base) var(--ease) both}
+  #creator[data-step="2"] .c-panel{animation:studio-drawer-in var(--slow) var(--ease) both}
+  #creator .review-body:not([hidden]){animation:studio-panel-in var(--base) var(--ease) both}
+  .scrim{animation:studio-fade-in var(--base) var(--ease) both}
+  .scrim .modal{animation:studio-modal-in var(--base) var(--ease) both}
+  .toast:not([hidden]){animation:studio-toast-in var(--base) var(--ease) both}
+  #creator .story-picks.is-loading .story-options:after,
+  html:root .c-progress-track:after{animation:studio-shimmer calc(var(--slow) * 5) var(--ease) infinite}
+  html:root body[data-workspace=creator] .modal:has(#ceDownload:disabled):has(#cePreview:not([src])) #ceMessage:after{animation:studio-shimmer calc(var(--slow) * 5) var(--ease) 3}
+  @keyframes studio-fade-in{from{opacity:0}to{opacity:1}}
+  @keyframes studio-panel-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes studio-drawer-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes studio-modal-in{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
+  @keyframes studio-toast-in{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+  @keyframes studio-shimmer{
+    0%{opacity:0;transform:translateX(-100%)}
+    20%{opacity:.65}
+    80%{opacity:.65}
+    100%{opacity:0;transform:translateX(350%)}
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+
+</style>
 </head>
 <body data-workspace="creator">
 <header class="studio-nav">
@@ -3767,9 +4297,9 @@ function localNewsHTML(){
   const row=story=>`<button type="button" class="story-option" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc([story.outlet, story.at?newsAgo(story.at):''].filter(Boolean).join(' · '))}</small></button>`;
   const wait=refreshWait();
   const label=NEWS.searching&&rows.length?'Refreshing…':wait?'Refresh in '+wait+' min':'Refresh';
-  const searching=NEWS.searching&&!rows.length?'<p class="note">Finding stories…</p>':'';
-  const empty=!NEWS.searching&&!rows.length?'<p class="note">No updates yet.</p>':'';
-  return `<section class="story-picks"><div class="story-head"><h2>Stories to post</h2><button type="button" class="story-refresh" data-news-refresh ${wait?'disabled':''}>${label}</button></div><p class="note">From the last 6 hours.</p>${searching}${empty}<div class="story-options">${rows.map(row).join('')}</div></section>`;
+  const searching=NEWS.searching&&!rows.length?'<p class="note news-status">Finding stories…</p>':'';
+  const empty=!NEWS.searching&&!rows.length?'<p class="note news-status">No updates yet.</p>':'';
+  return `<section class="story-picks${NEWS.searching?' is-loading':''}${NEWS.searchError?' has-error':''}"><div class="story-head"><h2>Stories to post</h2><button type="button" class="story-refresh" data-news-refresh ${wait?'disabled':''}>${label}</button></div><p class="note">From the last 6 hours.</p>${searching}${empty}<div class="story-options">${rows.map(row).join('')}</div></section>`;
 }
 function saveBrandLists(){
   if(!cap.db){ toast('Saving brand settings needs the team library.',true); return; }
@@ -5081,14 +5611,14 @@ function linkPreviewHTML(){
 }
 function creatorStoryHTML(){
   const ai=C.inputMode==='ai',photo=S.doc.layers.find(l=>l.type==='image'&&l.slot);
-  return `${creatorTemplateStrip()}<div class="input-modes" role="group" aria-label="How to fill your post"><button data-input-mode="ai" aria-pressed="${ai}" ${C.busy?'disabled':''}>${CI.spark}Draft from source</button><button data-input-mode="final" aria-pressed="${!ai}" ${C.busy?'disabled':''}>${CI.text}Use team copy</button></div>
+  const photoButton=photo?`<button class="source-photo" data-creator-photo="${photo.id}" ${C.busy?'disabled':''}>${CI.photo}<span><b>${photo.src?'Photo added · replace':'Add a photo'}</b><small>Camera roll or files · optional for now</small></span><span aria-hidden="true">${photo.src?'✓':'+'}</span></button>`:'';
+  return `${creatorTemplateStrip()}${photoButton}<div class="input-modes" role="group" aria-label="How to fill your post"><button data-input-mode="ai" aria-pressed="${ai}" ${C.busy?'disabled':''}>${CI.spark}Draft from source</button><button data-input-mode="final" aria-pressed="${!ai}" ${C.busy?'disabled':''}>${CI.text}Use team copy</button></div>
     <div class="field-top"><label for="creatorSource">${ai?'Paste the story or a link':'Paste your team’s copy'}</label><button id="creatorExample" type="button" ${C.busy?'disabled':''}>Try example ↗</button></div>
     <textarea id="creatorSource" class="c-input c-source" maxlength="12000" ${C.busy?'disabled':''} placeholder="${ai?'An article, a link, a press release, or notes from your team…':'Headline on the first line. Supporting copy underneath.&#10;&#10;You can also use labels like Headline:, Category:, and Source:.'}">${esc(ai?C.source:C.teamCopy)}</textarea>
     ${ai?linkPreviewHTML():''}
     ${ai?`<div class="story-flags"><label><input type="checkbox" id="creatorFollow" ${C.followUp?'checked':''} ${C.busy?'disabled':''}> This is a follow-up</label><label><input type="checkbox" id="creatorCorrection" ${C.correction?'checked':''} ${C.busy?'disabled':''}> This corrects a previous post</label></div>`:''}
     <div class="field-foot"><span id="sourceHint">${ai?(creatorReadsLink()?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.'):'Exact wording. No AI rewrite.'}</span><span id="sourceCount">${(ai?C.source:C.teamCopy).length.toLocaleString()} / 12,000</span></div>
     ${ai?localNewsHTML():''}
-    ${photo?`<button class="source-photo" data-creator-photo="${photo.id}" ${C.busy?'disabled':''}>${CI.photo}<span><b>${photo.src?'Photo added · replace':'Add a photo'}</b><small>Camera roll or files · optional for now</small></span><span aria-hidden="true">${photo.src?'✓':'+'}</span></button>`:''}
     ${!ai?'<details class="copy-help"><summary>Tips for pasting team copy</summary><p>The first line is your headline; the remaining lines are supporting copy. Optional labels: Headline, Supporting copy, Category, Location, Source, and Tags. Separate carousel pages with a line containing <b>---</b>. You can adjust every field in the review.</p></details>':'<div class="c-notice" id="creatorConnectionHint" hidden>AI drafting is available on your connected team website. Choose <button id="creatorUseFinal" class="inline-button">Use team copy</button> to fill and export here.</div>'}
     ${C.message?`<p class="${C.error?'c-error':'c-note'}" role="status">${esc(C.message)}</p>`:''}`;
 }

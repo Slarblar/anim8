@@ -2018,11 +2018,21 @@ function fillStyleFor(ctx,L){
   const g=ctx.createLinearGradient(L.w/2-dx,L.h/2-dy,L.w/2+dx,L.h/2+dy);
   g.addColorStop(0,hexA(L.fill,1)); g.addColorStop(1,hexA(L.fill2,L.fill2Alpha)); return g;
 }
+function photoViewH(L){
+  if(!L) return 0;
+  const photo=L.role==='photo'||/^photo$/i.test(String(L.slot||''));
+  if(!photo) return L.h;
+  const layers=drawList||(S.doc&&S.doc.pages&&S.doc.pages[S.doc.page]&&S.doc.pages[S.doc.page].layers)||[];
+  const edge=paperTopY(layers);
+  if(edge>L.y+24 && edge<L.y+L.h-8) return Math.max(24, edge-L.y);
+  return L.h;
+}
 function coverDims(L,img){
   const nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height;
   if(L.fit==='stretch') return {dw:L.w,dh:L.h,dx:0,dy:0};
-  const s=(L.fit==='contain'?Math.min(L.w/nw,L.h/nh):Math.max(L.w/nw,L.h/nh))*(L.zoom||1);
-  const dw=nw*s, dh=nh*s; return {dw,dh,dx:(L.w-dw)*L.fx,dy:(L.h-dh)*L.fy};
+  const viewH=photoViewH(L);
+  const s=(L.fit==='contain'?Math.min(L.w/nw,viewH/nh):Math.max(L.w/nw,viewH/nh))*(L.zoom||1);
+  const dw=nw*s, dh=nh*s; return {dw,dh,dx:(L.w-dw)*(L.fx??.5),dy:(viewH-dh)*(L.fy??.5)};
 }
 function applyImageFilter(ctx,L,sc){
   const f=[];
@@ -3757,8 +3767,9 @@ stage.addEventListener('pointermove',e=>{
     const img=getImg(L.src); if(img){
       const a=(L.rot||0)*Math.PI/180, lx=dx*Math.cos(a)+dy*Math.sin(a), ly=-dx*Math.sin(a)+dy*Math.cos(a);
       const d=coverDims(Object.assign({},L,{fx:.5,fy:.5}),img);
+      const viewH=photoViewH(L);
       if(Math.abs(L.w-d.dw)>.5) L.fx=clamp(s.fx+lx/(L.w-d.dw),0,1);
-      if(Math.abs(L.h-d.dh)>.5) L.fy=clamp(s.fy+ly/(L.h-d.dh),0,1);
+      if(Math.abs(viewH-d.dh)>.5) L.fy=clamp(s.fy+ly/(viewH-d.dh),0,1);
     }
   }
   if(layerDrag()){ drawOverlay(); scheduleRender(); syncDragFields(); }

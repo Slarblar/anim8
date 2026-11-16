@@ -402,6 +402,28 @@ html[data-night] .preview-frame{background:#151616}
 .news-diag{display:flex;flex-direction:column;gap:4px;margin-top:8px}
 .diag-row{display:flex;flex-direction:column;gap:1px;font-size:12px;padding:6px 8px;border-radius:4px;border:1px solid var(--line)}
 .diag-row.ok b{color:#5fbf7a}.diag-row.bad b{color:#ff6b6b}.diag-row span{color:var(--muted);overflow-wrap:anywhere}
+/* Quick edits: photo + censor */
+.article-switch{margin:14px 0 4px}
+.article-switch .c-button{flex:1}
+.caption-actions{display:flex;gap:8px;margin-top:8px}
+.photo-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-3,12px);align-items:stretch}
+.photo-actions .source-photo{margin-top:var(--space-4,16px)}
+.censor-btn{min-width:150px}
+.censor-btn[aria-pressed=true]{border-color:var(--c-red,#ED2224);color:var(--c-red,#ED2224);border-style:solid}
+.photo-hint{margin:10px 0 4px}
+.censor-list{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.censor-row{border:1px solid var(--c-border-strong,#dcdcd5);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.censor-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.censor-top>b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--c-red,#ED2224);color:#fff;flex:none}
+.censor-top .flat{margin-left:auto}
+.seg-pills{display:flex;gap:4px}
+.seg-pills .c-button[aria-pressed=true]{background:var(--c-ink,#262726);color:var(--c-bg,#fff);border-color:var(--c-ink,#262726)}
+.censor-strength{display:grid;grid-template-columns:80px minmax(0,1fr) 44px;gap:8px;align-items:center;font-size:11px}
+.censor-strength input{width:100%;accent-color:var(--c-red,#ED2224)}
+.censor-strength output{text-align:right;font-variant-numeric:tabular-nums}
+#creator[data-step="2"][data-tab="photo"] #creatorCanvas{touch-action:none;cursor:grab}
+#creator[data-step="2"][data-tab="photo"][data-censor="on"] #creatorCanvas{cursor:crosshair}
+@media (max-width:520px){ .photo-actions{grid-template-columns:1fr} .censor-btn{min-width:0} }
 </style>
 <script>try{if(localStorage.getItem('scoop-studio:night')==='1')document.documentElement.setAttribute('data-night','')}catch(e){}
 try{if(window.self!==window.top)document.documentElement.setAttribute('data-embedded','')}catch(e){document.documentElement.setAttribute('data-embedded','')}</script>
@@ -1001,6 +1023,65 @@ body[data-workspace=creator] .modal.ref-modal #refProg:empty{display:none}
 @media(max-width:700px){
   #creator[data-step="2"] .readiness,#creator[data-step="2"] .preview-hint,#creator[data-step="2"] .credit-note{width:100%}
   #creator .creator-actions .c-back,#creator .creator-actions .primary{flex:1 1 0;width:auto;max-width:none;margin:0}
+}
+/* ===== Mobile pass: Post Creator on phones (last rule set wins; JS hooks untouched) ===== */
+@media(max-width:700px){
+  /* Touch targets: 44px minimum, inputs at 16px so iOS never zooms on focus */
+  #creator :is(.c-button,.inline-button,.drawer-toggle,.field-select,select,.tag-type,.review-tabs .c-button,.seg-pills .c-button){min-height:44px}
+  #creator .c-button.small{min-height:44px;font-size:12px;padding:0 12px}
+  #creator :is(input:not([type=range]):not([type=checkbox]):not([type=radio]),textarea,select){font-size:16px}
+  #creator input[type=range]{min-height:32px}
+  #creator .pick-label{font-size:11px;letter-spacing:.08em}
+  #creator .story-flags label{min-height:44px;font-size:14px}
+  #creator .story-flags input[type=checkbox]{width:22px;height:22px;flex:none}
+
+  /* Tags wrap instead of running off screen; typing a tag gets its own row */
+  #creator[data-step="2"] :is(.cat-row,.tag-picks){flex-wrap:wrap;overflow:visible;padding:0}
+  #creator[data-step="2"] .tag-picks .tag-type{flex:1 1 100%;min-width:0;width:100%;font-size:16px;padding:0 12px}
+  #creator[data-step="2"] .tag-picks button{flex:0 1 auto;white-space:nowrap}
+  #creator .badge-row{flex-wrap:wrap}
+  #creator .badge-row select{flex:1 1 160px}
+  #creator .alt-heads .c-button{min-height:44px;height:auto;padding:10px 12px;white-space:normal;text-align:left;line-height:1.3}
+
+  /* Review step: the post stays visible at the top while the page scrolls under it. No nested scroll box. */
+  #creator[data-step="2"]{display:block;height:auto;min-height:0;max-width:none;padding:0 0 calc(92px + env(safe-area-inset-bottom,0px))}
+  #creator[data-step="2"] .creator-heading{padding:10px 16px 0;margin:0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  #creator[data-step="2"] .creator-heading h1{font-size:18px;line-height:1.2;margin:0}
+  #creator[data-step="2"] .creator-heading .new-post{min-width:44px;min-height:44px;width:44px;height:44px;margin:0}
+  #creator[data-step="2"] .creator-grid{display:flex;flex-direction:column;gap:0}
+  #creator[data-step="2"] .creator-form{display:block;order:2}
+  html:root #creator[data-step="2"] .creator-preview,html:root #creator[data-step="2"] .creator-preview:has(.preview-page-nav:not([hidden])){order:1;position:sticky;top:56px;z-index:6;height:auto;min-height:0;max-height:none;flex:none;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:6px;
+    margin:0;padding:8px 16px 10px;background:var(--c-bg);border:0;border-bottom:1px solid var(--c-line);border-radius:0;box-shadow:none}
+  #creator[data-step="2"] .preview-frame{position:relative;width:100%;height:clamp(150px,34dvh,340px);flex:none;display:flex;align-items:center;justify-content:center;padding:0;background:none;box-shadow:none;overflow:visible}
+  #creator[data-step="2"] .preview-frame canvas{width:auto;height:100%;max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+  /* Undo/redo: two 44px icon buttons at the top right of the preview */
+  #creator[data-step="2"] .preview-undo{position:absolute;top:8px;right:16px;display:flex;flex-direction:column;gap:6px;margin:0;z-index:2}
+  #creator[data-step="2"] .preview-undo .c-button{width:44px;height:44px;min-width:44px;min-height:44px;padding:0;font-size:0;gap:0;justify-content:center;border-radius:50%;background:var(--c-surface);box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  #creator[data-step="2"] .preview-undo .c-button svg{width:20px;height:20px;margin:0}
+  #creator[data-step="2"] .readiness{width:100%;margin:0}
+  #creator[data-step="2"] .readiness-list{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #creator[data-step="2"] .readiness-list::-webkit-scrollbar{display:none}
+  #creator[data-step="2"] .readiness-list button{min-height:36px;font-size:12px;white-space:nowrap;flex:none}
+  #creator[data-step="2"] .ready-note,#creator[data-step="2"] .credit-note{font-size:12px;justify-content:center;text-align:center}
+  #creator[data-step="2"] .preview-hint,#creator[data-step="2"] .preview-caption{display:none}
+  html:root #creator[data-step="2"] .c-panel{flex:none;max-height:none;overflow:visible;margin:0;padding:12px 16px 16px;border-radius:0;border-left:0;border-right:0;box-shadow:none}
+  #creator[data-step="2"] .review-field .article-input{height:auto;min-height:240px}
+  #creator[data-step="2"] .review-field textarea{min-height:120px;height:auto}
+  #creator .drawer-toggle,#creator .drawer-top .inline-button,#creator .review-tabs .c-button,#creator .field-select{min-height:44px;height:auto}
+  /* While the keyboard is open, let the preview scroll away so the field stays in view */
+  #creator[data-step="2"]:has(.c-panel :is(textarea,input:not([type=range]),select):focus) .creator-preview{position:relative;top:0}
+  /* Photo tab: dragging on the preview pans the photo, so the page must not scroll from there */
+  #creator[data-step="2"][data-tab="photo"] .preview-frame canvas{touch-action:none}
+  #creator .photo-controls label{min-height:44px}
+
+  /* Bottom action bar */
+  #creator .creator-actions{padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));min-height:0;gap:10px}
+  #creator .creator-actions .c-button{min-height:48px}
+}
+/* Short phones (iPhone SE and landscape): smaller sticky preview */
+@media(max-width:700px) and (max-height:640px){
+  #creator[data-step="2"] .preview-frame{height:clamp(130px,28dvh,220px)}
+  #creator[data-step="2"] .creator-heading{padding-top:6px}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
@@ -2065,9 +2146,24 @@ function coverDims(L,img){
   if(L.fit==='stretch') return {dw:L.w,dh:L.h,dx:0,dy:0};
   const s=(L.fit==='contain'?Math.min(L.w/nw,L.h/nh):Math.max(L.w/nw,L.h/nh))*(L.zoom||1);
   const dw=nw*s, dh=nh*s;
-  // Vertical pan runs through the photo above the paper. Scale stays the full frame, so 0–100 is not a zoom.
+  // Vertical pan runs through the photo above the paper.
   const spanY=Math.min(photoViewH(L), L.h);
-  return {dw,dh,dx:(L.w-dw)*(L.fx??.5),dy:(spanY-dh)*(L.fy??.5)};
+  const t=panTravel(L.w,spanY,dw,dh);
+  // 0 shows the photo's left/top edge, 1 its right/bottom edge. When the photo barely overflows (or is zoomed out),
+  // it can still travel 60% of the frame, so it can be placed anywhere.
+  return {dw,dh,dx:(L.w-dw)/2-((L.fx??.5)-.5)*t.x,dy:(spanY-dh)/2-((L.fy??.5)-.5)*t.y,spanY};
+}
+function panTravel(fw,fh,dw,dh){ return {x:Math.max(dw-fw, fw*.6), y:Math.max(dh-fh, fh*.6)}; }
+// Fills any gap left by zooming out or panning past an edge with a soft, darkened copy of the photo.
+function photoBackdrop(ctx,L,img,sc,d){
+  if(L.role!=='photo'&&!/^photo$/i.test(String(L.slot||''))) return;
+  if(d.dx<=.5&&d.dy<=.5&&d.dx+d.dw>=L.w-.5&&d.dy+d.dh>=d.spanY-.5) return;
+  const nw=img.naturalWidth||img.width, nh=img.naturalHeight||img.height;
+  const k=Math.max(L.w/nw,L.h/nh)*1.08, bw=nw*k, bh=nh*k;
+  ctx.save();
+  if(FILTER_OK){ ctx.filter=`blur(${Math.round(28*sc)}px) brightness(.55) saturate(1.1)`; ctx.drawImage(img,(L.w-bw)/2,(L.h-bh)/2,bw,bh); }
+  else { ctx.fillStyle='#151616'; ctx.fillRect(0,0,L.w,L.h); }
+  ctx.restore();
 }
 function applyImageFilter(ctx,L,sc){
   const f=[];
@@ -2412,9 +2508,10 @@ function drawLayer(ctx,L,opt){
       ctx.fillStyle='#000'; ctx.fillRect(0,0,L.w,L.h);
     } else if(L.shadow){ ctx.fillStyle='#000'; ctx.fillRect(0,0,L.w,L.h); ctx.shadowColor='transparent'; }
     ctx.beginPath(); ctx.rect(0,0,L.w,L.h); ctx.clip();
+    const d=coverDims(L,img);
+    photoBackdrop(ctx,L,img,sc,d);
     applyImageFilter(ctx,L,sc);
     if(L.flipX||L.flipY){ ctx.translate(L.flipX?L.w:0,L.flipY?L.h:0); ctx.scale(L.flipX?-1:1,L.flipY?-1:1); }
-    const d=coverDims(L,img);
     ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality=fastPaint?'low':'high';
     let src=img;
     const tw=Math.max(1,Math.round(Math.abs(d.dw)*sc)), th=Math.max(1,Math.round(Math.abs(d.dh)*sc));
@@ -3802,9 +3899,9 @@ stage.addEventListener('pointermove',e=>{
     const img=getImg(L.src); if(img){
       const a=(L.rot||0)*Math.PI/180, lx=dx*Math.cos(a)+dy*Math.sin(a), ly=-dx*Math.sin(a)+dy*Math.cos(a);
       const d=coverDims(Object.assign({},L,{fx:.5,fy:.5}),img);
-      const viewH=photoViewH(L);
-      if(Math.abs(L.w-d.dw)>.5) L.fx=clamp(s.fx+lx/(L.w-d.dw),0,1);
-      if(Math.abs(viewH-d.dh)>.5) L.fy=clamp(s.fy+ly/(viewH-d.dh),0,1);
+      const t=panTravel(L.w,d.spanY,d.dw,d.dh);
+      L.fx=clamp(s.fx-lx/t.x,0,1);
+      L.fy=clamp(s.fy-ly/t.y,0,1);
     }
   }
   if(layerDrag()){ drawOverlay(); scheduleRender(); syncDragFields(); }
@@ -4652,8 +4749,7 @@ function creatorChoiceHTML(){
   const alts=headlines.map((h,i)=>({h,i})).filter(x=>x.i!==ai.chosen&&x.h&&x.h.lines);
   const note=(page.layers||[]).map(l=>l.type==='text'?fitNote(l,page):'').filter(Boolean)[0]||'';
   const tagButton=(t,suffix)=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)}${suffix||''}</button>`;
-  return `${badgeControlHTML()}<div class="pick-label">Category</div><div class="cat-row" role="group" aria-label="Category">${cats.map(c=>`<button type="button" class="c-button small" data-cat-pick="${esc(c.id)}" aria-pressed="${current===c.id}">${esc(c.id)}</button>`).join('')}</div>
-    <div class="pick-label">Tags</div><div class="tag-picks" role="group" aria-label="Tags"><input id="creatorTagType" class="tag-type" aria-label="Type a tag" maxlength="24" autocomplete="off" placeholder="Type a tag">${tagList.map(t=>tagButton(t)).join('')}${suggested.map(t=>tagButton(t,' · suggested')).join('')}${extras.map(t=>tagButton(t)).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
+  return `${badgeControlHTML()}<div class="pick-label">Tags</div><div class="tag-picks" role="group" aria-label="Tags"><input id="creatorTagType" class="tag-type" aria-label="Type a tag" maxlength="24" autocomplete="off" placeholder="Type a tag">${tagList.map(t=>tagButton(t)).join('')}${suggested.map(t=>tagButton(t,' · suggested')).join('')}${extras.map(t=>tagButton(t)).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
     ${alts.length?`<div class="alt-heads">${alts.map(x=>`<button type="button" class="c-button" data-alt-headline="${x.i}">Use: ${esc(x.h.lines.join(' / '))}</button>`).join('')}</div>`:''}
     ${note?`<p class="fit-note">${esc(note)}</p>`:''}`;
 }
@@ -5028,7 +5124,7 @@ function layerHTML(){
     <div class="row"><button class="btn" data-act="replace-img" data-id="${L.id}">${L.src?'Replace':'Choose image'}</button>
       ${L.src?`<button class="btn ${S.crop?'on':''}" data-act="crop">Reposition</button><button class="btn" data-act="natural" title="Match the frame to the image's proportions">Fit frame</button>`:''}</div>
     ${F.sel('Fit','fit',L.fit==='stretch'?[['stretch','Original size'],['cover','Fill frame (crop)'],['contain','Fit inside']]:[['cover','Fill frame (crop)'],['contain','Fit inside']])}
-    ${L.fit!=='stretch'?F.rng('Zoom','zoom',1,4,.01):''}
+    ${L.fit!=='stretch'?F.rng('Zoom','zoom',.5,4,.01):''}
     <div class="row"><button class="btn" data-act="flipx" aria-pressed="${L.flipX}">Flip ↔</button><button class="btn" data-act="flipy" aria-pressed="${L.flipY}">Flip ↕</button>${L.src&&L.slot?`<button class="btn" data-act="clear-img">Empty slot</button>`:''}</div>
     ${F.rng('Brightness','bright',0,200,1)}${F.rng('Contrast','contrast',0,200,1)}${F.rng('Saturation','sat',0,200,1)}${F.rng('Grayscale','gray',0,100,1)}${F.rng('Blur','blur',0,40,.5)}
     <div class="row"><button class="btn ghost" data-act="reset-fx">Reset adjustments</button></div>
@@ -5883,6 +5979,7 @@ const C = {workspace:'creator',step:0,inputMode:'ai',reviewTab:'text',field:'',d
 function ico(body){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;}
 /* Lucide (ISC). https://lucide.dev */
 const CI={
+ censor:ico('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>'),
  arrow:ico('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
  back:ico('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>'),
  spark:ico('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/>'),
@@ -5996,8 +6093,9 @@ function creatorReviewHTML(){
   const texts=creatorTextSlots();
   const L=texts.find(l=>l.id===C.field)||texts[0];if(L)C.field=L.id;
   const photos=S.doc.layers.filter(l=>l.type==='image'&&l.slot&&shownIn(S.doc.layers,l));
-  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select>${tagAddSelectHTML()}</div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
-  const photoPanel=photos.map(P=>`<div class="photo-card"><button class="source-photo" data-creator-photo="${P.id}">${CI.photo}<span><b>${P.src?'Replace':'Add'} ${esc(P.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${P.src?`<div class="photo-controls">${[['zoom','Zoom',1,4,P.zoom||1],['fx','Left / right',0,1,P.fx??.5],['fy','Up / down',0,1,P.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${P.id}" aria-label="${esc(P.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${P.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${P.id}">Remove</button></div></div>`:''}</div>`).join('')||'<p class="c-note">This template does not use a photo.</p>';
+  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select></div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
+  const censorBtn=`<button class="source-photo censor-btn" id="creatorCensor" aria-pressed="${!!C.censorMode}">${CI.censor}<span><b>${C.censorMode?'Drawing…':'Censor'}</b><small>${C.censorMode?'Drag on the preview':'Mosaic, blur or bar'}</small></span></button>`;
+  const photoPanel=(photos.map((P,i)=>`<div class="photo-card"><div class="photo-actions"><button class="source-photo" data-creator-photo="${P.id}">${CI.photo}<span><b>${P.src?'Replace':'Add'} ${esc(P.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${i===0?censorBtn:''}</div>${P.src?`<p class="c-note photo-hint">Drag the photo in the preview to move it. Scroll or pinch to zoom.</p><div class="photo-controls">${[['zoom','Zoom',.5,4,P.zoom||1],['fx','Left / right',0,1,P.fx??.5],['fy','Up / down',0,1,P.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${P.id}" aria-label="${esc(P.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${P.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${P.id}">Remove</button></div></div>`:''}</div>`).join('')||`<div class="photo-actions">${censorBtn}</div><p class="c-note">This template does not use a photo.</p>`)+censorListHTML();
   const panel=tab==='photo'?photoPanel:tab==='article'?articlePanel():textPanel;
   return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}" aria-label="${C.drawer?'Collapse quick edits':'Expand quick edits'}"><span></span><b>Quick edits</b><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
     ${panel}
@@ -6005,7 +6103,7 @@ function creatorReviewHTML(){
 }
 function renderCreator(){
   if(!S.doc||C.workspace!=='creator')return;
-  $('#creator').dataset.step=String(C.step);$('#creator').dataset.drawer=String(C.drawer);
+  $('#creator').dataset.step=String(C.step);$('#creator').dataset.drawer=String(C.drawer);$('#creator').dataset.tab=C.reviewTab||'text';$('#creator').dataset.censor=C.censorMode?'on':'off';
   $('#creatorTitle').textContent=C.step===0?'What’s the story?':'Review your post';
   $('#creatorSubtitle').textContent=C.step===0?'Paste. Preview. Post.':'A quick edit, then it’s ready to share.';
   document.querySelectorAll('.creator-steps [data-step]').forEach(b=>{if(+b.dataset.step===C.step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');b.disabled=C.busy||(+b.dataset.step===2&&!C.generated);});
@@ -6024,11 +6122,127 @@ function renderCreatorPreview(){
   const w=Math.round(page.w*scale),h=Math.round(page.h*scale);
   if(cv.width!==w)cv.width=w;if(cv.height!==h)cv.height=h;
   renderDoc(cv.getContext('2d'),page,{editor:true,scale});
+  drawCensorGuides(cv.getContext('2d'),page,scale);
   $('#creatorTemplateName').textContent=S.doc.templateName||kindName(S.doc.stockId||S.doc.templateType)||S.doc.name;
   $('#creatorDimensions').textContent=page.w+' × '+page.h+' · '+(page.h/page.w>1.6?'STORY':page.w>page.h?'LANDSCAPE':page.w===page.h?'SQUARE':'FEED POST');
   const pages=$('#creatorPages');pages.hidden=S.doc.pages.length<2;
   pages.innerHTML=S.doc.pages.length<2?'':`<button class="c-button small" data-creator-page="${S.doc.page-1}" aria-label="Previous page" ${S.doc.page===0?'disabled':''}>←</button><span>Page ${S.doc.page+1} of ${S.doc.pages.length}</span><button class="c-button small" data-creator-page="${S.doc.page+1}" aria-label="Next page" ${S.doc.page===S.doc.pages.length-1?'disabled':''}>→</button>`;
   $('#creatorUndo').disabled=S.hi<=0;$('#creatorRedo').disabled=S.hi>=S.hist.length-1;
+}
+/* ---------- Quick edits: move/zoom the photo and censor on the preview ---------- */
+const CENSOR_MODES=[['mosaic','Mosaic'],['blur','Blur'],['solid','Bar']];
+function censorLayers(){ return S.doc?S.doc.layers.filter(l=>l.type==='redact'&&shownIn(S.doc.layers,l)):[]; }
+function censorListHTML(){
+  const list=censorLayers(); if(!list.length) return '';
+  return `<div class="censor-list"><div class="field-top"><b>Censored areas</b><small>${list.length}</small></div>${list.map((L,i)=>{
+    const mode=L.mode==='solid'?'solid':L.mode==='blur'?'blur':'mosaic';
+    const strength=mode==='blur'?['blurRadius',8,60,L.blurRadius||24]:['block',12,80,L.block||28];
+    return `<div class="censor-row" data-censor-row="${L.id}"><div class="censor-top"><b>${i+1}</b><div class="seg-pills" role="group" aria-label="Censor style">${CENSOR_MODES.map(([v,n])=>`<button type="button" class="c-button small" data-censor-mode="${v}" data-layer="${L.id}" aria-pressed="${mode===v}">${n}</button>`).join('')}</div><div class="seg-pills" role="group" aria-label="Censor shape"><button type="button" class="c-button small" data-censor-shape="rect" data-layer="${L.id}" aria-pressed="${(L.shape||'rect')==='rect'}">Box</button><button type="button" class="c-button small" data-censor-shape="ellipse" data-layer="${L.id}" aria-pressed="${L.shape==='ellipse'}">Oval</button></div><button type="button" class="c-button small flat" data-censor-del="${L.id}" aria-label="Remove censor ${i+1}">Remove</button></div>${mode==='solid'?'':`<label class="censor-strength"><span>${mode==='blur'?'Blur':'Block size'}</span><input type="range" min="${strength[1]}" max="${strength[2]}" step="1" value="${strength[3]}" data-censor-strength="${strength[0]}" data-layer="${L.id}"><output>${strength[3]}px</output></label>`}</div>`;}).join('')}<p class="c-note">Use Bar for names, plates, addresses and documents. Mosaic and blur over text can sometimes be reversed.</p></div>`;
+}
+function drawCensorGuides(ctx,page,scale){
+  if(C.step!==2||C.reviewTab!=='photo') return;
+  const k=scale;
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+  for(const L of page.layers){
+    if(L.type!=='redact'||!shownIn(page.layers,L)) continue;
+    const x=L.x*k,y=L.y*k,w=L.w*k,h=L.h*k;
+    ctx.setLineDash([5,4]); ctx.lineWidth=1.5; ctx.strokeStyle='#ED2224';
+    if(L.shape==='ellipse'){ ctx.beginPath(); ctx.ellipse(x+w/2,y+h/2,Math.abs(w/2),Math.abs(h/2),0,0,Math.PI*2); ctx.stroke(); }
+    ctx.strokeRect(x+.5,y+.5,w,h); ctx.setLineDash([]);
+    ctx.fillStyle='#fff'; ctx.fillRect(x+w-6,y+h-6,12,12); ctx.strokeStyle='#ED2224'; ctx.strokeRect(x+w-6,y+h-6,12,12);
+  }
+  if(CZ.draw){ const d=CZ.draw; ctx.setLineDash([5,4]); ctx.strokeStyle='#ED2224'; ctx.lineWidth=1.5; ctx.strokeRect(Math.min(d.x0,d.x1)*k,Math.min(d.y0,d.y1)*k,Math.abs(d.x1-d.x0)*k,Math.abs(d.y1-d.y0)*k); }
+  ctx.restore();
+}
+const CZ={drag:null,draw:null,pts:new Map(),pinch:null,wheelT:0};
+function cvPoint(e){
+  const cv=$('#creatorCanvas'), r=cv.getBoundingClientRect(), page=S.doc.pages[S.doc.page];
+  return {x:(e.clientX-r.left)/r.width*page.w, y:(e.clientY-r.top)/r.height*page.h, k:page.w/r.width};
+}
+function creatorPhotoAt(x,y){
+  return S.doc.layers.slice().reverse().find(l=>l.type==='image'&&l.slot&&l.src&&shownIn(S.doc.layers,l)&&x>=l.x&&x<=l.x+l.w&&y>=l.y&&y<=l.y+l.h)||null;
+}
+function censorAt(x,y,k){
+  const list=censorLayers().slice().reverse(), grab=16*k;
+  for(const L of list){ if(Math.abs(x-(L.x+L.w))<=grab&&Math.abs(y-(L.y+L.h))<=grab) return {L,resize:true}; }
+  for(const L of list){ if(x>=L.x&&x<=L.x+L.w&&y>=L.y&&y<=L.y+L.h) return {L,resize:false}; }
+  return null;
+}
+function addCensor(box){
+  const layers=S.doc.layers;
+  let at=layers.length;
+  for(let i=layers.length-1;i>=0;i--){ if(layers[i].type==='image'&&layers[i].slot){ at=i+1; break; } }
+  const L=RD({name:'Censor',shape:'rect',mode:C.censorStyle||'mosaic',x:Math.round(box.x),y:Math.round(box.y),w:Math.max(24,Math.round(box.w)),h:Math.max(24,Math.round(box.h))});
+  layers.splice(at,0,L);
+  commit(); return L;
+}
+function photoTravelFor(L){
+  const img=getImg(L.src); if(!img) return null;
+  const d=coverDims(Object.assign({},L,{fx:.5,fy:.5}),img);
+  return panTravel(L.w,d.spanY,d.dw,d.dh);
+}
+function setPhotoZoom(L,z){ L.zoom=clamp(Math.round(z*100)/100,.5,4); }
+(function wireCreatorCanvas(){
+  const cv=$('#creatorCanvas'); if(!cv) return;
+  const active=()=>S.doc&&C.workspace==='creator'&&C.step===2&&C.reviewTab==='photo';
+  const refresh=()=>{ renderCreatorPreview(); syncPhotoSliders(); };
+  cv.addEventListener('pointerdown',e=>{
+    if(!active()) return;
+    const p=cvPoint(e); CZ.pts.set(e.pointerId,p);
+    cv.setPointerCapture(e.pointerId); e.preventDefault();
+    if(CZ.pts.size===2){
+      const P=CZ.drag&&CZ.drag.kind==='pan'?CZ.drag.L:null;
+      if(P){ const [a,b]=[...CZ.pts.values()]; CZ.pinch={L:P,d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:P.zoom||1}; }
+      return;
+    }
+    if(C.censorMode){ CZ.draw={x0:p.x,y0:p.y,x1:p.x,y1:p.y}; return; }
+    const hit=censorAt(p.x,p.y,p.k);
+    if(hit){ CZ.drag={kind:hit.resize?'resize':'move',L:hit.L,p0:p,s:{x:hit.L.x,y:hit.L.y,w:hit.L.w,h:hit.L.h}}; return; }
+    const P=creatorPhotoAt(p.x,p.y);
+    if(P){ const t=photoTravelFor(P); if(t) CZ.drag={kind:'pan',L:P,p0:p,s:{fx:P.fx??.5,fy:P.fy??.5},t}; }
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!active()) return;
+    const hover=cvPoint(e);
+    if(!CZ.pts.has(e.pointerId)){ const h=C.censorMode?null:censorAt(hover.x,hover.y,hover.k); cv.style.cursor=C.censorMode?'crosshair':h?(h.resize?'nwse-resize':'move'):creatorPhotoAt(hover.x,hover.y)?'grab':'default'; return; }
+    CZ.pts.set(e.pointerId,hover);
+    if(CZ.pinch&&CZ.pts.size>=2){ const [a,b]=[...CZ.pts.values()]; setPhotoZoom(CZ.pinch.L,CZ.pinch.z0*Math.hypot(a.x-b.x,a.y-b.y)/CZ.pinch.d0); refresh(); return; }
+    if(CZ.draw){ CZ.draw.x1=hover.x; CZ.draw.y1=hover.y; renderCreatorPreview(); return; }
+    const d=CZ.drag; if(!d) return;
+    const dx=hover.x-d.p0.x, dy=hover.y-d.p0.y;
+    if(d.kind==='pan'){ d.L.fx=clamp(d.s.fx-dx/d.t.x,0,1); d.L.fy=clamp(d.s.fy-dy/d.t.y,0,1); cv.style.cursor='grabbing'; }
+    else if(d.kind==='move'){ d.L.x=Math.round(d.s.x+dx); d.L.y=Math.round(d.s.y+dy); }
+    else { d.L.w=Math.max(24,Math.round(d.s.w+dx)); d.L.h=Math.max(24,Math.round(d.s.h+dy)); }
+    d.moved=true; refresh();
+  });
+  const end=e=>{
+    if(!CZ.pts.has(e.pointerId)) return;
+    CZ.pts.delete(e.pointerId);
+    if(CZ.pinch){ if(CZ.pts.size<2){ CZ.pinch=null; CZ.drag=null; commit(); refresh(); } return; }
+    if(CZ.draw){
+      const d=CZ.draw; CZ.draw=null;
+      const box={x:Math.min(d.x0,d.x1),y:Math.min(d.y0,d.y1),w:Math.abs(d.x1-d.x0),h:Math.abs(d.y1-d.y0)};
+      if(box.w<12&&box.h<12){ const page=S.doc.pages[S.doc.page], size=Math.round(page.w*.22); box.x=d.x0-size/2; box.y=d.y0-size/2; box.w=size; box.h=size; }
+      addCensor(box); C.censorMode=false; renderCreator(); return;
+    }
+    if(CZ.drag&&CZ.drag.moved){ commit(); }
+    CZ.drag=null; refresh();
+  };
+  cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+  cv.addEventListener('wheel',e=>{
+    if(!active()) return;
+    const p=cvPoint(e), P=creatorPhotoAt(p.x,p.y); if(!P) return;
+    e.preventDefault(); setPhotoZoom(P,(P.zoom||1)*Math.exp(-e.deltaY*.0015)); refresh();
+    clearTimeout(CZ.wheelT); CZ.wheelT=setTimeout(commit,300);
+  },{passive:false});
+})();
+function syncPhotoSliders(){
+  document.querySelectorAll('[data-photo-prop]').forEach(el=>{
+    const L=S.doc.layers.find(l=>l.id===el.dataset.layer); if(!L) return;
+    const v=el.dataset.photoProp==='zoom'?(L.zoom||1):(L[el.dataset.photoProp]??.5);
+    if(document.activeElement!==el) el.value=v;
+    if(el.nextElementSibling) el.nextElementSibling.textContent=Math.round(v*100)+'%';
+  });
 }
 function creatorIssues(){
   const issues=[];
@@ -6042,14 +6256,33 @@ function creatorIssues(){
       if(l.type==='text'&&value){ const note=fitNote(l,p); if(note) label=note; }
       if(!label&&l.type==='text'&&value){
         const mine=rectOf(l), hit=p.layers.find(o=>o!==l&&o.type==='text'&&!o.dupOf&&shownIn(p.layers,o)&&String(o.text||'').trim()&&rectsOverlap(mine,rectOf(o)));
-        if(hit&&layerRole(l)!=='static') label=(l.slot||'Text')+' overlaps '+(hit.slot||hit.name||'another text layer');
+        // Only headline and dek wrap into their boxes; one-line labels (location, follow line) have wide boxes but short text.
+        if(hit&&(layerRole(l)==='headline'||layerRole(l)==='dek')) label=(l.slot||'Text')+' overlaps '+(hit.slot||hit.name||'another text layer');
       }
       if(label)issues.push({page:i,id:l.id,tab:l.type==='image'?'photo':'text',label:(S.doc.pages.length>1?'P'+(i+1)+' · ':'')+label});
     }
   });return issues;
 }
 function articleWords(t){ return String(t||'').trim().split(/\s+/).filter(Boolean).length; }
+const DEFAULT_HASHTAGS='#SLCSCOOP #UTAH';
+function withDefaultHashtags(text){
+  const body=String(text||'').split('\n').filter(l=>!/^\s*(#[\w-]+\s*)+$/.test(l)).join('\n').replace(/[ \t]+#[\w-]+(?=[ \t]*$)/gm,'').trim();
+  return (body?body+'\n\n':'')+DEFAULT_HASHTAGS;
+}
+function captionPanel(){
+  const ai=S.doc&&S.doc.ai||{};
+  const text=String(ai.caption||'').trim();
+  return `<div class="review-field"><div class="field-top"><b>Social caption</b><small id="captionCount">${text.length} / 2,200</small></div>
+    <textarea class="c-input article-input caption-input" id="creatorCaption" rows="9" placeholder="${C.captionBusy?'Writing a caption from the article…':'Write the Instagram caption, or generate one from the article.'}" ${C.captionBusy?'disabled':''}>${esc(text)}</textarea>
+    <div class="caption-actions"><button type="button" class="c-button small" id="creatorCaptionGen" ${C.captionBusy?'disabled':''}>${C.captionBusy?'Writing…':text?'Rewrite caption':'Generate caption'}</button><button type="button" class="c-button small flat" id="creatorCaptionCopy" ${text?'':'disabled'}>Copy</button></div>
+    <p class="c-note">Ends with ${DEFAULT_HASHTAGS}. Add any other hashtag by hand.</p></div>`;
+}
 function articlePanel(){
+  const view=C.articleView==='caption'?'caption':'website';
+  const switcher=`<div class="seg-pills article-switch" role="group" aria-label="Article type"><button type="button" class="c-button small" data-article-view="website" aria-pressed="${view==='website'}">Website article</button><button type="button" class="c-button small" data-article-view="caption" aria-pressed="${view==='caption'}">Social caption</button></div>`;
+  return switcher+(view==='caption'?captionPanel():websiteArticlePanel());
+}
+function websiteArticlePanel(){
   const ai=S.doc&&S.doc.ai||{};
   const text=ai.article||'', warn=ai.copyWarnings||[];
   return `<div class="review-field"><div class="field-top"><b>Website article</b><small id="articleCount">${articleWords(text)} words</small></div>
@@ -6072,6 +6305,14 @@ function websitePaste(){
 function postCopyTxt(caption){
   return ['INSTAGRAM','',String(caption||'').trim(),'','WEBSITE','',websitePaste(),''].join('\n');
 }
+async function generateCaption(force){
+  if(C.captionBusy) return;
+  S.doc.ai=S.doc.ai||{};
+  if(force) S.doc.ai.caption='';
+  C.captionBusy=true; renderCreator();
+  try{ const t=await ensureCaption(); S.doc.ai.caption=t; commit(); }
+  finally{ C.captionBusy=false; if(C.workspace==='creator') renderCreator(); }
+}
 async function ensureCaption(){
   const saved=S.doc&&S.doc.ai&&String(S.doc.ai.caption||'').trim();
   if(saved) return saved;
@@ -6084,7 +6325,7 @@ async function ensureCaption(){
       excerpt:article.slice(0,12000), headline:p.headline, dek:p.dek, source:p.source, location:p.location, tags:p.tags.join(' '),
       siteName:C.link&&C.link.siteName||'', articleTitle:C.link&&C.link.title||''
     })});
-    const caption=String(out&&out.caption||'').trim();
+    const caption=out&&out.caption?withDefaultHashtags(out.caption):'';
     if(caption){ S.doc.ai=S.doc.ai||{}; S.doc.ai.caption=caption; return caption; }
   }catch(e){}
   return fallback;
@@ -6527,7 +6768,7 @@ function composedCaption(){
   if(!body) body=article.split(/\n+/).map(s=>s.replace(/^(headline|title|quote|supporting copy|supporting|dek|subheadline|summary|body|category|location|source|photo credit|credit|attribution|tags)\s*:\s*/i,'').trim()).filter(s=>s&&s.toLowerCase()!==p.headline.toLowerCase()).slice(0,3).join('\n\n');
   if(!body) body=p.headline;
   const credit=p.source?'Source: '+p.source:(C.link&&C.link.siteName?'Source: '+C.link.siteName:'');
-  return [body,p.location,credit,p.tags.join(' ')].filter(Boolean).join('\n\n');
+  return withDefaultHashtags([body,p.location,credit].filter(Boolean).join('\n\n'));
 }
 function openCaptionModal(saved){
   const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Instagram caption</h2><button class="btn ghost" data-close aria-label="Close caption">${CI.x}</button></div><p class="note" id="igNote">${esc(saved)}</p><textarea class="inp caption-box" id="igCaption" aria-label="Recommended Instagram caption"></textarea><div class="acts"><button class="btn" data-close>Done</button><button class="btn primary" id="igCopy">${CI.copy}Copy caption</button></div>`);
@@ -6557,7 +6798,7 @@ function openCaptionModal(saved){
     siteName:C.link&&C.link.siteName||'', articleTitle:C.link&&C.link.title||''
   })}).then(out=>{
     if(!m.isConnected||edited||!out||!out.caption) return;
-    box.value=String(out.caption).trim();
+    box.value=withDefaultHashtags(out.caption);
     S.doc.ai=S.doc.ai||{}; S.doc.ai.caption=box.value;
     $('#igNote',m).textContent='Recommended from the article. Edit it if you want, then copy it into Instagram.';
   }).catch(()=>{ if(m.isConnected) $('#igNote',m).textContent=saved+' Recommended from this post. Copy it into Instagram.'; });
@@ -6658,6 +6899,13 @@ document.addEventListener('click',async e=>{
   if(b.dataset.catPick){pickCategory(b.dataset.catPick);return;}
   if(b.dataset.tagPick!=null){toggleTopicTag(b.dataset.tagPick,b);return;}
   if(b.dataset.altHeadline!=null){applyAltHeadline(+b.dataset.altHeadline);return;}
+  if(b.dataset.articleView){C.articleView=b.dataset.articleView;renderCreator();if(C.articleView==='caption'&&!String(S.doc.ai&&S.doc.ai.caption||'').trim())generateCaption(false);return;}
+  if(b.id==='creatorCaptionGen'){generateCaption(true);return;}
+  if(b.id==='creatorCaptionCopy'){const t=String(S.doc.ai&&S.doc.ai.caption||'');try{await navigator.clipboard.writeText(t);toast('Caption copied');}catch(e){const box=$('#creatorCaption');if(box){box.focus();box.select();}toast('Select the caption and copy it.');}return;}
+  if(b.id==='creatorCensor'){C.censorMode=!C.censorMode;renderCreator();return;}
+  if(b.dataset.censorMode){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){L.mode=b.dataset.censorMode;C.censorStyle=L.mode;commit();scheduleRender();renderCreator();}return;}
+  if(b.dataset.censorShape){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){L.shape=b.dataset.censorShape;commit();scheduleRender();renderCreator();}return;}
+  if(b.dataset.censorDel){const i=S.doc.layers.findIndex(l=>l.id===b.dataset.censorDel);if(i>=0){S.doc.layers.splice(i,1);commit();scheduleRender();renderCreator();}return;}
   if(b.dataset.photoReset||b.dataset.photoRemove){const L=S.doc.layers.find(l=>l.id===(b.dataset.photoReset||b.dataset.photoRemove));if(L){if(b.dataset.photoRemove)L.src=null;else Object.assign(L,{fx:.5,fy:.5,zoom:1});commit();scheduleRender();renderCreator();}return;}
   switch(b.id){
     case 'creatorNew':await creatorNewPost();break;
@@ -6676,12 +6924,15 @@ document.addEventListener('click',async e=>{
     case 'creatorRedo':redo();renderCreator();break;
   }
 });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&C.censorMode){ C.censorMode=false; renderCreator(); } });
 document.addEventListener('input',e=>{
   if(C.workspace!=='creator')return;const el=e.target;
   if(el.id==='creatorArticle'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.article=el.value;const c=$('#articleCount');if(c)c.textContent=articleWords(el.value)+' words';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
   if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint&&C.inputMode==='ai')hint.textContent=url?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.';$('#sourceCount').textContent=el.value.length.toLocaleString()+' / 12,000';const next=$('#creatorNext');if(next&&!C.busy)next.innerHTML=creatorActionInner();creatorPersist();}
   if(el.id==='creatorTemplateSearch'){C.query=el.value;renderCreatorTemplates();}
   if(el.dataset.creatorText){if(!el.isConnected)return;if(tagTextLock&&el.dataset.creatorText===tagTextLock.id&&document.activeElement!==el&&performance.now()-tagTextLock.at<400)return;const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
+  if(el.id==='creatorCaption'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.caption=el.value;const c=$('#captionCount');if(c)c.textContent=el.value.length+' / 2,200';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
+  if(el.dataset.censorStrength){const L=S.doc.layers.find(l=>l.id===el.dataset.layer);if(L){L[el.dataset.censorStrength]=+el.value;el.nextElementSibling.textContent=el.value+'px';scheduleRender();renderCreatorPreview();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);}}
   if(el.dataset.photoProp){const L=S.doc.layers.find(l=>l.id===el.dataset.layer);if(L){L[el.dataset.photoProp]=+el.value;el.nextElementSibling.textContent=Math.round(+el.value*100)+'%';scheduleRender();}}
 });
 document.addEventListener('change',e=>{

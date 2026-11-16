@@ -12,6 +12,18 @@ function clean(value: unknown, max: number): string {
 }
 
 /** POST /api/scoop/caption → { caption }. The article URL is never sent. */
+/** SLC Scoop captions always end with exactly these hashtags. Editors can add more by hand. */
+const DEFAULT_HASHTAGS = '#SLCSCOOP #UTAH';
+function withDefaultHashtags(text: string): string {
+  const body = text
+    .split('\n')
+    .filter((line) => !/^\s*(#[\w-]+\s*)+$/.test(line))
+    .join('\n')
+    .replace(/[ \t]+#[\w-]+(?=[ \t]*$)/gm, '')
+    .trim();
+  return `${body}\n\n${DEFAULT_HASHTAGS}`;
+}
+
 export async function POST(req: NextRequest) {
   const denied = guard(req);
   if (denied) return denied;
@@ -45,7 +57,6 @@ The graphic already shows this headline: ${headline || '(none)'}
 Supporting line on the graphic: ${dek || '(none)'}
 Location: ${location || '(none)'}
 Source credit on the graphic: ${source || '(none)'}
-Tags: ${tags || '(none)'}
 
 ${attribution}
 
@@ -58,7 +69,7 @@ Caption rules:
 - Do not repeat the headline.
 - Direct, factual, and local. No clickbait, no opinion, no emoji.
 - End with one line: Source: ${creditName}
-- After a blank line, add up to 4 hashtags taken from the tags. Do not invent extra hashtags.
+- Do not write any hashtags. They are added automatically.
 - Reply with the caption only.`;
 
   try {
@@ -80,7 +91,8 @@ Caption rules:
     const raw = await res.text();
     if (!res.ok) return NextResponse.json({ error: 'failed' }, { status: 502 });
     const message = JSON.parse(raw) as { content?: { type: string; text?: string }[] };
-    const caption = (message.content ?? []).map((block) => (block.type === 'text' ? block.text ?? '' : '')).join('').trim().slice(0, 2200);
+    const written = (message.content ?? []).map((block) => (block.type === 'text' ? block.text ?? '' : '')).join('').trim();
+    const caption = withDefaultHashtags(written).slice(0, 2200);
     if (caption.length < 20) return NextResponse.json({ error: 'failed' }, { status: 502 });
     return NextResponse.json({ caption });
   } catch {

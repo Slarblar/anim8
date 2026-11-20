@@ -40,9 +40,9 @@ export { performanceBand, performanceBandLabel } from './kpi-shared';
 const KPI_PROJECT_GID = '1211974912397549'; // 🐸 Anim8 KPI
 
 // How often Asana actually gets hit, in seconds. Everyone who loads the
-// page in between gets the cached result instantly. 6 hours is plenty for
-// data that only changes when tasks get marked complete.
-const REVALIDATE_SECONDS = 60 * 60 * 6;
+// page in between gets the cached result instantly. 15 minutes keeps the
+// dashboard close to Asana without a full pull on every page view.
+const REVALIDATE_SECONDS = 60 * 15;
 
 function getToken(): string {
   const token = process.env.ASANA_ACCESS_TOKEN ?? process.env.ASANA_PAT;
@@ -405,7 +405,7 @@ export const getAllKPIData = unstable_cache(
     const [tasks, fteByEmail] = await Promise.all([fetchAllKPITasks(), buildFteLookup()]);
     return aggregateByPerson(tasks, fteByEmail);
   },
-  ['crew-kpi-data-v8-tasks-by-month'],
+  ['crew-kpi-data-v9-15min'],
   { revalidate: REVALIDATE_SECONDS, tags: ['kpi'] }
 );
 

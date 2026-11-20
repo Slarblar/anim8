@@ -199,7 +199,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
     kpiPage: {
       title: 'KPI',
       subtitle: 'Your performance metrics, pulled straight from Asana.',
-      syncedFromAsana: 'Synced from the 🐸 Anim8 KPI project in Asana · refreshes every 6 hours.',
+      syncedFromAsana: 'Synced from the 🐸 Anim8 KPI project in Asana · refreshes every 15 minutes.',
       refreshNow: 'Refresh now',
       refreshing: 'Refreshing…',
       loadError: 'Could not load your KPI data.',
@@ -343,7 +343,7 @@ export const crewT: Record<CrewLang, CrewTranslations> = {
     kpiPage: {
       title: 'KPI',
       subtitle: 'Chỉ số hiệu suất của bạn, lấy trực tiếp từ Asana.',
-      syncedFromAsana: 'Đồng bộ từ dự án 🐸 Anim8 KPI trên Asana · làm mới mỗi 6 giờ.',
+      syncedFromAsana: 'Đồng bộ từ dự án 🐸 Anim8 KPI trên Asana · làm mới mỗi 15 phút.',
       refreshNow: 'Làm mới',
       refreshing: 'Đang làm mới…',
       loadError: 'Không thể tải dữ liệu KPI của bạn.',

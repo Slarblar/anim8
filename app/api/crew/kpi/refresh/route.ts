@@ -4,7 +4,7 @@ import { requireCrewSession } from '@/lib/auth-guards';
 import { getDemoKpiSummary, isCrewDemoUser } from '@/lib/crew-demo';
 import { getKPIDataForUser } from '@/lib/kpi';
 
-/** Manual "refresh now" button — busts the 6h Asana cache and re-fetches. */
+/** Manual "refresh now" button — busts the 15-minute Asana cache and re-fetches. */
 export async function POST() {
   const session = await requireCrewSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

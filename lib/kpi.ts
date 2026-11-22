@@ -89,8 +89,11 @@ const TASK_OPT_FIELDS = [
   'modified_at',
 ].join(',');
 
-/** Max parallel Asana subtask fetches per refresh — keeps us under rate limits. */
-const SUBTASK_FETCH_CONCURRENCY = 8;
+/**
+ * Parallel subtask reads per refresh. Asana allows 50 concurrent GETs;
+ * 20 keeps the walk fast without sitting on that ceiling.
+ */
+const SUBTASK_FETCH_CONCURRENCY = 20;
 
 // ---- Helpers --------------------------------------------------------------
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -229,29 +232,57 @@ async function fetchAllKPITasks(): Promise<AsanaTask[]> {
   const byGid = new Map<string, AsanaTask>();
   for (const task of projectTasks) byGid.set(task.gid, task);
 
+  // Only parents that actually have subtasks. Walking every project gid
+  // 8-at-a-time meant most batches fetched one or two lists and the rest waited.
   const fetchedSubtasksFor = new Set<string>();
-  let queue = [...byGid.keys()];
+  let queue = projectTasks.filter((task) => (task.num_subtasks ?? 0) > 0).map((task) => task.gid);
 
   while (queue.length > 0) {
     const batch = queue.splice(0, SUBTASK_FETCH_CONCURRENCY);
     const toFetch = batch.filter((gid) => {
       if (fetchedSubtasksFor.has(gid)) return false;
       fetchedSubtasksFor.add(gid);
-      return (byGid.get(gid)?.num_subtasks ?? 0) > 0;
+      return true;
     });
+    if (toFetch.length === 0) continue;
 
     const nested = await Promise.all(toFetch.map((gid) => fetchSubtasksForTask(gid)));
     for (const subtasks of nested) {
       for (const subtask of subtasks) {
-        if (!byGid.has(subtask.gid)) {
-          byGid.set(subtask.gid, subtask);
-          queue.push(subtask.gid);
-        }
+        if (byGid.has(subtask.gid)) continue;
+        byGid.set(subtask.gid, subtask);
+        if ((subtask.num_subtasks ?? 0) > 0) queue.push(subtask.gid);
       }
     }
   }
 
   return [...byGid.values()];
+}
+
+export type KpiDataSnapshot = {
+  /** When this Asana walk finished. Stays with the cache, so the page can show pull age. */
+  fetchedAt: string;
+  byEmail: Record<string, PersonKPISummary>;
+};
+
+/** One in-flight Asana walk per server instance, so a burst of page loads shares it. */
+let kpiLoadInFlight: Promise<KpiDataSnapshot> | null = null;
+
+async function loadKpiFromAsana(): Promise<KpiDataSnapshot> {
+  if (!kpiLoadInFlight) {
+    kpiLoadInFlight = (async () => {
+      try {
+        const [tasks, fteByEmail] = await Promise.all([fetchAllKPITasks(), buildFteLookup()]);
+        return {
+          fetchedAt: new Date().toISOString(),
+          byEmail: aggregateByPerson(tasks, fteByEmail),
+        };
+      } finally {
+        kpiLoadInFlight = null;
+      }
+    })();
+  }
+  return kpiLoadInFlight;
 }
 
 type FteLookup = {
@@ -400,14 +431,19 @@ async function buildFteLookup(): Promise<Record<string, FteLookup>> {
 // ---- Public API -------------------------------------------------------
 // Cached across ALL visitors — Asana only gets hit once per revalidation
 // window no matter how many crew members load the page.
-export const getAllKPIData = unstable_cache(
-  async () => {
-    const [tasks, fteByEmail] = await Promise.all([fetchAllKPITasks(), buildFteLookup()]);
-    return aggregateByPerson(tasks, fteByEmail);
-  },
-  ['crew-kpi-data-v9-15min'],
-  { revalidate: REVALIDATE_SECONDS, tags: ['kpi'] }
-);
+const getKpiDataSnapshot = unstable_cache(loadKpiFromAsana, ['crew-kpi-data-v10-fetched-at'], {
+  revalidate: REVALIDATE_SECONDS,
+  tags: ['kpi'],
+});
+
+export async function getAllKPIData(): Promise<Record<string, PersonKPISummary>> {
+  return (await getKpiDataSnapshot()).byEmail;
+}
+
+/** ISO time of the Asana walk currently being served, including a stale cache hit. */
+export async function getKpiFetchedAt(): Promise<string> {
+  return (await getKpiDataSnapshot()).fetchedAt;
+}
 
 /**
  * Testing-only account -> real Asana email overrides. The `hello@` login is

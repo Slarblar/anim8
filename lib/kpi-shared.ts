@@ -82,6 +82,38 @@ export const KPI_CHART_SCALE_MAX = 105;
 /** Admin KPI reporting clock. Directory badges and staff reports share it. */
 export const KPI_REPORT_TIME_ZONE = 'America/Denver';
 
+/**
+ * Clock time and whole minutes since an Asana KPI pull.
+ * Omit `timeZone` to use the viewer's local zone. Pass one only in tests.
+ */
+export function describeKpiPull(
+  fetchedAt: string,
+  now: Date = new Date(),
+  timeZone?: string
+): { clock: string; minutesAgo: number } | null {
+  const then = new Date(fetchedAt);
+  if (Number.isNaN(then.getTime())) return null;
+  const clock = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+    ...(timeZone ? { timeZone } : {}),
+  }).format(then);
+  const minutesAgo = Math.max(0, Math.round((now.getTime() - then.getTime()) / 60000));
+  return { clock, minutesAgo };
+}
+
+export function kpiPullAgoLabel(minutesAgo: number, lang: 'en' | 'vn'): string {
+  if (minutesAgo < 1) return lang === 'vn' ? 'vừa xong' : 'just now';
+  if (minutesAgo < 60) {
+    if (lang === 'vn') return `${minutesAgo} phút trước`;
+    return minutesAgo === 1 ? '1 min ago' : `${minutesAgo} min ago`;
+  }
+  const hours = Math.max(1, Math.round(minutesAgo / 60));
+  if (lang === 'vn') return `${hours} giờ trước`;
+  return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+}
+
 /** Calendar year/month in the KPI reporting timezone. */
 export function kpiReportCalendar(
   now: Date = new Date(),

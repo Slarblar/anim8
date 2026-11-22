@@ -1302,6 +1302,12 @@ html:root body .modal.export-sheet .ce-foot .ce-dest .seg-pills{flex-wrap:nowrap
 html:root body .modal.export-sheet .ce-foot .ce-dest .btn{flex:0 1 auto;min-height:38px;padding:0 12px;font-size:12px;width:auto}
 html:root body .modal.export-sheet .ce-foot .ce-dest .btn[hidden]{display:none}
 @media (max-width:370px){ html:root body .modal.export-sheet .ce-foot .ce-dest .ce-web-label{display:none} html:root body .modal.export-sheet .ce-foot .ce-dest .btn{padding:0 10px;font-size:11px} }
+/* Archive stays a labeled button. The New post control is the one that collapses to an icon. */
+#creator .heading-actions #creatorArchive,
+#creator[data-step="2"] .heading-actions #creatorArchive{width:auto;height:auto;min-width:0;min-height:44px;margin:0;padding:0 14px}
+#creator .heading-actions #creatorArchive span{display:inline}
+#creator .creator-heading>div:first-child{min-width:0}
+html:root body .modal.export-sheet .ce-drive-warning:empty{display:none}
 </style>
 </head>
 <body data-workspace="creator">
@@ -1316,7 +1322,7 @@ html:root body .modal.export-sheet .ce-foot .ce-dest .btn[hidden]{display:none}
 <main id="creator" data-step="0">
   <div class="creator-heading">
     <div><p class="eyebrow"><i class="red-square"></i> SLCSCOOP / POST CREATOR</p><h1 id="creatorTitle">From story to post.</h1><p id="creatorSubtitle">Your story. Your templates. Ready in a few taps.</p></div>
-    <div class="heading-actions"><button type="button" class="c-button new-post archive-open" id="creatorArchive" aria-label="Open the archive of the last 7 days"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg><span>Archive</span></button><button type="button" class="c-button new-post" id="creatorNew" aria-label="Start a new post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>New post</span></button></div>
+    <div class="heading-actions"><button type="button" class="c-button archive-open" id="creatorArchive" aria-label="Open the archive of the last 7 days"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg><span>Archive</span></button><button type="button" class="c-button new-post" id="creatorNew" aria-label="Start a new post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>New post</span></button></div>
   </div>
   <nav class="creator-steps" aria-label="Post creation steps">
     <button type="button" data-step="0" aria-current="step"><span class="step-num">01</span>Your story</button>
@@ -7486,7 +7492,7 @@ async function openArchived(it){
 const DRIVE_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 7.9Z"/><path d="M12 11v6"/><path d="m9.5 13.5 2.5-2.5 2.5 2.5"/></svg>';
 const DRIVE={state:'idle', configured:false, ok:false, email:'', name:'', reason:'', at:0};
 async function driveStatus(force){
-  if(typeof Backend==='undefined'||Backend.mode!=='server'){ Object.assign(DRIVE,{state:'done',configured:false,ok:false}); return DRIVE; }
+  if(typeof Backend==='undefined'||Backend.mode!=='server'){ Object.assign(DRIVE,{state:'done',configured:false,ok:false,reason:'offline'}); return DRIVE; }
   if(!force&&DRIVE.state==='done'&&Date.now()-DRIVE.at<5*60*1000) return DRIVE;
   if(DRIVE.pending) return DRIVE.pending;
   DRIVE.state='checking';
@@ -7500,6 +7506,7 @@ function driveProblem(reason,email){
   if(reason==='needs_shared_drive') return 'SCOOP_DRIVE_FOLDER_ID must point to a Shared drive (or a folder inside one). Service accounts can’t save into My Drive.';
   if(reason==='rate_limited') return 'Google is busy right now. Try again in a minute.';
   if(reason==='not_configured') return 'The Shared Drive isn’t set up on the server yet.';
+  if(reason==='offline') return 'This browser is not connected to the studio server, so Shared Drive save is unavailable.';
   if(reason==='too_large') return 'A file is over 25 MB.';
   return 'Could not reach Google Drive. Try again.';
 }
@@ -7525,11 +7532,13 @@ async function creatorExport(){
   clearTimeout(fillT);commit();
   let pngFiles=[]; let generation=0; let captionJob=null; let captionText='';
   const multi=S.doc.pages.length>1;
+  const destBar=`<div class="ce-dest"><span class="ce-web-label">Save to</span><div class="seg-pills" role="group" aria-label="Save to"><button type="button" class="btn small" data-dest="drive" aria-pressed="false">${DRIVE_SVG}Shared Drive</button><button type="button" class="btn small" data-dest="local" aria-pressed="false">${CI.download}This device</button></div></div>`;
   const m=openModal(`<div class="row ce-head"><div class="ce-titles"><p class="ce-kicker" id="ceKicker">Step 1 of 2</p><h2 id="ceTitle">Instagram post</h2></div><button class="btn ghost" data-close aria-label="Close export">${CI.x}</button></div>
   <section class="ce-step" data-ce-step="post">
     <img class="creator-export-preview" id="cePreview" alt="Final Instagram post preview">
     <div class="note" id="ceDimensions"></div><div class="note warn" id="ceWarning"></div><div class="note" role="status" id="ceMessage">Preparing the Instagram image…</div>
-    <div class="export-main ce-foot"><button class="btn" id="ceShare" hidden disabled>${CI.share}Share</button><button class="btn primary" id="ceNext" disabled>Next: website image</button></div>
+    <div class="note warn ce-drive-warning"></div>
+    <div class="export-main ce-foot">${destBar}<button class="btn" id="ceShare" hidden disabled>${CI.share}Share</button><button class="btn primary" id="ceNext" disabled>Next: website image</button></div>
   </section>
   <section class="ce-step" data-ce-step="web" hidden>
     <div class="ce-web-stage" id="ceWebStage"><canvas id="ceWebCanvas" role="img" aria-label="Website image preview"></canvas><span class="ce-web-badge" id="ceWebDims"></span></div>
@@ -7538,8 +7547,8 @@ async function creatorExport(){
     <div class="ce-web-row"><span class="ce-web-label" id="ceShapeLabel">Shape</span><div class="seg-pills" role="group" aria-labelledby="ceShapeLabel" id="ceShapes">${WEB_SHAPES.map(([v,n])=>`<button type="button" class="btn small" data-web-shape="${v}" aria-pressed="false">${n}</button>`).join('')}</div></div>
     <div class="photo-controls" id="ceWebControls">${[['zoom','Zoom',.5,4],['fx','Left / right',0,1],['fy','Up / down',0,1]].map(([k,label,min,max])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" data-web-prop="${k}" aria-label="Website image ${label.toLowerCase()}"><output></output></label>`).join('')}</div>
     <div class="note warn" id="ceWebWarning"></div>
-    <div class="note warn" id="ceDriveWarning"></div><div class="note" role="status" id="ceWebMessage"></div>
-    <div class="export-main ce-foot"><div class="ce-dest"><span class="ce-web-label" id="ceDestLabel">Save to</span><div class="seg-pills" role="group" aria-labelledby="ceDestLabel"><button type="button" class="btn small" data-dest="drive" aria-pressed="false" hidden>${DRIVE_SVG}Shared Drive</button><button type="button" class="btn small" data-dest="local" aria-pressed="false">${CI.download}This device</button></div></div><button class="btn" id="ceBack">Back</button><button class="btn primary" id="ceDownload" disabled>${CI.download}<span id="ceSaveLabel">Save</span></button></div>
+    <div class="note warn ce-drive-warning" id="ceDriveWarning"></div><div class="note" role="status" id="ceWebMessage"></div>
+    <div class="export-main ce-foot">${destBar}<button class="btn" id="ceBack">Back</button><button class="btn primary" id="ceDownload" disabled>${CI.download}<span id="ceSaveLabel">Save</span></button></div>
   </section>`);
   const modal=m.querySelector('.modal'); modal.classList.add('export-sheet'); modal.querySelector('h2').id='ceTitle'; modal.setAttribute('aria-labelledby','ceTitle');
   let localUrls=[];
@@ -7710,14 +7719,19 @@ async function creatorExport(){
   const dest=()=>({drive:prefs.drive&&DRIVE.ok, local:prefs.local||(DRIVE.state==='done'&&!DRIVE.ok)});
   function syncDest(){
     if(!m.isConnected) return;
-    const d=dest(), db=m.querySelector('[data-dest=drive]'), lb=m.querySelector('[data-dest=local]');
-    db.hidden=!(DRIVE.configured||DRIVE.state!=='done')||Backend.mode!=='server';
-    db.disabled=!DRIVE.ok;
-    db.setAttribute('aria-pressed',String(d.drive));
-    db.title=DRIVE.state!=='done'?'Checking the Shared Drive…':DRIVE.ok?'Save into '+(DRIVE.name||'the shared drive')+' › year › month › post folder':driveProblem(DRIVE.reason,DRIVE.email);
-    lb.setAttribute('aria-pressed',String(d.local));
-    lb.disabled=DRIVE.state==='done'&&!DRIVE.ok;
-    $('#ceDriveWarning',m).textContent=DRIVE.configured&&DRIVE.state==='done'&&!DRIVE.ok?'Shared Drive unavailable: '+driveProblem(DRIVE.reason,DRIVE.email):'';
+    const d=dest();
+    const checking=DRIVE.state!=='done';
+    const title=checking?'Checking the Shared Drive…':DRIVE.ok?'Save into '+(DRIVE.name||'the shared drive')+' › year › month › post folder':driveProblem(DRIVE.reason,DRIVE.email);
+    m.querySelectorAll('[data-dest=drive]').forEach(db=>{
+      db.hidden=false; db.disabled=!DRIVE.ok;
+      db.setAttribute('aria-pressed',String(d.drive)); db.title=title;
+    });
+    m.querySelectorAll('[data-dest=local]').forEach(lb=>{
+      lb.setAttribute('aria-pressed',String(d.local));
+      lb.disabled=DRIVE.state==='done'&&!DRIVE.ok;
+    });
+    const warn=checking?'Checking the Shared Drive…':!DRIVE.ok?'Shared Drive unavailable: '+driveProblem(DRIVE.reason,DRIVE.email):'';
+    m.querySelectorAll('.ce-drive-warning').forEach(el=>{ el.textContent=warn; });
     const label=d.drive&&d.local?'Drive + download':d.drive?'Save to Drive':d.local?'Download':'Choose where to save';
     $('#ceSaveLabel',m).textContent=label;
     const btn=$('#ceDownload',m); if(btn&&webReady&&!btn.dataset.busy) btn.disabled=!(d.drive||d.local);

@@ -2,7 +2,7 @@ import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { requireCrewSession } from '@/lib/auth-guards';
 import { getDemoKpiSummary, isCrewDemoUser } from '@/lib/crew-demo';
-import { getKPIDataForUser } from '@/lib/kpi';
+import { getKPIDataForUser, getKpiFetchedAt } from '@/lib/kpi';
 
 /** Manual "refresh now" button — busts the 15-minute Asana cache and re-fetches. */
 export async function POST() {
@@ -15,8 +15,11 @@ export async function POST() {
 
   try {
     revalidateTag('kpi');
-    const summary = await getKPIDataForUser(session.email);
-    return NextResponse.json({ summary });
+    const [summary, fetchedAt] = await Promise.all([
+      getKPIDataForUser(session.email),
+      getKpiFetchedAt(),
+    ]);
+    return NextResponse.json({ summary, fetchedAt });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Refresh failed.' },

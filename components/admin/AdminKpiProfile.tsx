@@ -38,9 +38,19 @@ function BandBadge({ score }: { score: number }) {
   );
 }
 
-export function AdminKpiProfile({ email }: { email: string }) {
-  const [person, setPerson] = useState<AdminKpiPerson | null | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+export function AdminKpiProfile({
+  email,
+  initialPerson,
+  initialError,
+}: {
+  email: string;
+  initialPerson?: AdminKpiPerson | null;
+  initialError?: string | null;
+}) {
+  const [person, setPerson] = useState<AdminKpiPerson | null | undefined>(
+    initialPerson === undefined ? undefined : initialPerson
+  );
+  const [error, setError] = useState<string | null>(initialError ?? null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -60,8 +70,9 @@ export function AdminKpiProfile({ email }: { email: string }) {
   }, [email]);
 
   useEffect(() => {
+    if (initialPerson !== undefined || initialError) return;
     load();
-  }, [load]);
+  }, [initialError, initialPerson, load]);
 
   const summary = person?.summary;
 

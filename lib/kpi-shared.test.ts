@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildStaffKpiCsv,
+  describeKpiPull,
   describeStaffKpiPeriod,
+  kpiPullAgoLabel,
   parseStaffKpiPeriod,
   performanceBand,
   selectableStaffKpiMonths,
@@ -129,6 +131,25 @@ describe('staffKpiSlice', () => {
     const slice = staffKpiSlice(person, describeStaffKpiPeriod({ kind: 'all' }, NOW), NOW);
     expect(slice.months.map((month) => month.month)).toEqual(['2026-01', '2026-10', '2026-11']);
     expect(slice.score).toBe(140);
+  });
+});
+
+describe('Asana pull age', () => {
+  const pulledAt = '2026-11-22T23:02:00.000Z';
+  const now = new Date('2026-11-22T23:14:20.000Z');
+
+  it('formats the clock in the timezone it is given', () => {
+    expect(describeKpiPull(pulledAt, now, 'America/Denver')).toEqual({
+      clock: '4:02 PM MST',
+      minutesAgo: 12,
+    });
+    expect(describeKpiPull(pulledAt, now, 'Asia/Ho_Chi_Minh')).toEqual({
+      clock: '6:02 AM GMT+7',
+      minutesAgo: 12,
+    });
+    expect(kpiPullAgoLabel(12, 'en')).toBe('12 min ago');
+    expect(kpiPullAgoLabel(0, 'en')).toBe('just now');
+    expect(kpiPullAgoLabel(12, 'vn')).toBe('12 phút trước');
   });
 });
 

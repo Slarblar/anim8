@@ -11,6 +11,7 @@ import {
   ScoreDelta,
   getScoreBand,
 } from '@/components/crew/kpi-ui';
+import { KpiPullTime } from '@/components/crew/KpiPullTime';
 import { AsanaLoadingStatus } from './AsanaLoadingStatus';
 import {
   adminAlertError,
@@ -23,7 +24,7 @@ import {
   adminSectionTitle,
 } from './admin-ui';
 
-type BoardResponse = { people?: AdminKpiPerson[]; error?: string };
+type BoardResponse = { people?: AdminKpiPerson[]; fetchedAt?: string; error?: string };
 
 const EMPLOYMENT_LABELS = {
   full_time: 'Full-time',
@@ -152,14 +153,16 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
                   </p>
                 </div>
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono">
-                  Past 3 months + current
-                </p>
-                <div className="mt-3">
-                  <MonthlyBarChart months={summary.lastThreeMonthly} />
+              {expanded ? (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted font-mono">
+                    Past 3 months + current
+                  </p>
+                  <div className="mt-3">
+                    <MonthlyBarChart months={summary.lastThreeMonthly} />
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </>
           ) : (
             <p className={adminBody}>
@@ -180,8 +183,15 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
   );
 }
 
-export function AdminKpiBoard() {
-  const [people, setPeople] = useState<AdminKpiPerson[] | null>(null);
+export function AdminKpiBoard({
+  initialPeople,
+  initialFetchedAt = null,
+}: {
+  initialPeople?: AdminKpiPerson[];
+  initialFetchedAt?: string | null;
+}) {
+  const [people, setPeople] = useState<AdminKpiPerson[] | null>(initialPeople ?? null);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(initialFetchedAt);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
@@ -197,6 +207,7 @@ export function AdminKpiBoard() {
         return;
       }
       setPeople(data.people ?? []);
+      if (data.fetchedAt) setFetchedAt(data.fetchedAt);
     } catch {
       setError('Could not load KPI board.');
     }
@@ -213,6 +224,7 @@ export function AdminKpiBoard() {
         return;
       }
       setPeople(data.people ?? []);
+      if (data.fetchedAt) setFetchedAt(data.fetchedAt);
     } catch {
       setError('Refresh failed.');
     } finally {
@@ -221,8 +233,9 @@ export function AdminKpiBoard() {
   }, []);
 
   useEffect(() => {
+    if (initialPeople) return;
     load();
-  }, [load]);
+  }, [initialPeople, load]);
 
   const filtered = useMemo(() => {
     if (!people) return [];
@@ -250,12 +263,15 @@ export function AdminKpiBoard() {
             Crew progress from the 🐸 Anim8 KPI project — sorted by last month&apos;s score.
           </p>
         </div>
-        <button type="button" className={`${adminBtnGhost} gap-1.5`} onClick={refresh} disabled={refreshing}>
-          <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
-            🔄
-          </span>
-          Refresh now
-        </button>
+        <div className="flex flex-col items-end gap-1.5">
+          <button type="button" className={`${adminBtnGhost} gap-1.5`} onClick={refresh} disabled={refreshing}>
+            <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
+              🔄
+            </span>
+            Refresh now
+          </button>
+          <KpiPullTime fetchedAt={fetchedAt} />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

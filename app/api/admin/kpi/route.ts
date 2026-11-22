@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth-guards';
 import { buildAdminKpiBoard } from '@/lib/admin-kpi';
+import { getKpiFetchedAt } from '@/lib/kpi';
 
 export async function GET() {
   const admin = await requireAdminSession();
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const people = await buildAdminKpiBoard();
-    return NextResponse.json({ people });
+    const [people, fetchedAt] = await Promise.all([buildAdminKpiBoard(), getKpiFetchedAt()]);
+    return NextResponse.json({ people, fetchedAt });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Could not load KPI board.' },

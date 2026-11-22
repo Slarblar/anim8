@@ -7,6 +7,7 @@ import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
 import { CountUp } from './CountUp';
 import { HoverTranslate } from './HoverTranslate';
+import { KpiPullTime } from './KpiPullTime';
 import {
   KpiLineChart,
   MonthlyBarChart,
@@ -19,7 +20,7 @@ import {
   getScoreBand,
 } from './kpi-ui';
 
-type KpiResponse = { summary: PersonKPISummary | null; email?: string; error?: string };
+type KpiResponse = { summary: PersonKPISummary | null; email?: string; fetchedAt?: string; error?: string };
 
 function BandBadge({ score }: { score: number }) {
   if (score <= 0) return null;
@@ -31,13 +32,26 @@ function BandBadge({ score }: { score: number }) {
   );
 }
 
-export function CrewKpiSummary() {
+export function CrewKpiSummary({
+  initialSummary,
+  initialEmail,
+  initialError,
+  initialFetchedAt = null,
+}: {
+  initialSummary?: PersonKPISummary | null;
+  initialEmail?: string | null;
+  initialError?: string | null;
+  initialFetchedAt?: string | null;
+} = {}) {
   const { lang } = useCrewLanguage();
   const c = crewT[lang].kpiPage;
-  const [summary, setSummary] = useState<PersonKPISummary | null | undefined>(undefined);
-  const [email, setEmail] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<PersonKPISummary | null | undefined>(
+    initialSummary === undefined ? undefined : initialSummary
+  );
+  const [email, setEmail] = useState<string | null>(initialEmail ?? null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(initialFetchedAt);
 
   const load = useCallback(async () => {
     setError(null);
@@ -50,6 +64,7 @@ export function CrewKpiSummary() {
       }
       setSummary(data.summary);
       setEmail(data.email ?? null);
+      if (data.fetchedAt) setFetchedAt(data.fetchedAt);
     } catch {
       setError(c.loadError);
     }
@@ -67,6 +82,7 @@ export function CrewKpiSummary() {
       }
       setSummary(data.summary);
       setEmail(data.email ?? null);
+      if (data.fetchedAt) setFetchedAt(data.fetchedAt);
     } catch {
       setError(c.refreshError);
     } finally {
@@ -75,8 +91,9 @@ export function CrewKpiSummary() {
   }, [c.refreshError]);
 
   useEffect(() => {
+    if (initialSummary !== undefined || initialError) return;
     load();
-  }, [load]);
+  }, [initialError, initialSummary, load]);
 
   return (
     <div className="space-y-5">
@@ -84,12 +101,15 @@ export function CrewKpiSummary() {
         <p className={crewBody}>
           <HoverTranslate en={crewT.en.kpiPage.syncedFromAsana} vn={crewT.vn.kpiPage.syncedFromAsana} />
         </p>
-        <button type="button" className={`${adminBtnGhost} gap-1.5`} onClick={refresh} disabled={refreshing}>
-          <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
-            🔄
-          </span>
-          <HoverTranslate en={crewT.en.kpiPage.refreshNow} vn={crewT.vn.kpiPage.refreshNow} />
-        </button>
+        <div className="flex flex-col items-end gap-1.5">
+          <button type="button" className={`${adminBtnGhost} gap-1.5`} onClick={refresh} disabled={refreshing}>
+            <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} aria-hidden>
+              🔄
+            </span>
+            <HoverTranslate en={crewT.en.kpiPage.refreshNow} vn={crewT.vn.kpiPage.refreshNow} />
+          </button>
+          <KpiPullTime fetchedAt={fetchedAt} translate />
+        </div>
       </div>
 
       {error ? <p className={adminAlertError}>{error}</p> : null}

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireCrewSession } from '@/lib/auth-guards';
 import { getDemoKpiSummary, isCrewDemoUser } from '@/lib/crew-demo';
-import { getKPIDataForUser } from '@/lib/kpi';
+import { getKPIDataForUser, getKpiFetchedAt } from '@/lib/kpi';
 
 export async function GET() {
   const session = await requireCrewSession();
@@ -12,8 +12,11 @@ export async function GET() {
   }
 
   try {
-    const summary = await getKPIDataForUser(session.email);
-    return NextResponse.json({ summary, email: session.email });
+    const [summary, fetchedAt] = await Promise.all([
+      getKPIDataForUser(session.email),
+      getKpiFetchedAt(),
+    ]);
+    return NextResponse.json({ summary, email: session.email, fetchedAt });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Could not load KPI data.' },

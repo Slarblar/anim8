@@ -1097,6 +1097,211 @@ body[data-workspace=creator] .modal.ref-modal #refProg:empty{display:none}
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
 
+
+/* ---------- Export: two steps, website image framing ---------- */
+html:root body .modal.export-sheet{width:min(560px,100%);gap:12px;padding-bottom:0}
+html:root body .modal.export-sheet .ce-head{justify-content:space-between;align-items:flex-start;flex-wrap:nowrap;gap:12px}
+html:root body .modal.export-sheet .ce-titles{min-width:0}
+html:root body .modal.export-sheet .ce-kicker{margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted,var(--muted))}
+html:root body .modal.export-sheet .ce-step{display:flex;flex-direction:column;gap:12px;animation:ceStepIn .18s ease-out}
+html:root body .modal.export-sheet .ce-step[hidden]{display:none}
+@keyframes ceStepIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){html:root body .modal.export-sheet .ce-step{animation:none}}
+html:root body .modal.export-sheet .ce-web-stage{position:relative;display:flex;align-items:center;justify-content:center;padding:8px;min-height:140px;border-radius:10px;background:#111112 repeating-conic-gradient(#19191a 0 25%,#111112 0 50%) 0 0/16px 16px}
+html:root body .modal.export-sheet #ceWebCanvas{display:block;border-radius:3px;box-shadow:0 6px 20px rgba(0,0,0,.35);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html:root body .modal.export-sheet #ceWebCanvas[hidden]{display:none}
+html:root body .modal.export-sheet #ceWebCanvas.movable{cursor:grab}
+html:root body .modal.export-sheet #ceWebCanvas.dragging{cursor:grabbing}
+html:root body .modal.export-sheet .ce-web-badge{position:absolute;right:14px;bottom:14px;padding:5px 7px;border-radius:4px;background:rgba(0,0,0,.6);color:#fff;font:600 10px/1 var(--f-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;pointer-events:none}
+html:root body .modal.export-sheet .ce-web-badge:empty{display:none}
+html:root body .modal.export-sheet .ce-web-tip{display:flex;align-items:center;justify-content:space-between;gap:10px}
+html:root body .modal.export-sheet .ce-web-tip[hidden]{display:none}
+html:root body .modal.export-sheet .ce-web-hint{margin:0;min-width:0}
+html:root body .modal.export-sheet .ce-web-tip .btn{flex:none;min-height:40px;padding:0 12px;font-size:12px}
+html:root body .modal.export-sheet .ce-web-tip .btn[hidden]{display:none}
+html:root body .modal.export-sheet .ce-web-picks{display:flex;flex-direction:column;gap:10px}
+html:root body .modal.export-sheet .ce-web-picks:empty{display:none}
+html:root body .modal.export-sheet .ce-web-row{display:flex;align-items:center;gap:10px}
+html:root body .modal.export-sheet .ce-web-row[hidden]{display:none}
+html:root body .modal.export-sheet .ce-web-label{width:52px;flex:none;font-size:12px;font-weight:700;color:var(--c-muted,var(--muted))}
+html:root body .modal.export-sheet .seg-pills{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+html:root body .modal.export-sheet .seg-pills .btn{min-height:40px;padding:0 12px;font-size:12px;justify-content:center}
+html:root body .modal.export-sheet .seg-pills .btn[aria-pressed=true]{background:var(--c-ink,var(--text,#262726));border-color:var(--c-ink,var(--text,#262726));color:var(--c-bg,var(--panel,#fff))}
+html:root body .modal.export-sheet .photo-controls{display:flex;flex-direction:column;gap:0;margin:0}
+html:root body .modal.export-sheet .photo-controls[hidden]{display:none}
+html:root body .modal.export-sheet .photo-controls label{display:flex;align-items:center;gap:12px;min-height:44px;font-size:12px;color:var(--c-muted,var(--muted))}
+html:root body .modal.export-sheet .photo-controls label span{width:84px;flex:none}
+html:root body .modal.export-sheet .photo-controls input[type=range]{flex:1;min-width:0;width:auto;height:44px;margin:0;accent-color:var(--c-action,var(--c-red,#ed2224))}
+html:root body .modal.export-sheet .photo-controls output{min-width:42px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums}
+html:root body .modal.export-sheet .note:empty{display:none}
+html:root body .modal.export-sheet .ce-foot{position:sticky;bottom:0;z-index:2;display:flex;flex-direction:row;align-items:stretch;gap:8px;margin-top:2px;padding:12px 0 max(16px,env(safe-area-inset-bottom,0px));background:var(--c-surface,var(--panel));box-shadow:0 -14px 12px -14px rgba(0,0,0,.28)}
+html:root body .modal.export-sheet .ce-foot .btn{width:auto;min-width:0;min-height:48px;flex:0 0 auto;justify-content:center}
+html:root body .modal.export-sheet .ce-foot .btn.primary{flex:1 1 auto}
+html:root body .modal.export-sheet .ce-foot .btn[hidden]{display:none}
+@media (max-width:700px){
+  html:root body .modal.export-sheet{gap:10px}
+  html:root body .modal.export-sheet .ce-step{gap:10px}
+  html:root body .modal.export-sheet .ce-web-stage{padding:6px;min-height:120px}
+  html:root body .modal.export-sheet .photo-controls label span{width:72px}
+  html:root body .modal.export-sheet .ce-web-label{width:44px}
+  html:root body .modal.export-sheet #ceShapeLabel{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  html:root body .modal.export-sheet #ceShapes{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px}
+  html:root body .modal.export-sheet #ceShapes .btn{flex:1 0 auto;padding:0 10px}
+  html:root body .modal.export-sheet .ce-web-hint{font-size:12px}
+  html:root body .modal.export-sheet{padding-bottom:0}
+  html:root body .modal.export-sheet #ceShapes .btn{padding:0 8px}
+}
+
+/* ---------- Archive ---------- */
+.heading-actions{display:flex;align-items:center;gap:8px;flex:none}
+html:root body .modal.archive-sheet{width:min(600px,100%);gap:12px}
+html:root body .modal.archive-sheet .ar-head{justify-content:space-between;align-items:flex-start;flex-wrap:nowrap;gap:12px}
+html:root body .modal.archive-sheet .ar-kicker{margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted,var(--muted))}
+html:root body .modal.archive-sheet .ar-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+html:root body .modal.archive-sheet .ar-search input{width:100%;min-height:44px;font-size:16px}
+html:root body .modal.archive-sheet .ar-list{display:flex;flex-direction:column;gap:18px;min-height:96px}
+html:root body .modal.archive-sheet .ar-empty{margin:0;padding:28px 8px;text-align:center}
+html:root body .modal.archive-sheet .ar-day{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted,var(--muted))}
+html:root body .modal.archive-sheet .ar-group ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+html:root body .modal.archive-sheet .ar-item{display:flex;align-items:stretch;border:1px solid var(--c-line,var(--line));border-radius:10px;overflow:hidden;background:var(--c-surface,var(--panel));transition:border-color .15s ease}
+html:root body .modal.archive-sheet .ar-item.is-open{border-color:var(--c-red,#ed2224)}
+html:root body .modal.archive-sheet .ar-open{flex:1;min-width:0;min-height:76px;display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border:0;border-radius:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+html:root body .modal.archive-sheet .ar-open:hover{background:color-mix(in srgb,currentColor 5%,transparent)}
+html:root body .modal.archive-sheet .ar-open:focus-visible,html:root body .modal.archive-sheet .ar-del:focus-visible{outline:2px solid var(--c-red,#ed2224);outline-offset:-2px}
+html:root body .modal.archive-sheet .ar-thumb{width:48px;height:60px;flex:none;border-radius:4px;overflow:hidden;background:color-mix(in srgb,currentColor 8%,transparent)}
+html:root body .modal.archive-sheet .ar-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+html:root body .modal.archive-sheet .ar-text{min-width:0;display:flex;flex-direction:column;gap:4px}
+html:root body .modal.archive-sheet .ar-text b{font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+html:root body .modal.archive-sheet .ar-text small{font-size:11px;line-height:1.4;color:var(--c-muted,var(--muted))}
+html:root body .modal.archive-sheet .ar-badge{display:inline-block;margin-right:6px;padding:2px 6px;border-radius:4px;background:var(--c-red,#ed2224);color:#fff;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
+html:root body .modal.archive-sheet .ar-del{flex:none;width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-left:1px solid var(--c-line,var(--line));border-radius:0;background:none;color:var(--c-muted,var(--muted));cursor:pointer}
+html:root body .modal.archive-sheet .ar-del:hover{color:var(--c-red,#ed2224)}
+html:root body .modal.archive-sheet .ar-del svg{width:17px;height:17px}
+html:root body .modal.archive-sheet .ar-foot{margin:0}
+
+/* ---------- Quick edits: compact photo + censor tools ---------- */
+#creator .pt-bar{display:flex;align-items:center;gap:6px;padding:10px 0 6px;min-width:0}
+#creator .pt-btn{flex:none;display:inline-grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:1px solid var(--c-border-strong,#dcdcd5);border-radius:8px;background:var(--c-soft,#f0f0eb);color:var(--c-ink);cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease}
+#creator .pt-btn svg{width:20px;height:20px}
+#creator .pt-btn:hover{border-color:var(--c-ink)}
+#creator .pt-btn:focus-visible,#creator .pt-seg button:focus-visible{outline:2px solid var(--c-red,#ed2224);outline-offset:2px}
+#creator .pt-btn[aria-pressed=true]{background:var(--c-red,#ed2224);border-color:var(--c-red,#ed2224);color:#fff}
+#creator .pt-btn.wide{display:inline-flex;align-items:center;gap:8px;width:auto;padding:0 14px;font-size:12px;font-weight:700}
+#creator .pt-btn.primary-ish{border-style:dashed}
+#creator .pt-btn.sm{width:36px;height:36px;min-width:36px;min-height:36px;border-radius:7px}
+#creator .pt-btn.sm svg{width:17px;height:17px}
+#creator .pt-btn.cz-del{color:var(--c-muted)}
+#creator .pt-btn.cz-del:hover{color:var(--c-red,#ed2224);border-color:var(--c-red,#ed2224)}
+#creator .pt-sep{flex:none;width:1px;height:24px;margin:0 2px;background:var(--c-line)}
+#creator .pt-hint{flex:1;min-width:0;margin-left:4px;font-size:11px;line-height:1.3;text-align:right;color:var(--c-muted)}
+#creator .pt-hint.on{color:var(--c-red,#ed2224);font-weight:700}
+#creator .pt-seg{flex:none;display:flex;gap:2px;padding:2px;border:1px solid var(--c-line);border-radius:9px;background:var(--c-soft,#f0f0eb)}
+#creator .pt-seg button{display:grid;place-items:center;width:38px;height:38px;min-height:38px;padding:0;border:0;border-radius:7px;background:none;color:var(--c-muted);font-size:12px;font-weight:700;cursor:pointer}
+#creator .pt-seg button svg{width:18px;height:18px}
+#creator .pt-seg button[aria-pressed=true]{background:var(--c-ink);color:var(--c-surface,#fff)}
+#creator .pt-adjust{display:flex;align-items:center;gap:10px;padding:2px 0 8px}
+#creator .pt-adjust input[type=range]{flex:1;min-width:0;height:40px;margin:0;accent-color:var(--c-red,#ed2224)}
+#creator .pt-adjust output{flex:none;min-width:40px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;color:var(--c-muted)}
+#creator .cz-list{list-style:none;margin:2px 0 0;padding:8px 0 0;border-top:1px solid var(--c-line);display:flex;flex-direction:column;gap:6px}
+#creator .cz-row{display:flex;align-items:center;gap:6px;min-width:0}
+#creator .cz-num{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--c-red,#ed2224);color:#fff;font-size:11px}
+#creator .cz-row .pt-seg button{width:34px;height:34px;min-height:34px}
+#creator .cz-row .pt-seg button svg{width:16px;height:16px}
+#creator .cz-row input[type=range]{flex:1;min-width:44px;height:34px;margin:0;accent-color:var(--c-red,#ed2224)}
+#creator .cz-fill{flex:1}
+#creator .cz-note{margin:6px 0 0;font-size:10px;line-height:1.4;color:var(--c-muted)}
+@media (max-width:700px){
+  #creator .pt-bar{padding-top:8px}
+  #creator .pt-hint{font-size:10px}
+  html:root #creator .pt-seg button{min-height:38px}
+  html:root #creator .cz-row .pt-seg button{min-height:34px}
+}
+@media (max-width:370px){ #creator .pt-bar{flex-wrap:wrap} #creator .pt-hint{display:none} #creator .pt-hint.on{display:block;flex-basis:100%;margin:2px 0 0;text-align:left} }
+
+/* ---------- Compact, icon-first creator (same rules as the photo tools) ---------- */
+#creator .setup-row{display:flex;align-items:stretch;gap:8px;margin-bottom:var(--space-4,16px)}
+html:root #creator .setup-row .template-current{flex:1;min-width:0;margin:0;padding:8px 10px;gap:10px;min-height:56px}
+html:root #creator .setup-row .template-current-image{width:32px;height:40px}
+html:root #creator .setup-row .template-current small{display:none}
+html:root #creator .setup-row .template-current b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html:root #creator .setup-row .template-current>span:nth-child(2){gap:2px}
+html:root #creator .setup-row .template-current span span{font-size:10px}
+#creator .photo-chip{position:relative;flex:none;display:grid;place-items:center;width:56px;min-height:56px;padding:0;border:1px dashed var(--c-border-strong,#aaa99f);border-radius:8px;background:var(--c-soft,#f0f0eb);color:var(--c-ink);cursor:pointer}
+#creator .photo-chip>svg{width:22px;height:22px}
+#creator .photo-chip i{position:absolute;right:5px;bottom:5px;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--c-ink);color:var(--c-surface,#fff)}
+#creator .photo-chip i svg{width:12px;height:12px;stroke-width:2.5}
+#creator .photo-chip.has-photo{border-style:solid}
+#creator .photo-chip.has-photo i{background:#2f8f4e;color:#fff}
+#creator .photo-chip:hover{border-color:var(--c-ink)}
+#creator .photo-chip:focus-visible{outline:2px solid var(--c-red,#ed2224);outline-offset:2px}
+#creator .story-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:var(--space-2,8px) 0 0;min-height:40px}
+#creator .story-foot #sourceCount{margin-left:auto;font-size:var(--type-xs,11px);color:var(--c-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+html:root #creator .story-flags.chips{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;margin:0}
+html:root #creator .story-flags.chips .flag-chip{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1px solid var(--c-line);border-radius:999px;background:var(--c-soft,#f0f0eb);color:var(--c-muted);font-size:12px;font-weight:700;cursor:pointer;user-select:none}
+html:root #creator .story-flags.chips .flag-chip svg{width:15px;height:15px;flex:none}
+html:root #creator .story-flags.chips .flag-chip input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+html:root #creator .story-flags.chips .flag-chip:has(input:checked){background:var(--c-ink);border-color:var(--c-ink);color:var(--c-surface,#fff)}
+html:root #creator .story-flags.chips .flag-chip:has(input:focus-visible){outline:2px solid var(--c-red,#ed2224);outline-offset:2px}
+html:root #creator .story-flags.chips .flag-chip:has(input:disabled){opacity:.5;cursor:default}
+#creator .story-foot+.field-foot:has(#sourceHint:empty){display:none}
+#creator .story-foot+.field-foot{margin-top:4px}
+html:root #creator .text-tools .fit{display:inline-flex;align-items:center;gap:6px}
+html:root #creator .text-tools .fit svg{width:16px;height:16px}
+#creator .field-acts{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+#creator .field-acts small{margin-right:2px}
+#creator .review-field .field-top{display:flex;align-items:center;gap:8px}
+html:root #creator .pt-seg.article-switch{display:flex;margin:12px 0 4px}
+html:root #creator .pt-seg.article-switch button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:auto;height:40px;min-height:40px;padding:0 10px;font-size:12px}
+html:root #creator .pt-seg.article-switch button svg{width:16px;height:16px}
+#creator .pt-btn:disabled{opacity:.4;cursor:default}
+@media (max-width:700px){
+  #creator .tags-label{display:none}
+  html:root #creator .tag-picks{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;margin-left:-16px;margin-right:-16px;padding:2px 16px 4px;scroll-padding-inline:16px;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 28px),transparent)}
+  html:root #creator .tag-picks::-webkit-scrollbar{display:none}
+  html:root #creator .tag-picks>*{flex:none}
+  html:root #creator .tag-picks .c-button,html:root #creator .tag-picks .tag-type{min-height:40px}
+  html:root #creator .tag-picks .tag-type{width:120px;min-width:120px}
+  html:root #creator .text-tools{flex-wrap:nowrap;gap:6px}
+  html:root #creator .text-tools .c-button{min-width:40px;min-height:40px;padding:0 8px}
+  html:root #creator .text-tools .fit span{display:none}
+  html:root #creator .text-tools output{min-width:40px}
+  html:root #creator .review-field .article-input,html:root #creator[data-step="2"] .review-field .article-input{min-height:180px;height:clamp(180px,30dvh,300px)}
+  html:root #creator .pt-seg.article-switch button span{font-size:11px}
+}
+@media (max-width:360px){ html:root #creator .story-flags.chips .flag-chip{padding:0 10px;font-size:11px} }
+
+#creator .story-foot #sourceCount[hidden]{display:none}
+#creator .story-foot:not(:has(.story-flags)):has(#sourceCount[hidden]){display:none}
+html:root #creator .setup-row .template-current span span{white-space:nowrap}
+@media (max-width:700px){
+  html:root #creator .setup-row .template-current>strong{font-size:0;gap:0;margin-left:auto}
+  html:root #creator .setup-row .template-current>strong svg{width:18px;height:18px}
+}
+
+html:root #creator .field-top:has(#creatorExample){display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px}
+html:root #creator .field-top:has(#creatorExample) #creatorExample{flex:none;white-space:nowrap;margin:0}
+
+@media (max-width:700px){ html:root #creator .field-top:has(#creatorExample) label{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0} }
+
+/* ---------- Save to: Shared Drive / This device ---------- */
+html:root body .modal.export-sheet .ce-dest .btn{display:inline-flex;align-items:center;gap:6px}
+html:root body .modal.export-sheet .ce-dest .btn svg{width:16px;height:16px;flex:none}
+html:root body .modal.export-sheet .ce-dest .btn[hidden]{display:none}
+html:root body .modal.export-sheet .ce-dest .btn:disabled{opacity:.45;cursor:default}
+html:root body .modal.export-sheet #ceDownload span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.modal .drive-link{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:13px;font-weight:700;color:var(--c-red,#ed2224);text-decoration:none}
+.modal .drive-link svg{width:18px;height:18px}
+.modal .drive-link:hover{text-decoration:underline}
+html:root body .modal.archive-sheet .ar-drive{flex:none;width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;border-left:1px solid var(--c-line,var(--line));color:var(--c-muted,var(--muted))}
+html:root body .modal.archive-sheet .ar-drive:hover{color:var(--c-ink)}
+html:root body .modal.archive-sheet .ar-drive svg{width:18px;height:18px}
+
+html:root body .modal.export-sheet .ce-foot{flex-wrap:wrap;row-gap:10px}
+html:root body .modal.export-sheet .ce-foot .ce-dest{flex:1 0 100%;display:flex;align-items:center;gap:10px;min-width:0}
+html:root body .modal.export-sheet .ce-foot .ce-dest .seg-pills{flex-wrap:nowrap}
+html:root body .modal.export-sheet .ce-foot .ce-dest .btn{flex:0 1 auto;min-height:38px;padding:0 12px;font-size:12px;width:auto}
+html:root body .modal.export-sheet .ce-foot .ce-dest .btn[hidden]{display:none}
+@media (max-width:370px){ html:root body .modal.export-sheet .ce-foot .ce-dest .ce-web-label{display:none} html:root body .modal.export-sheet .ce-foot .ce-dest .btn{padding:0 10px;font-size:11px} }
 </style>
 </head>
 <body data-workspace="creator">
@@ -1111,7 +1316,7 @@ body[data-workspace=creator] .modal.ref-modal #refProg:empty{display:none}
 <main id="creator" data-step="0">
   <div class="creator-heading">
     <div><p class="eyebrow"><i class="red-square"></i> SLCSCOOP / POST CREATOR</p><h1 id="creatorTitle">From story to post.</h1><p id="creatorSubtitle">Your story. Your templates. Ready in a few taps.</p></div>
-    <button type="button" class="c-button new-post" id="creatorNew" aria-label="Start a new post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>New post</span></button>
+    <div class="heading-actions"><button type="button" class="c-button new-post archive-open" id="creatorArchive" aria-label="Open the archive of the last 7 days"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg><span>Archive</span></button><button type="button" class="c-button new-post" id="creatorNew" aria-label="Start a new post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>New post</span></button></div>
   </div>
   <nav class="creator-steps" aria-label="Post creation steps">
     <button type="button" data-step="0" aria-current="step"><span class="step-num">01</span>Your story</button>
@@ -1282,6 +1487,40 @@ const RD = o=>Object.assign(BASE(),{type:'redact',web:true,name:'Redaction',mode
 // everything else itself, so text, logos, icons and layout shapes never go in.
 const WEB_KEEP_NAME=/texture|grain|grunge|dust|noise|scratch|overlay|fade|gradient|vignette|shade|shadow|tint|light ?leak|halftone|film|smoke|haze|glow/i;
 const WEB_SKIP_NAME=/logo|wordmark|masthead|icon|\bpin\b|arrow|badge|button|\bqr\b|handle|follow|watermark/i;
+// Photoshop exports often arrive as "Layer 12", so names alone can't tell a grain texture from a torn-paper panel.
+// What a layer does decides it: a blend mode or lowered opacity means it tints the photo (keep it), see-through
+// pixels mean an overlay or texture (keep it), solid artwork means paper, a plate, a sticker or a frame (leave it out).
+const alphaStatCache=new Map();
+function imageAlphaStats(src){
+  let k=null, img=null;
+  try{ k=srcKey(src); const e=k&&imgCache.get(k); img=e&&e.img; }catch(e){ return null; }
+  if(!k||!img) return null;
+  if(alphaStatCache.has(k)) return alphaStatCache.get(k);
+  let out=null;
+  try{
+    const n=64, c=document.createElement('canvas'); c.width=n; c.height=n;
+    const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0,n,n);
+    const d=g.getImageData(0,0,n,n).data;
+    let seen=0, sum=0, solid=0;
+    for(let i=3;i<d.length;i+=4){ const a=d[i]; if(a>8){ seen++; sum+=a; if(a>=242) solid++; } }
+    out={cover:seen/(n*n), mean:seen?sum/seen/255:0, solid:seen?solid/seen:0};
+  }catch(e){ out=null; }
+  if(out) alphaStatCache.set(k,out);
+  return out;
+}
+function tintsPhoto(L){
+  const blend=String(L.blend||'source-over');
+  return (blend!=='source-over'&&blend!=='normal')||(L.opacity??1)<=0.85;
+}
+// An overlay, fade or texture: something that sits on the photo and lets it show through.
+function overlayLike(L){
+  if(!L||(L.type!=='image'&&L.type!=='shape')) return false;
+  const name=String(L.name||'')+' '+String(L.slot||'');
+  if(WEB_KEEP_NAME.test(name)||tintsPhoto(L)) return true;
+  if(L.type==='shape') return !!L.grad;
+  const st=imageAlphaStats(L.src);
+  return !!st&&st.mean<0.8;
+}
 function defaultWeb(L){
   if(!L||L.type==='folder'||L.psdRef) return false;
   if(L.type==='redact') return true;
@@ -1291,11 +1530,17 @@ function defaultWeb(L){
     if(L.role==='photo'||/^photo$/i.test(String(L.slot||''))) return true;
     if(WEB_KEEP_NAME.test(name)) return true;
     if(WEB_SKIP_NAME.test(name)||(typeof isLogoLayer==='function'&&isLogoLayer(L))) return false;
+    if(tintsPhoto(L)) return true;
+    const st=imageAlphaStats(L.src);
+    if(st){
+      if(st.mean<0.8) return true;
+      if(st.solid>=0.6) return false;
+    }
     return true;
   }
   if(L.type==='shape'){
     if(L.shape==='pin'||L.shape==='arrow') return false;
-    return !!L.grad||WEB_KEEP_NAME.test(name);
+    return !!L.grad||WEB_KEEP_NAME.test(name)||tintsPhoto(L);
   }
   return false;
 }
@@ -2570,8 +2815,9 @@ function paintClipGroup(ctx, base, clips, opt){
     return g;
   };
   const flat=Object.assign({}, opt, {flat:true});
-  drawLayer(prep(group), base, flat);
-  drawLayer(prep(mask), base, flat);
+  // maskOnly: the base is left out of the website image but still shapes the photo clipped into it.
+  if(opt.maskOnly) prep(group); else drawLayer(prep(group), base, flat);
+  drawLayer(prep(mask), base, Object.assign({}, flat, {web:false}));
   const gg=group.getContext('2d');
   gg.setTransform(s,0,0,s,0,0);
   gg.globalAlpha=1;
@@ -2585,7 +2831,7 @@ function paintClipGroup(ctx, base, clips, opt){
   ctx.save();
   ctx.setTransform(1,0,0,1,0,0);
   ctx.globalAlpha=base.opacity??1;
-  ctx.globalCompositeOperation=base.blend||'source-over';
+  ctx.globalCompositeOperation=opt.maskOnly?'source-over':(base.blend||'source-over');
   ctx.drawImage(group, 0, 0);
   ctx.restore();
 }
@@ -2609,7 +2855,16 @@ function paintDoc(ctx,doc,opt,pred){
   for(let i=0;i<layers.length;i++){
     const L=layers[i];
     if(L.type==='folder'||clipBaseIndex(layers, i)>=0) continue;
-    if(!layerShown(L,opt)||!pred(L)) continue;
+    if(!layerShown(L,opt)) continue;
+    if(!pred(L)){
+      if(!pred.mask||!pred.mask(L)) continue;
+      const kept=clipMembers(layers, i).filter(C=>layerShown(C,opt)&&pred(C));
+      if(!kept.length) continue;
+      const mo=Object.assign({}, opt, {maskOnly:true});
+      paintClipGroup(ctx, L, kept, mo);
+      if(scratch) paintClipGroup(scratch.getContext('2d'), L, kept, mo);
+      continue;
+    }
     const clips=clipMembers(layers, i).filter(C=>layerShown(C,opt)&&pred(C));
     if(clips.length){
       paintClipGroup(ctx, L, clips, opt);
@@ -2650,9 +2905,12 @@ function webPaintPred(doc,opt){
     if(L.type==='redact') return true;
     return layerWeb(L);
   };
+  const photoBoxes=layers.filter(P=>P&&P.type==='image'&&P.role==='photo'&&P.src&&layerShown(P,opt)).map(layerBounds);
   const buried=L=>{
     if(!L||L.role==='photo'||L.type==='redact') return false;
     const box=layerBounds(L), i=layers.indexOf(L);
+    // A texture or fade laid over the photo is never "buried": the photo is what the website keeps.
+    if(photoBoxes.some(pb=>coverFrac(pb,box)>=0.5)) return false;
     for(let j=i+1;j<layers.length;j++){
       const T=layers[j];
       if(!T||!layerShown(T,opt)||T.type==='folder'||T.psdRef||T.type==='redact') continue;
@@ -2672,6 +2930,7 @@ function webPaintPred(doc,opt){
   // A torn paper or badge plate whose story text was all left out of the web image.
   const emptyPlate=L=>{
     if(!L||L.type==='text'||L.role==='photo'||L.type==='redact') return false;
+    if(overlayLike(L)) return false;
     const box=layerBounds(L);
     if(box.w>=pageW*0.9&&box.h>=pageH*0.7) return false;
     let held=false;
@@ -2684,7 +2943,7 @@ function webPaintPred(doc,opt){
     }
     return held;
   };
-  return L=>{
+  const pred=L=>{
     if(!included(L)) return false;
     if(L.role==='photo'||L.type==='redact') return true;
     const members=clipMembers(layers, layers.indexOf(L)).filter(C=>layerShown(C,opt)&&!C.psdRef);
@@ -2692,6 +2951,12 @@ function webPaintPred(doc,opt){
     if(emptyPlate(L)) return false;
     return true;
   };
+  // A frame or mask shape that is left out, but has the photo (or its textures) clipped into it.
+  pred.mask=L=>{
+    if(!L||(L.type!=='shape'&&L.type!=='image')||L.psdRef||!layerShown(L,opt)) return false;
+    return clipMembers(layers, layers.indexOf(L)).some(C=>layerShown(C,opt)&&!C.psdRef&&pred(C));
+  };
+  return pred;
 }
 function renderWeb(ctx,doc,opt={}){
   const o=Object.assign({editor:false,web:true},opt);
@@ -4783,7 +5048,9 @@ function creatorChoiceHTML(){
   const alts=headlines.map((h,i)=>({h,i})).filter(x=>x.i!==ai.chosen&&x.h&&x.h.lines);
   const note=(page.layers||[]).map(l=>l.type==='text'?fitNote(l,page):'').filter(Boolean)[0]||'';
   const tagButton=(t,suffix)=>`<button type="button" class="c-button small" data-tag-pick="${esc(t)}" aria-pressed="${selected.includes(t)}">${esc(t)}${suffix||''}</button>`;
-  return `${badgeControlHTML()}<div class="pick-label">Tags</div><div class="tag-picks" role="group" aria-label="Tags"><input id="creatorTagType" class="tag-type" aria-label="Type a tag" maxlength="24" autocomplete="off" placeholder="Type a tag">${tagList.map(t=>tagButton(t)).join('')}${suggested.map(t=>tagButton(t,' · suggested')).join('')}${extras.map(t=>tagButton(t)).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button></div>
+  const all=[...tagList.map(t=>[t,'']),...suggested.map(t=>[t,' · suggested']),...extras.map(t=>[t,''])];
+  const on=all.filter(([t])=>selected.includes(t)), off=all.filter(([t])=>!selected.includes(t));
+  return `${badgeControlHTML()}<div class="pick-label tags-label">Tags</div><div class="tag-picks" role="group" aria-label="Tags"><input id="creatorTagType" class="tag-type" aria-label="Type a tag" maxlength="24" autocomplete="off" placeholder="Type a tag">${on.map(([t,x])=>tagButton(t,x)).join('')}<button type="button" class="c-button small" disabled aria-pressed="true">SLCSCOOP</button>${off.map(([t,x])=>tagButton(t,x)).join('')}</div>
     ${alts.length?`<div class="alt-heads">${alts.map(x=>`<button type="button" class="c-button" data-alt-headline="${x.i}">Use: ${esc(x.h.lines.join(' / '))}</button>`).join('')}</div>`:''}
     ${note?`<p class="fit-note">${esc(note)}</p>`:''}`;
 }
@@ -5755,22 +6022,111 @@ async function renderPageFormats(page){
   const blob=(mime,q)=>new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),mime,q); }catch(e){ rej(e); } });
   return { png:await blob('image/png'), webp:await blob('image/webp',1) };
 }
-// The area the website image covers: the photo frame(s), so no empty band is left where the paper and text were.
-function webCropRect(page){
-  const layers=page.layers||[];
-  const photos=layers.filter(L=>L.type==='image'&&(L.role==='photo'||/^photo$/i.test(String(L.slot||'')))&&L.src&&shownIn(layers,L));
-  if(!photos.length) return {x:0,y:0,w:page.w,h:page.h};
-  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
-  for(const L of photos){
-    const b=layerBounds(L);
-    // Stop where the paper panel starts: below that line the photo is covered in the post.
-    const edge=paperTopY(layers);
-    const bottom=edge>b.y+24&&edge<b.y+b.h-8?edge:b.y+b.h;
-    x0=Math.min(x0,b.x); y0=Math.min(y0,b.y); x1=Math.max(x1,b.x+b.w); y1=Math.max(y1,bottom);
+/* ---------- website image ----------
+   The website image is its own crop of the post: the photo, overlays and textures, framed for the article.
+   Its framing (L.webFrame) is stored apart from the Instagram framing (fx/fy/zoom), keyed to the photo it was
+   set for, so a new photo starts again from the post's framing. */
+const WEB_SHAPES=[['auto','As posted'],['16:9','16:9'],['3:2','3:2'],['1:1','1:1'],['4:5','4:5']];
+const WEB_SCALE=2;
+function isPhotoLayer(L){ return !!L&&L.type==='image'&&(L.role==='photo'||/^photo$/i.test(String(L.slot||''))); }
+function webPhotos(page){ const ls=page.layers||[]; return ls.filter(L=>isPhotoLayer(L)&&L.src&&shownIn(ls,L)); }
+function rectAnd(a,b){ const x=Math.max(a.x,b.x), y=Math.max(a.y,b.y); return {x,y,w:Math.max(0,Math.min(a.x+a.w,b.x+b.w)-x),h:Math.max(0,Math.min(a.y+a.h,b.y+b.h)-y)}; }
+function rectOr(a,b){ if(!a) return b; const x=Math.min(a.x,b.x), y=Math.min(a.y,b.y); return {x,y,w:Math.max(a.x+a.w,b.x+b.w)-x,h:Math.max(a.y+a.h,b.y+b.h)-y}; }
+function rectRound(r){ const x=Math.floor(r.x), y=Math.floor(r.y); return {x,y,w:Math.max(1,Math.ceil(r.x+r.w)-x),h:Math.max(1,Math.ceil(r.y+r.h)-y)}; }
+// Where a photo can show: its frame, inside the shape it is clipped to, on the page.
+function photoArea(page,L){
+  const ls=page.layers||[]; let b=layerBounds(L);
+  const bi=clipBaseIndex(ls, ls.indexOf(L)); if(bi>=0) b=rectAnd(b, layerBounds(ls[bi]));
+  return rectAnd(b,{x:0,y:0,w:page.w,h:page.h});
+}
+function webPhotoArea(page){
+  const pred=webPaintPred(page,{editor:false,web:true});
+  let r=null;
+  for(const L of webPhotos(page)){ if(!pred(L)) continue; const a=photoArea(page,L); if(a.w>=8&&a.h>=8) r=rectOr(r,a); }
+  return r&&rectRound(r);
+}
+// The part of the photo people see on the post. Rows and columns hidden under a layer the website image
+// leaves out (torn paper, footer, a frame PNG with a window cut in it) are trimmed off. It reads pixels,
+// so it works whatever the layers are called.
+function webVisibleRect(page){
+  const full={x:0,y:0,w:page.w,h:page.h};
+  const area=webPhotoArea(page); if(!area) return full;
+  const ls=page.layers||[];
+  const first=Math.min(...webPhotos(page).map(L=>ls.indexOf(L)));
+  const webPred=webPaintPred(page,{editor:false,web:true});
+  const k=.25, c=document.createElement('canvas'); c.width=Math.ceil(page.w*k); c.height=Math.ceil(page.h*k);
+  const covers=L=>ls.indexOf(L)>first&&L.type!=='text'&&L.type!=='redact'&&!isPhotoLayer(L)&&!webPred(L);
+  let d;
+  try{
+    const g=c.getContext('2d',{willReadFrequently:true});
+    paintDoc(g,Object.assign({},page,{bg:'rgba(0,0,0,0)'}),{editor:false,scale:k},covers);
+    d=g.getImageData(0,0,c.width,c.height).data;
+  }catch(e){ return area; }
+  const W=c.width, H=c.height;
+  const hid=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&d[(y*W+x)*4+3]>=200;
+  const rowHid=(y,a,b)=>{ let n=0; for(let x=a;x<b;x++) if(hid(x,y)) n++; return n>=(b-a)*.9; };
+  const colHid=(x,a,b)=>{ let n=0; for(let y=a;y<b;y++) if(hid(x,y)) n++; return n>=(b-a)*.9; };
+  let left=Math.floor(area.x*k), right=Math.ceil((area.x+area.w)*k), top=Math.floor(area.y*k), bot=Math.ceil((area.y+area.h)*k);
+  // Keep the tallest open band: a sliver of photo peeking between the paper and the footer doesn't count.
+  let runTop=top, runLen=0, at=-1;
+  for(let y=top;y<=bot;y++){
+    const open=y<bot&&!rowHid(y,left,right);
+    if(open&&at<0) at=y;
+    if(!open&&at>=0){ if(y-at>runLen){ runLen=y-at; runTop=at; } at=-1; }
   }
-  x0=Math.max(0,Math.floor(x0)); y0=Math.max(0,Math.floor(y0)); x1=Math.min(page.w,Math.ceil(x1)); y1=Math.min(page.h,Math.ceil(y1));
-  if(x1-x0<64||y1-y0<64) return {x:0,y:0,w:page.w,h:page.h};
-  return {x:x0,y:y0,w:x1-x0,h:y1-y0};
+  if(runLen>=16){ top=runTop; bot=runTop+runLen; }
+  while(right-left>16&&colHid(left,top,bot)) left++;
+  while(right-left>16&&colHid(right-1,top,bot)) right--;
+  const r=rectAnd({x:left/k,y:top/k,w:(right-left)/k,h:(bot-top)/k},area);
+  return r.w>=64&&r.h>=64?rectRound(r):area;
+}
+function webFrameOf(L){ const f=L&&L.webFrame; return f&&L.src&&f.key===srcKey(L.src)?f:null; }
+function postFrameOf(L){ return {fx:L.fx??.5, fy:L.fy??.5, zoom:L.zoom||1}; }
+// The page as the website image paints it: each photo uses its website framing when one was set.
+function webDocOf(page){
+  return Object.assign({},page,{layers:(page.layers||[]).map(L=>{
+    const f=isPhotoLayer(L)&&webFrameOf(L);
+    return f?Object.assign({},L,{fx:f.fx,fy:f.fy,zoom:f.zoom}):L;
+  })});
+}
+function webShapePref(){ try{ return localStorage.getItem('scoop-studio:webShape')||'auto'; }catch(e){ return 'auto'; } }
+function webShapeOf(doc){ const v=(doc&&doc.webShape)||webShapePref(); return WEB_SHAPES.some(([k])=>k===v)?v:'auto'; }
+function setWebShape(doc,v){ if(doc) doc.webShape=v; try{ localStorage.setItem('scoop-studio:webShape',v); }catch(e){} }
+// "As posted" crop: what shows of the photo on the post, minus any band that is only page background.
+function webAutoRect(page){
+  const vis=webVisibleRect(page);
+  const full=document.createElement('canvas'); full.width=page.w; full.height=page.h;
+  try{ renderWeb(full.getContext('2d',{willReadFrequently:true}),webDocOf(page),{scale:1}); }catch(e){ return vis; }
+  return trimPlainEdges(full,vis,page.bg);
+}
+// A fixed shape is the largest frame of that shape inside the photo, centred on what the post shows.
+function webFrameRect(page,shape,auto){
+  if(!shape||shape==='auto') return auto;
+  const [a,b]=shape.split(':').map(Number); const ar=a/b;
+  const area=webPhotoArea(page)||{x:0,y:0,w:page.w,h:page.h};
+  const w=Math.min(area.w, area.h*ar), h=w/ar;
+  const cx=auto.x+auto.w/2, cy=auto.y+auto.h/2;
+  const x=clamp(cx-w/2, area.x, area.x+area.w-w), y=clamp(cy-h/2, area.y, area.y+area.h-h);
+  return {x:Math.round(x),y:Math.round(y),w:Math.max(1,Math.round(w)),h:Math.max(1,Math.round(h))};
+}
+function webExportRect(page){ return webFrameRect(page, webShapeOf(S.doc), webAutoRect(page)); }
+// How far the photo travels for a full slider sweep, so a drag in the preview follows the finger.
+function webTravel(page,L,f){
+  const img=getImg(L.src); if(!img) return {x:L.w||1,y:L.h||1};
+  const prev=drawList; drawList=page.layers;
+  try{ const T=Object.assign({},L,f); const d=coverDims(T,img); return panTravel(T.w,d.spanY,d.dw,d.dh); }
+  finally{ drawList=prev; }
+}
+function renderWebCanvas(page,rect,scale,out){
+  const full=document.createElement('canvas'); full.width=Math.ceil(page.w*scale); full.height=Math.ceil(page.h*scale);
+  renderWeb(full.getContext('2d'),webDocOf(page),{scale});
+  const c=out||document.createElement('canvas');
+  const cw=Math.max(1,Math.round(rect.w*scale)), ch=Math.max(1,Math.round(rect.h*scale));
+  if(c.width!==cw||c.height!==ch){ c.width=cw; c.height=ch; }
+  const g=c.getContext('2d'); g.clearRect(0,0,cw,ch);
+  g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+  g.drawImage(full, rect.x*scale, rect.y*scale, rect.w*scale, rect.h*scale, 0, 0, cw, ch);
+  return c;
 }
 // Shaves rows/columns that are only the page background (e.g. where a footer panel was left out).
 function trimPlainEdges(canvas,r,bg){
@@ -5784,14 +6140,10 @@ function trimPlainEdges(canvas,r,bg){
   let left=0, right=r.w; while(left<right-64&&colPlain(left)) left++; while(right>left+64&&colPlain(right-1)) right--;
   return {x:r.x+left,y:r.y+top,w:right-left,h:bot-top};
 }
-async function renderWebBlob(page){
+async function renderWebBlob(page,rect){
   await allImagesReady(page); await ensureFonts(page.layers);
-  const full=document.createElement('canvas'); full.width=page.w; full.height=page.h;
-  renderWeb(full.getContext('2d'),page,{scale:1});
-  const r=trimPlainEdges(full,webCropRect(page),page.bg);
-  const c=document.createElement('canvas'); c.width=r.w; c.height=r.h;
-  c.getContext('2d').drawImage(full,r.x,r.y,r.w,r.h,0,0,r.w,r.h);
-  const blob=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/webp',0.9); }catch(e){ rej(e); } });
+  const c=renderWebCanvas(page, rect||webExportRect(page), WEB_SCALE);
+  const blob=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/webp',0.92); }catch(e){ rej(e); } });
   if(blob.type==='image/webp') return {blob,ext:'webp'};
   const png=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/png'); }catch(e){ rej(e); } });
   return {blob:png,ext:'png'};
@@ -5884,19 +6236,27 @@ function makeDb(){
   async function put(col,id,data){
     if(Backend.mode==='server') await api(`/store/${col}/${id}`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
     else await ltx('docs','readwrite',s=>s.put({col,id,data},col+'/'+id));
-    await refresh(col);
+    if(subs.has(col)) await refresh(col);
+  }
+  async function getDoc(col,id){
+    if(Backend.mode==='server'){
+      try{ return await api(`/store/${col}/${id}`); }
+      catch(e){ if(e&&e.status===404) return null; throw e; }
+    }
+    const rec=await ltx('docs','readonly',s=>s.get(col+'/'+id));
+    return rec?Object.assign({id},rec.data):null;
   }
   async function remove(col,id){
     if(Backend.mode==='server') await api(`/store/${col}/${id}`,{method:'DELETE'});
     else await ltx('docs','readwrite',s=>s.delete(col+'/'+id));
-    refresh(col);
+    if(subs.has(col)) refresh(col);
   }
   setInterval(()=>{ if(Backend.mode==='server' && document.visibilityState==='visible') for(const col of subs.keys()) refresh(col); },20000);
   document.addEventListener('visibilitychange',()=>{ if(Backend.mode==='server' && document.visibilityState==='visible') for(const col of subs.keys()) refresh(col); });
   return {
-    collection:col=>({ onSnapshot:(cb,err)=>sub(col,cb,err), add:async data=>{ const id=Date.now().toString(36)+uid(); await put(col,id,data); return {id}; } }),
+    collection:col=>({ onSnapshot:(cb,err)=>sub(col,cb,err), get:()=>fetchCol(col), add:async data=>{ const id=Date.now().toString(36)+uid(); await put(col,id,data); return {id}; } }),
     doc:path=>{ const [col,id]=path.split('/'); return {
-      set:data=>put(col,id,data), delete:()=>remove(col,id),
+      set:data=>put(col,id,data), delete:()=>remove(col,id), get:()=>getDoc(col,id),
       onSnapshot:(cb,err)=>sub(col,snap=>{ const d=snap.docs.find(x=>x.id===id); cb({exists:!!d,data:()=>d?d.data():undefined}); },err),
     }; },
   };
@@ -5945,11 +6305,11 @@ async function putBlob(pathname,file,clientToken,multipart){
 }
 function makeAssets(){
   return {
-    async upload(blob){
+    async upload(blob,opts){
       if(blob.size>MAX_ASSET_BYTES) throw {code:'too_large'};
       if(Backend.mode==='server'){
         const name=(blob.name||'file').replace(/[^\w.\-]+/g,'-').slice(0,80);
-        const pathname='scoop/assets/'+name;
+        const pathname=(opts&&opts.prefix==='scoop/drive-tmp/'?'scoop/drive-tmp/':'scoop/assets/')+name;
         const multipart=blob.size>4.5*1024*1024;
         const issued=await api('/assets',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'blob.generate-client-token',payload:{pathname,clientPayload:null,multipart}})});
         if(!issued||!issued.clientToken) throw {code:'upload_failed'};
@@ -6094,7 +6454,8 @@ function creatorStatus(){
 }
 function creatorTemplateStrip(){
   const selected=creatorTemplates().find(t=>t.id===creatorSelected());
-  return `<button class="template-current" id="creatorChangeTemplate" ${C.busy?'disabled':''}><span class="template-current-image">${selected?.thumb?`<img src="${esc(selected.thumb)}" alt="">`:CI.photo}</span><span><small>YOUR TEMPLATE</small><b>${esc(selected?.name||S.doc.templateName||'Single post')}</b><span>${S.doc.w} × ${S.doc.h}${S.doc.pages.length>1?' · '+S.doc.pages.length+' pages':''}</span></span><strong>Change ${CI.arrow}</strong></button>`;
+  const name=selected?.name||S.doc.templateName||'Single post';
+  return `<button class="template-current" id="creatorChangeTemplate" aria-label="Template: ${esc(name)}. Change template" ${C.busy?'disabled':''}><span class="template-current-image">${selected?.thumb?`<img src="${esc(selected.thumb)}" alt="">`:CI.photo}</span><span><small>Template</small><b>${esc(name)}</b><span>${S.doc.w} × ${S.doc.h}${S.doc.pages.length>1?' · '+S.doc.pages.length+' pages':''}</span></span><strong>Change ${CI.arrow}</strong></button>`;
 }
 function onlyUrl(value){
   const s=String(value||'').trim();
@@ -6125,13 +6486,13 @@ function linkPreviewHTML(){
 }
 function creatorStoryHTML(){
   const ai=C.inputMode==='ai',photo=S.doc.layers.find(l=>l.type==='image'&&l.slot);
-  const photoButton=photo?`<button class="source-photo" data-creator-photo="${photo.id}" ${C.busy?'disabled':''}>${CI.photo}<span><b>${photo.src?'Photo added · replace':'Add a photo'}</b><small>Camera roll or files · optional for now</small></span><span aria-hidden="true">${photo.src?'✓':'+'}</span></button>`:'';
-  return `${creatorTemplateStrip()}${photoButton}<div class="input-modes" role="group" aria-label="How to fill your post"><button data-input-mode="ai" aria-pressed="${ai}" ${C.busy?'disabled':''}>${CI.spark}Draft from source</button><button data-input-mode="final" aria-pressed="${!ai}" ${C.busy?'disabled':''}>${CI.text}Use team copy</button></div>
-    <div class="field-top"><label for="creatorSource">${ai?'Paste the story or a link':'Paste your team’s copy'}</label><button id="creatorExample" type="button" ${C.busy?'disabled':''}>Try example ↗</button></div>
+  const photoButton=photo?`<button type="button" class="photo-chip${photo.src?' has-photo':''}" data-creator-photo="${photo.id}" aria-label="${photo.src?'Photo added. Replace the photo':'Add a photo (optional)'}" title="${photo.src?'Replace photo':'Add photo (optional)'}" ${C.busy?'disabled':''}>${CI.photo}<i aria-hidden="true">${photo.src?UI_ICON.check:UI_ICON.plus}</i></button>`:'';
+  return `<div class="setup-row">${creatorTemplateStrip()}${photoButton}</div><div class="input-modes" role="group" aria-label="How to fill your post"><button data-input-mode="ai" aria-pressed="${ai}" ${C.busy?'disabled':''}>${CI.spark}Draft from source</button><button data-input-mode="final" aria-pressed="${!ai}" ${C.busy?'disabled':''}>${CI.text}Use team copy</button></div>
+    <div class="field-top"><label for="creatorSource">${ai?'Paste the story or a link':'Paste your team’s copy'}</label><button id="creatorExample" type="button" aria-label="Try an example story" title="Fill in an example story for layout testing" ${C.busy?'disabled':''}>Example ↗</button></div>
     <textarea id="creatorSource" class="c-input c-source" maxlength="12000" ${C.busy?'disabled':''} placeholder="${ai?'An article, a link, a press release, or notes from your team…':'Headline on the first line. Supporting copy underneath.&#10;&#10;You can also use labels like Headline:, Category:, and Source:.'}">${esc(ai?C.source:C.teamCopy)}</textarea>
     ${ai?linkPreviewHTML():''}
-    ${ai?`<div class="story-flags"><label><input type="checkbox" id="creatorFollow" ${C.followUp?'checked':''} ${C.busy?'disabled':''}> This is a follow-up</label><label><input type="checkbox" id="creatorCorrection" ${C.correction?'checked':''} ${C.busy?'disabled':''}> This corrects a previous post</label></div>`:''}
-    <div class="field-foot"><span id="sourceHint">${ai?(creatorReadsLink()?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.'):'Exact wording. No AI rewrite.'}</span><span id="sourceCount">${(ai?C.source:C.teamCopy).length.toLocaleString()} / 12,000</span></div>
+    <div class="story-foot">${ai?`<div class="story-flags chips" role="group" aria-label="Story type"><label class="flag-chip" title="Builds on an earlier SLC Scoop post"><input type="checkbox" id="creatorFollow" ${C.followUp?'checked':''} ${C.busy?'disabled':''}>${UI_ICON.follow}<span>Follow-up</span></label><label class="flag-chip" title="Corrects a previous post"><input type="checkbox" id="creatorCorrection" ${C.correction?'checked':''} ${C.busy?'disabled':''}>${UI_ICON.fix}<span>Correction</span></label></div>`:''}<span id="sourceCount" ${(ai?C.source:C.teamCopy).length<9000?'hidden':''}>${(ai?C.source:C.teamCopy).length.toLocaleString()} / 12,000</span></div>
+    <div class="field-foot"><span id="sourceHint">${ai?(creatorReadsLink()?'Read the link, then draft from the article.':''):'Exact wording. No AI rewrite.'}</span></div>
     ${ai?localNewsHTML():''}
     ${!ai?'<details class="copy-help"><summary>Tips for pasting team copy</summary><p>The first line is your headline; the remaining lines are supporting copy. Optional labels: Headline, Supporting copy, Category, Location, Source, and Tags. Separate carousel pages with a line containing <b>---</b>. You can adjust every field in the review.</p></details>':'<div class="c-notice" id="creatorConnectionHint" hidden>AI drafting is available on your connected team website. Choose <button id="creatorUseFinal" class="inline-button">Use team copy</button> to fill and export here.</div>'}
     ${C.message?`<p class="${C.error?'c-error':'c-note'}" role="status">${esc(C.message)}</p>`:''}`;
@@ -6160,10 +6521,8 @@ function creatorReviewHTML(){
   const texts=creatorTextSlots();
   const L=texts.find(l=>l.id===C.field)||texts[0];if(L)C.field=L.id;
   const photos=S.doc.layers.filter(l=>l.type==='image'&&l.slot&&shownIn(S.doc.layers,l));
-  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select></div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}">Fit to zone</button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
-  const censorBtn=`<button class="source-photo censor-btn" id="creatorCensor" aria-pressed="${!!C.censorMode}">${CI.censor}<span><b>${C.censorMode?'Drawing…':'Censor'}</b><small>${C.censorMode?'Drag on the preview':'Mosaic, blur or bar'}</small></span></button>`;
-  const texture=photos.length?photos.map(P=>`<div class="photo-card"><button class="source-photo" data-creator-photo="${P.id}">${CI.photo}<span><b>${P.src?'Replace':'Add'} ${esc(P.slot.toLowerCase())}</b><small>Choose from camera roll or files</small></span><span>+</span></button>${P.src?`<p class="c-note photo-hint">Drag the photo in the preview to move it. Scroll or pinch to zoom.</p><div class="photo-controls">${[['zoom','Zoom',.5,4,P.zoom||1],['fx','Left / right',0,1,P.fx??.5],['fy','Up / down',0,1,P.fy??.5]].map(([key,label,min,max,v])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" value="${v}" data-photo-prop="${key}" data-layer="${P.id}" aria-label="${esc(P.slot)} ${label.toLowerCase()}"><output>${Math.round(v*100)}%</output></label>`).join('')}<div class="row"><button class="c-button small" data-photo-reset="${P.id}">Reset crop</button><button class="c-button small flat" data-photo-remove="${P.id}">Remove</button></div></div>`:''}</div>`).join(''):'<p class="c-note">This template does not use a photo.</p>';
-  const photoPanel=`<div class="photo-card">${censorBtn}</div>${censorListHTML()}<details class="photo-fold"><summary>Photo</summary>${texture}</details>`;
+  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select></div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}" aria-label="Fit ${esc(L.slot)} to its zone" title="Fit to zone">${UI_ICON.fit}<span>Fit</span></button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
+  const photoPanel=creatorPhotoPanelHTML(photos);
   const panel=tab==='photo'?photoPanel:tab==='article'?articlePanel():textPanel;
   return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}" aria-label="${C.drawer?'Collapse quick edits':'Expand quick edits'}"><span></span><b>Quick edits</b><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
     ${panel}
@@ -6172,8 +6531,9 @@ function creatorReviewHTML(){
 function renderCreator(){
   if(!S.doc||C.workspace!=='creator')return;
   $('#creator').dataset.step=String(C.step);$('#creator').dataset.drawer=String(C.drawer);$('#creator').dataset.tab=C.reviewTab||'text';$('#creator').dataset.censor=C.censorMode?'on':'off';
-  $('#creatorTitle').textContent=C.step===0?'What’s the story?':'Review your post';
-  $('#creatorSubtitle').textContent=C.step===0?'Paste. Preview. Post.':'A quick edit, then it’s ready to share.';
+  const fromArchive=C.step===2&&S.doc.archive&&S.doc.archive.opened;
+  $('#creatorTitle').textContent=C.step===0?'What’s the story?':fromArchive?'Edit archived post':'Review your post';
+  $('#creatorSubtitle').textContent=C.step===0?'Paste. Preview. Post.':fromArchive?'First exported '+archiveWhen(S.doc.archive.createdAt)+'. Export again to save your changes to the archive.':'A quick edit, then it’s ready to share.';
   document.querySelectorAll('.creator-steps [data-step]').forEach(b=>{if(+b.dataset.step===C.step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');b.disabled=C.busy||(+b.dataset.step===2&&!C.generated);});
   const panel=$('#creatorPanel'), kept=panel?panel.scrollTop:0;
   panel.innerHTML=C.step===0?creatorStoryHTML():creatorReviewHTML();
@@ -6224,10 +6584,50 @@ const CENSOR_MODES=[['mosaic','Mosaic'],['blur','Blur'],['solid','Bar']];
 function censorLayers(){ return S.doc?S.doc.layers.filter(l=>l.type==='redact'&&shownIn(S.doc.layers,l)):[]; }
 function censorListHTML(){
   const list=censorLayers(); if(!list.length) return '';
-  return `<div class="censor-list"><div class="field-top"><b>Censored areas</b><small>${list.length}</small></div>${list.map((L,i)=>{
+  const soft=list.some(L=>L.mode!=='solid');
+  return `<ul class="cz-list" aria-label="Censored areas">${list.map((L,i)=>{
     const mode=L.mode==='solid'?'solid':L.mode==='blur'?'blur':'mosaic';
-    const strength=mode==='blur'?['blurRadius',8,60,L.blurRadius||24]:['block',12,80,L.block||28];
-    return `<div class="censor-row" data-censor-row="${L.id}"><div class="censor-top"><b>${i+1}</b><div class="seg-pills" role="group" aria-label="Censor style">${CENSOR_MODES.map(([v,n])=>`<button type="button" class="c-button small" data-censor-mode="${v}" data-layer="${L.id}" aria-pressed="${mode===v}">${n}</button>`).join('')}</div><div class="seg-pills" role="group" aria-label="Censor shape"><button type="button" class="c-button small" data-censor-shape="rect" data-layer="${L.id}" aria-pressed="${(L.shape||'rect')==='rect'}">Box</button><button type="button" class="c-button small" data-censor-shape="ellipse" data-layer="${L.id}" aria-pressed="${L.shape==='ellipse'}">Oval</button></div><button type="button" class="c-button small flat" data-censor-del="${L.id}" aria-label="Remove censor ${i+1}">Remove</button></div>${mode==='solid'?'':`<label class="censor-strength"><span>${mode==='blur'?'Blur':'Block size'}</span><input type="range" min="${strength[1]}" max="${strength[2]}" step="1" value="${strength[3]}" data-censor-strength="${strength[0]}" data-layer="${L.id}"><output>${strength[3]}px</output></label>`}</div>`;}).join('')}<p class="c-note">Use Bar for names, plates, addresses and documents. Mosaic and blur over text can sometimes be reversed.</p></div>`;
+    const shape=L.shape==='ellipse'?'ellipse':'rect';
+    const st=mode==='blur'?['blurRadius',8,60,L.blurRadius||24,'Blur strength']:['block',12,80,L.block||28,'Block size'];
+    return `<li class="cz-row" data-censor-row="${L.id}"><b class="cz-num" aria-hidden="true">${i+1}</b><div class="pt-seg" role="group" aria-label="Area ${i+1} style">${CENSOR_MODES.map(([v,n])=>`<button type="button" data-censor-mode="${v}" data-layer="${L.id}" aria-pressed="${mode===v}" aria-label="${n}" title="${n}">${PT_ICON[v]}</button>`).join('')}</div><button type="button" class="pt-btn sm" data-censor-shape="${shape==='rect'?'ellipse':'rect'}" data-layer="${L.id}" aria-label="Area ${i+1} is a ${shape==='rect'?'box':'oval'}. Switch to ${shape==='rect'?'oval':'box'}" title="${shape==='rect'?'Box':'Oval'} (tap to switch)">${PT_ICON[shape]}</button>${mode==='solid'?'<span class="cz-fill"></span>':`<input type="range" min="${st[1]}" max="${st[2]}" step="1" value="${st[3]}" data-censor-strength="${st[0]}" data-layer="${L.id}" aria-label="Area ${i+1} ${st[4].toLowerCase()}" title="${st[4]}"><output class="cz-val" hidden>${st[3]}px</output>`}<button type="button" class="pt-btn sm cz-del" data-censor-del="${L.id}" aria-label="Remove area ${i+1}" title="Remove">${PT_ICON.trash}</button></li>`;}).join('')}</ul>${soft?'<p class="cz-note">Bar is safest for names, plates and documents. Mosaic and blur over text can sometimes be reversed.</p>':''}`;
+}
+const PT_SVG=(d,fill)=>`<svg viewBox="0 0 24 24" fill="${fill?'currentColor':'none'}" stroke="${fill?'none':'currentColor'}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const PT_ICON={
+  reset:PT_SVG('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'),
+  trash:PT_SVG('<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'),
+  zoom:PT_SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M11 8v6M8 11h6"/>'),
+  fx:PT_SVG('<path d="M3 12h18"/><path d="m7 8-4 4 4 4"/><path d="m17 8 4 4-4 4"/>'),
+  fy:PT_SVG('<path d="M12 3v18"/><path d="m8 7 4-4 4 4"/><path d="m8 17 4 4 4-4"/>'),
+  mosaic:PT_SVG('<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/>',true),
+  blur:PT_SVG('<path d="M12 2.7s6 6.3 6 11.3a6 6 0 0 1-12 0c0-5 6-11.3 6-11.3Z"/><path d="M9 15a3 3 0 0 0 3 3"/>'),
+  solid:PT_SVG('<rect x="3" y="9" width="18" height="6" rx="1.5"/>',true),
+  rect:PT_SVG('<rect x="4" y="6" width="16" height="12" rx="1.5"/>'),
+  ellipse:PT_SVG('<ellipse cx="12" cy="12" rx="9" ry="6.5"/>'),
+};
+const UI_ICON={
+  fit:PT_SVG('<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/>'),
+  copy:PT_SVG('<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>'),
+  spark:PT_SVG('<path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><path d="m12 8 1.4 2.6L16 12l-2.6 1.4L12 16l-1.4-2.6L8 12l2.6-1.4Z"/>'),
+  web:PT_SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M7 13h6M7 16h10"/>'),
+  chat:PT_SVG('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/>'),
+  follow:PT_SVG('<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>'),
+  fix:PT_SVG('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/>'),
+  check:PT_SVG('<path d="m5 12 5 5L20 7"/>'),
+  plus:PT_SVG('<path d="M12 5v14M5 12h14"/>'),
+};
+const PHOTO_AXES=[['zoom','Zoom',.5,4],['fx','Left / right',0,1],['fy','Up / down',0,1]];
+function creatorPhotoPanelHTML(photos){
+  if(!photos.length) return `<div class="pt-bar" role="toolbar" aria-label="Photo tools"><button type="button" class="pt-btn" id="creatorCensor" aria-pressed="${!!C.censorMode}" aria-label="Censor an area" title="Censor">${CI.censor}</button><span class="pt-hint${C.censorMode?' on':''}">${C.censorMode?'Drag on the preview to cover an area':'This template has no photo slot.'}</span></div>${censorListHTML()}`;
+  const P=photos.find(p=>p.id===C.photoSlot)||photos[0];
+  const axis=PHOTO_AXES.find(a=>a[0]===C.photoAxis)||PHOTO_AXES[0];
+  const v=axis[0]==='zoom'?(P.zoom||1):(P[axis[0]]??.5);
+  const slot=esc(String(P.slot||'photo').toLowerCase());
+  const add=!P.src
+    ?`<button type="button" class="pt-btn wide primary-ish" data-creator-photo="${P.id}" aria-label="Add ${slot}">${CI.photo}<span>Add photo</span></button>`
+    :`<button type="button" class="pt-btn" data-creator-photo="${P.id}" aria-label="Replace ${slot}" title="Replace photo">${CI.photo}</button>`;
+  const slots=photos.length>1?`<div class="pt-seg" role="group" aria-label="Photo slot">${photos.map((Q,i)=>`<button type="button" data-photo-slot="${Q.id}" aria-pressed="${Q===P}" aria-label="${esc(Q.slot||'Photo '+(i+1))}" title="${esc(Q.slot||'Photo '+(i+1))}">${i+1}</button>`).join('')}</div>`:'';
+  const hint=C.censorMode?'Drag on the preview to cover an area':P.src?'Drag to move · pinch to zoom':'';
+  return `<div class="pt-bar" role="toolbar" aria-label="Photo tools">${slots}${add}<button type="button" class="pt-btn" id="creatorCensor" aria-pressed="${!!C.censorMode}" aria-label="${C.censorMode?'Stop censoring':'Censor an area'}" title="Censor">${CI.censor}</button>${P.src?`<span class="pt-sep" aria-hidden="true"></span><button type="button" class="pt-btn" data-photo-reset="${P.id}" aria-label="Reset the crop" title="Reset crop">${PT_ICON.reset}</button><button type="button" class="pt-btn cz-del" data-photo-remove="${P.id}" aria-label="Remove the photo" title="Remove photo">${PT_ICON.trash}</button>`:''}<span class="pt-hint${C.censorMode?' on':''}" role="status">${hint}</span></div>${P.src?`<div class="pt-adjust"><div class="pt-seg" role="group" aria-label="Adjust">${PHOTO_AXES.map(([k,n])=>`<button type="button" data-photo-axis="${k}" aria-pressed="${k===axis[0]}" aria-label="${n}" title="${n}">${PT_ICON[k]}</button>`).join('')}</div><input type="range" min="${axis[2]}" max="${axis[3]}" step=".01" value="${v}" data-photo-prop="${axis[0]}" data-layer="${P.id}" aria-label="${esc(P.slot||'Photo')} ${axis[1].toLowerCase()}"><output>${Math.round(v*100)}%</output></div>`:''}${censorListHTML()}`;
 }
 function drawCensorGuides(ctx,page,scale){
   if(C.step!==2||C.reviewTab!=='photo') return;
@@ -6377,23 +6777,22 @@ function withDefaultHashtags(text){
 function captionPanel(){
   const ai=S.doc&&S.doc.ai||{};
   const text=String(ai.caption||'').trim();
-  return `<div class="review-field"><div class="field-top"><b>Social caption</b><small id="captionCount">${text.length} / 2,200</small></div>
-    <textarea class="c-input article-input caption-input" id="creatorCaption" rows="9" placeholder="${C.captionBusy?'Writing a caption from the article…':'Write the Instagram caption, or generate one from the article.'}" ${C.captionBusy?'disabled':''}>${esc(text)}</textarea>
-    <div class="caption-actions"><button type="button" class="c-button small" id="creatorCaptionGen" ${C.captionBusy?'disabled':''}>${C.captionBusy?'Writing…':text?'Rewrite caption':'Generate caption'}</button><button type="button" class="c-button small flat" id="creatorCaptionCopy" ${text?'':'disabled'}>Copy</button></div>
-    <p class="c-note">Ends with ${DEFAULT_HASHTAGS}. Add any other hashtag by hand.</p></div>`;
+  const gen=C.captionBusy?'Writing…':text?'Rewrite caption':'Generate caption';
+  return `<div class="review-field"><div class="field-top"><b>Social caption</b><span class="field-acts"><small id="captionCount">${text.length} / 2,200</small><button type="button" class="pt-btn sm" id="creatorCaptionGen" aria-label="${gen}" title="${gen}" ${C.captionBusy?'disabled':''}>${UI_ICON.spark}</button><button type="button" class="pt-btn sm" id="creatorCaptionCopy" aria-label="Copy caption" title="Copy caption" ${text?'':'disabled'}>${UI_ICON.copy}</button></span></div>
+    <textarea class="c-input article-input caption-input" id="creatorCaption" rows="9" placeholder="${C.captionBusy?'Writing a caption from the article…':'Write the Instagram caption, or tap ✦ to generate one from the article.'}" ${C.captionBusy?'disabled':''}>${esc(text)}</textarea>
+    <p class="c-note">Ends with ${DEFAULT_HASHTAGS}. Add other hashtags by hand.</p></div>`;
 }
 function articlePanel(){
   const view=C.articleView==='caption'?'caption':'website';
-  const switcher=`<div class="seg-pills article-switch" role="group" aria-label="Article type"><button type="button" class="c-button small" data-article-view="website" aria-pressed="${view==='website'}">Website article</button><button type="button" class="c-button small" data-article-view="caption" aria-pressed="${view==='caption'}">Social caption</button></div>`;
+  const switcher=`<div class="pt-seg article-switch" role="group" aria-label="Article type"><button type="button" data-article-view="website" aria-pressed="${view==='website'}">${UI_ICON.web}<span>Website article</span></button><button type="button" data-article-view="caption" aria-pressed="${view==='caption'}">${UI_ICON.chat}<span>Social caption</span></button></div>`;
   return switcher+(view==='caption'?captionPanel():websiteArticlePanel());
 }
 function websiteArticlePanel(){
   const ai=S.doc&&S.doc.ai||{};
   const text=ai.article||'', warn=ai.copyWarnings||[];
-  return `<div class="review-field"><div class="field-top"><b>Website article</b><small id="articleCount">${articleWords(text)} words</small></div>
+  return `<div class="review-field"><div class="field-top"><b>Website article</b><span class="field-acts"><small id="articleCount">${articleWords(text)} words</small><button type="button" class="pt-btn sm" id="creatorArticleCopy" aria-label="Copy article" title="Copy article" ${String(text).trim()?'':'disabled'}>${UI_ICON.copy}</button></span></div>
     <textarea class="c-input article-input" id="creatorArticle" rows="12" placeholder="The website story, in SLC Scoop's voice.">${esc(text)}</textarea>
-    ${warn.length?`<p class="c-note warn">Still close to the source wording. Reword these before posting: ${warn.map(esc).join(' · ')}</p>`:''}
-    <p class="c-note">Download includes this with the Instagram caption in one text file. Each section is ready to paste.</p></div>`;
+    ${warn.length?`<p class="c-note warn">Still close to the source wording. Reword these before posting: ${warn.map(esc).join(' · ')}</p>`:''}</div>`;
 }
 function websiteHeadline(text){
   const s=String(text||'').trim();
@@ -6875,8 +7274,8 @@ function composedCaption(){
   const credit=p.source?'Source: '+p.source:(C.link&&C.link.siteName?'Source: '+C.link.siteName:'');
   return withDefaultHashtags([body,p.location,credit].filter(Boolean).join('\n\n'));
 }
-function openCaptionModal(saved){
-  const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Instagram caption</h2><button class="btn ghost" data-close aria-label="Close caption">${CI.x}</button></div><p class="note" id="igNote">${esc(saved)}</p><textarea class="inp caption-box" id="igCaption" aria-label="Recommended Instagram caption"></textarea><div class="acts"><button class="btn" data-close>Done</button><button class="btn primary" id="igCopy">${CI.copy}Copy caption</button></div>`);
+function openCaptionModal(saved,driveUrl){
+  const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Instagram caption</h2><button class="btn ghost" data-close aria-label="Close caption">${CI.x}</button></div><p class="note" id="igNote">${esc(saved)}</p>${driveUrl&&/^https:\/\/drive\.google\.com\//.test(driveUrl)?`<a class="drive-link" href="${esc(driveUrl)}" target="_blank" rel="noopener">${DRIVE_SVG}Open the folder in the Shared Drive</a>`:''}<textarea class="inp caption-box" id="igCaption" aria-label="Recommended Instagram caption"></textarea><div class="acts"><button class="btn" data-close>Done</button><button class="btn primary" id="igCopy">${CI.copy}Copy caption</button></div>`);
   m.querySelector('.modal').classList.add('caption-modal');
   const box=$('#igCaption',m);
   const savedCaption=S.doc&&S.doc.ai&&String(S.doc.ai.caption||'').trim();
@@ -6908,71 +7307,484 @@ function openCaptionModal(saved){
     $('#igNote',m).textContent='Recommended from the article. Edit it if you want, then copy it into Instagram.';
   }).catch(()=>{ if(m.isConnected) $('#igNote',m).textContent=saved+' Recommended from this post. Copy it into Instagram.'; });
 }
+/* ---------- archive ----------
+   Every shared or downloaded post is kept for 7 days (server prunes in /api/scoop/store/archive).
+   archive/<id> is the list entry, archiveposts/<id> the full editable post. Photos that only lived on this
+   device are uploaded once and reused on later saves. S.doc.archive tracks the entry the post belongs to. */
+const ARCHIVE_DAYS=7, ARCHIVE_MS=ARCHIVE_DAYS*864e5;
+const TRASH_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+function hashText(t){ let h=0x811c9dc5; for(let i=0;i<t.length;i++){ h^=t.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36)+'.'+t.length; }
+function archiveWhen(ts){
+  const d=new Date(ts||Date.now());
+  return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+', '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+}
+function archiveDayLabel(ts){
+  const d=new Date(ts), t=new Date(); t.setHours(0,0,0,0);
+  const day=new Date(d); day.setHours(0,0,0,0);
+  const diff=Math.round((t-day)/864e5);
+  if(diff===0) return 'Today';
+  if(diff===1) return 'Yesterday';
+  return d.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+}
+function archiveCopy(doc){
+  const layers=(doc.pages&&doc.pages[0]&&doc.pages[0].layers)||[];
+  const pick=re=>{ const L=layers.find(l=>l.type==='text'&&l.slot&&re.test(l.slot)); return L?String(L.upper?String(L.text||'').toUpperCase():L.text||'').replace(/\s*\n\s*/g,' ').trim():''; };
+  return {headline:pick(/headline|title/i).slice(0,200), dek:pick(/dek|sub/i).slice(0,300)};
+}
+// The post as it will be stored: device-only photos swapped for their uploaded copies when there are any.
+function archiveDoc(meta){
+  const doc=JSON.parse(snap()); delete doc.archive;
+  const pending=[];
+  for(const p of doc.pages||[]) for(const L of p.layers||[]){
+    if(L.type!=='image'||!L.src||L.src.kind!=='local') continue;
+    const up=meta.uploads&&meta.uploads[L.src.key];
+    if(!up){ pending.push(L); continue; }
+    const before=srcKey(L.src); L.src=Object.assign({},up);
+    if(L.webFrame&&L.webFrame.key===before) L.webFrame=Object.assign({},L.webFrame,{key:srcKey(L.src)});
+  }
+  return {doc,pending};
+}
+async function archiveImage(blob){
+  if(blob.size<=6*1024*1024) return blob;
+  try{
+    const c=await canvasFromBlob(blob), s=Math.min(1,2600/Math.max(c.width,c.height));
+    const o=document.createElement('canvas'); o.width=Math.round(c.width*s); o.height=Math.round(c.height*s);
+    const g=o.getContext('2d'); g.imageSmoothingQuality='high'; g.drawImage(c,0,0,o.width,o.height);
+    return await new Promise(res=>o.toBlob(b=>res(b||blob),'image/webp',.9));
+  }catch(e){ return blob; }
+}
+function archiveUnchanged(){
+  const meta=S.doc&&S.doc.archive; if(!meta||!meta.saved) return false;
+  const {doc,pending}=archiveDoc(meta);
+  return !pending.length&&hashText(JSON.stringify(doc))===meta.hash;
+}
+let archiveQueue=Promise.resolve();
+function archivePost(){ const run=archiveQueue.then(archivePostNow); archiveQueue=run.catch(()=>{}); return run; }
+async function archivePostNow(){
+  if(!S.doc||!cap.db||!cap.assets) throw new Error('the archive is not available');
+  const meta=S.doc.archive=Object.assign({uploads:{},assets:[]},S.doc.archive||{});
+  meta.uploads=meta.uploads||{};
+  const assets=new Set(meta.assets||[]);
+  const first=archiveDoc(meta);
+  for(const L of first.pending){
+    const k=L.src.key;
+    if(meta.uploads[k]) continue;
+    const blob=localBlobs.get(k)||await idbGet(k);
+    if(!blob) throw new Error('a photo is no longer on this device');
+    const r=await cap.assets.upload(await archiveImage(blob));
+    meta.uploads[k]={kind:'asset',assetId:r.id,url:r.url||''};
+    if(r.url) assets.add(r.url);
+  }
+  meta.assets=[...assets];
+  const {doc}=archiveDoc(meta);
+  const hash=hashText(JSON.stringify(doc));
+  if(meta.saved&&meta.hash===hash) return {id:meta.id,unchanged:true};
+  const now=Date.now();
+  if(!meta.id){ meta.id=now.toString(36)+uid().replace(/[^A-Za-z0-9_-]/g,''); meta.createdAt=now; }
+  const edits=meta.saved?(meta.edits||0)+1:0;
+  const copy=archiveCopy(doc);
+  const summary={headline:copy.headline, dek:copy.dek, thumb:thumbData(S.doc.pages[0],320), createdAt:meta.createdAt, updatedAt:now, edits, pages:(doc.pages||[]).length, template:S.doc.templateName||'', link:(C.link&&C.link.url)||'', assets:meta.assets, drive:meta.drive||null};
+  const full={doc, creator:{source:C.source, teamCopy:C.teamCopy, inputMode:C.inputMode, link:C.link||null}, createdAt:meta.createdAt, updatedAt:now};
+  if(JSON.stringify(full).length>900000) full.creator={inputMode:C.inputMode, link:C.link||null};
+  if(JSON.stringify(full).length>1000000) throw new Error('this post is too large to archive');
+  await cap.db.doc('archiveposts/'+meta.id).set(full);
+  await cap.db.doc('archive/'+meta.id).set(summary);
+  const wasSaved=meta.saved;
+  Object.assign(meta,{saved:true, hash, edits, updatedAt:now});
+  saveDraft();
+  return {id:meta.id, first:!wasSaved, edits};
+}
+function archiveAfterExport(){
+  archivePost().then(r=>{ if(!r.unchanged) toast(r.first?'Added to the Archive for '+ARCHIVE_DAYS+' days.':'Archive updated with your changes.'); })
+    .catch(e=>toast('Could not add this post to the Archive ('+((e&&e.message)||'try again')+'). Export again to retry.',true));
+}
+async function loadArchive(){
+  const all=(await cap.db.collection('archive').get())||[];
+  const now=Date.now(), keep=[];
+  for(const it of all){
+    if(Number(it.createdAt)>0&&now-Number(it.createdAt)>ARCHIVE_MS){ if(Backend.mode!=='server') removeArchived(it).catch(()=>{}); continue; }
+    keep.push(it);
+  }
+  return keep.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+}
+async function removeArchived(it){
+  await cap.db.doc('archive/'+it.id).delete();
+  await cap.db.doc('archiveposts/'+it.id).delete().catch(()=>{});
+  for(const u of it.assets||[]) await cap.assets.delete(u).catch(()=>{});
+  if(S.doc&&S.doc.archive&&S.doc.archive.id===it.id){ delete S.doc.archive; saveDraft(); renderCreator(); }
+}
+async function openArchive(){
+  if(C.busy){ toast('Finish or cancel drafting first.'); return; }
+  const m=openModal(`<div class="row ar-head"><div class="ar-titles"><p class="ar-kicker">Last ${ARCHIVE_DAYS} days</p><h2>Archive</h2></div><button class="btn ghost" data-close aria-label="Close the archive">${CI.x}</button></div>
+  <label class="ar-search"><span class="ar-sr">Search the archive</span><input class="inp" type="search" id="arSearch" placeholder="Search headlines" autocomplete="off" enterkeyhint="search"></label>
+  <div class="ar-list" id="arList" aria-live="polite"><p class="note ar-empty">Loading the archive…</p></div>
+  <p class="note ar-foot">Posts are saved here when you share or download them, and removed ${ARCHIVE_DAYS} days after they were first exported.</p>`);
+  const modal=m.querySelector('.modal'); modal.classList.add('archive-sheet');
+  let items=[];
+  try{ items=await loadArchive(); }
+  catch(e){ if(m.isConnected) $('#arList',m).innerHTML='<p class="note warn ar-empty">Could not load the archive. Check your connection and try again.</p>'; return; }
+  if(!m.isConnected) return;
+  const openId=S.doc&&S.doc.archive&&S.doc.archive.saved?S.doc.archive.id:'';
+  const draw=()=>{
+    const q=$('#arSearch',m).value.trim().toLowerCase();
+    const shown=items.filter(it=>!q||(String(it.headline||'')+' '+String(it.dek||'')).toLowerCase().includes(q));
+    if(!items.length){ $('#arList',m).innerHTML='<p class="note ar-empty">Nothing here yet. Posts appear after you share or download them.</p>'; return; }
+    if(!shown.length){ $('#arList',m).innerHTML='<p class="note ar-empty">No headlines match that search.</p>'; return; }
+    const groups=new Map();
+    for(const it of shown){ const k=archiveDayLabel(it.createdAt); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(it); }
+    const now=Date.now();
+    $('#arList',m).innerHTML=[...groups].map(([day,list])=>`<section class="ar-group"><h3 class="ar-day">${esc(day)}</h3><ul>${list.map(it=>{
+      const left=Math.ceil((Number(it.createdAt)+ARCHIVE_MS-now)/864e5);
+      const bits=[new Date(it.createdAt).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})];
+      if(it.edits) bits.push('Edited '+(it.edits===1?'once':it.edits+' times')+(it.updatedAt?' · last '+archiveWhen(it.updatedAt):''));
+      if(it.pages>1) bits.push(it.pages+' pages');
+      if(left<=2) bits.push(left<=1?'Removed within a day':'Removed in 2 days');
+      const title=String(it.headline||'').trim()||'Untitled post';
+      return `<li class="ar-item${it.id===openId?' is-open':''}"><button type="button" class="ar-open" data-ar-open="${esc(it.id)}"><span class="ar-thumb">${it.thumb?`<img src="${esc(it.thumb)}" alt="" loading="lazy" decoding="async">`:''}</span><span class="ar-text"><b>${esc(title)}</b><small>${it.id===openId?'<span class="ar-badge">Open now</span>':''}${esc(bits.join(' · '))}</small></span></button>${it.drive&&/^https:\/\/drive\.google\.com\//.test(it.drive.folderUrl||'')?`<a class="ar-drive" href="${esc(it.drive.folderUrl)}" target="_blank" rel="noopener" aria-label="Open ${esc(title)} in the Shared Drive" title="Open in the Shared Drive">${DRIVE_SVG}</a>`:''}<button type="button" class="ar-del" data-ar-del="${esc(it.id)}" aria-label="Remove ${esc(title)} from the archive">${TRASH_SVG}</button></li>`;
+    }).join('')}</ul></section>`).join('');
+  };
+  $('#arSearch',m).addEventListener('input',draw);
+  m.addEventListener('click',async e=>{
+    const o=e.target.closest('[data-ar-open]'), d=e.target.closest('[data-ar-del]');
+    if(o){ const it=items.find(x=>x.id===o.dataset.arOpen); if(it) openArchived(it); return; }
+    if(d){
+      const it=items.find(x=>x.id===d.dataset.arDel); if(!it) return;
+      const ok=await creatorConfirm('Remove this post from the archive?','“'+(String(it.headline||'').trim()||'Untitled post')+'” will be deleted for the whole team. Files you already downloaded are not affected.','Remove');
+      if(ok){ try{ await removeArchived(it); toast('Removed from the Archive.'); }catch(err){ toast('Could not remove it. Try again.',true); } }
+      openArchive();
+    }
+  });
+  draw();
+}
+async function openArchived(it){
+  if(C.busy) return;
+  const cur=S.doc&&S.doc.archive;
+  if(!(cur&&cur.id===it.id)&&C.generated&&!archiveUnchanged()){
+    if(!await creatorConfirm('Open this archived post?','Your current post will be replaced. Download it first if you still need it.','Open post')){ openArchive(); return; }
+  } else closeModal();
+  toast('Opening the post…');
+  let rec=null;
+  try{ rec=await cap.db.doc('archiveposts/'+it.id).get(); }catch(e){}
+  if(!rec||!rec.doc||!Array.isArray(rec.doc.pages)){ toast('Could not open this post. It may have just been removed.',true); return; }
+  clearTimeout(fillT);
+  loadDoc(rec.doc);
+  const k=rec.creator||{};
+  C.source=String(k.source||''); C.teamCopy=String(k.teamCopy||''); C.inputMode=k.inputMode==='final'?'final':'ai';
+  C.link=k.link&&k.link.url?k.link:null; C.linkPreview=null; C.contentCache=[];
+  Object.assign(C,{generated:true, step:2, reviewTab:'text', field:'', message:'', error:false, templateRestored:true, censorMode:false});
+  S.doc.archive={id:it.id, saved:true, opened:true, createdAt:it.createdAt, edits:it.edits||0, updatedAt:it.updatedAt, assets:Array.isArray(it.assets)?it.assets:[], uploads:{}};
+  if(it.drive&&it.drive.folderUrl) S.doc.archive.drive=it.drive;
+  S.doc.archive.hash=hashText(JSON.stringify(archiveDoc(S.doc.archive).doc));
+  resetHist(); saveDraft(); creatorPersist(); renderCreator(); scheduleRender();
+  window.scrollTo({top:0,behavior:'instant'});
+  toast('Opened. Export again to save your changes to the archive.');
+}
+
+/* ---------- Google Drive (SLC Scoop shared drive) ----------
+   The server saves into <shared drive>/<YYYY>/<MM Month>/<YYYY-MM-DD>/. Files go browser → temporary Blob copy →
+   server → Drive, so a large PNG never hits the 4.5 MB function limit. Save-to choices are remembered per device. */
+const DRIVE_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 7.9Z"/><path d="M12 11v6"/><path d="m9.5 13.5 2.5-2.5 2.5 2.5"/></svg>';
+const DRIVE={state:'idle', configured:false, ok:false, email:'', name:'', reason:'', at:0};
+async function driveStatus(force){
+  if(typeof Backend==='undefined'||Backend.mode!=='server'){ Object.assign(DRIVE,{state:'done',configured:false,ok:false}); return DRIVE; }
+  if(!force&&DRIVE.state==='done'&&Date.now()-DRIVE.at<5*60*1000) return DRIVE;
+  if(DRIVE.pending) return DRIVE.pending;
+  DRIVE.state='checking';
+  DRIVE.pending=api('/drive?check=1').then(r=>{
+    Object.assign(DRIVE,{configured:!!r.configured, ok:!!r.ok, email:String(r.email||''), name:String(r.name||''), reason:String(r.reason||'')});
+  }).catch(()=>{ Object.assign(DRIVE,{configured:false,ok:false}); }).then(()=>{ DRIVE.state='done'; DRIVE.at=Date.now(); DRIVE.pending=null; return DRIVE; });
+  return DRIVE.pending;
+}
+function driveProblem(reason,email){
+  if(reason==='no_access') return 'The Shared Drive is not shared with the studio yet. In Google Drive, add '+(email||'the service account')+' to the SLCSCOOP shared drive as a Content manager.';
+  if(reason==='needs_shared_drive') return 'SCOOP_DRIVE_FOLDER_ID must point to a Shared drive (or a folder inside one). Service accounts can’t save into My Drive.';
+  if(reason==='rate_limited') return 'Google is busy right now. Try again in a minute.';
+  if(reason==='not_configured') return 'The Shared Drive isn’t set up on the server yet.';
+  if(reason==='too_large') return 'A file is over 25 MB.';
+  return 'Could not reach Google Drive. Try again.';
+}
+function savePrefs(){
+  try{ const p=JSON.parse(localStorage.getItem('scoop-studio:saveTo')||'{}'); return {drive:p.drive!==false, local:!!p.local}; }
+  catch(e){ return {drive:true, local:false}; }
+}
+function setSavePrefs(p){ try{ localStorage.setItem('scoop-studio:saveTo',JSON.stringify(p)); }catch(e){} }
+async function saveToDrive(files,ts,onStep){
+  const ups=[];
+  for(let i=0;i<files.length;i++){
+    onStep&&onStep(i,files.length);
+    const f=files[i];
+    const type=f.blob.type||(/\.png$/i.test(f.name)?'image/png':/\.webp$/i.test(f.name)?'image/webp':'text/plain');
+    const up=await cap.assets.upload(new File([f.blob],f.name,{type}),{prefix:'scoop/drive-tmp/'});
+    ups.push({name:f.name,url:up.url});
+  }
+  onStep&&onStep(files.length,files.length);
+  return api('/drive',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ts,files:ups,post:files[0]&&files[0].name.replace(/(-\d+)?\.[a-z]+$/i,'')})});
+}
+
 async function creatorExport(){
   clearTimeout(fillT);commit();
-  let ready=[]; let generation=0;
-  const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Export post</h2><button class="btn ghost" data-close aria-label="Close export">${CI.x}</button></div><img class="creator-export-preview" id="cePreview" alt="Final exported post preview"><div class="note" id="ceDimensions"></div><div class="note warn" id="ceWarning"></div><div class="note" role="status" id="ceMessage">Preparing the images and the copy file…</div><div class="export-main"><button class="btn" id="ceShare" hidden disabled>${CI.share}Share</button><button class="btn primary" id="ceDownload" disabled>${CI.download}Download</button></div>`);
+  let pngFiles=[]; let generation=0; let captionJob=null; let captionText='';
+  const multi=S.doc.pages.length>1;
+  const m=openModal(`<div class="row ce-head"><div class="ce-titles"><p class="ce-kicker" id="ceKicker">Step 1 of 2</p><h2 id="ceTitle">Instagram post</h2></div><button class="btn ghost" data-close aria-label="Close export">${CI.x}</button></div>
+  <section class="ce-step" data-ce-step="post">
+    <img class="creator-export-preview" id="cePreview" alt="Final Instagram post preview">
+    <div class="note" id="ceDimensions"></div><div class="note warn" id="ceWarning"></div><div class="note" role="status" id="ceMessage">Preparing the Instagram image…</div>
+    <div class="export-main ce-foot"><button class="btn" id="ceShare" hidden disabled>${CI.share}Share</button><button class="btn primary" id="ceNext" disabled>Next: website image</button></div>
+  </section>
+  <section class="ce-step" data-ce-step="web" hidden>
+    <div class="ce-web-stage" id="ceWebStage"><canvas id="ceWebCanvas" role="img" aria-label="Website image preview"></canvas><span class="ce-web-badge" id="ceWebDims"></span></div>
+    <div class="ce-web-tip" id="ceWebTip"><p class="note ce-web-hint">Drag to recenter · pinch or scroll to zoom</p><button type="button" class="btn small" id="ceWebReset">Match Instagram</button></div>
+    <div class="ce-web-picks" id="ceWebPicks"></div>
+    <div class="ce-web-row"><span class="ce-web-label" id="ceShapeLabel">Shape</span><div class="seg-pills" role="group" aria-labelledby="ceShapeLabel" id="ceShapes">${WEB_SHAPES.map(([v,n])=>`<button type="button" class="btn small" data-web-shape="${v}" aria-pressed="false">${n}</button>`).join('')}</div></div>
+    <div class="photo-controls" id="ceWebControls">${[['zoom','Zoom',.5,4],['fx','Left / right',0,1],['fy','Up / down',0,1]].map(([k,label,min,max])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" data-web-prop="${k}" aria-label="Website image ${label.toLowerCase()}"><output></output></label>`).join('')}</div>
+    <div class="note warn" id="ceWebWarning"></div>
+    <div class="note warn" id="ceDriveWarning"></div><div class="note" role="status" id="ceWebMessage"></div>
+    <div class="export-main ce-foot"><div class="ce-dest"><span class="ce-web-label" id="ceDestLabel">Save to</span><div class="seg-pills" role="group" aria-labelledby="ceDestLabel"><button type="button" class="btn small" data-dest="drive" aria-pressed="false" hidden>${DRIVE_SVG}Shared Drive</button><button type="button" class="btn small" data-dest="local" aria-pressed="false">${CI.download}This device</button></div></div><button class="btn" id="ceBack">Back</button><button class="btn primary" id="ceDownload" disabled>${CI.download}<span id="ceSaveLabel">Save</span></button></div>
+  </section>`);
+  const modal=m.querySelector('.modal'); modal.classList.add('export-sheet'); modal.querySelector('h2').id='ceTitle'; modal.setAttribute('aria-labelledby','ceTitle');
   let localUrls=[];
   const revoke=()=>{ localUrls.forEach(URL.revokeObjectURL); localUrls=[]; };
-  const observer=new MutationObserver(()=>{ if(!m.isConnected){ generation++; revoke(); observer.disconnect(); } });
+  const observer=new MutationObserver(()=>{ if(!m.isConnected){ generation++; revoke(); observer.disconnect(); removeEventListener('resize',onResize); } });
   observer.observe($('#modalRoot'),{childList:true});
   const missing=S.doc.pages.flatMap((p,i)=>p.layers.filter(l=>l.slot&&l.type==='image'&&!l.src&&shownIn(p.layers,l)).map(l=>`Page ${i+1}: ${l.slot}`));
   $('#ceWarning',m).textContent=missing.length?'Empty photos export as blank. '+missing.join(' · '):hiddenRedactions()?'A hidden redaction will not appear in the export.':'';
-  $('#ceDimensions',m).textContent=`Instagram PNG ${S.doc.w*2} × ${S.doc.h*2} px · website WebP ${S.doc.w} × ${S.doc.h} px`;
+  $('#ceDimensions',m).textContent=`Instagram PNG ${S.doc.w*2} × ${S.doc.h*2} px${multi?' · '+S.doc.pages.length+' pages':''}`;
+  const stem=defaultName()||'post';
+  const pageTag=i=>multi?'Page '+(i+1)+': ':'';
   const seq=++generation;
+  const setStep=step=>{
+    m.querySelectorAll('[data-ce-step]').forEach(sec=>{ sec.hidden=sec.dataset.ceStep!==step; });
+    $('#ceKicker',m).textContent=step==='web'?'Step 2 of 2':'Step 1 of 2';
+    $('#ceTitle',m).textContent=step==='web'?'Website image':'Instagram post';
+    modal.scrollTop=0;
+    if(step==='web') openWeb(); else $('#ceNext',m).focus();
+  };
+  // ---- step 1: the Instagram post ----
   try{
-    const stem=defaultName()||'post';
-    const files=[]; const webNotes=[];
     for(let i=0;i<S.doc.pages.length;i++){
       const page=S.doc.pages[i];
       if(page.layers.some(l=>l.type==='image'&&l.src&&shownIn(page.layers,l)&&loadEntry(l.src)?.state==='err')) throw new Error('missing_image');
       const pair=await renderPageFormats(page);
       if(seq!==generation) return;
-      const suffix=S.doc.pages.length>1?'-'+(i+1):'';
-      files.push({name:stem+suffix+'.png', blob:pair.png});
-      // Website image: photo, overlays and textures only (no text, logo, badge or icons).
-      const issue=webExportIssues(page);
-      if(issue&&issue.blocked&&issue.blocked.length){ webNotes.push((S.doc.pages.length>1?'Page '+(i+1)+': ':'')+webBlockMessage(issue)); continue; }
-      if(issue&&issue.empty){ webNotes.push((S.doc.pages.length>1?'Page '+(i+1)+': ':'')+webEmptyMessage()); continue; }
-      const web=await renderWebBlob(page);
-      if(seq!==generation) return;
-      files.push({name:stem+suffix+'.'+web.ext, blob:web.blob, web:true});
+      pngFiles.push({name:stem+(multi?'-'+(i+1):'')+'.png', blob:pair.png});
     }
-    if(seq!==generation) return;
-    $('#ceMessage',m).textContent='Writing the Instagram caption…';
-    const caption=await ensureCaption();
-    if(seq!==generation) return;
-    files.push({name:stem+'.txt', blob:new Blob([postCopyTxt(caption)],{type:'text/plain'})});
-    ready=files;
-    const url=URL.createObjectURL(files[0].blob); localUrls.push(url); $('#cePreview',m).src=url;
-    const pngs=files.filter(f=>f.name.endsWith('.png')).map(f=>new File([f.blob],f.name,{type:'image/png'}));
+    const url=URL.createObjectURL(pngFiles[0].blob); localUrls.push(url); $('#cePreview',m).src=url;
+    const pngs=pngFiles.map(f=>new File([f.blob],f.name,{type:'image/png'}));
     const canShare=!!navigator.canShare&&navigator.canShare({files:pngs});
     $('#ceShare',m).hidden=!canShare; $('#ceShare',m).disabled=!canShare;
-    $('#ceDownload',m).disabled=false;
-    $('#ceMessage',m).textContent=(files.some(f=>f.web)?'Download saves the Instagram PNG and a website image (photo, overlays and textures only) for each page,':'Download saves the Instagram PNG,')+' plus a text file with the Instagram caption and the website article.';
-    if(webNotes.length) $('#ceWarning',m).textContent=[$('#ceWarning',m).textContent,...webNotes].filter(Boolean).join(' ');
+    $('#ceNext',m).disabled=false;
+    $('#ceMessage',m).textContent=canShare?'Share sends the PNG straight to Instagram. Next, check the website image, then download everything.':'Next, check the website image, then download everything.';
     $('#ceShare',m).onclick=async()=>{
-      try{ await navigator.share({files:pngs}); $('#ceMessage',m).textContent='Shared. The PNG is the one to post.'; }
-      catch(e){ $('#ceMessage',m).textContent=e.name==='AbortError'?'Sharing cancelled.':'Sharing is unavailable. Use Download.'; }
+      try{ await navigator.share({files:pngs}); $('#ceMessage',m).textContent='Shared. The PNG is the one to post. Next, check the website image.'; archiveAfterExport(); }
+      catch(e){ $('#ceMessage',m).textContent=e.name==='AbortError'?'Sharing cancelled.':'Sharing is unavailable. Use Next, then Download all.'; }
     };
+    captionJob=ensureCaption().then(c=>{ captionText=c; return c; }).catch(()=>{ captionText=''; return ''; });
   }catch(e){
     if(seq!==generation) return;
     $('#ceMessage',m).textContent='Could not prepare the image. Re-upload any missing photos and try again.';
+    return;
   }
+  $('#ceNext',m).onclick=()=>setStep('web');
+  $('#ceBack',m).onclick=()=>setStep('post');
+  // ---- step 2: the website image ----
+  const W={page:0, photo:null, auto:new Map(), pts:new Map(), start:null, raf:0, idle:0, full:null};
+  const webIssues=new Map(S.doc.pages.map(p=>[p.id,webExportIssues(p)]));
+  const webOK=p=>{ const is=webIssues.get(p.id); return !!is&&!is.empty&&!(is.blocked&&is.blocked.length); };
+  const page=()=>S.doc.pages[W.page];
+  const photosOf=p=>{ const pred=webPaintPred(p,{editor:false,web:true}); return webPhotos(p).filter(pred); };
+  const rectOf=p=>{ if(!W.auto.has(p.id)) W.auto.set(p.id, webAutoRect(p)); return webFrameRect(p, webShapeOf(S.doc), W.auto.get(p.id)); };
+  const frameOf=L=>webFrameOf(L)||postFrameOf(L);
+  const cv=$('#ceWebCanvas',m), stage=$('#ceWebStage',m);
+  function draw(fast){
+    const p=page(); if(!p||!m.isConnected) return;
+    if(!webOK(p)){ cv.hidden=true; $('#ceWebDims',m).textContent=''; return; }
+    cv.hidden=false;
+    const r=rectOf(p);
+    const narrow=matchMedia('(max-width:700px)').matches;
+    const maxW=Math.max(120, stage.clientWidth-16), maxH=Math.max(140, Math.min(innerHeight*(narrow?(innerHeight<640?.28:.34):.40), 520));
+    const cssW=Math.min(maxW, maxH*r.w/r.h), cssH=cssW*r.h/r.w;
+    cv.style.width=Math.round(cssW)+'px'; cv.style.height=Math.round(cssH)+'px';
+    const dpr=Math.min(2, devicePixelRatio||1);
+    const scale=Math.min(2,(cssW*dpr*(fast?.6:1))/r.w);
+    const was=fastPaint; fastPaint=!!fast;
+    try{ renderWebCanvas(p, r, scale, cv); } finally{ fastPaint=was; }
+    $('#ceWebDims',m).textContent=`WebP ${Math.round(r.w*WEB_SCALE)} × ${Math.round(r.h*WEB_SCALE)}`;
+  }
+  const schedule=fast=>{ cancelAnimationFrame(W.raf); W.raf=requestAnimationFrame(()=>draw(fast)); if(fast){ clearTimeout(W.idle); W.idle=setTimeout(()=>draw(false),180); } };
+  function syncControls(){
+    const L=W.photo, f=L?frameOf(L):null;
+    $('#ceWebControls',m).hidden=!L;
+    if(f) m.querySelectorAll('[data-web-prop]').forEach(inp=>{ const v=f[inp.dataset.webProp]; inp.value=v; inp.nextElementSibling.textContent=Math.round(v*100)+'%'; });
+    $('#ceWebReset',m).hidden=!L; $('#ceWebReset',m).disabled=!L||!webFrameOf(L);
+    const shape=webShapeOf(S.doc);
+    m.querySelectorAll('[data-web-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.webShape===shape)));
+    cv.classList.toggle('movable',!!L);
+  }
+  function setFrame(f,fast){
+    const L=W.photo; if(!L) return;
+    L.webFrame={key:srcKey(L.src), fx:+clamp(f.fx,0,1).toFixed(4), fy:+clamp(f.fy,0,1).toFixed(4), zoom:+clamp(f.zoom,.5,4).toFixed(4)};
+    syncControls(); schedule(fast);
+  }
+  function renderPicks(){
+    const p=page(), photos=photosOf(p);
+    if(!photos.includes(W.photo)) W.photo=photos[0]||null;
+    const pages=S.doc.pages.map((pg,i)=>({pg,i})).filter(({pg})=>webOK(pg)||webIssues.get(pg.id).blocked.length);
+    const pageChips=multi&&pages.length>1?`<div class="ce-web-row"><span class="ce-web-label" id="cePageLabel">Page</span><div class="seg-pills" role="group" aria-labelledby="cePageLabel">${pages.map(({i})=>`<button type="button" class="btn small" data-web-page="${i}" aria-pressed="${i===W.page}">${i+1}</button>`).join('')}</div></div>`:'';
+    const photoChips=photos.length>1?`<div class="ce-web-row"><span class="ce-web-label" id="cePhotoLabel">Photo</span><div class="seg-pills" role="group" aria-labelledby="cePhotoLabel">${photos.map(L=>`<button type="button" class="btn small" data-web-photo="${L.id}" aria-pressed="${L===W.photo}">${esc(L.slot||L.name||'Photo')}</button>`).join('')}</div></div>`:'';
+    $('#ceWebPicks',m).innerHTML=pageChips+photoChips;
+    const is=webIssues.get(p.id);
+    $('#ceWebWarning',m).textContent=is.blocked&&is.blocked.length?pageTag(W.page)+webBlockMessage(is)+' This page has no website image until that is fixed.':is.empty?pageTag(W.page)+webEmptyMessage():'';
+    $('#ceShapes',m).closest('.ce-web-row').hidden=!webOK(p);
+    $('#ceWebTip',m).hidden=!webOK(p);
+    syncControls();
+  }
+  let webReady=false;
+  async function openWeb(){
+    if(!webReady){
+      $('#ceWebMessage',m).textContent='Preparing the website image…';
+      await Promise.all(S.doc.pages.map(async p=>{ await allImagesReady(p); await ensureFonts(p.layers); }));
+      if(!m.isConnected) return;
+      const firstOK=S.doc.pages.findIndex(webOK);
+      W.page=firstOK>=0?firstOK:0;
+      webReady=true;
+      $('#ceDownload',m).disabled=false; syncDest();
+      $('#ceWebMessage',m).textContent=S.doc.pages.some(webOK)?'Only the photo, overlays and textures go to the website. Saves the Instagram PNG, this website image and a text file with the caption and article.':'Saves the Instagram PNG and a text file with the caption and article.';
+    }
+    renderPicks(); draw(false);
+    (m.querySelector('[data-web-shape][aria-pressed=true]')||$('#ceDownload',m)).focus({preventScroll:true});
+  }
+  m.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b||!m.contains(b)) return;
+    if(b.dataset.webShape){ setWebShape(S.doc,b.dataset.webShape); syncControls(); draw(false); commit(); return; }
+    if(b.dataset.webPage!==undefined){ W.page=+b.dataset.webPage; W.photo=null; renderPicks(); draw(false); return; }
+    if(b.dataset.webPhoto){ W.photo=photosOf(page()).find(L=>L.id===b.dataset.webPhoto)||W.photo; renderPicks(); return; }
+    if(b.id==='ceWebReset'&&W.photo){ delete W.photo.webFrame; syncControls(); draw(false); commit(); return; }
+  });
+  m.addEventListener('input',e=>{
+    const k=e.target.dataset&&e.target.dataset.webProp; if(!k||!W.photo) return;
+    setFrame(Object.assign({},frameOf(W.photo),{[k]:+e.target.value}),true);
+  });
+  m.addEventListener('change',e=>{ if(e.target.dataset&&e.target.dataset.webProp){ draw(false); commit(); } });
+  const restart=()=>{ W.start=W.photo?{f:Object.assign({},frameOf(W.photo)),pts:new Map(W.pts)}:null; };
+  cv.addEventListener('pointerdown',e=>{
+    if(!W.photo) return;
+    e.preventDefault();
+    try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+    W.pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); restart(); cv.classList.add('dragging');
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!W.pts.has(e.pointerId)||!W.start||!W.photo) return;
+    W.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    const p=page(), r=rectOf(p), k=r.w/Math.max(1,cv.getBoundingClientRect().width), f0=W.start.f;
+    const ids=[...W.pts.keys()];
+    if(ids.length>=2){
+      const a0=W.start.pts.get(ids[0]), b0=W.start.pts.get(ids[1]), a1=W.pts.get(ids[0]), b1=W.pts.get(ids[1]);
+      if(!a0||!b0) return;
+      const d0=Math.hypot(a0.x-b0.x,a0.y-b0.y)||1, d1=Math.hypot(a1.x-b1.x,a1.y-b1.y);
+      setFrame(Object.assign({},f0,{zoom:f0.zoom*d1/d0}),true);
+    } else {
+      const s0=W.start.pts.get(e.pointerId); if(!s0) return;
+      const t=webTravel(p,W.photo,f0);
+      setFrame(Object.assign({},f0,{fx:f0.fx-(e.clientX-s0.x)*k/Math.max(1,t.x), fy:f0.fy-(e.clientY-s0.y)*k/Math.max(1,t.y)}),true);
+    }
+  });
+  const lift=e=>{
+    if(!W.pts.delete(e.pointerId)) return;
+    restart();
+    if(!W.pts.size){ cv.classList.remove('dragging'); clearTimeout(W.idle); draw(false); commit(); }
+  };
+  cv.addEventListener('pointerup',lift); cv.addEventListener('pointercancel',lift);
+  cv.addEventListener('wheel',e=>{
+    if(!W.photo) return;
+    e.preventDefault();
+    const f=frameOf(W.photo);
+    setFrame(Object.assign({},f,{zoom:f.zoom*Math.exp(-e.deltaY*.0015)}),true);
+    clearTimeout(W.commitT); W.commitT=setTimeout(commit,400);
+  },{passive:false});
+  let resizeT=0;
+  function onResize(){ clearTimeout(resizeT); resizeT=setTimeout(()=>{ if(webReady&&!m.querySelector('[data-ce-step=web]').hidden) draw(false); },120); }
+  addEventListener('resize',onResize);
+  // ---- where to save: SLC Scoop shared drive and/or this device ----
+  const prefs=savePrefs();
+  let localDone=false, driveDone=null;
+  const dest=()=>({drive:prefs.drive&&DRIVE.ok, local:prefs.local||(DRIVE.state==='done'&&!DRIVE.ok)});
+  function syncDest(){
+    if(!m.isConnected) return;
+    const d=dest(), db=m.querySelector('[data-dest=drive]'), lb=m.querySelector('[data-dest=local]');
+    db.hidden=!(DRIVE.configured||DRIVE.state!=='done')||Backend.mode!=='server';
+    db.disabled=!DRIVE.ok;
+    db.setAttribute('aria-pressed',String(d.drive));
+    db.title=DRIVE.state!=='done'?'Checking the Shared Drive…':DRIVE.ok?'Save into '+(DRIVE.name||'the shared drive')+' › year › month › post folder':driveProblem(DRIVE.reason,DRIVE.email);
+    lb.setAttribute('aria-pressed',String(d.local));
+    lb.disabled=DRIVE.state==='done'&&!DRIVE.ok;
+    $('#ceDriveWarning',m).textContent=DRIVE.configured&&DRIVE.state==='done'&&!DRIVE.ok?'Shared Drive unavailable: '+driveProblem(DRIVE.reason,DRIVE.email):'';
+    const label=d.drive&&d.local?'Drive + download':d.drive?'Save to Drive':d.local?'Download':'Choose where to save';
+    $('#ceSaveLabel',m).textContent=label;
+    const btn=$('#ceDownload',m); if(btn&&webReady&&!btn.dataset.busy) btn.disabled=!(d.drive||d.local);
+  }
+  m.addEventListener('click',e=>{
+    const b=e.target.closest('[data-dest]'); if(!b||b.disabled) return;
+    prefs[b.dataset.dest]=b.getAttribute('aria-pressed')!=='true'; setSavePrefs(prefs); syncDest();
+  });
+  driveStatus().then(syncDest); syncDest();
+  const driveStem=()=>{ const d=S.doc.archive&&S.doc.archive.drive; return d&&d.stem||stem; };
+  const driveTs=()=>{ const a=S.doc.archive||{}; return (a.drive&&a.drive.ts)||a.createdAt||Date.now(); };
   $('#ceDownload',m).onclick=async()=>{
-    const button=$('#ceDownload',m); button.disabled=true;
-    const saved=[];
+    const d=dest(); if(!d.drive&&!d.local) return;
+    const button=$('#ceDownload',m), back=$('#ceBack',m); button.disabled=true; back.disabled=true; button.dataset.busy='1';
+    const msg=$('#ceWebMessage',m);
+    const done=()=>{ delete button.dataset.busy; button.disabled=false; back.disabled=false; syncDest(); };
+    const files=pngFiles.slice(); const notes=[];
     try{
-      for(const file of ready){
-        const result=await saveFile(file.name,file.blob);
-        if(result==='declined'){ $('#ceMessage',m).textContent='Download cancelled.'; button.disabled=false; return; }
-        if(result!==true){ $('#ceMessage',m).textContent='Download could not start. Press and hold the preview to save it.'; button.disabled=false; return; }
-        saved.push(file.name);
-        await new Promise(r=>setTimeout(r,250));
+      msg.textContent='Rendering the website image…';
+      for(let i=0;i<S.doc.pages.length;i++){
+        const p=S.doc.pages[i], is=webIssues.get(p.id);
+        if(is.blocked&&is.blocked.length){ notes.push(pageTag(i)+'website image skipped (redaction not over the photo).'); continue; }
+        if(is.empty) continue;
+        if(!W.auto.has(p.id)) W.auto.set(p.id, webAutoRect(p));
+        const web=await renderWebBlob(p, webFrameRect(p, webShapeOf(S.doc), W.auto.get(p.id)));
+        if(!m.isConnected) return;
+        files.splice(files.findIndex(f=>f.name===stem+(multi?'-'+(i+1):'')+'.png')+1,0,{name:stem+(multi?'-'+(i+1):'')+'.'+web.ext, blob:web.blob, web:true});
       }
-    }catch(e){ $('#ceMessage',m).textContent='Download could not start. Press and hold the preview to save it.'; button.disabled=false; return; }
-    const note=saved.length>2?'Saved '+saved.length+' files. ':'Saved '+saved.join(' and ')+'. ';
-    openCaptionModal(note);
+      if(!captionText){ msg.textContent='Writing the Instagram caption…'; await captionJob; if(!m.isConnected) return; }
+      files.push({name:stem+'.txt', blob:new Blob([postCopyTxt(captionText)],{type:'text/plain'})});
+    }catch(e){ msg.textContent='Could not prepare the website image. Try again.'; done(); return; }
+    // 1. This device
+    if(d.local&&!localDone){
+      msg.textContent='Saving to this device…';
+      try{
+        for(const file of files){
+          const result=await saveFile(file.name,file.blob);
+          if(result==='declined'){ msg.textContent='Download cancelled.'; done(); return; }
+          if(result!==true){ msg.textContent='Download could not start. Try again, or go Back and press and hold the preview to save it.'; done(); return; }
+          await new Promise(r=>setTimeout(r,250));
+        }
+        localDone=true;
+      }catch(e){ msg.textContent='Download could not start. Try again, or go Back and press and hold the preview to save it.'; done(); return; }
+    }
+    // 2. Shared drive. Corrections keep the first export's names and day folder, so they replace the originals.
+    if(d.drive&&!driveDone){
+      const ds=driveStem(), ts=driveTs();
+      const named=files.map(f=>({name:f.name.indexOf(stem)===0?ds+f.name.slice(stem.length):f.name, blob:f.blob}));
+      try{
+        driveDone=await saveToDrive(named,ts,(i,n)=>{ msg.textContent=i<n?'Uploading to the Shared Drive… '+(i+1)+' of '+n:'Filing it in the day’s folder…'; });
+        S.doc.archive=Object.assign(S.doc.archive||{},{drive:{stem:ds, ts, folderUrl:driveDone.folderUrl, path:driveDone.path}});
+        saveDraft();
+      }catch(e){
+        const reason=e&&(e.error||e.code)||'failed';
+        if(reason==='unauthorized'){ msg.textContent='The studio passcode was not accepted.'; done(); return; }
+        msg.textContent=(localDone?'Downloaded to this device, but the Shared Drive save failed. ':'')+driveProblem(reason,e&&e.email||DRIVE.email);
+        $('#ceSaveLabel',m).textContent='Retry Shared Drive';
+        delete button.dataset.busy; button.disabled=false; back.disabled=false;
+        if(reason==='no_access'||reason==='needs_shared_drive'){ DRIVE.at=0; }
+        return;
+      }
+    }
+    const parts=[];
+    if(localDone) parts.push('Downloaded '+files.length+' files.');
+    if(driveDone) parts.push('Saved to the Shared Drive › '+driveDone.path+'.');
+    openCaptionModal(parts.join(' ')+(notes.length?' '+notes.join(' '):''), driveDone&&driveDone.folderUrl);
+    archiveAfterExport();
   };
 }
 
@@ -7013,14 +7825,18 @@ document.addEventListener('click',async e=>{
   if(b.dataset.altHeadline!=null){applyAltHeadline(+b.dataset.altHeadline);return;}
   if(b.dataset.articleView){C.articleView=b.dataset.articleView;renderCreator();if(C.articleView==='caption'&&!String(S.doc.ai&&S.doc.ai.caption||'').trim())generateCaption(false);return;}
   if(b.id==='creatorCaptionGen'){generateCaption(true);return;}
+  if(b.id==='creatorArticleCopy'){const t=String(S.doc.ai&&S.doc.ai.article||'');try{await navigator.clipboard.writeText(t);toast('Article copied');}catch(e){const box=$('#creatorArticle');if(box){box.focus();box.select();}toast('Select the article and copy it.');}return;}
   if(b.id==='creatorCaptionCopy'){const t=String(S.doc.ai&&S.doc.ai.caption||'');try{await navigator.clipboard.writeText(t);toast('Caption copied');}catch(e){const box=$('#creatorCaption');if(box){box.focus();box.select();}toast('Select the caption and copy it.');}return;}
-  if(b.id==='creatorCensor'){C.censorMode=!C.censorMode;renderCreator();return;}
+  if(b.id==='creatorCensor'){C.censorMode=!C.censorMode;renderCreator();if(C.censorMode)toast('Drag on the preview to cover an area. Esc or tap the icon again to stop.');return;}
+  if(b.dataset.photoAxis){C.photoAxis=b.dataset.photoAxis;renderCreator();const r=document.querySelector('.pt-adjust input');if(r)r.focus({preventScroll:true});return;}
+  if(b.dataset.photoSlot){C.photoSlot=b.dataset.photoSlot;renderCreator();return;}
   if(b.dataset.censorMode){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){L.mode=b.dataset.censorMode;C.censorStyle=L.mode;commit();scheduleRender();renderCreator();}return;}
   if(b.dataset.censorShape){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){L.shape=b.dataset.censorShape;commit();scheduleRender();renderCreator();}return;}
   if(b.dataset.censorDel){const i=S.doc.layers.findIndex(l=>l.id===b.dataset.censorDel);if(i>=0){S.doc.layers.splice(i,1);commit();scheduleRender();renderCreator();}return;}
   if(b.dataset.photoReset||b.dataset.photoRemove){const L=S.doc.layers.find(l=>l.id===(b.dataset.photoReset||b.dataset.photoRemove));if(L){if(b.dataset.photoRemove)L.src=null;else Object.assign(L,{fx:.5,fy:.5,zoom:1});commit();scheduleRender();renderCreator();}return;}
   switch(b.id){
     case 'creatorNew':await creatorNewPost();break;
+    case 'creatorArchive':openArchive();break;
     case 'creatorNext':if(C.step===0&&creatorReadsLink())await creatorReadLink();else if(C.step===0)await creatorCreatePost();else await creatorExport();break;
     case 'linkUse':useLinkText();break;
     case 'linkAnyway':await draftAnyway();break;
@@ -7040,7 +7856,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&C.censorMode){ C.c
 document.addEventListener('input',e=>{
   if(C.workspace!=='creator')return;const el=e.target;
   if(el.id==='creatorArticle'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.article=el.value;const c=$('#articleCount');if(c)c.textContent=articleWords(el.value)+' words';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
-  if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint&&C.inputMode==='ai')hint.textContent=url?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.';$('#sourceCount').textContent=el.value.length.toLocaleString()+' / 12,000';const next=$('#creatorNext');if(next&&!C.busy)next.innerHTML=creatorActionInner();creatorPersist();}
+  if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint&&C.inputMode==='ai')hint.textContent=url?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.';{const sc=$('#sourceCount');sc.textContent=el.value.length.toLocaleString()+' / 12,000';sc.hidden=el.value.length<9000;}const next=$('#creatorNext');if(next&&!C.busy)next.innerHTML=creatorActionInner();creatorPersist();}
   if(el.id==='creatorTemplateSearch'){C.query=el.value;renderCreatorTemplates();}
   if(el.dataset.creatorText){if(!el.isConnected)return;if(tagTextLock&&el.dataset.creatorText===tagTextLock.id&&document.activeElement!==el&&performance.now()-tagTextLock.at<400)return;const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
   if(el.id==='creatorCaption'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.caption=el.value;const c=$('#captionCount');if(c)c.textContent=el.value.length+' / 2,200';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}

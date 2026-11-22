@@ -2,12 +2,14 @@ import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 /** Collections the post builder is allowed to read and write. */
-export const COLLECTIONS = new Set(['library', 'templates', 'brand', 'references', 'postrefs']);
+export const COLLECTIONS = new Set(['library', 'templates', 'brand', 'references', 'postrefs', 'archive', 'archiveposts']);
 export const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** Every stored JSON doc lives under this Vercel Blob prefix. */
 export const STORE_PREFIX = 'scoop/store/';
 export const ASSET_PREFIX = 'scoop/assets/';
+/** Temporary copies of exports on their way to Google Drive; deleted after each save. */
+export const DRIVE_TMP_PREFIX = 'scoop/drive-tmp/';
 
 /**
  * Optional shared team passcode. If SCOOP_PASSCODE is set, every API call

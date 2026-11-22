@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { del } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
-import { ASSET_PREFIX, blobNotConfigured, blobOptions, blobToken, guard, isBlobUrl } from '@/lib/scoop';
+import { ASSET_PREFIX, DRIVE_TMP_PREFIX, blobNotConfigured, blobOptions, blobToken, guard, isBlobUrl } from '@/lib/scoop';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,12 +20,24 @@ const EXT_TYPES: Record<string, string[]> = {
   woff2: ['font/woff2', 'application/octet-stream'],
 };
 
+/** Export copies headed to Google Drive: the post PNG, website WebP and copy text file. */
+const DRIVE_TMP_TYPES: Record<string, string[]> = {
+  png: EXT_TYPES.png,
+  webp: EXT_TYPES.webp,
+  txt: ['text/plain', 'application/octet-stream'],
+};
+
 function assetExtension(pathname: string): string | null {
-  if (!pathname.startsWith(ASSET_PREFIX)) return null;
-  const name = pathname.slice(ASSET_PREFIX.length);
+  const tmp = pathname.startsWith(DRIVE_TMP_PREFIX);
+  if (!tmp && !pathname.startsWith(ASSET_PREFIX)) return null;
+  const name = pathname.slice((tmp ? DRIVE_TMP_PREFIX : ASSET_PREFIX).length);
   if (!name || name.length > 96 || /[\\/]|\.\./.test(name)) return null;
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  return EXT_TYPES[ext] ? ext : null;
+  return (tmp ? DRIVE_TMP_TYPES : EXT_TYPES)[ext] ? ext : null;
+}
+
+function allowedTypes(pathname: string, ext: string): string[] {
+  return (pathname.startsWith(DRIVE_TMP_PREFIX) ? DRIVE_TMP_TYPES : EXT_TYPES)[ext];
 }
 
 /** POST /api/scoop/assets — issues a client upload token. The file never passes through this function. */
@@ -60,7 +72,7 @@ export async function POST(req: NextRequest) {
         return {
           addRandomSuffix: true,
           maximumSizeInBytes: MAX_BYTES,
-          allowedContentTypes: EXT_TYPES[ext],
+          allowedContentTypes: allowedTypes(pathname, ext),
         };
       },
     });

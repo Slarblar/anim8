@@ -6,6 +6,7 @@ import { DRIVE_TMP_PREFIX, blobOptions, guard, isBlobUrl } from '@/lib/scoop';
 import {
   DRIVE_FOLDER_MIME,
   DRIVE_TIMEZONE_DEFAULT,
+  driveErrorDetail,
   driveErrorReason,
   driveFolderPath,
   driveFolderUrl,
@@ -93,7 +94,7 @@ export async function GET(req: NextRequest) {
   const denied = guard(req);
   if (denied) return denied;
   const cfg = driveConfig();
-  if (!cfg.ready) return NextResponse.json({ configured: false }, { headers: { 'cache-control': 'no-store' } });
+  if (!cfg.ready) return NextResponse.json({ configured: false, ok: false, reason: 'not_configured' }, { headers: { 'cache-control': 'no-store' } });
   const out: Record<string, unknown> = { configured: true, email: cfg.email };
   if (req.nextUrl.searchParams.get('check')) {
     try {
@@ -108,6 +109,8 @@ export async function GET(req: NextRequest) {
     } catch (error) {
       out.ok = false;
       out.reason = driveErrorReason(error);
+      out.detail = driveErrorDetail(error);
+      console.error('scoop drive check failed', out.detail);
     }
     sweepTmp();
   }
@@ -167,9 +170,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, folderUrl: driveFolderUrl(parent), path: path.join(' / '), files: saved });
   } catch (error) {
     const reason = driveErrorReason(error);
-    console.error('scoop drive save failed', reason, error instanceof Error ? error.message : error);
+    const detail = driveErrorDetail(error);
+    console.error('scoop drive save failed', detail);
     const status = reason === 'rate_limited' ? 429 : reason === 'failed' ? 502 : 403;
-    return NextResponse.json({ error: reason, email: cfg.email }, { status });
+    return NextResponse.json({ error: reason, email: cfg.email, detail }, { status });
   } finally {
     await del(files.map((f) => f.url), blobOptions()).catch(() => {});
   }

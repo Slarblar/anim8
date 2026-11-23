@@ -65,6 +65,24 @@ export function driveErrorReason(error: unknown): 'no_access' | 'needs_shared_dr
   return 'failed';
 }
 
+/** Google's own error, safe to show and to log. The private key is never included. */
+export function driveErrorDetail(error: unknown): string {
+  const e = error as { code?: unknown; message?: unknown; response?: { data?: { error?: unknown; error_description?: unknown } } };
+  const data = e?.response?.data;
+  const bits = [
+    e?.code != null ? String(e.code) : '',
+    typeof data?.error === 'string' ? data.error : '',
+    typeof data?.error_description === 'string' ? data.error_description : '',
+    String(e?.message ?? ''),
+  ].filter(Boolean);
+  let text = Array.from(new Set(bits)).join(' · ');
+  if (/DECODER|PEM|asn1|private key|no start line|bad base64/i.test(text)) text = 'The private key could not be read. Check SCOOP_DRIVE_SA_PRIVATE_KEY: one line, starting -----BEGIN PRIVATE KEY----- and ending -----END PRIVATE KEY-----\\n, with no extra quotes. ' + text;
+  else if (/invalid_grant|account not found|invalid_client/i.test(text)) text = 'Google rejected the service account login. Check SCOOP_DRIVE_SA_EMAIL matches the key file, and that the key was not deleted. ' + text;
+  else if (/has not been used|is disabled|accessNotConfigured|SERVICE_DISABLED/i.test(text)) text = 'The Google Drive API is turned off for this project. Enable it in Google Cloud → APIs & Services → Library → Google Drive API (same project as the service account). ' + text;
+  else if (/File not found/i.test(text)) text = 'The service account cannot see the folder. Add its email to the SLCSCOOP shared drive as Content manager, and check SCOOP_DRIVE_FOLDER_ID. ' + text;
+  return text.replace(/-----BEGIN[^-]*-----[\s\S]*?-----END[^-]*-----/g, '[key]').slice(0, 400);
+}
+
 /**
  * SLC Scoop's service account from SCOOP_* env vars only. Accepts the whole JSON key file
  * (pasted raw or base64-encoded) in SCOOP_DRIVE_SA_JSON, or SCOOP_DRIVE_SA_EMAIL + SCOOP_DRIVE_SA_PRIVATE_KEY.

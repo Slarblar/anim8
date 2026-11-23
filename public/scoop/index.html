@@ -2022,8 +2022,28 @@ function layoutBodyInPaper(L,layers,pageW,pageH){
   const ceiling=designSize.get(L.id)||L.size;
   const floor=sizeFloor(L,'body');
   const edge=paperLimitY(layers, pageH);
-  const room=Math.max(0, Math.min(roomBelow(L,layers,pageW,pageH), edge-L.y));
   const at=(size)=>cappedLay(measureAt(ctx,L,size), cap);
+  // A size the user set with the buttons stays. The paint must not step it back down.
+  if(L.sized){
+    const chosen=clamp(Math.round((ceiling||L.size)*10)/10,8,250);
+    L.size=chosen;
+    let lay=at(chosen);
+    const top=paperTopY(layers)+8;
+    if(!L.boxH && !(typeof drag!=='undefined' && drag && drag.L===L) && lay.h>edge-L.y+1){
+      const y=Math.max(top, Math.round(edge-lay.h));
+      if(y<L.y) L.y=y;
+    }
+    if(lay.h<=Math.max(0, edge-L.y)+1) return lay;
+    let lo=Math.min(24, chosen), hi=chosen, best=Math.min(24, chosen);
+    const room=Math.max(0, edge-L.y);
+    for(let i=0;i<16;i++){
+      const mid=(lo+hi)/2;
+      if(at(mid).h<=room+0.5){ best=mid; lo=mid; } else hi=mid;
+    }
+    L.size=Math.round(best*10)/10;
+    return at(L.size);
+  }
+  const room=Math.max(0, Math.min(roomBelow(L,layers,pageW,pageH), edge-L.y));
   if(!(room>=8)) return at(Math.min(L.size||floor, ceiling));
   let lo=floor, hi=Math.max(floor, ceiling), best=null;
   for(let i=0;i<16;i++){
@@ -2240,6 +2260,19 @@ function textBlockHeight(L){
   if(!L) return 0;
   return layoutText(textMeasureCtx(),L,false).h;
 }
+function limitBelow(L, layers, pageW, pageH){
+  let limit=paperLimitY(layers, pageH);
+  const origin=typeof L.homeY==='number'?L.homeY:L.y;
+  for(const o of layers||[]){
+    if(!o||o===L||o.type==='folder'||o.type==='redact') continue;
+    if(!shownIn(layers,o)||(o.opacity??1)<=0.02) continue;
+    if(o.w>=pageW*0.85&&o.h>=pageH*0.55&&o.y<pageH*0.45) continue;
+    if(!xHits(L,o)) continue;
+    if(o.y<=origin+8) continue;
+    if(o.y<limit) limit=o.y-4;
+  }
+  return limit;
+}
 function seatSubheading(page){
   if(!page) return;
   const H=findRole(page.layers,'headline'), D=findRole(page.layers,'dek');
@@ -2247,25 +2280,29 @@ function seatSubheading(page){
   if(typeof D.homeY!=='number') D.homeY=D.y;
   const start=page.layers.indexOf(D);
   const base=D.clip?page.layers[clipBaseIndex(page.layers, start)]:null;
-  const edge=Math.min(paperLimitY(page.layers, page.h), base?base.y+base.h-4:page.h);
+  let edge=Math.min(paperLimitY(page.layers, page.h), base?base.y+base.h-4:page.h);
+  if(D.sized) edge=Math.min(edge, limitBelow(D, page.layers, page.w, page.h));
   const top=Math.max(paperTopY(page.layers)+8, 0);
   const ctx=textMeasureCtx();
   if(!designSize.has(D.id)) designSize.set(D.id, D.size);
   const floor=sizeFloor(D,'body');
-  const atDesign=cappedLay(measureAt(ctx,D,designSize.get(D.id)||D.size), lineCap('body'));
-  const keep=Math.min(lineCap('body'), Math.max(1, atDesign.lines.length));
-  const reserved=Math.max(keep*(floor*(D.lh||1)), cappedLay(measureAt(ctx,D,floor), lineCap('body')).h);
+  const chosen=designSize.get(D.id)||D.size;
+  const atDesign=cappedLay(measureAt(ctx,D,chosen), lineCap('body'));
+  const atFloor=cappedLay(measureAt(ctx,D,floor), lineCap('body'));
+  const block=D.sized?atDesign:atFloor;
+  const keep=Math.min(lineCap('body'), Math.max(1, block.lines.length));
+  const reserved=Math.max(block.h, keep*(floor*(D.lh||1)));
   const floorLay={h:reserved};
-  const need=reserved+12;
   if(H){
     if(!designSize.has(H.id)) designSize.set(H.id, H.size);
     const headFloor=sizeFloor(H,'display');
     const ceiling=Math.min(designSize.get(H.id)||H.size, H.size>0?Math.max(H.size, headFloor):headFloor);
     const leavesRoom=(size)=>{
       const prev=H.size; H.size=size;
+      const gap=D.sized?Math.max(8, Math.round((size||36)*0.22)):12;
       const bottom=H.y+textBlockHeight(H);
       H.size=prev;
-      return bottom+need<=edge+0.5;
+      return bottom+gap+reserved<=edge+0.5;
     };
     const capSize=H.size>0?H.size:ceiling;
     if(!leavesRoom(capSize)){
@@ -7490,15 +7527,16 @@ async function openArchived(it){
    The server saves into <shared drive>/<YYYY>/<MM Month>/<YYYY-MM-DD>/. Files go browser → temporary Blob copy →
    server → Drive, so a large PNG never hits the 4.5 MB function limit. Save-to choices are remembered per device. */
 const DRIVE_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 7.9Z"/><path d="M12 11v6"/><path d="m9.5 13.5 2.5-2.5 2.5 2.5"/></svg>';
-const DRIVE={state:'idle', configured:false, ok:false, email:'', name:'', reason:'', at:0};
+const DRIVE={state:'idle', configured:false, ok:false, email:'', name:'', reason:'', detail:'', at:0};
 async function driveStatus(force){
   if(typeof Backend==='undefined'||Backend.mode!=='server'){ Object.assign(DRIVE,{state:'done',configured:false,ok:false,reason:'offline'}); return DRIVE; }
   if(!force&&DRIVE.state==='done'&&Date.now()-DRIVE.at<5*60*1000) return DRIVE;
   if(DRIVE.pending) return DRIVE.pending;
   DRIVE.state='checking';
   DRIVE.pending=api('/drive?check=1').then(r=>{
-    Object.assign(DRIVE,{configured:!!r.configured, ok:!!r.ok, email:String(r.email||''), name:String(r.name||''), reason:String(r.reason||'')});
-  }).catch(()=>{ Object.assign(DRIVE,{configured:false,ok:false}); }).then(()=>{ DRIVE.state='done'; DRIVE.at=Date.now(); DRIVE.pending=null; return DRIVE; });
+    const reason=String(r.reason||'')||(r.configured?'':'not_configured');
+    Object.assign(DRIVE,{configured:!!r.configured, ok:!!r.ok, email:String(r.email||''), name:String(r.name||''), reason, detail:String(r.detail||'')});
+  }).catch(()=>{ Object.assign(DRIVE,{configured:false,ok:false,reason:'failed',detail:''}); }).then(()=>{ DRIVE.state='done'; DRIVE.at=Date.now(); DRIVE.pending=null; return DRIVE; });
   return DRIVE.pending;
 }
 function driveProblem(reason,email){
@@ -7730,7 +7768,7 @@ async function creatorExport(){
       lb.setAttribute('aria-pressed',String(d.local));
       lb.disabled=DRIVE.state==='done'&&!DRIVE.ok;
     });
-    const warn=checking?'Checking the Shared Drive…':!DRIVE.ok?'Shared Drive unavailable: '+driveProblem(DRIVE.reason,DRIVE.email):'';
+    const warn=checking?'Checking the Shared Drive…':!DRIVE.ok?'Shared Drive unavailable: '+(DRIVE.detail||driveProblem(DRIVE.reason,DRIVE.email)):'';
     m.querySelectorAll('.ce-drive-warning').forEach(el=>{ el.textContent=warn; });
     const label=d.drive&&d.local?'Drive + download':d.drive?'Save to Drive':d.local?'Download':'Choose where to save';
     $('#ceSaveLabel',m).textContent=label;
@@ -7787,7 +7825,7 @@ async function creatorExport(){
       }catch(e){
         const reason=e&&(e.error||e.code)||'failed';
         if(reason==='unauthorized'){ msg.textContent='The studio passcode was not accepted.'; done(); return; }
-        msg.textContent=(localDone?'Downloaded to this device, but the Shared Drive save failed. ':'')+driveProblem(reason,e&&e.email||DRIVE.email);
+        msg.textContent=(localDone?'Downloaded to this device, but the Shared Drive save failed. ':'')+((e&&e.detail)||driveProblem(reason,e&&e.email||DRIVE.email));
         $('#ceSaveLabel',m).textContent='Retry Shared Drive';
         delete button.dataset.busy; button.disabled=false; back.disabled=false;
         if(reason==='no_access'||reason==='needs_shared_drive'){ DRIVE.at=0; }
@@ -7832,8 +7870,8 @@ document.addEventListener('click',async e=>{
   if(b.dataset.creatorPage!==undefined){clearTimeout(fillT);commit();goPage(+b.dataset.creatorPage);C.field='';renderCreator();return;}
   if(b.dataset.issueLayer){clearTimeout(fillT);commit();goPage(+b.dataset.issuePage);C.field=b.dataset.issueLayer;C.reviewTab=b.dataset.issueTab;C.drawer=true;renderCreator();if(C.reviewTab==='text')$('#c-text-'+C.field)?.focus();else $('#creatorPanel').scrollIntoView({block:'nearest'});return;}
   if(b.dataset.creatorPhoto){pendingSlot=b.dataset.creatorPhoto;$('#fileSlot').click();return;}
-  if(b.dataset.textSize){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){L.size=clamp(Math.round((L.size+Number(b.dataset.textSize))*10)/10,8,250);designSize.set(L.id,L.size);if(layerRole(L)==='headline'||layerRole(L)==='dek')seatSubheading(S.doc.pages[S.doc.page]);commit();scheduleRender();creatorRefreshInputs();}return;}
-  if(b.dataset.textFit){const L=S.doc.layers.find(l=>l.id===b.dataset.textFit);if(L){const tight=fitFilledText([L],S.doc.layers,S.doc.w,S.doc.h);commit();scheduleRender();creatorRefreshInputs();if(tight.length)toast(tight[0]);}return;}
+  if(b.dataset.textSize){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){const delta=Number(b.dataset.textSize)||0;L.size=clamp(Math.round((L.size+delta)*10)/10,8,250);designSize.set(L.id,L.size);if(layerRole(L)==='dek')L.sized=true;if(layerRole(L)==='headline'||layerRole(L)==='dek')seatSubheading(S.doc.pages[S.doc.page]);commit();scheduleRender();creatorRefreshInputs();}return;}
+  if(b.dataset.textFit){const L=S.doc.layers.find(l=>l.id===b.dataset.textFit);if(L){delete L.sized;const tight=fitFilledText([L],S.doc.layers,S.doc.w,S.doc.h);commit();scheduleRender();creatorRefreshInputs();if(tight.length)toast(tight[0]);}return;}
   if(b.dataset.catPick){pickCategory(b.dataset.catPick);return;}
   if(b.dataset.tagPick!=null){toggleTopicTag(b.dataset.tagPick,b);return;}
   if(b.dataset.altHeadline!=null){applyAltHeadline(+b.dataset.altHeadline);return;}
@@ -7872,7 +7910,7 @@ document.addEventListener('input',e=>{
   if(el.id==='creatorArticle'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.article=el.value;const c=$('#articleCount');if(c)c.textContent=articleWords(el.value)+' words';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
   if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint&&C.inputMode==='ai')hint.textContent=url?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.';{const sc=$('#sourceCount');sc.textContent=el.value.length.toLocaleString()+' / 12,000';sc.hidden=el.value.length<9000;}const next=$('#creatorNext');if(next&&!C.busy)next.innerHTML=creatorActionInner();creatorPersist();}
   if(el.id==='creatorTemplateSearch'){C.query=el.value;renderCreatorTemplates();}
-  if(el.dataset.creatorText){if(!el.isConnected)return;if(tagTextLock&&el.dataset.creatorText===tagTextLock.id&&document.activeElement!==el&&performance.now()-tagTextLock.at<400)return;const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline')seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
+  if(el.dataset.creatorText){if(!el.isConnected)return;if(tagTextLock&&el.dataset.creatorText===tagTextLock.id&&document.activeElement!==el&&performance.now()-tagTextLock.at<400)return;const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline'||(layerRole(L)==='dek'&&L.sized))seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
   if(el.id==='creatorCaption'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.caption=el.value;const c=$('#captionCount');if(c)c.textContent=el.value.length+' / 2,200';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
   if(el.dataset.censorStrength){const L=S.doc.layers.find(l=>l.id===el.dataset.layer);if(L){L[el.dataset.censorStrength]=+el.value;el.nextElementSibling.textContent=el.value+'px';scheduleRender();renderCreatorPreview();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);}}
   if(el.dataset.photoProp){const L=S.doc.layers.find(l=>l.id===el.dataset.layer);if(L){L[el.dataset.photoProp]=+el.value;el.nextElementSibling.textContent=Math.round(+el.value*100)+'%';scheduleRender();}}

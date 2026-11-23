@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { driveErrorDetail } from './scoop-drive';
 
 // In-memory stand-in for the shared drive.
 type Item = { id: string; name: string; mimeType: string; parents: string[]; body?: string; trashed?: boolean };
@@ -66,6 +67,27 @@ beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response('bytes of ' + url.split('/').pop()));
 });
 
+describe('driveErrorDetail', () => {
+  it('explains a bad private key, a disabled API, and a missing folder without echoing the key', () => {
+    const pem = driveErrorDetail({
+      message: 'error:1E08010C:DECODER routines::unsupported -----BEGIN PRIVATE KEY-----\nMIIEsecretkeymaterial\n-----END PRIVATE KEY-----',
+    });
+    const disabled = driveErrorDetail({
+      code: 403,
+      message: 'Google Drive API has not been used in project 123 before or it is disabled.',
+      response: { data: { error: 'accessNotConfigured', error_description: 'SERVICE_DISABLED' } },
+    });
+    const missing = driveErrorDetail({ code: 404, message: 'File not found: root.' });
+    expect(pem).toMatch(/private key could not be read/);
+    expect(disabled).toMatch(/Google Drive API is turned off/);
+    expect(disabled).toContain('SERVICE_DISABLED');
+    expect(missing).toMatch(/Content manager/);
+    expect(missing).toContain('File not found');
+    for (const text of [pem, disabled, missing]) expect(text).not.toContain('BEGIN PRIVATE KEY');
+    expect(pem).not.toContain('MIIEsecretkeymaterial');
+  });
+});
+
 describe('POST /api/scoop/drive', () => {
   it('creates Year / Month / Day folders once and files the post there', async () => {
     const { POST } = await import('@/app/api/scoop/drive/route');
@@ -107,7 +129,7 @@ describe('POST /api/scoop/drive', () => {
     store.fail = { code: 404, message: 'File not found: root.' };
     const r = await POST(req({ ts: Date.now(), files: [{ name: 'x.png', url: TMP + 'x.png' }] }));
     expect(r.status).toBe(403);
-    expect(await r.json()).toEqual({ error: 'no_access', email: 'scoop@proj.iam.gserviceaccount.com' });
+    expect(await r.json()).toMatchObject({ error: 'no_access', email: 'scoop@proj.iam.gserviceaccount.com', detail: expect.stringContaining('Content manager') });
     expect(deleted).toEqual([TMP + 'x.png']);
   });
 
@@ -116,7 +138,7 @@ describe('POST /api/scoop/drive', () => {
     delete process.env.SCOOP_DRIVE_FOLDER_ID;
     expect((await POST(req({ ts: 1, files: [] }))).status).toBe(503);
     const g = await GET(new (require('next/server').NextRequest)('http://x/api/scoop/drive?check=1'));
-    expect(await g.json()).toEqual({ configured: false });
+    expect(await g.json()).toEqual({ configured: false, ok: false, reason: 'not_configured' });
   });
 
   it('status check confirms access to the shared drive', async () => {

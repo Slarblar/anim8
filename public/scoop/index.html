@@ -6264,26 +6264,34 @@ function webEmptyMessage(){ return 'Nothing is included in the website image, so
 function slotText(...keys){ const L=S.doc.layers.find(l=>l.type==='text'&&l.slot&&keys.some(k=>l.slot.toLowerCase().includes(k))); return L?String(L.upper?L.text.toUpperCase():L.text).replace(/\s*\n\s*/g,' ').trim():''; }
 const SEO_SKIP=new Set(['a','an','the','and','or','of','to','in','on','for','after','with','from','at','by','as','is','are','was','were','be','been','this','that','into','over','under','their','his','her','who','what','when','where','how','new','says','said','say','two','three','four','five','six','man','woman','teen','boy','girl','police','officers','officer','arrested','arrest','charged','charge','found','utah','salt','lake','city','county','slcscoop','news','update','breaking','following','during','amid','just','more','than','have','has','had','will','not','but','its','our','out','via','according','public','safety','community','people','person','suspect','suspects','victim','victims','officials','displaces','displaced']);
 function seoBits(text){ return String(text||'').toLowerCase().replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean); }
-function seoCity(){
-  const raw=captionRoleText('location').replace(/,?\s*(ut|utah)\.?$/i,'').trim();
-  return seoBits(raw).filter(w=>w!=='ut'&&w!=='utah').join('');
+function roleTextOn(doc, role){
+  const pages=doc&&doc.pages&&doc.pages.length?doc.pages:[{layers:(doc&&doc.layers)||[]}];
+  for(const page of pages){
+    const L=findRole((page&&page.layers)||[], role);
+    const text=L?String(L.upper?L.text.toUpperCase():L.text).replace(/\s*\n\s*/g,' ').trim():'';
+    if(!text) continue;
+    if(role==='headline'&&/write the headline/i.test(text)) continue;
+    if(role==='dek'&&/one or two sentences on what happened/i.test(text)) continue;
+    if(role==='source'&&/name here/i.test(text)) continue;
+    if(role==='tag'&&/public safety\s*\|/i.test(text)&&/slcscoop/i.test(text)) continue;
+    return text;
+  }
+  return '';
 }
-function seoTopic(){
-  const city=new Set(seoBits(captionRoleText('location').replace(/,?\s*(ut|utah)\.?$/i,'')));
-  const keep=w=>w.length>3&&!SEO_SKIP.has(w)&&!city.has(w)&&!/^\d+$/.test(w);
-  const words=seoBits(captionRoleText('headline')||slotText('headline','title')).filter(keep);
+function seoStemFrom(doc){
+  const place=roleTextOn(doc,'location').replace(/,?\s*(ut|utah)\.?$/i,'').trim();
+  const cityBits=seoBits(place);
+  const city=cityBits.filter(w=>w!=='ut'&&w!=='utah').join('');
+  const citySet=new Set(cityBits);
+  const keep=w=>w.length>3&&!SEO_SKIP.has(w)&&!citySet.has(w)&&!/^\d+$/.test(w);
+  const words=seoBits(roleTextOn(doc,'headline')).filter(keep);
   const strong=words.filter(w=>w.length>=8);
-  if(strong.length) return strong[0];
-  if(words.length) return words.slice(0,2).join('-');
-  const tag=seoBits(captionRoleText('tag')).filter(keep)[0];
-  return tag||'story';
-}
-function seoFileStem(){
-  const topic=seoTopic(), city=seoCity();
+  const topic=strong.length?strong[0]:words.length?words.slice(0,2).join('-'):(seoBits(roleTextOn(doc,'tag')).filter(keep)[0]||'story');
   const parts=[topic,'slcscoop'];
   if(city&&city!==topic) parts.push(city);
   return parts.join('-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,80).replace(/-+$/,'')||'slcscoop';
 }
+function seoFileStem(){ return seoStemFrom(S.doc); }
 function defaultName(){ return seoFileStem(); }
 async function saveFile(filename,data){
   if(!cap.downloads) return false;
@@ -7332,7 +7340,8 @@ async function creatorCreatePost(){
     C.generated=true;C.step=2;C.drawer=true;C.field='';C.reviewTab='text';C.message=notes;
     if(omitted.length)C.message='This layout has no field for '+[...new Set(omitted)].join(', ')+'. That copy is kept in your original and will carry into a compatible template.';
     else if(C.inputMode==='final'&&parsed.length<S.doc.pages.length)C.message='Add the remaining page copy using the page arrows. Your pasted wording has been preserved.';
-    S.doc.name=slotText('headline','title','quote').slice(0,70)||'New post';commit();creatorPersist();renderLayers();renderProps(true);scheduleRender();window.scrollTo({top:0,behavior:'instant'});
+    const stem=seoStemFrom(S.doc);
+    S.doc.name=stem&&stem!=='story-slcscoop'?stem:(slotText('headline','title','quote').slice(0,70)||'New post');commit();creatorPersist();renderLayers();renderProps(true);scheduleRender();window.scrollTo({top:0,behavior:'instant'});
   }catch(e){console.error('SCOOP_DRAFT', e&&(e.stack||e.message)||e, e&&e.code, e&&e.status);C.error=true;C.message=e?.name==='AbortError'?'Drafting cancelled. Your copy is safe.':e?.code==='not_configured'?'AI drafting needs your team’s website connection. Use team copy here, or open this tool on your website.':e?.code==='rate_limited'?'Too many drafts at once. Try again shortly.':e?.code==='too_many_slots'?'This template has more than 20 text fields. Use team copy or simplify the template.':e?.code==='no_fields'?'No usable copy came back. Add more detail and try again.':'Could not draft the post. Your story is saved; please try again.';}
   finally{creatorJobStop();C.busy=false;C.ctrl=null;renderCreator();}
 }
@@ -7380,15 +7389,10 @@ function creatorRefreshInputs(){
 function captionRoleText(role){
   const pages=S.doc&&S.doc.pages&&S.doc.pages.length?S.doc.pages:[{layers:(S.doc&&S.doc.layers)||[]}];
   const first=pages[S.doc.page]||pages[0];
-  for(const page of [first].concat(pages)){
-    const L=findRole((page&&page.layers)||[],role);
-    const text=L?String(L.upper?L.text.toUpperCase():L.text).replace(/\s*\n\s*/g,' ').trim():'';
-    if(!text) continue;
-    if(role==='headline'&&/write the headline/i.test(text)) continue;
-    if(role==='dek'&&/one or two sentences on what happened/i.test(text)) continue;
-    if(role==='source'&&/name here/i.test(text)) continue;
-    if(role==='tag'&&/public safety\s*\|/i.test(text)&&/slcscoop/i.test(text)) continue;
-    return text;
+  const ordered=first?[first].concat(pages.filter(p=>p!==first)):pages;
+  for(const page of ordered){
+    const text=roleTextOn({pages:[page]}, role);
+    if(text) return text;
   }
   return '';
 }
@@ -7466,7 +7470,13 @@ function archiveDayLabel(ts){
 function archiveCopy(doc){
   const layers=(doc.pages&&doc.pages[0]&&doc.pages[0].layers)||[];
   const pick=re=>{ const L=layers.find(l=>l.type==='text'&&l.slot&&re.test(l.slot)); return L?String(L.upper?String(L.text||'').toUpperCase():L.text||'').replace(/\s*\n\s*/g,' ').trim():''; };
-  return {headline:pick(/headline|title/i).slice(0,200), dek:pick(/dek|sub/i).slice(0,300)};
+  return {headline:(roleTextOn(doc,'headline')||pick(/headline|title/i)).slice(0,200), dek:(roleTextOn(doc,'dek')||pick(/dek|sub/i)).slice(0,300)};
+}
+function archiveTitle(it){
+  const name=String(it&&it.name||'').trim();
+  if(name&&name!=='story-slcscoop') return name;
+  const head=String(it&&it.headline||'').trim();
+  return head&&head!=='Untitled post'?head:'Untitled post';
 }
 // The post as it will be stored: device-only photos swapped for their uploaded copies when there are any.
 function archiveDoc(meta){
@@ -7514,13 +7524,15 @@ async function archivePostNow(){
   }
   meta.assets=[...assets];
   const {doc}=archiveDoc(meta);
+  const name=seoStemFrom(doc);
+  if(name&&name!=='story-slcscoop'){ doc.name=name; S.doc.name=name; }
   const hash=hashText(JSON.stringify(doc));
   if(meta.saved&&meta.hash===hash) return {id:meta.id,unchanged:true};
   const now=Date.now();
   if(!meta.id){ meta.id=now.toString(36)+uid().replace(/[^A-Za-z0-9_-]/g,''); meta.createdAt=now; }
   const edits=meta.saved?(meta.edits||0)+1:0;
   const copy=archiveCopy(doc);
-  const summary={headline:copy.headline, dek:copy.dek, thumb:thumbData(S.doc.pages[0],320), createdAt:meta.createdAt, updatedAt:now, edits, pages:(doc.pages||[]).length, template:S.doc.templateName||'', link:(C.link&&C.link.url)||'', assets:meta.assets, drive:meta.drive||null};
+  const summary={name, headline:copy.headline||name, dek:copy.dek, thumb:thumbData(S.doc.pages[0],320), createdAt:meta.createdAt, updatedAt:now, edits, pages:(doc.pages||[]).length, template:S.doc.templateName||'', link:(C.link&&C.link.url)||'', assets:meta.assets, drive:meta.drive||null};
   const full={doc, creator:{source:C.source, teamCopy:C.teamCopy, inputMode:C.inputMode, link:C.link||null}, createdAt:meta.createdAt, updatedAt:now};
   if(JSON.stringify(full).length>900000) full.creator={inputMode:C.inputMode, link:C.link||null};
   if(JSON.stringify(full).length>1000000) throw new Error('this post is too large to archive');
@@ -7564,7 +7576,7 @@ async function openArchive(){
   const openId=S.doc&&S.doc.archive&&S.doc.archive.saved?S.doc.archive.id:'';
   const draw=()=>{
     const q=$('#arSearch',m).value.trim().toLowerCase();
-    const shown=items.filter(it=>!q||(String(it.headline||'')+' '+String(it.dek||'')).toLowerCase().includes(q));
+    const shown=items.filter(it=>!q||(archiveTitle(it)+' '+String(it.headline||'')+' '+String(it.dek||'')).toLowerCase().includes(q));
     if(!items.length){ $('#arList',m).innerHTML='<p class="note ar-empty">Nothing here yet. Posts appear after you share or download them.</p>'; return; }
     if(!shown.length){ $('#arList',m).innerHTML='<p class="note ar-empty">No headlines match that search.</p>'; return; }
     const groups=new Map();
@@ -7576,7 +7588,7 @@ async function openArchive(){
       if(it.edits) bits.push('Edited '+(it.edits===1?'once':it.edits+' times')+(it.updatedAt?' · last '+archiveWhen(it.updatedAt):''));
       if(it.pages>1) bits.push(it.pages+' pages');
       if(left<=2) bits.push(left<=1?'Removed within a day':'Removed in 2 days');
-      const title=String(it.headline||'').trim()||'Untitled post';
+      const title=archiveTitle(it);
       return `<li class="ar-item${it.id===openId?' is-open':''}"><button type="button" class="ar-open" data-ar-open="${esc(it.id)}"><span class="ar-thumb">${it.thumb?`<img src="${esc(it.thumb)}" alt="" loading="lazy" decoding="async">`:''}</span><span class="ar-text"><b>${esc(title)}</b><small>${it.id===openId?'<span class="ar-badge">Open now</span>':''}${esc(bits.join(' · '))}</small></span></button>${it.drive&&/^https:\/\/drive\.google\.com\//.test(it.drive.folderUrl||'')?`<a class="ar-drive" href="${esc(it.drive.folderUrl)}" target="_blank" rel="noopener" aria-label="Open ${esc(title)} in the Shared Drive" title="Open in the Shared Drive">${DRIVE_SVG}</a>`:''}<button type="button" class="ar-del" data-ar-del="${esc(it.id)}" aria-label="Remove ${esc(title)} from the archive">${TRASH_SVG}</button></li>`;
     }).join('')}</ul></section>`).join('');
   };
@@ -7587,12 +7599,24 @@ async function openArchive(){
     if(o){ const it=items.find(x=>x.id===o.dataset.arOpen); if(it) openArchived(it,m); return; }
     if(!d) return;
     const it=items.find(x=>x.id===d.dataset.arDel); if(!it) return;
-    const ok=await modalAsk(m,'Remove this post from the archive?','“'+(String(it.headline||'').trim()||'Untitled post')+'” will be deleted for the whole team. Files you already downloaded are not affected.','Remove');
+    const ok=await modalAsk(m,'Remove this post from the archive?','“'+archiveTitle(it)+'” will be deleted for the whole team. Files you already downloaded are not affected.','Remove');
     if(!m.isConnected||!ok) return;
     try{ await removeArchived(it); items=items.filter(x=>x.id!==it.id); draw(); toast('Removed from the Archive.'); }
     catch(err){ toast('Could not remove it. Try again.',true); }
   });
   draw();
+  Promise.all(items.map(async it=>{
+    if(it.name&&it.name!=='story-slcscoop') return;
+    let doc=S.doc&&S.doc.archive&&S.doc.archive.id===it.id?S.doc:null;
+    if(!doc){ try{ const rec=await cap.db.doc('archiveposts/'+it.id).get(); doc=rec&&rec.doc; }catch(e){} }
+    if(!doc||!m.isConnected) return;
+    const name=seoStemFrom(doc);
+    if(!name||name==='story-slcscoop') return;
+    it.name=name;
+    if(!it.headline) it.headline=roleTextOn(doc,'headline').slice(0,200);
+    const data=Object.assign({}, it); delete data.id;
+    cap.db.doc('archive/'+it.id).set(data).catch(()=>{});
+  })).then(()=>{ if(m.isConnected) draw(); });
 }
 async function openArchived(it, host){
   if(C.busy) return;

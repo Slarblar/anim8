@@ -999,11 +999,8 @@ html:root .toast.err{background:var(--c-error-bg);color:var(--c-error);border:1p
   #creator button:not(:disabled):active,
   .studio-nav button:not(:disabled):active,
   body[data-workspace=creator] .modal button:not(:disabled):active{transform:none}
-  #creator[data-step="0"] .c-panel{animation:studio-panel-in var(--base) var(--ease) both}
-  #creator[data-step="2"] .c-panel{animation:studio-drawer-in var(--slow) var(--ease) both}
-  #creator .review-body:not([hidden]){animation:studio-panel-in var(--base) var(--ease) both}
-  .scrim{animation:studio-fade-in var(--base) var(--ease) both}
-  .scrim .modal{animation:studio-modal-in var(--base) var(--ease) both}
+  #creator[data-step="0"] .c-panel.is-entering{animation:studio-panel-in var(--base) var(--ease) both}
+  #creator[data-step="2"] .c-panel.is-entering{animation:studio-drawer-in var(--slow) var(--ease) both}
   .toast:not([hidden]){animation:studio-toast-in var(--base) var(--ease) both}
   #creator .story-picks.is-loading .story-options:after,
   html:root .c-progress-track:after{animation:studio-shimmer calc(var(--slow) * 5) var(--ease) infinite}
@@ -1106,10 +1103,8 @@ html:root body .modal.export-sheet{width:min(560px,100%);gap:12px;padding-bottom
 html:root body .modal.export-sheet .ce-head{justify-content:space-between;align-items:flex-start;flex-wrap:nowrap;gap:12px}
 html:root body .modal.export-sheet .ce-titles{min-width:0}
 html:root body .modal.export-sheet .ce-kicker{margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted,var(--muted))}
-html:root body .modal.export-sheet .ce-step{display:flex;flex-direction:column;gap:12px;animation:ceStepIn .18s ease-out}
+html:root body .modal.export-sheet .ce-step{display:flex;flex-direction:column;gap:12px}
 html:root body .modal.export-sheet .ce-step[hidden]{display:none}
-@keyframes ceStepIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){html:root body .modal.export-sheet .ce-step{animation:none}}
 html:root body .modal.export-sheet .ce-web-stage{position:relative;display:flex;align-items:center;justify-content:center;padding:8px;min-height:140px;border-radius:10px;background:#111112 repeating-conic-gradient(#19191a 0 25%,#111112 0 50%) 0 0/16px 16px}
 html:root body .modal.export-sheet #ceWebCanvas{display:block;border-radius:3px;box-shadow:0 6px 20px rgba(0,0,0,.35);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 html:root body .modal.export-sheet #ceWebCanvas[hidden]{display:none}
@@ -1188,6 +1183,8 @@ html:root body .modal.archive-sheet .ar-del{flex:none;width:48px;min-height:48px
 html:root body .modal.archive-sheet .ar-del:hover{color:var(--c-red,#ed2224)}
 html:root body .modal.archive-sheet .ar-del svg{width:17px;height:17px}
 html:root body .modal.archive-sheet .ar-foot{margin:0}
+.confirm-dim{position:absolute;inset:0;z-index:3;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.4)}
+.confirm-dim .modal{width:min(420px,100%);margin:0}
 
 /* ---------- Quick edits: compact photo + censor tools ---------- */
 #creator .pt-bar{display:flex;align-items:center;gap:6px;padding:10px 0 6px;min-width:0}
@@ -4419,7 +4416,7 @@ window.addEventListener('keydown',e=>{
   const mod=e.ctrlKey||e.metaKey;
   if(C.workspace==='creator'){
     if($('#creatorJob')){ if(e.key==='Escape'){ e.preventDefault(); C.ctrl?.abort(); } return; }
-    if($('#modalRoot').firstChild){if(e.key==='Escape')closeModal();return;}
+    if($('#modalRoot').firstChild){if(e.key==='Escape'){ const ask=$('#modalRoot .confirm-dim [data-ask="0"]'); if(ask) ask.click(); else closeModal(); } return;}
     if(isTyping())return;
     if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();renderCreator();}
     else if(mod&&e.key.toLowerCase()==='y'){e.preventDefault();redo();renderCreator();}
@@ -5226,7 +5223,9 @@ function pickBadge(key){
   const texts=badgeTextLayers(page);
   for(const L of texts){ L.text=word; fitBadgeWidth(L); }
   if(!swapped&&!texts.length) return;
-  commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
+  commit(); scheduleRender();
+  const sel=$('#creatorBadge');
+  if(C.workspace==='creator'&&(!sel||sel.value!==key)) renderCreator();
 }
 function pickCategory(id){
   const page=S.doc.pages[S.doc.page];
@@ -5238,7 +5237,10 @@ function pickCategory(id){
   const primary=findRole(page.layers,'category');
   if(next&&page.zonesCustom&&primary){ const zone=zoneFor(page,'category'); if(zone) fitOneLine(primary,zone,'category'); }
   S.doc.ai=Object.assign({headlines:[],chosen:0},S.doc.ai,{category:next,categoryReason:next?'Chosen by you.':''});
-  commit(); scheduleRender(); if(C.workspace==='creator') renderCreator();
+  commit(); scheduleRender();
+  if(C.workspace!=='creator') return;
+  document.querySelectorAll('[data-cat-pick]').forEach(b=>b.setAttribute('aria-pressed',String(tagKey(b.dataset.catPick)===next)));
+  const reason=document.querySelector('.cat-reason'); if(reason) reason.textContent=next?'Chosen by you.':'';
 }
 let lastTagToggle={key:'',at:0}, tagTextLock=null;
 function paintTagPicks(tags){
@@ -5265,7 +5267,8 @@ function writeTopicTags(page, tags){
     const count=$('#c-count-'+shown.id); if(count) count.textContent=el.value.length+' characters';
   });
   commit(); scheduleRender();
-  if(C.workspace==='creator') requestAnimationFrame(()=>{ if(C.workspace==='creator') renderCreator(); });
+  const have=new Set([...document.querySelectorAll('[data-tag-pick]')].map(b=>tagKey(b.dataset.tagPick)));
+  if(C.workspace==='creator'&&tags.some(t=>t!=='SLCSCOOP'&&!have.has(t))) requestAnimationFrame(()=>{ if(C.workspace==='creator') renderCreator(); });
 }
 function toggleTopicTag(tag, button){
   const page=S.doc.pages[S.doc.page], L=tagLineLayer(page); if(!L){ toast('This template has no tag line.',true); return; }
@@ -5801,8 +5804,37 @@ async function saveSwatch(p){
 }
 
 /* ---------- modals ---------- */
-function openModal(html){ const r=$('#modalRoot'); r.innerHTML=`<div class="scrim" id="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="activeDialogTitle">${html}</div></div>`; $('#scrim').addEventListener('mousedown',e=>{ if(e.target.id==='scrim') closeModal(); }); r.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',closeModal)); const heading=r.querySelector('h2');if(heading)heading.id='activeDialogTitle';const f=r.querySelector('input,button'); f&&f.focus(); return r.firstChild; }
-function closeModal(){ $('#modalRoot').innerHTML=''; }
+let modalQuietUntil=0;
+function openModal(html, modalClass){
+  const r=$('#modalRoot');
+  const quiet=!!r.firstChild||performance.now()<modalQuietUntil;
+  const cls='modal'+(modalClass?' '+modalClass:'')+(quiet?' no-enter':'');
+  r.innerHTML=`<div class="scrim" id="scrim"><div class="${cls}" role="dialog" aria-modal="true">${html}</div></div>`;
+  const scrim=r.firstChild, openedAt=performance.now();
+  scrim.addEventListener('click',e=>{ if(e.target!==scrim||performance.now()-openedAt<350) return; closeModal(); });
+  r.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',ev=>{ ev.stopPropagation(); closeModal(); }));
+  const heading=r.querySelector('h2'); if(heading&&!heading.id) heading.id='activeDialogTitle';
+  const dialog=r.querySelector('.modal');
+  if(dialog){ dialog.tabIndex=-1; try{ dialog.focus({preventScroll:true}); }catch(err){} }
+  return scrim;
+}
+function closeModal(){ if(!$('#modalRoot').firstChild) return; modalQuietUntil=performance.now()+500; $('#modalRoot').innerHTML=''; }
+function modalAsk(host,title,description,label){
+  return new Promise(resolve=>{
+    let settled=false;
+    const dim=document.createElement('div');
+    dim.className='confirm-dim';
+    dim.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>${esc(title)}</h2><p class="note">${esc(description)}</p><div class="acts"><button type="button" class="btn" data-ask="0">Keep editing</button><button type="button" class="btn primary" data-ask="1">${esc(label)}</button></div></div>`;
+    const finish=value=>{ if(settled) return; settled=true; dim.remove(); resolve(value); };
+    dim.addEventListener('click',e=>{
+      if(e.target===dim){ e.stopPropagation(); finish(false); return; }
+      const b=e.target.closest('[data-ask]'); if(!b) return;
+      e.stopPropagation(); finish(b.dataset.ask==='1');
+    });
+    host.appendChild(dim);
+    const yes=dim.querySelector('[data-ask="1"]'); if(yes) yes.focus({preventScroll:true});
+  });
+}
 function confirmBox(msg,ok='Continue'){ return new Promise(res=>{ const m=openModal(`<h2>Replace the canvas?</h2><div class="note">${msg}</div><div class="acts"><button class="btn" id="cNo">Cancel</button><button class="btn primary" id="cYes">${ok}</button></div>`); $('#cNo',m).onclick=()=>{closeModal();res(false);}; $('#cYes',m).onclick=()=>{closeModal();res(true);}; $('#cYes',m).focus(); }); }
 async function guardDirty(){ if(!S.dirty) return true; return confirmBox('Your current post has changes that aren\'t saved as a template. Its draft will be replaced. Export it first if you still need it.','Replace'); }
 function openNew(){
@@ -5943,7 +5975,8 @@ async function refreshSavedThumbs(){
 async function builderTestSample(){
   const source=JSON.parse(JSON.stringify(S.doc.pages));let index=S.doc.page,seq=0;
   const m=openModal(`<div class="row" style="justify-content:space-between"><h2>Test with a sample story</h2><button class="btn ghost" data-close aria-label="Close sample test">${CI.x}</button></div><p class="note">Preview how this layout fills and fits. Your template is unchanged.</p><div class="sample-grid"><div><label class="label" for="sampleCopy">Sample copy</label><textarea id="sampleCopy" class="inp" rows="10">${esc(SAMPLE_COPY)}</textarea><div class="row"><button class="btn" id="sampleLong">Try a long headline</button><button class="btn primary" id="sampleUpdate">Update preview</button></div>${source.length>1?`<div class="fld"><label for="samplePage">Template page</label><select id="samplePage" class="sel">${source.map((p,i)=>`<option value="${i}" ${i===index?'selected':''}>Page ${i+1}</option>`).join('')}</select></div>`:''}<p class="note" id="sampleFit" role="status"></p><p class="note">Sample image: Alan Cressler / USGS · public domain.</p></div><div class="sample-frame"><canvas id="sampleCanvas" aria-label="Sample story preview"></canvas><span>SAMPLE · NOT A REAL STORY</span></div></div>`);
-  m.querySelector('.modal').classList.add('sample-modal');m.querySelector('[data-close]').onclick=closeModal;
+  m.querySelector('.modal').classList.add('sample-modal');
+  m.querySelector('[data-close]').onclick=closeModal;
   const update=async()=>{const token=++seq,p=await fitSample(templateSamplePage(source[index],$('#sampleCopy',m).value));if(!m.isConnected||token!==seq)return;const canvas=$('#sampleCanvas',m),scale=600/Math.max(p.w,p.h);canvas.width=Math.round(p.w*scale);canvas.height=Math.round(p.h*scale);renderDoc(canvas.getContext('2d'),p,{editor:true,scale});const notes=p.layers.map(l=>l.type==='text'?fitNote(l,p):'').filter(Boolean);$('#sampleFit',m).textContent=notes.length?notes.join(' '):'Sample copy fits the zones.';};
   $('#sampleUpdate',m).onclick=update;
   $('#sampleLong',m).onclick=()=>{$('#sampleCopy',m).value=SAMPLE_COPY.replace('A cleaner city starts with us','Salt Lake neighbors are coming together this weekend for a citywide cleanup and a fresh start for our shared public spaces');update();};
@@ -6627,7 +6660,8 @@ function creatorReviewHTML(){
 }
 function renderCreator(){
   if(!S.doc||C.workspace!=='creator')return;
-  $('#creator').dataset.step=String(C.step);$('#creator').dataset.drawer=String(C.drawer);$('#creator').dataset.tab=C.reviewTab||'text';$('#creator').dataset.censor=C.censorMode?'on':'off';
+  const root=$('#creator'), step=String(C.step), stepChanged=root.dataset.step!==step;
+  root.dataset.step=step;root.dataset.drawer=String(C.drawer);root.dataset.tab=C.reviewTab||'text';root.dataset.censor=C.censorMode?'on':'off';
   const fromArchive=C.step===2&&S.doc.archive&&S.doc.archive.opened;
   $('#creatorTitle').textContent=C.step===0?'What’s the story?':fromArchive?'Edit archived post':'Review your post';
   $('#creatorSubtitle').textContent=C.step===0?'Paste. Preview. Post.':fromArchive?'First exported '+archiveWhen(S.doc.archive.createdAt)+'. Export again to save your changes to the archive.':'A quick edit, then it’s ready to share.';
@@ -6635,7 +6669,9 @@ function renderCreator(){
   const panel=$('#creatorPanel'), kept=panel?panel.scrollTop:0;
   panel.innerHTML=C.step===0?creatorStoryHTML():creatorReviewHTML();
   if(panel) panel.scrollTop=kept;
-  $('#creatorActions').innerHTML=`${C.step===0?`<span class="save-caption">${CI.lock}<span>Saved on this device</span></span>`:'<button class="c-button c-back" id="creatorBack">'+CI.back+'Story</button>'}<button class="c-button primary" id="creatorNext" ${C.busy?'disabled':''}>${creatorActionInner()}</button>`;
+  if(stepChanged&&panel){ panel.classList.add('is-entering'); panel.addEventListener('animationend',()=>panel.classList.remove('is-entering'),{once:true}); }
+  const actions=`${C.step===0?`<span class="save-caption">${CI.lock}<span>Saved on this device</span></span>`:'<button class="c-button c-back" id="creatorBack">'+CI.back+'Story</button>'}<button class="c-button primary" id="creatorNext" ${C.busy?'disabled':''}>${creatorActionInner()}</button>`;
+  const bar=$('#creatorActions'); if(bar.dataset.view!==actions){ bar.innerHTML=actions; bar.dataset.view=actions; }
   $('#creatorUndoRow').hidden=C.step!==2;$('#creatorPreviewTools').hidden=true;
   $('#creatorPreviewHint').textContent=C.step===2?'Your layout is locked. Your words are yours.':'Your saved layout is ready to fill.';
   creatorStatus();renderCreatorPreview();creatorReviewWarnings();
@@ -7301,7 +7337,7 @@ function creatorConfirm(title,description,label){return new Promise(resolve=>{
   const m=openModal(`<h2>${esc(title)}</h2><p class="note">${esc(description)}</p><div class="acts"><button class="btn" id="cCancel">Keep editing</button><button class="btn primary" id="cConfirm">${esc(label)}</button></div>`);
   const finish=value=>{if(settled)return;settled=true;closeModal();resolve(value);};
   $('#cCancel',m).onclick=()=>finish(false);$('#cConfirm',m).onclick=()=>finish(true);
-  m.addEventListener('mousedown',e=>{if(e.target===m)finish(false);});
+  m.addEventListener('click',e=>{if(e.target===m)finish(false);});
   const observer=new MutationObserver(()=>{if(!m.isConnected){observer.disconnect();if(!settled){settled=true;resolve(false);}}});observer.observe($('#modalRoot'),{childList:true});
 });}
 
@@ -7542,23 +7578,26 @@ async function openArchive(){
   };
   $('#arSearch',m).addEventListener('input',draw);
   m.addEventListener('click',async e=>{
+    if(e.target.closest('.confirm-dim')) return;
     const o=e.target.closest('[data-ar-open]'), d=e.target.closest('[data-ar-del]');
-    if(o){ const it=items.find(x=>x.id===o.dataset.arOpen); if(it) openArchived(it); return; }
-    if(d){
-      const it=items.find(x=>x.id===d.dataset.arDel); if(!it) return;
-      const ok=await creatorConfirm('Remove this post from the archive?','“'+(String(it.headline||'').trim()||'Untitled post')+'” will be deleted for the whole team. Files you already downloaded are not affected.','Remove');
-      if(ok){ try{ await removeArchived(it); toast('Removed from the Archive.'); }catch(err){ toast('Could not remove it. Try again.',true); } }
-      openArchive();
-    }
+    if(o){ const it=items.find(x=>x.id===o.dataset.arOpen); if(it) openArchived(it,m); return; }
+    if(!d) return;
+    const it=items.find(x=>x.id===d.dataset.arDel); if(!it) return;
+    const ok=await modalAsk(m,'Remove this post from the archive?','“'+(String(it.headline||'').trim()||'Untitled post')+'” will be deleted for the whole team. Files you already downloaded are not affected.','Remove');
+    if(!m.isConnected||!ok) return;
+    try{ await removeArchived(it); items=items.filter(x=>x.id!==it.id); draw(); toast('Removed from the Archive.'); }
+    catch(err){ toast('Could not remove it. Try again.',true); }
   });
   draw();
 }
-async function openArchived(it){
+async function openArchived(it, host){
   if(C.busy) return;
   const cur=S.doc&&S.doc.archive;
   if(!(cur&&cur.id===it.id)&&C.generated&&!archiveUnchanged()){
-    if(!await creatorConfirm('Open this archived post?','Your current post will be replaced. Download it first if you still need it.','Open post')){ openArchive(); return; }
-  } else closeModal();
+    const ask=host&&host.isConnected?modalAsk(host,'Open this archived post?','Your current post will be replaced. Download it first if you still need it.','Open post'):creatorConfirm('Open this archived post?','Your current post will be replaced. Download it first if you still need it.','Open post');
+    if(!await ask) return;
+  }
+  closeModal();
   toast('Opening the post…');
   let rec=null;
   try{ rec=await cap.db.doc('archiveposts/'+it.id).get(); }catch(e){}
@@ -7927,6 +7966,13 @@ function applyNight(on){
 document.addEventListener('click',async e=>{
   if(e.target.closest('#nightToggle')){ applyNight(!document.documentElement.hasAttribute('data-night')); return; }
   const workspace=e.target.closest('button[data-workspace]');if(workspace){creatorSwitchWorkspace(workspace.dataset.workspace);return;}
+  if(e.target.closest('#modalRoot')){
+    const mb=e.target.closest('button'); if(!mb||mb.disabled) return;
+    if(mb.dataset.templateFilter){C.filter=mb.dataset.templateFilter;document.querySelectorAll('[data-template-filter]').forEach(x=>x.setAttribute('aria-pressed',x===mb));renderCreatorTemplates();return;}
+    if(mb.dataset.favorite){const id=mb.dataset.favorite;C.favorites=C.favorites.includes(id)?C.favorites.filter(x=>x!==id):[...C.favorites,id];localStorage.setItem('scoop-builder:favorite-templates',JSON.stringify(C.favorites));renderCreatorTemplates();return;}
+    if(mb.dataset.creatorTemplate){const id=mb.dataset.creatorTemplate;closeModal();await creatorChooseTemplate(id);return;}
+    return;
+  }
   if(C.workspace!=='creator')return;
   if(e.target.id==='creatorFollow'||e.target.id==='creatorCorrection'){
     C.followUp=!!$('#creatorFollow')?.checked; C.correction=!!$('#creatorCorrection')?.checked;

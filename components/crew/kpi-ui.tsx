@@ -313,9 +313,15 @@ export function MonthlyBarChart({
                     className="pointer-events-none absolute inset-x-1.5 z-10"
                     style={{ bottom: `${goalPct}%` }}
                   >
-                    <div className="h-px w-full bg-white/80 shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
+                    <div
+                      className={`kpi-goal-line ${month.score >= (goal ?? 0) && grown ? 'kpi-goal-line--met' : ''}`}
+                    />
                     {isCurrent ? (
-                      <span className="absolute bottom-1 right-0 text-[9px] font-bold font-mono leading-none text-white/70">
+                      <span
+                        className={`absolute bottom-1 right-0 font-mono text-[9px] font-bold leading-none text-brand-cyan ${
+                          month.score >= (goal ?? 0) && grown ? 'kpi-goal-glow' : 'opacity-70'
+                        }`}
+                      >
                         {goal}
                       </span>
                     ) : null}

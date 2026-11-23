@@ -2179,6 +2179,36 @@ html.careers-page-active {
   animation: kpi-bar-cap-glow 2.4s ease-in-out infinite;
 }
 
+/** Goal mark on the monthly bars — brand cyan dashes, glowing once that month clears it. */
+.kpi-goal-line {
+  height: 2px;
+  width: 100%;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(56, 194, 214, 0.55) 0 7px,
+    transparent 7px 12px
+  );
+}
+
+.kpi-goal-line--met {
+  background-image: repeating-linear-gradient(90deg, #38c2d6 0 7px, transparent 7px 12px);
+  animation: kpi-goal-glow 2.4s ease-in-out infinite;
+}
+
+.kpi-goal-glow {
+  animation: kpi-goal-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes kpi-goal-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px rgba(56, 194, 214, 0.7));
+  }
+  50% {
+    filter: drop-shadow(0 0 7px rgba(56, 194, 214, 1));
+  }
+}
+
 /** Shared entrance animation for /crew dashboard cards — opacity only.
  *  Avoid translateY/transform: a parent with transform + a child with
  *  backdrop-filter (glass-card) causes a Chromium frosted "band" that clips
@@ -2272,6 +2302,8 @@ a.inline-flex .crew-hover-translate__stack {
   .kpi-dot-pulse,
   .kpi-bar-fill--active,
   .kpi-bar-cap--active,
+  .kpi-goal-line--met,
+  .kpi-goal-glow,
   .crew-fade-in-up {
     animation: none;
   }

@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AdminKpiPerson } from '@/lib/kpi-shared';
-import { performanceBandLabel, type PerformanceBand } from '@/lib/kpi-shared';
+import { kpiMonthlyGoal, performanceBandLabel, type AdminKpiPerson, type PerformanceBand } from '@/lib/kpi-shared';
 import { CountUp } from '@/components/crew/CountUp';
 import {
   MonthlyBarChart,
@@ -159,7 +158,10 @@ function KpiPersonRow({ person }: { person: AdminKpiPerson }) {
                     Past 3 months + current
                   </p>
                   <div className="mt-3">
-                    <MonthlyBarChart months={summary.lastThreeMonthly} />
+                    <MonthlyBarChart
+                      months={summary.lastThreeMonthly}
+                      goal={kpiMonthlyGoal(person)}
+                    />
                   </div>
                 </div>
               ) : null}

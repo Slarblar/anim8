@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminKpiPerson } from '@/lib/kpi-shared';
-import { performanceBandLabel } from '@/lib/kpi-shared';
+import { kpiMonthlyGoal, performanceBandLabel } from '@/lib/kpi-shared';
 import { CountUp } from '@/components/crew/CountUp';
 import {
   KpiLineChart,
@@ -163,7 +163,7 @@ export function AdminKpiProfile({
             <p className={crewSectionTitle}>Past 3 months + current</p>
             <p className={`${crewBody} mt-1`}>Total KPI score by month.</p>
             <div className="mt-6">
-              <MonthlyBarChart months={summary.lastThreeMonthly} />
+              <MonthlyBarChart months={summary.lastThreeMonthly} goal={kpiMonthlyGoal(summary)} />
             </div>
           </div>
 

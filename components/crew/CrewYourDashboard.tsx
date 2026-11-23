@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import type { PersonKPISummary } from '@/lib/kpi-shared';
+import { kpiMonthlyGoal, type PersonKPISummary } from '@/lib/kpi-shared';
 import { adminAlertError, adminBtnPrimary, adminCard } from '@/components/admin/admin-ui';
 import { localizeAsanaRating } from '@/lib/crew-asana-i18n';
 import { useCrewLanguage } from '@/lib/crew-language';
@@ -219,7 +219,7 @@ export function CrewYourDashboard() {
               <HoverTranslate en={crewT.en.dashboard.totalKpiByMonth} vn={crewT.vn.dashboard.totalKpiByMonth} />
             </p>
             <div className="mt-6">
-              <MonthlyBarChart months={kpi.lastThreeMonthly} />
+              <MonthlyBarChart months={kpi.lastThreeMonthly} goal={kpiMonthlyGoal(kpi)} />
             </div>
           </div>
         </div>

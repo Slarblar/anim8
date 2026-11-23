@@ -215,7 +215,14 @@ export function StatCard({
  * performance band (green -> yellow -> orange -> red, see `SCORE_BANDS`)
  * so anyone can tell at a glance whether they're trending up or slipping.
  */
-export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
+export function MonthlyBarChart({
+  months,
+  goal,
+}: {
+  months: PersonMonthlyKPI[];
+  /** Horizontal target on each bar. Full-time 50, part-time 40. */
+  goal?: number;
+}) {
   const [grown, setGrown] = useState(false);
 
   useEffect(() => {
@@ -236,6 +243,8 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
   // just because it was the highest of three similar months. 105 sits above Great (85+)
   // with headroom for standout months (doc §4 example: 105).
   const BAR_SCALE_MAX = KPI_CHART_SCALE_MAX;
+  const goalPct =
+    goal != null && goal > 0 ? Math.min(100, (goal / BAR_SCALE_MAX) * 100) : null;
 
   // Slow, deliberate "charging up" grow — cubic-bezier(0.16, 1, 0.3, 1) is a
   // true exponential ease-out (fast burst at the start, long slow tail at the
@@ -298,6 +307,20 @@ export function MonthlyBarChart({ months }: { months: PersonMonthlyKPI[] }) {
                     />
                   ) : null}
                 </div>
+
+                {goalPct != null ? (
+                  <div
+                    className="pointer-events-none absolute inset-x-1.5 z-10"
+                    style={{ bottom: `${goalPct}%` }}
+                  >
+                    <div className="h-px w-full bg-white/80 shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
+                    {isCurrent ? (
+                      <span className="absolute bottom-1 right-0 text-[9px] font-bold font-mono leading-none text-white/70">
+                        {goal}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               <span

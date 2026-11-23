@@ -3,6 +3,7 @@ import {
   buildStaffKpiCsv,
   describeKpiPull,
   describeStaffKpiPeriod,
+  kpiMonthlyGoal,
   kpiPullAgoLabel,
   parseStaffKpiPeriod,
   performanceBand,
@@ -131,6 +132,16 @@ describe('staffKpiSlice', () => {
     const slice = staffKpiSlice(person, describeStaffKpiPeriod({ kind: 'all' }, NOW), NOW);
     expect(slice.months.map((month) => month.month)).toEqual(['2026-01', '2026-10', '2026-11']);
     expect(slice.score).toBe(140);
+  });
+});
+
+describe('monthly goal line', () => {
+  it('uses 50 for full-time and 40 for part-time', () => {
+    expect(kpiMonthlyGoal({ employmentType: 'full_time', weeklyContractedHours: 40 })).toBe(50);
+    expect(kpiMonthlyGoal({ employmentType: 'part_time', weeklyContractedHours: 30 })).toBe(40);
+    expect(kpiMonthlyGoal({ employmentType: 'part_time', weeklyContractedHours: 40 })).toBe(40);
+    expect(kpiMonthlyGoal({ employmentType: 'contractor', weeklyContractedHours: 40 })).toBe(50);
+    expect(kpiMonthlyGoal({ employmentType: 'contractor', weeklyContractedHours: 20 })).toBe(40);
   });
 });
 

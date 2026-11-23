@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { PersonKPISummary } from '@/lib/kpi-shared';
+import { kpiMonthlyGoal, type PersonKPISummary } from '@/lib/kpi-shared';
 import { adminAlertError, adminBtnGhost, adminCard } from '@/components/admin/admin-ui';
 import { useCrewLanguage } from '@/lib/crew-language';
 import { crewT } from '@/lib/crew-translations';
@@ -189,7 +189,7 @@ export function CrewKpiSummary({
                 <HoverTranslate en={crewT.en.kpiPage.past3MonthsSub} vn={crewT.vn.kpiPage.past3MonthsSub} />
               </p>
               <div className="mt-6">
-                <MonthlyBarChart months={summary.lastThreeMonthly} />
+                <MonthlyBarChart months={summary.lastThreeMonthly} goal={kpiMonthlyGoal(summary)} />
               </div>
             </div>
           </div>

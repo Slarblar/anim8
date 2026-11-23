@@ -79,6 +79,24 @@ export const KPI_BONUS_MIN_SCORE = PERFORMANCE_BAND_MIN.good;
 /** Fixed chart ceiling (~1.2× Great threshold; doc §4 high-performer example: 105). */
 export const KPI_CHART_SCALE_MAX = 105;
 
+/** Monthly score people are aiming for. Part-time is a lower volume bar; full-time stays at 50. */
+export const KPI_GOAL_FULL_TIME = 50;
+export const KPI_GOAL_PART_TIME = 40;
+
+/**
+ * Goal line for the monthly bars. Part-time is always 40. Contractors follow
+ * the same hours rule as the crew schedule band: 40h+ counts as full-time.
+ */
+export function kpiMonthlyGoal(input: {
+  employmentType: 'full_time' | 'part_time' | 'contractor';
+  weeklyContractedHours: number;
+}): number {
+  if (input.employmentType === 'part_time') return KPI_GOAL_PART_TIME;
+  if (input.employmentType === 'full_time') return KPI_GOAL_FULL_TIME;
+  const hours = input.weeklyContractedHours > 0 ? input.weeklyContractedHours : 20;
+  return hours >= 40 ? KPI_GOAL_FULL_TIME : KPI_GOAL_PART_TIME;
+}
+
 /** Admin KPI reporting clock. Directory badges and staff reports share it. */
 export const KPI_REPORT_TIME_ZONE = 'America/Denver';
 

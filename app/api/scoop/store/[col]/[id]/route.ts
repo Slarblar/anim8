@@ -33,6 +33,36 @@ async function versionsOf(col: string, id: string) {
   return blobs.filter((b) => parseDocPath(b.pathname, col)?.id === id);
 }
 
+/** GET /api/scoop/store/:col/:id → the newest copy of one doc, as { id, ...data }. */
+export async function GET(req: NextRequest, ctx: Ctx) {
+  const bad = check(req, ctx);
+  if (bad) return bad;
+  const { col, id } = ctx.params;
+  try {
+    const versions = await versionsOf(col, id);
+    let best: { url: string; ts: number } | null = null;
+    for (const b of versions) {
+      const p = parseDocPath(b.pathname, col);
+      if (!p || p.id !== id) continue;
+      if (!best || p.ts > best.ts) best = { url: b.url, ts: p.ts };
+    }
+    if (!best) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    const r = await fetch(best.url, { cache: 'no-store' });
+    if (!r.ok) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    const data = await r.json();
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    return NextResponse.json({ id, ...data }, { headers: { 'cache-control': 'no-store' } });
+  } catch (error) {
+    if (blobNotConfigured(error)) {
+      return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+    }
+    console.error('scoop store read failed', error);
+    return NextResponse.json({ error: 'store_failed' }, { status: 500 });
+  }
+}
+
 /** PUT /api/scoop/store/:col/:id → create or replace a doc. */
 export async function PUT(req: NextRequest, ctx: Ctx) {
   const bad = check(req, ctx);

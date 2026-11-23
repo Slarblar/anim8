@@ -6371,7 +6371,11 @@ function makeDb(){
   async function getDoc(col,id){
     if(Backend.mode==='server'){
       try{ return await api(`/store/${col}/${id}`); }
-      catch(e){ if(e&&e.status===404) return null; throw e; }
+      catch(e){
+        // The list already loaded this doc. If the single-doc read is missing or misses it, use that copy.
+        try{ const all=await fetchCol(col); return (all||[]).find(d=>d&&d.id===id)||null; }
+        catch(err){ if(e&&e.status===404) return null; throw e; }
+      }
     }
     const rec=await ltx('docs','readonly',s=>s.get(col+'/'+id));
     return rec?Object.assign({id},rec.data):null;
@@ -7600,7 +7604,8 @@ async function openArchived(it, host){
   closeModal();
   toast('Opening the post…');
   let rec=null;
-  try{ rec=await cap.db.doc('archiveposts/'+it.id).get(); }catch(e){}
+  try{ rec=await cap.db.doc('archiveposts/'+it.id).get(); }
+  catch(e){ toast('Could not open this post. Check your connection and try again.',true); return; }
   if(!rec||!rec.doc||!Array.isArray(rec.doc.pages)){ toast('Could not open this post. It may have just been removed.',true); return; }
   clearTimeout(fillT);
   loadDoc(rec.doc);

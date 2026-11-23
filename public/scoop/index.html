@@ -1308,6 +1308,12 @@ html:root body .modal.export-sheet .ce-foot .ce-dest .btn[hidden]{display:none}
 #creator .heading-actions #creatorArchive span{display:inline}
 #creator .creator-heading>div:first-child{min-width:0}
 html:root body .modal.export-sheet .ce-drive-warning:empty{display:none}
+html:root body .modal.export-sheet .ce-save{display:flex;flex-direction:column;gap:8px}
+html:root body .modal.export-sheet .ce-save[hidden]{display:none}
+html:root body .modal.export-sheet .ce-bar{height:8px;border-radius:99px;background:#e4e4dc;overflow:hidden}
+html:root body .modal.export-sheet .ce-bar>span{display:block;height:100%;width:0;border-radius:99px;background:#e23b3b;transition:width .25s ease}
+html:root body .modal.export-sheet .ce-foot .btn svg{width:16px;height:16px;flex:none}
+@media (prefers-reduced-motion:reduce){html:root body .modal.export-sheet .ce-bar>span{transition:none}}
 </style>
 </head>
 <body data-workspace="creator">
@@ -6197,7 +6203,29 @@ function webBlockMessage(issue){
 }
 function webEmptyMessage(){ return 'Nothing is included in the website image, so that file was not saved.'; }
 function slotText(...keys){ const L=S.doc.layers.find(l=>l.type==='text'&&l.slot&&keys.some(k=>l.slot.toLowerCase().includes(k))); return L?String(L.upper?L.text.toUpperCase():L.text).replace(/\s*\n\s*/g,' ').trim():''; }
-function defaultName(){ return slug(slotText('headline','title')||S.doc.name); }
+const SEO_SKIP=new Set(['a','an','the','and','or','of','to','in','on','for','after','with','from','at','by','as','is','are','was','were','be','been','this','that','into','over','under','their','his','her','who','what','when','where','how','new','says','said','say','two','three','four','five','six','man','woman','teen','boy','girl','police','officers','officer','arrested','arrest','charged','charge','found','utah','salt','lake','city','county','slcscoop','news','update','breaking','following','during','amid','just','more','than','have','has','had','will','not','but','its','our','out','via','according','public','safety','community','people','person','suspect','suspects','victim','victims','officials','displaces','displaced']);
+function seoBits(text){ return String(text||'').toLowerCase().replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean); }
+function seoCity(){
+  const raw=captionRoleText('location').replace(/,?\s*(ut|utah)\.?$/i,'').trim();
+  return seoBits(raw).filter(w=>w!=='ut'&&w!=='utah').join('');
+}
+function seoTopic(){
+  const city=new Set(seoBits(captionRoleText('location').replace(/,?\s*(ut|utah)\.?$/i,'')));
+  const keep=w=>w.length>3&&!SEO_SKIP.has(w)&&!city.has(w)&&!/^\d+$/.test(w);
+  const words=seoBits(captionRoleText('headline')||slotText('headline','title')).filter(keep);
+  const strong=words.filter(w=>w.length>=8);
+  if(strong.length) return strong[0];
+  if(words.length) return words.slice(0,2).join('-');
+  const tag=seoBits(captionRoleText('tag')).filter(keep)[0];
+  return tag||'story';
+}
+function seoFileStem(){
+  const topic=seoTopic(), city=seoCity();
+  const parts=[topic,'slcscoop'];
+  if(city&&city!==topic) parts.push(city);
+  return parts.join('-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,80).replace(/-+$/,'')||'slcscoop';
+}
+function defaultName(){ return seoFileStem(); }
 async function saveFile(filename,data){
   if(!cap.downloads) return false;
   try{ await cap.downloads.save({filename,data}); return true; }
@@ -7568,15 +7596,15 @@ async function saveToDrive(files,ts,onStep){
 
 async function creatorExport(){
   clearTimeout(fillT);commit();
-  let pngFiles=[]; let generation=0; let captionJob=null; let captionText='';
+  let pngFiles=[]; let generation=0; let captionJob=null; let captionText=''; let saving=false;
   const multi=S.doc.pages.length>1;
-  const destBar=`<div class="ce-dest"><span class="ce-web-label">Save to</span><div class="seg-pills" role="group" aria-label="Save to"><button type="button" class="btn small" data-dest="drive" aria-pressed="false">${DRIVE_SVG}Shared Drive</button><button type="button" class="btn small" data-dest="local" aria-pressed="false">${CI.download}This device</button></div></div>`;
-  const m=openModal(`<div class="row ce-head"><div class="ce-titles"><p class="ce-kicker" id="ceKicker">Step 1 of 2</p><h2 id="ceTitle">Instagram post</h2></div><button class="btn ghost" data-close aria-label="Close export">${CI.x}</button></div>
+  const m=openModal(`<div class="row ce-head"><div class="ce-titles"><p class="ce-kicker" id="ceKicker">Export</p><h2 id="ceTitle">Save to Shared Drive</h2></div><button class="btn ghost" data-close aria-label="Close export">${CI.x}</button></div>
+  <div class="ce-save" id="ceSave" hidden><div class="ce-bar" id="ceBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Saving to the Shared Drive"><span></span></div></div>
   <section class="ce-step" data-ce-step="post">
     <img class="creator-export-preview" id="cePreview" alt="Final Instagram post preview">
     <div class="note" id="ceDimensions"></div><div class="note warn" id="ceWarning"></div><div class="note" role="status" id="ceMessage">Preparing the Instagram image…</div>
     <div class="note warn ce-drive-warning"></div>
-    <div class="export-main ce-foot">${destBar}<button class="btn" id="ceShare" hidden disabled>${CI.share}Share</button><button class="btn primary" id="ceNext" disabled>Next: website image</button></div>
+    <div class="export-main ce-foot"><button class="btn" id="ceShare" hidden disabled>${CI.share}Share</button><button class="btn" id="ceNext" disabled>Adjust website image</button><button class="btn" id="ceLocal" disabled>${CI.download}Download</button><button class="btn primary" id="ceDrive" disabled>${DRIVE_SVG}<span id="ceDriveLabel">Save to Shared Drive</span></button></div>
   </section>
   <section class="ce-step" data-ce-step="web" hidden>
     <div class="ce-web-stage" id="ceWebStage"><canvas id="ceWebCanvas" role="img" aria-label="Website image preview"></canvas><span class="ce-web-badge" id="ceWebDims"></span></div>
@@ -7586,7 +7614,7 @@ async function creatorExport(){
     <div class="photo-controls" id="ceWebControls">${[['zoom','Zoom',.5,4],['fx','Left / right',0,1],['fy','Up / down',0,1]].map(([k,label,min,max])=>`<label><span>${label}</span><input type="range" min="${min}" max="${max}" step=".01" data-web-prop="${k}" aria-label="Website image ${label.toLowerCase()}"><output></output></label>`).join('')}</div>
     <div class="note warn" id="ceWebWarning"></div>
     <div class="note warn ce-drive-warning" id="ceDriveWarning"></div><div class="note" role="status" id="ceWebMessage"></div>
-    <div class="export-main ce-foot">${destBar}<button class="btn" id="ceBack">Back</button><button class="btn primary" id="ceDownload" disabled>${CI.download}<span id="ceSaveLabel">Save</span></button></div>
+    <div class="export-main ce-foot"><button class="btn" id="ceBack">Back</button><button class="btn" id="ceLocalWeb" disabled>${CI.download}Download</button><button class="btn primary" id="ceDownload" disabled>${DRIVE_SVG}<span id="ceSaveLabel">Save to Shared Drive</span></button></div>
   </section>`);
   const modal=m.querySelector('.modal'); modal.classList.add('export-sheet'); modal.querySelector('h2').id='ceTitle'; modal.setAttribute('aria-labelledby','ceTitle');
   let localUrls=[];
@@ -7601,8 +7629,8 @@ async function creatorExport(){
   const seq=++generation;
   const setStep=step=>{
     m.querySelectorAll('[data-ce-step]').forEach(sec=>{ sec.hidden=sec.dataset.ceStep!==step; });
-    $('#ceKicker',m).textContent=step==='web'?'Step 2 of 2':'Step 1 of 2';
-    $('#ceTitle',m).textContent=step==='web'?'Website image':'Instagram post';
+    $('#ceKicker',m).textContent=step==='web'?'Optional':'Export';
+    $('#ceTitle',m).textContent=step==='web'?'Website image':'Save to Shared Drive';
     modal.scrollTop=0;
     if(step==='web') openWeb(); else $('#ceNext',m).focus();
   };
@@ -7620,10 +7648,11 @@ async function creatorExport(){
     const canShare=!!navigator.canShare&&navigator.canShare({files:pngs});
     $('#ceShare',m).hidden=!canShare; $('#ceShare',m).disabled=!canShare;
     $('#ceNext',m).disabled=false;
-    $('#ceMessage',m).textContent=canShare?'Share sends the PNG straight to Instagram. Next, check the website image, then download everything.':'Next, check the website image, then download everything.';
+    $('#ceMessage',m).textContent='Preview is ready. Save to the Shared Drive, then copy the caption.';
+    syncSave();
     $('#ceShare',m).onclick=async()=>{
-      try{ await navigator.share({files:pngs}); $('#ceMessage',m).textContent='Shared. The PNG is the one to post. Next, check the website image.'; archiveAfterExport(); }
-      catch(e){ $('#ceMessage',m).textContent=e.name==='AbortError'?'Sharing cancelled.':'Sharing is unavailable. Use Next, then Download all.'; }
+      try{ await navigator.share({files:pngs}); $('#ceMessage',m).textContent='Shared. Save to the Shared Drive when you are ready for the caption.'; archiveAfterExport(); }
+      catch(e){ $('#ceMessage',m).textContent=e.name==='AbortError'?'Sharing cancelled.':'Sharing is unavailable. Save to the Shared Drive instead.'; }
     };
     captionJob=ensureCaption().then(c=>{ captionText=c; return c; }).catch(()=>{ captionText=''; return ''; });
   }catch(e){
@@ -7694,8 +7723,8 @@ async function creatorExport(){
       const firstOK=S.doc.pages.findIndex(webOK);
       W.page=firstOK>=0?firstOK:0;
       webReady=true;
-      $('#ceDownload',m).disabled=false; syncDest();
-      $('#ceWebMessage',m).textContent=S.doc.pages.some(webOK)?'Only the photo, overlays and textures go to the website. Saves the Instagram PNG, this website image and a text file with the caption and article.':'Saves the Instagram PNG and a text file with the caption and article.';
+      syncSave();
+      $('#ceWebMessage',m).textContent=S.doc.pages.some(webOK)?'Only the photo, overlays and textures go to the website. Saving sends the Instagram PNG, this image, and the caption.':'Saving sends the Instagram PNG and the caption.';
     }
     renderPicks(); draw(false);
     (m.querySelector('[data-web-shape][aria-pressed=true]')||$('#ceDownload',m)).focus({preventScroll:true});
@@ -7751,45 +7780,38 @@ async function creatorExport(){
   let resizeT=0;
   function onResize(){ clearTimeout(resizeT); resizeT=setTimeout(()=>{ if(webReady&&!m.querySelector('[data-ce-step=web]').hidden) draw(false); },120); }
   addEventListener('resize',onResize);
-  // ---- where to save: SLC Scoop shared drive and/or this device ----
-  const prefs=savePrefs();
+  // Save to the Shared Drive is one action: render, upload with a progress bar, then the caption.
   let localDone=false, driveDone=null;
-  const dest=()=>({drive:prefs.drive&&DRIVE.ok, local:prefs.local||(DRIVE.state==='done'&&!DRIVE.ok)});
-  function syncDest(){
+  function setBar(pct,label){
+    const box=$('#ceSave',m); if(box) box.hidden=false;
+    const bar=$('#ceBar',m), n=Math.max(0,Math.min(100,Math.round(pct)));
+    if(bar){ bar.setAttribute('aria-valuenow',String(n)); const fill=bar.querySelector('span'); if(fill) fill.style.width=n+'%'; }
+    const msg=$('#ceMessage',m); if(msg) msg.textContent=label;
+    const web=$('#ceWebMessage',m); if(web) web.textContent=label;
+  }
+  function syncSave(){
     if(!m.isConnected) return;
-    const d=dest();
+    const ready=pngFiles.length>0&&!saving;
     const checking=DRIVE.state!=='done';
-    const title=checking?'Checking the Shared Drive…':DRIVE.ok?'Save into '+(DRIVE.name||'the shared drive')+' › year › month › post folder':driveProblem(DRIVE.reason,DRIVE.email);
-    m.querySelectorAll('[data-dest=drive]').forEach(db=>{
-      db.hidden=false; db.disabled=!DRIVE.ok;
-      db.setAttribute('aria-pressed',String(d.drive)); db.title=title;
-    });
-    m.querySelectorAll('[data-dest=local]').forEach(lb=>{
-      lb.setAttribute('aria-pressed',String(d.local));
-      lb.disabled=DRIVE.state==='done'&&!DRIVE.ok;
-    });
     const warn=checking?'Checking the Shared Drive…':!DRIVE.ok?'Shared Drive unavailable: '+(DRIVE.detail||driveProblem(DRIVE.reason,DRIVE.email)):'';
     m.querySelectorAll('.ce-drive-warning').forEach(el=>{ el.textContent=warn; });
-    const label=d.drive&&d.local?'Drive + download':d.drive?'Save to Drive':d.local?'Download':'Choose where to save';
-    $('#ceSaveLabel',m).textContent=label;
-    const btn=$('#ceDownload',m); if(btn&&webReady&&!btn.dataset.busy) btn.disabled=!(d.drive||d.local);
+    [$('#ceDrive',m),$('#ceDownload',m)].forEach(b=>{ if(!b) return; b.disabled=!ready||!DRIVE.ok; b.title=DRIVE.ok?'Save the post to the Shared Drive and open the caption':warn; });
+    [$('#ceLocal',m),$('#ceLocalWeb',m),$('#ceNext',m)].forEach(b=>{ if(b) b.disabled=!ready; });
+    const back=$('#ceBack',m); if(back) back.disabled=saving;
   }
-  m.addEventListener('click',e=>{
-    const b=e.target.closest('[data-dest]'); if(!b||b.disabled) return;
-    prefs[b.dataset.dest]=b.getAttribute('aria-pressed')!=='true'; setSavePrefs(prefs); syncDest();
-  });
-  driveStatus().then(syncDest); syncDest();
+  driveStatus().then(syncSave); syncSave();
   const driveStem=()=>{ const d=S.doc.archive&&S.doc.archive.drive; return d&&d.stem||stem; };
   const driveTs=()=>{ const a=S.doc.archive||{}; return (a.drive&&a.drive.ts)||a.createdAt||Date.now(); };
-  $('#ceDownload',m).onclick=async()=>{
-    const d=dest(); if(!d.drive&&!d.local) return;
-    const button=$('#ceDownload',m), back=$('#ceBack',m); button.disabled=true; back.disabled=true; button.dataset.busy='1';
-    const msg=$('#ceWebMessage',m);
-    const done=()=>{ delete button.dataset.busy; button.disabled=false; back.disabled=false; syncDest(); };
+  async function saveExport(where){
+    if(saving||!pngFiles.length) return;
+    if(where==='drive'&&!DRIVE.ok) return;
+    saving=true; syncSave();
+    const fail=(text)=>{ saving=false; setBar(0,text); const box=$('#ceSave',m); if(box) box.hidden=true; if(where==='drive'){ const a=$('#ceDriveLabel',m), b=$('#ceSaveLabel',m); if(a) a.textContent='Retry Shared Drive'; if(b) b.textContent='Retry Shared Drive'; } syncSave(); };
     const files=pngFiles.slice(); const notes=[];
     try{
-      msg.textContent='Rendering the website image…';
-      for(let i=0;i<S.doc.pages.length;i++){
+      const pages=S.doc.pages.length;
+      for(let i=0;i<pages;i++){
+        setBar(8+Math.round((i/Math.max(1,pages))*32), 'Rendering the website image…');
         const p=S.doc.pages[i], is=webIssues.get(p.id);
         if(is.blocked&&is.blocked.length){ notes.push(pageTag(i)+'website image skipped (redaction not over the photo).'); continue; }
         if(is.empty) continue;
@@ -7798,46 +7820,51 @@ async function creatorExport(){
         if(!m.isConnected) return;
         files.splice(files.findIndex(f=>f.name===stem+(multi?'-'+(i+1):'')+'.png')+1,0,{name:stem+(multi?'-'+(i+1):'')+'.'+web.ext, blob:web.blob, web:true});
       }
-      if(!captionText){ msg.textContent='Writing the Instagram caption…'; await captionJob; if(!m.isConnected) return; }
+      if(!captionText){ setBar(42,'Writing the Instagram caption…'); await captionJob; if(!m.isConnected) return; }
       files.push({name:stem+'.txt', blob:new Blob([postCopyTxt(captionText)],{type:'text/plain'})});
-    }catch(e){ msg.textContent='Could not prepare the website image. Try again.'; done(); return; }
-    // 1. This device
-    if(d.local&&!localDone){
-      msg.textContent='Saving to this device…';
+    }catch(e){ fail('Could not prepare the files. Try again.'); return; }
+    if(where==='local'&&!localDone){
+      setBar(55,'Saving to this device…');
       try{
-        for(const file of files){
-          const result=await saveFile(file.name,file.blob);
-          if(result==='declined'){ msg.textContent='Download cancelled.'; done(); return; }
-          if(result!==true){ msg.textContent='Download could not start. Try again, or go Back and press and hold the preview to save it.'; done(); return; }
+        for(let i=0;i<files.length;i++){
+          setBar(55+Math.round((i/files.length)*40), 'Saving to this device… '+(i+1)+' of '+files.length);
+          const result=await saveFile(files[i].name,files[i].blob);
+          if(result==='declined'){ fail('Download cancelled.'); return; }
+          if(result!==true){ fail('Download could not start. Try again.'); return; }
           await new Promise(r=>setTimeout(r,250));
         }
         localDone=true;
-      }catch(e){ msg.textContent='Download could not start. Try again, or go Back and press and hold the preview to save it.'; done(); return; }
+      }catch(e){ fail('Download could not start. Try again.'); return; }
     }
-    // 2. Shared drive. Corrections keep the first export's names and day folder, so they replace the originals.
-    if(d.drive&&!driveDone){
+    if(where==='drive'&&!driveDone){
       const ds=driveStem(), ts=driveTs();
       const named=files.map(f=>({name:f.name.indexOf(stem)===0?ds+f.name.slice(stem.length):f.name, blob:f.blob}));
       try{
-        driveDone=await saveToDrive(named,ts,(i,n)=>{ msg.textContent=i<n?'Uploading to the Shared Drive… '+(i+1)+' of '+n:'Filing it in the day’s folder…'; });
+        setBar(48,'Uploading to the Shared Drive…');
+        driveDone=await saveToDrive(named,ts,(i,n)=>{
+          if(i<n) setBar(48+Math.round((i/Math.max(1,n))*46), 'Uploading to the Shared Drive… '+(i+1)+' of '+n);
+          else setBar(96,'Filing it in the day’s folder…');
+        });
+        setBar(100,'Saved to the Shared Drive.');
         S.doc.archive=Object.assign(S.doc.archive||{},{drive:{stem:ds, ts, folderUrl:driveDone.folderUrl, path:driveDone.path}});
         saveDraft();
       }catch(e){
         const reason=e&&(e.error||e.code)||'failed';
-        if(reason==='unauthorized'){ msg.textContent='The studio passcode was not accepted.'; done(); return; }
-        msg.textContent=(localDone?'Downloaded to this device, but the Shared Drive save failed. ':'')+((e&&e.detail)||driveProblem(reason,e&&e.email||DRIVE.email));
-        $('#ceSaveLabel',m).textContent='Retry Shared Drive';
-        delete button.dataset.busy; button.disabled=false; back.disabled=false;
-        if(reason==='no_access'||reason==='needs_shared_drive'){ DRIVE.at=0; }
+        if(reason==='no_access'||reason==='needs_shared_drive') DRIVE.at=0;
+        fail(reason==='unauthorized'?'The studio passcode was not accepted.':((e&&e.detail)||driveProblem(reason,e&&e.email||DRIVE.email)));
         return;
       }
     }
     const parts=[];
-    if(localDone) parts.push('Downloaded '+files.length+' files.');
-    if(driveDone) parts.push('Saved to the Shared Drive › '+driveDone.path+'.');
-    openCaptionModal(parts.join(' ')+(notes.length?' '+notes.join(' '):''), driveDone&&driveDone.folderUrl);
+    if(localDone&&where==='local') parts.push('Downloaded '+files.length+' files.');
+    if(driveDone&&where==='drive') parts.push('Saved to the Shared Drive › '+driveDone.path+'.');
+    openCaptionModal(parts.join(' ')+(notes.length?' '+notes.join(' '):''), driveDone&&where==='drive'&&driveDone.folderUrl);
     archiveAfterExport();
-  };
+  }
+  $('#ceDrive',m).onclick=()=>saveExport('drive');
+  $('#ceDownload',m).onclick=()=>saveExport('drive');
+  $('#ceLocal',m).onclick=()=>saveExport('local');
+  $('#ceLocalWeb',m).onclick=()=>saveExport('local');
 }
 
 function applyNight(on){

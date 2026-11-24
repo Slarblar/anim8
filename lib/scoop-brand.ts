@@ -1,6 +1,7 @@
 import { del, list, put } from '@vercel/blob';
 import { STORE_PREFIX, blobOptions, parseDocPath } from '@/lib/scoop';
 import { normalizeNewsSources, outletDomains, type NewsSource } from '@/lib/scoop-news';
+import { formatCredits, readCreditFields } from '@/lib/scoop-credit';
 
 export type CategoryRule = { id: string; description: string; when: string };
 
@@ -193,6 +194,8 @@ export type NormalizedDraft = {
   dek: string;
   location: string;
   source: string;
+  infoSource: string;
+  photoCredit: string;
   referenceId: string;
   notes: string;
   pages: { headlines: HeadlineOption[]; dek: string }[];
@@ -351,6 +354,8 @@ export function normalizeDraft(
   if (!pages.length && headlines.length) pages.push({ headlines, dek });
 
   const referenceId = referenceIds.includes(String(row.referenceId ?? '')) ? String(row.referenceId) : '';
+  const credits = readCreditFields(row);
+  const lines = formatCredits(credits);
   return {
     category,
     categoryReason,
@@ -359,7 +364,9 @@ export function normalizeDraft(
     headlines: pages[0]?.headlines || headlines,
     dek: pages[0]?.dek || dek,
     location: String(row.location ?? '').replace(/\s+/g, ' ').trim().slice(0, 80),
-    source: String(row.source ?? '').replace(/\s+/g, ' ').trim().slice(0, 140),
+    infoSource: credits.infoSource.slice(0, 140),
+    photoCredit: credits.photoCredit.slice(0, 140),
+    source: lines.graphicLine.slice(0, 160),
     referenceId,
     notes: String(row.notes ?? '').replace(/\s+/g, ' ').trim().slice(0, 280),
     pages,

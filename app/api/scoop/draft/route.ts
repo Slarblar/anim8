@@ -6,6 +6,7 @@ import { parseModelJson } from '@/lib/scoop-json';
 import { cleanArticleText } from '@/lib/scoop-link';
 import { incidentLocation } from '@/lib/scoop-news';
 import { draftExcerptOk, parseDraftImages } from '@/lib/scoop-draft-images';
+import { applyCaptionCredit, formatCredits, normalizeCreditLine, readCreditFields } from '@/lib/scoop-credit';
 
 /** SLC Scoop rewrites. It does not borrow another outlet's sentences. */
 const OWN_WORDS = `Write the headline, the dek, and the article in SLC Scoop's voice, not the source's. Match the voice samples: short, specific, and local. Do not reuse any run of 7 or more words from the excerpt, and do not follow its sentence order. Rewording is not new reporting: keep every fact exactly as stated.
@@ -19,8 +20,17 @@ SLC Scoop sounds like a Salt Lake desk talking to a neighbor: direct, factual, l
 - No headline, no byline, nothing that is not in the excerpt${shots ? ' or clearly legible in a screenshot' : ''}.
 - If the excerpt is too thin for 300 words, write fewer. Never pad. When the excerpt supports it, write the full story, up to 800 words.`;
 
-const SCREENSHOT_GUIDE = `Some sources are screenshots (e.g. a police or agency post, press release, news article, social post or alert). Read them carefully. Use only facts that are clearly legible in the image or stated in the text. If any part is unreadable or cut off, don't guess; mention it in notes. Identify who published the screenshot (account, agency or outlet and platform) and use it for the Source/credit slot and attribution, e.g. 'Source: Salt Lake City Police via X'. Never copy the screenshot's wording; rewrite in SLC Scoop's voice under the existing own-words rules. Don't describe the image itself as the news.
+const SCREENSHOT_GUIDE = `Some sources are screenshots (e.g. a police or agency post, press release, news article, social post or alert). Read them carefully. Use only facts that are clearly legible in the image or stated in the text. If any part is unreadable or cut off, don't guess; mention it in notes. Whoever published the screenshot is infoSource, the name only, for example Salt Lake City Police via X. A credit printed on the photo itself is photoCredit, the name only. Never copy the screenshot's wording; rewrite in SLC Scoop's voice under the existing own-words rules. Don't describe the image itself as the news.
 Also return "sourceText": a plain transcription of the image text, at most 4000 characters.`;
+
+const CREDIT_GUIDE = `Credits. Return names only in infoSource and photoCredit. Do not write "Source:" or "Photo:" in either field, and do not combine the labels.
+- infoSource is where the INFORMATION came from: an outlet, agency, police department, official account, press release, or document. A link with no named author uses the outlet's proper name, not the URL ("KSL", not "ksl.com/article/…"). Whoever published a screenshot is infoSource.
+- photoCredit is who took or owns the IMAGE: a photographer, an agency photo desk, or a courtesy ("Romy Colvin", "Courtesy of UDOT"). A credit visible on the photo itself is photoCredit. "photo by", "Photo:", "courtesy", and "image credit" are photo credits.
+- The input names only a photographer → photoCredit, and infoSource is empty.
+- The input names only where the information came from → infoSource, and photoCredit is empty.
+- Both exist and differ → set both names. The graphic credit is the photographer. The caption and the article attribute the information in the words ("…, KSL reports.").
+- Both are the same entity → set both fields to that name.
+- Neither is known → both are empty. Never invent a credit. Never use SLC Scoop as the source of someone else's reporting or photo.`;
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -108,7 +118,7 @@ Slot guidance (match by slot name):
 - Category: one or two words, e.g. NEWS, BREAKING, UPDATE, COURTS, POLITICS, WEATHER, CRIME, BUSINESS, COMMUNITY.
 - Tags: at most 3 topic tags plus SLCSCOOP, four tags on the line. Example: "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
 - Location: the closest city and the state, always "Logan, UT". No county, no extra words. Do not copy the sample city in the slot example.
-- Source / Credit: "Source: <name>" ${shots ? 'when the excerpt or a screenshot shows who published it.' : 'only if the excerpt names a photo or information source.'}
+- Source / Credit slot: leave it empty. Put the names in infoSource and photoCredit. ${CREDIT_GUIDE}
 - Any other slot: follow its example text's role and length.
 
 ${OWN_WORDS}
@@ -125,7 +135,7 @@ Excerpt:
 ${excerpt}
 """
 
-Reply with JSON only, no prose and no code fence: {"fields": {"<slot name exactly as given>": "<text>"}, "notes": "<one short sentence flagging anything unclear, unverified or missing in the excerpt, or an empty string>"${shots ? ', "sourceText": "<plain transcription of screenshot text, or an empty string>"' : ''}}`;
+Reply with JSON only, no prose and no code fence: {"fields": {"<slot name exactly as given>": "<text>"}, "infoSource": "", "photoCredit": "", "notes": "<one short sentence flagging anything unclear, unverified or missing in the excerpt, or an empty string>"${shots ? ', "sourceText": "<plain transcription of screenshot text, or an empty string>"' : ''}}`;
 }
 
 type ZoneBudget = { role: string; x: number; y: number; w: number; h: number; perLine: number; maxLines: number; minSize: number; maxSize: number };
@@ -247,6 +257,7 @@ Layout references show line count, density, and spacing. Their events are not th
 ${examples ? `\n${examples}` : '\nNo layout references were sent.'}
 ${voiceText ? `\nVoice samples are SLC Scoop's cadence for the dek and the website article. Do not reuse their facts. Headlines still follow the headline rule.\n\n${voiceText}` : ''}
 
+${CREDIT_GUIDE}
 ${shots ? `\n${SCREENSHOT_GUIDE}\n` : ''}
 ${attribution(link)}
 Excerpt:
@@ -255,7 +266,7 @@ ${excerpt}
 """
 
 Reply with JSON only, no prose and no code fence:
-{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Logan, UT","source":"","referenceId":"","notes":""${shots ? ',"sourceText":""' : ''},"pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
+{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Logan, UT","infoSource":"","photoCredit":"","referenceId":"","notes":""${shots ? ',"sourceText":""' : ''},"pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
 }
 
 async function layoutImage(url: string) {
@@ -287,7 +298,7 @@ function fieldsFrom(draft: ReturnType<typeof normalizeDraft>, slots: Slot[]) {
     category: draft.category,
     tags,
     location: draft.location,
-    source: draft.source.startsWith('Source') || !draft.source ? draft.source : `Source: ${draft.source}`,
+    source: draft.source,
   };
   const fields: Record<string, string> = {};
   for (const slot of slots) {
@@ -468,21 +479,34 @@ export async function POST(req: NextRequest) {
     const out = reply.out as { fields?: Record<string, unknown>; notes?: unknown; article?: unknown };
     const copyWarnings = copied.map((c) => `${c.field} repeats the source: "${c.phrases[0]}"`);
     const sourceText = shots.length ? readSourceText(reply.out) : '';
+    const named = readCreditFields(reply.out);
+    const lines = formatCredits(named);
     if (!layout) {
       const fields: Record<string, string> = {};
       for (const slot of slots) {
         const value = out.fields?.[slot.slot];
-        if (typeof value === 'string') fields[slot.slot] = value.slice(0, slot.maxChars + 40);
+        if (typeof value !== 'string') continue;
+        const creditSlot = /source|credit|attribution/i.test(slot.slot);
+        const next = creditSlot ? (lines.graphicLine || normalizeCreditLine(value)) : value;
+        fields[slot.slot] = next.slice(0, slot.maxChars + 40);
       }
-      return NextResponse.json({ fields, notes: typeof out.notes === 'string' ? out.notes : '', sourceText, copyWarnings });
+      return NextResponse.json({
+        fields,
+        infoSource: named.infoSource,
+        photoCredit: named.photoCredit,
+        notes: typeof out.notes === 'string' ? out.notes : '',
+        sourceText,
+        copyWarnings,
+      });
     }
     const draft = normalizeDraft(out, brand, flags, layoutRefs.map((ref) => ref.id));
     draft.location = incidentLocation(excerpt, draft.location);
+    const articleCredit = formatCredits({ infoSource: draft.infoSource, photoCredit: draft.photoCredit }).captionLine;
     return NextResponse.json({
       ...draft,
       tags: tagsLine(draft.topicTags),
       fields: fieldsFrom(draft, slots),
-      article: cleanArticle(out.article),
+      article: applyCaptionCredit(cleanArticle(out.article), articleCredit),
       sourceText,
       copyWarnings,
     });

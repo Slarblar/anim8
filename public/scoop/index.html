@@ -1241,6 +1241,16 @@ html:root #creator .setup-row .template-current span span{font-size:10px}
 #creator .photo-chip.has-photo i{background:#2f8f4e;color:#fff}
 #creator .photo-chip:hover{border-color:var(--c-ink)}
 #creator .photo-chip:focus-visible{outline:2px solid var(--c-red,#ed2224);outline-offset:2px}
+#creator .source-drop.is-dropping .c-source{border-color:var(--c-ink);box-shadow:inset 0 0 0 1px var(--c-ink)}
+#creator .source-images{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;margin-top:8px}
+#creator .source-shot{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:56px}
+#creator .source-thumb{position:relative;width:56px;height:56px;border-radius:8px;overflow:hidden;border:1px solid var(--c-line);background:var(--c-soft,#f0f0eb)}
+#creator .source-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+#creator .source-x{position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:rgba(0,0,0,.72);color:#fff;font-size:12px;line-height:1;cursor:pointer}
+#creator .source-x:focus-visible,#creator .source-use:focus-visible{outline:2px solid var(--c-red,#ed2224);outline-offset:2px}
+#creator .source-use{width:56px;padding:0;border:0;background:none;color:var(--c-muted);font-size:9px;font-weight:700;line-height:1.2;text-align:left;cursor:pointer}
+#creator .source-use[aria-pressed=true]{color:var(--c-red,#ed2224)}
+#creator .source-add.pt-btn.sm{display:inline-flex;align-items:center;gap:4px;width:auto;height:36px;padding:0 10px;font-size:11px;font-weight:700}
 #creator .story-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:var(--space-2,8px) 0 0;min-height:40px}
 #creator .story-foot #sourceCount{margin-left:auto;font-size:var(--type-xs,11px);color:var(--c-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 html:root #creator .story-flags.chips{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;margin:0}
@@ -6553,7 +6563,7 @@ async function initBackend(){
 }
 
 /* ---------- mobile-first Post Creator ---------- */
-const C = {workspace:'creator',step:0,inputMode:'ai',reviewTab:'text',field:'',drawer:true,filter:'All',query:'',more:false,favorites:[],busy:false,reading:false,message:'',error:false,generated:false,source:'',teamCopy:'',followUp:false,correction:false,link:null,linkPreview:null,contexts:{},contentCache:[],preferredApplied:false,newsWindow:'6h'};
+const C = {workspace:'creator',step:0,inputMode:'ai',reviewTab:'text',field:'',drawer:true,filter:'All',query:'',more:false,favorites:[],busy:false,reading:false,message:'',error:false,generated:false,source:'',sourceText:'',sourceImages:[],teamCopy:'',followUp:false,correction:false,link:null,linkPreview:null,contexts:{},contentCache:[],preferredApplied:false,newsWindow:'6h'};
 function ico(body){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;}
 /* Lucide (ISC). https://lucide.dev */
 const CI={
@@ -6576,10 +6586,12 @@ const CI={
 
 function creatorPersist(){
   if(C.workspace!=='creator')return;
-  try{localStorage.setItem('scoop-builder:creator-input',JSON.stringify({source:C.source,teamCopy:C.teamCopy,inputMode:C.inputMode,generated:C.generated,contentCache:C.contentCache,followUp:C.followUp,correction:C.correction,link:C.link||null}));}catch(e){}
+  const pack=withImages=>JSON.stringify({source:C.source,sourceText:C.sourceText||'',sourceImages:withImages?sourceImages().map(img=>({id:img.id,dataUrl:img.dataUrl,w:img.w,h:img.h,name:img.name,photo:!!img.photo})):[],teamCopy:C.teamCopy,inputMode:C.inputMode,generated:C.generated,contentCache:C.contentCache,followUp:C.followUp,correction:C.correction,link:C.link||null});
+  try{localStorage.setItem('scoop-builder:creator-input',pack(true));}
+  catch(e){ try{localStorage.setItem('scoop-builder:creator-input',pack(false));}catch(err){} }
 }
 function creatorInit(){
-  try{const s=JSON.parse(localStorage.getItem('scoop-builder:creator-input'));if(s){C.source=String(s.source||'');C.teamCopy=String(s.teamCopy??(s.final?Object.entries(s.final).filter(([k,v])=>v).map(([k,v])=>({headline:'Headline',dek:'Supporting copy',category:'Category',location:'Location',source:'Source',tags:'Tags'}[k])+': '+v).join('\n'):''));C.inputMode=s.inputMode==='final'?'final':'ai';C.generated=!!s.generated;C.contentCache=Array.isArray(s.contentCache)?s.contentCache:[];C.followUp=!!s.followUp;C.correction=!!s.correction;C.step=C.generated?2:0;if(s.link&&s.link.url&&s.link.siteName)C.link={url:String(s.link.url),title:String(s.link.title||''),siteName:String(s.link.siteName),published:String(s.link.published||''),isNewsOutlet:!!s.link.isNewsOutlet};}}
+  try{const s=JSON.parse(localStorage.getItem('scoop-builder:creator-input'));if(s){C.source=String(s.source||'');C.teamCopy=String(s.teamCopy??(s.final?Object.entries(s.final).filter(([k,v])=>v).map(([k,v])=>({headline:'Headline',dek:'Supporting copy',category:'Category',location:'Location',source:'Source',tags:'Tags'}[k])+': '+v).join('\n'):''));C.inputMode=s.inputMode==='final'?'final':'ai';C.generated=!!s.generated;C.contentCache=Array.isArray(s.contentCache)?s.contentCache:[];C.followUp=!!s.followUp;C.correction=!!s.correction;C.step=C.generated?2:0;if(s.link&&s.link.url&&s.link.siteName)C.link={url:String(s.link.url),title:String(s.link.title||''),siteName:String(s.link.siteName),published:String(s.link.published||''),isNewsOutlet:!!s.link.isNewsOutlet};C.sourceText=String(s.sourceText||'').slice(0,4000);C.sourceImages=Array.isArray(s.sourceImages)?s.sourceImages.filter(img=>img&&typeof img.dataUrl==='string'&&img.dataUrl.startsWith('data:image/jpeg')).slice(0,3).map(img=>({id:String(img.id||uid()),dataUrl:img.dataUrl,w:Math.round(+img.w)||0,h:Math.round(+img.h)||0,name:String(img.name||'Screenshot').slice(0,80),photo:!!img.photo})):[];}}
   catch(e){}
   try{const f=JSON.parse(localStorage.getItem('scoop-builder:favorite-templates'));C.favorites=Array.isArray(f)?f.filter(x=>typeof x==='string'):[];}catch(e){}
   document.body.dataset.workspace='creator';renderCreator();
@@ -6592,7 +6604,12 @@ function creatorApplyPreferred(){
   const id=localStorage.getItem('scoop-builder:preferred-template');
   if(id&&creatorTemplates().some(t=>t.id===id)){loadDoc(creatorDocFor(id));renderCreator();}
 }
-function creatorInputValid(){return C.inputMode==='ai'?C.source.trim().length>=40:!!C.teamCopy.trim();}
+function creatorInputValid(){
+  if(C.inputMode!=='ai') return !!C.teamCopy.trim();
+  if(sourceImages().length) return true;
+  if(onlyUrl(C.source)) return true;
+  return C.source.trim().length>=40;
+}
 function creatorSetStep(step){
   if(C.busy)return;
   if(step===1){creatorOpenTemplates();return;}
@@ -6613,7 +6630,13 @@ function onlyUrl(value){
   if(!s||s.length>2048||/\s/.test(s)) return '';
   try{ const u=new URL(s); if(u.protocol!=='http:'&&u.protocol!=='https:') return ''; return u.href; }catch(e){ return ''; }
 }
-function creatorReadsLink(){ return C.inputMode==='ai'&&!!onlyUrl(C.source); }
+function creatorReadsLink(){ return C.inputMode==='ai'&&!sourceImages().length&&!!onlyUrl(C.source); }
+function sourceHintText(){
+  if(C.inputMode!=='ai') return 'Exact wording. No AI rewrite.';
+  if(creatorReadsLink()) return 'Read the link, then draft from the article.';
+  if(sourceImages().length) return 'Claude reads the screenshot as the news source.';
+  return C.source.trim()?'AI chooses the words, category, and a reference. The fitter sets the size.':'';
+}
 function creatorActionInner(){
   if(C.busy) return C.reading?'Reading…':'Creating…';
   if(C.step===2) return CI.download+'Export post';
@@ -6635,15 +6658,134 @@ function linkPreviewHTML(){
     : `<div class="row"><button type="button" class="c-button small" id="linkUse">Use this text</button><button type="button" class="c-button small" id="linkPaste">Paste text instead</button></div>`;
   return `<div class="link-preview"><div class="link-meta">${esc(a.siteName||'Link')}${when?' · '+esc(when):''}</div><b>${esc(a.title||'Untitled')}</b><p>${esc(String(a.text||'').slice(0,600))}</p>${actions}</div>`;
 }
+function sourceImages(){ if(!Array.isArray(C.sourceImages)) C.sourceImages=[]; return C.sourceImages; }
+function isSourceImageFile(file){
+  if(!file) return false;
+  const type=String(file.type||'').toLowerCase();
+  if(type.startsWith('image/')) return true;
+  return /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(file.name||'');
+}
+function loadImageEl(src){
+  return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=()=>rej(new Error('image')); img.src=src; });
+}
+async function loadFileImage(file){
+  const url=URL.createObjectURL(file);
+  try{ return await loadImageEl(url); }
+  finally{ URL.revokeObjectURL(url); }
+}
+function blobToDataUrl(blob){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result||'')); r.onerror=()=>rej(r.error||new Error('read')); r.readAsDataURL(blob); });
+}
+async function jpegCanvas(img,edge,quality){
+  const w0=img.naturalWidth||img.width||1, h0=img.naturalHeight||img.height||1;
+  const scale=Math.min(1, edge/Math.max(w0,h0));
+  const c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(w0*scale)); c.height=Math.max(1,Math.round(h0*scale));
+  const g=c.getContext('2d');
+  g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height);
+  g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+  g.drawImage(img,0,0,c.width,c.height);
+  const blob=await canvasBlob(c,'image/jpeg',quality);
+  return blob?{blob,w:c.width,h:c.height}:null;
+}
+async function encodeSourceImage(file){
+  const img=await loadFileImage(file);
+  let edge=1568, quality=0.85, made=null;
+  for(let attempt=0;attempt<8;attempt++){
+    made=await jpegCanvas(img,edge,quality);
+    if(made&&made.blob.size<=900*1024) break;
+    if(quality>0.45) quality=Math.round((quality-0.12)*100)/100;
+    else edge=Math.round(edge*0.8);
+    if(edge<480) break;
+  }
+  if(!made) throw new Error('encode');
+  return {id:uid(), dataUrl:await blobToDataUrl(made.blob), w:made.w, h:made.h, name:String(file.name||'Screenshot').slice(0,80), photo:false};
+}
+async function addSourceImages(fileList){
+  if(C.busy||C.inputMode!=='ai') return;
+  const all=[...(fileList||[])];
+  const files=all.filter(isSourceImageFile);
+  if(!files.length){ if(all.length) toast('Use a screenshot: PNG, JPG, WebP, or HEIC.',true); return; }
+  const room=3-sourceImages().length;
+  if(room<=0){ toast('Three screenshots is the limit.',true); return; }
+  const take=files.slice(0,room);
+  if(files.length>room) toast('Three screenshots is the limit. Extra images were left out.');
+  let added=0;
+  for(const file of take){
+    try{ sourceImages().push(await encodeSourceImage(file)); added++; }
+    catch(e){ toast('Could not read that screenshot. Use a PNG, JPG, or WebP.',true); }
+  }
+  if(added){ creatorPersist(); renderCreator(); }
+}
+function removeSourceImage(id){
+  C.sourceImages=sourceImages().filter(img=>img.id!==id);
+  creatorPersist(); renderCreator();
+}
+function creatorPhotoTarget(){
+  const layers=(S.doc.pages||[]).flatMap(p=>p.layers||[]);
+  const slotted=layers.filter(l=>l.type==='image'&&l.slot&&!l.psdRef);
+  const photos=slotted.filter(isPhotoLayer);
+  const pool=photos.length?photos:slotted;
+  return pool.find(l=>!l.src)||pool[0]||null;
+}
+async function useSourceAsPhoto(id){
+  const img=sourceImages().find(x=>x.id===id);
+  if(!img||!S.doc) return;
+  const slot=creatorPhotoTarget();
+  if(!slot){ toast('This template has no photo slot.',true); return; }
+  try{
+    const res=await fetch(img.dataUrl);
+    const blob=await res.blob();
+    const name=(String(img.name||'screenshot').replace(/\.[^.]+$/,'')||'screenshot')+'.jpg';
+    const file=new File([blob], name, {type:'image/jpeg'});
+    const pageIndex=S.doc.pages.findIndex(p=>(p.layers||[]).includes(slot));
+    if(pageIndex>=0&&pageIndex!==S.doc.page) goPage(pageIndex);
+    fillSlot(slot, await localSrc(file), {w:img.w||1,h:img.h||1});
+    sourceImages().forEach(x=>{ x.photo=x.id===id; });
+    creatorPersist(); renderCreator();
+  }catch(e){ toast('Could not use that image as the photo.',true); }
+}
+function sourceImageRowHTML(){
+  const full=sourceImages().length>=3;
+  const shots=sourceImages().map((img,i)=>`<div class="source-shot" role="listitem"><div class="source-thumb"><img src="${esc(img.dataUrl)}" alt=""><button type="button" class="source-x" data-source-remove="${esc(img.id)}" aria-label="Remove image ${i+1}" ${C.busy?'disabled':''}>✕</button></div><button type="button" class="source-use" data-source-photo="${esc(img.id)}" aria-pressed="${img.photo?'true':'false'}" ${C.busy?'disabled':''}>Use as photo</button></div>`).join('');
+  return `<div class="source-images" id="sourceImages" role="list" aria-label="Source screenshots">${shots}<button type="button" class="pt-btn sm source-add" id="creatorAddImage" aria-label="Add image" title="Add image" ${full||C.busy?'disabled':''}>${UI_ICON.plus}<span>Image</span></button><input id="creatorImagePick" type="file" accept="image/*" multiple hidden></div>`;
+}
+function imagePayload(list){
+  return list.map(img=>({mediaType:'image/jpeg', data:String(img.dataUrl||'').split(',')[1]||''}));
+}
+async function fitDraftImages(body){
+  const imgs=sourceImages();
+  if(!imgs.length) return false;
+  const limit=4*1024*1024;
+  body.images=imagePayload(imgs);
+  if(JSON.stringify(body).length<=limit) return false;
+  let edge=1280, quality=0.62, squeezed=false;
+  while(JSON.stringify(body).length>limit&&edge>=640){
+    squeezed=true;
+    const next=[];
+    for(const img of imgs){
+      const el=await loadImageEl(img.dataUrl);
+      const made=await jpegCanvas(el,edge,quality);
+      if(!made) throw new Error('encode');
+      next.push({dataUrl:await blobToDataUrl(made.blob)});
+    }
+    body.images=imagePayload(next);
+    quality=Math.round((quality-0.1)*100)/100;
+    if(quality<0.4){ edge=Math.round(edge*0.75); quality=0.55; }
+  }
+  if(JSON.stringify(body).length>limit) throw {code:'images_too_large'};
+  return squeezed;
+}
 function creatorStoryHTML(){
   const ai=C.inputMode==='ai',photo=S.doc.layers.find(l=>l.type==='image'&&l.slot);
   const photoButton=photo?`<button type="button" class="photo-chip${photo.src?' has-photo':''}" data-creator-photo="${photo.id}" aria-label="${photo.src?'Photo added. Replace the photo':'Add a photo (optional)'}" title="${photo.src?'Replace photo':'Add photo (optional)'}" ${C.busy?'disabled':''}>${CI.photo}<i aria-hidden="true">${photo.src?UI_ICON.check:UI_ICON.plus}</i></button>`:'';
+  const sourceField=`<textarea id="creatorSource" class="c-input c-source" maxlength="12000" ${C.busy?'disabled':''} placeholder="${ai?'Paste the story, a link, or a screenshot':'Headline on the first line. Supporting copy underneath.&#10;&#10;You can also use labels like Headline:, Category:, and Source:.'}">${esc(ai?C.source:C.teamCopy)}</textarea>`;
   return `<div class="setup-row">${creatorTemplateStrip()}${photoButton}</div><div class="input-modes" role="group" aria-label="How to fill your post"><button data-input-mode="ai" aria-pressed="${ai}" ${C.busy?'disabled':''}>${CI.spark}Draft from source</button><button data-input-mode="final" aria-pressed="${!ai}" ${C.busy?'disabled':''}>${CI.text}Use team copy</button></div>
     <div class="field-top"><label for="creatorSource">${ai?'Paste the story or a link':'Paste your team’s copy'}</label><button id="creatorExample" type="button" aria-label="Try an example story" title="Fill in an example story for layout testing" ${C.busy?'disabled':''}>Example ↗</button></div>
-    <textarea id="creatorSource" class="c-input c-source" maxlength="12000" ${C.busy?'disabled':''} placeholder="${ai?'An article, a link, a press release, or notes from your team…':'Headline on the first line. Supporting copy underneath.&#10;&#10;You can also use labels like Headline:, Category:, and Source:.'}">${esc(ai?C.source:C.teamCopy)}</textarea>
+    ${ai?`<div class="source-drop">${sourceField}${sourceImageRowHTML()}</div>`:sourceField}
     ${ai?linkPreviewHTML():''}
     <div class="story-foot">${ai?`<div class="story-flags chips" role="group" aria-label="Story type"><label class="flag-chip" title="Builds on an earlier SLC Scoop post"><input type="checkbox" id="creatorFollow" ${C.followUp?'checked':''} ${C.busy?'disabled':''}>${UI_ICON.follow}<span>Follow-up</span></label><label class="flag-chip" title="Corrects a previous post"><input type="checkbox" id="creatorCorrection" ${C.correction?'checked':''} ${C.busy?'disabled':''}>${UI_ICON.fix}<span>Correction</span></label></div>`:''}<span id="sourceCount" ${(ai?C.source:C.teamCopy).length<9000?'hidden':''}>${(ai?C.source:C.teamCopy).length.toLocaleString()} / 12,000</span></div>
-    <div class="field-foot"><span id="sourceHint">${ai?(creatorReadsLink()?'Read the link, then draft from the article.':''):'Exact wording. No AI rewrite.'}</span></div>
+    <div class="field-foot"><span id="sourceHint">${esc(sourceHintText())}</span></div>
     ${ai?localNewsHTML():''}
     ${!ai?'<details class="copy-help"><summary>Tips for pasting team copy</summary><p>The first line is your headline; the remaining lines are supporting copy. Optional labels: Headline, Supporting copy, Category, Location, Source, and Tags. Separate carousel pages with a line containing <b>---</b>. You can adjust every field in the review.</p></details>':'<div class="c-notice" id="creatorConnectionHint" hidden>AI drafting is available on your connected team website. Choose <button id="creatorUseFinal" class="inline-button">Use team copy</button> to fill and export here.</div>'}
     ${C.message?`<p class="${C.error?'c-error':'c-note'}" role="status">${esc(C.message)}</p>`:''}`;
@@ -6677,7 +6819,7 @@ function creatorReviewHTML(){
   const panel=tab==='photo'?photoPanel:tab==='article'?articlePanel():textPanel;
   return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}" aria-label="${C.drawer?'Collapse quick edits':'Expand quick edits'}"><span></span><b>Quick edits</b><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
     ${panel}
-    ${C.message?`<p class="c-note" role="status">${esc(C.message)}</p>`:''}<details class="review-source"><summary>View original ${C.inputMode==='ai'?'source':'team copy'}</summary>${sourceLinkHTML()}<p>${esc(C.inputMode==='ai'?C.source:C.teamCopy)}</p></details></div>`;
+    ${C.message?`<p class="c-note" role="status">${esc(C.message)}</p>`:''}<details class="review-source"><summary>View original ${C.inputMode==='ai'?'source':'team copy'}</summary>${sourceLinkHTML()}${(C.inputMode==='ai'?C.source:C.teamCopy).trim()?`<p>${esc(C.inputMode==='ai'?C.source:C.teamCopy)}</p>`:''}${C.inputMode==='ai'&&C.sourceText?`<p>${esc(C.sourceText)}</p>`:''}</details></div>`;
 }
 function renderCreator(){
   if(!S.doc||C.workspace!=='creator')return;
@@ -6691,7 +6833,8 @@ function renderCreator(){
   panel.innerHTML=C.step===0?creatorStoryHTML():creatorReviewHTML();
   if(panel) panel.scrollTop=kept;
   if(stepChanged&&panel){ panel.classList.add('is-entering'); panel.addEventListener('animationend',()=>panel.classList.remove('is-entering'),{once:true}); }
-  const actions=`${C.step===0?`<span class="save-caption">${CI.lock}<span>Saved on this device</span></span>`:'<button class="c-button c-back" id="creatorBack">'+CI.back+'Story</button>'}<button class="c-button primary" id="creatorNext" ${C.busy?'disabled':''}>${creatorActionInner()}</button>`;
+  const draftReady=C.step!==0||creatorInputValid();
+  const actions=`${C.step===0?`<span class="save-caption">${CI.lock}<span>Saved on this device</span></span>`:'<button class="c-button c-back" id="creatorBack">'+CI.back+'Story</button>'}<button class="c-button primary" id="creatorNext" ${C.busy||!draftReady?'disabled':''}>${creatorActionInner()}</button>`;
   const bar=$('#creatorActions'); if(bar.dataset.view!==actions){ bar.innerHTML=actions; bar.dataset.view=actions; }
   $('#creatorUndoRow').hidden=C.step!==2;$('#creatorPreviewTools').hidden=true;
   $('#creatorPreviewHint').textContent=C.step===2?'Your layout is locked. Your words are yours.':'Your saved layout is ready to fill.';
@@ -7301,7 +7444,7 @@ async function creatorCreatePost(){
   if(ai){
     const story=articleFromDump(C.source);
     if(story!==C.source) C.source=story;
-    if(C.source.trim().length<40){C.error=true;C.message='That paste is page metadata, not the story. Paste the article text.';renderCreator();$('#creatorSource')?.focus();return;}
+    if(!sourceImages().length&&C.source.trim().length<40){C.error=true;C.message='That paste is page metadata, not the story. Paste the article text.';renderCreator();$('#creatorSource')?.focus();return;}
   }
   C.busy=true;C.message='';C.error=false;C.ctrl=new AbortController();
   let templateIds=null;
@@ -7316,8 +7459,11 @@ async function creatorCreatePost(){
       if(!cap.sample)throw {code:'not_configured'};
       creatorJobStep(1);
       C.job.waitHint='The draft request is still open.';
-      const out=await cap.sample.draft(aiDraftBody(C.source,{followUp:C.followUp,correction:C.correction}),C.ctrl.signal);
+      const body=aiDraftBody(C.source,{followUp:C.followUp,correction:C.correction});
+      const squeezed=await fitDraftImages(body);
+      const out=await cap.sample.draft(body,C.ctrl.signal);
       if(!out||!Array.isArray(out.headlines)||!out.headlines.length)throw {code:'no_fields'};
+      C.sourceText=String(out.sourceText||'').slice(0,4000);
       creatorJobStep(2);
       if(C.job) C.job.waitHint='';
       const fitNotes=await applyAiDraft(out);
@@ -7325,6 +7471,7 @@ async function creatorCreatePost(){
       if(templateIds) foldNewTextIntoTemplate(S.doc, templateIds);
       for(const p of S.doc.pages) retireStackedText(p);
       notes=[out.categoryReason,out.notes].concat(fitNotes).filter(Boolean).join(' ');
+      if(squeezed) notes=(notes?notes+' ':'')+'Screenshots were compressed so the draft could be sent.';
     }
     const omitted=[];C.contentCache=[];
     if(!ai){
@@ -7351,7 +7498,7 @@ async function creatorCreatePost(){
     else if(C.inputMode==='final'&&parsed.length<S.doc.pages.length)C.message='Add the remaining page copy using the page arrows. Your pasted wording has been preserved.';
     const stem=seoStemFrom(S.doc);
     S.doc.name=stem&&stem!=='story-slcscoop'?stem:(slotText('headline','title','quote').slice(0,70)||'New post');commit();creatorPersist();renderLayers();renderProps(true);scheduleRender();window.scrollTo({top:0,behavior:'instant'});
-  }catch(e){console.error('SCOOP_DRAFT', e&&(e.stack||e.message)||e, e&&e.code, e&&e.status);C.error=true;C.message=e?.name==='AbortError'?'Drafting cancelled. Your copy is safe.':e?.code==='not_configured'?'AI drafting needs your team’s website connection. Use team copy here, or open this tool on your website.':e?.code==='rate_limited'?'Too many drafts at once. Try again shortly.':e?.code==='too_many_slots'?'This template has more than 20 text fields. Use team copy or simplify the template.':e?.code==='no_fields'?'No usable copy came back. Add more detail and try again.':'Could not draft the post. Your story is saved; please try again.';}
+  }catch(e){console.error('SCOOP_DRAFT', e&&(e.stack||e.message)||e, e&&e.code, e&&e.status);C.error=true;C.message=e?.name==='AbortError'?'Drafting cancelled. Your copy is safe.':e?.code==='not_configured'?'AI drafting needs your team’s website connection. Use team copy here, or open this tool on your website.':e?.code==='rate_limited'?'Too many drafts at once. Try again shortly.':e?.code==='too_many_slots'?'This template has more than 20 text fields. Use team copy or simplify the template.':e?.code==='no_fields'?'No usable copy came back. Add more detail and try again.':e?.code==='images_too_large'?'These screenshots are still too large to send. Remove one and try again.':e?.error==='bad_images'?'One of the screenshots could not be sent. Remove it and try again.':'Could not draft the post. Your story is saved; please try again.';}
   finally{creatorJobStop();C.busy=false;C.ctrl=null;renderCreator();}
 }
 function creatorConfirm(title,description,label){return new Promise(resolve=>{
@@ -7365,9 +7512,9 @@ function creatorConfirm(title,description,label){return new Promise(resolve=>{
 
 async function creatorNewPost(){
   if(C.busy)return;
-  if(C.generated||C.source.trim()||C.teamCopy.trim())if(!await creatorConfirm('Start a new post?','Your current draft will be replaced. Download it first if you still need it. Saved templates stay available.','Start new post'))return;
+  if(C.generated||C.source.trim()||C.teamCopy.trim()||sourceImages().length)if(!await creatorConfirm('Start a new post?','Your current draft will be replaced. Download it first if you still need it. Saved templates stay available.','Start new post'))return;
   const id=localStorage.getItem('scoop-builder:preferred-template')||creatorSelected();
-  C.contentCache=[];C.source='';C.teamCopy='';C.link=null;C.linkPreview=null;C.generated=false;C.step=0;C.message='';C.error=false;C.reviewTab='text';C.field='';loadDoc(creatorDocFor(id));creatorPersist();renderCreator();window.scrollTo({top:0,behavior:'instant'});
+  C.contentCache=[];C.source='';C.sourceText='';C.sourceImages=[];C.teamCopy='';C.link=null;C.linkPreview=null;C.generated=false;C.step=0;C.message='';C.error=false;C.reviewTab='text';C.field='';loadDoc(creatorDocFor(id));creatorPersist();renderCreator();window.scrollTo({top:0,behavior:'instant'});
 }
 function creatorSwitchWorkspace(mode){
   if(mode===C.workspace)return;
@@ -7542,6 +7689,7 @@ async function archivePostNow(){
   const edits=meta.saved?(meta.edits||0)+1:0;
   const copy=archiveCopy(doc);
   const summary={name, headline:copy.headline||name, dek:copy.dek, thumb:thumbData(S.doc.pages[0],320), createdAt:meta.createdAt, updatedAt:now, edits, pages:(doc.pages||[]).length, template:S.doc.templateName||'', link:(C.link&&C.link.url)||'', assets:meta.assets, drive:meta.drive||null};
+  // Screenshots stay on this device. Archive and Drive saves keep the story text, not the image files.
   const full={doc, creator:{source:C.source, teamCopy:C.teamCopy, inputMode:C.inputMode, link:C.link||null}, createdAt:meta.createdAt, updatedAt:now};
   if(JSON.stringify(full).length>900000) full.creator={inputMode:C.inputMode, link:C.link||null};
   if(JSON.stringify(full).length>1000000) throw new Error('this post is too large to archive');
@@ -7644,6 +7792,7 @@ async function openArchived(it, host){
   loadDoc(rec.doc);
   const k=rec.creator||{};
   C.source=String(k.source||''); C.teamCopy=String(k.teamCopy||''); C.inputMode=k.inputMode==='final'?'final':'ai';
+  C.sourceText=''; C.sourceImages=[];
   C.link=k.link&&k.link.url?k.link:null; C.linkPreview=null; C.contentCache=[];
   Object.assign(C,{generated:true, step:2, reviewTab:'text', field:'', message:'', error:false, templateRestored:true, censorMode:false});
   S.doc.archive={id:it.id, saved:true, opened:true, createdAt:it.createdAt, edits:it.edits||0, updatedAt:it.updatedAt, assets:Array.isArray(it.assets)?it.assets:[], uploads:{}};
@@ -8027,7 +8176,7 @@ document.addEventListener('click',async e=>{
   if(b.dataset.inputMode){C.inputMode=b.dataset.inputMode;C.message='';C.generated=false;creatorPersist();renderCreator();return;}
   if(b.dataset.newsWindow){C.newsWindow=b.dataset.newsWindow;loadNews(false);return;}
   if(b.dataset.newsRefresh!==undefined){loadNews(true);return;}
-  if(b.dataset.newsDraft){C.inputMode='ai';C.source=b.dataset.newsDraft;C.link=null;C.linkPreview=null;C.generated=false;if(S.doc)delete S.doc.sourceLink;creatorPersist();renderCreator();await creatorReadLink();return;}
+  if(b.dataset.newsDraft){C.inputMode='ai';C.source=b.dataset.newsDraft;C.sourceText='';C.sourceImages=[];C.link=null;C.linkPreview=null;C.generated=false;if(S.doc)delete S.doc.sourceLink;creatorPersist();renderCreator();await creatorReadLink();return;}
   if(b.dataset.templateFilter){C.filter=b.dataset.templateFilter;document.querySelectorAll('[data-template-filter]').forEach(x=>x.setAttribute('aria-pressed',x===b));renderCreatorTemplates();return;}
   if(b.dataset.favorite){const id=b.dataset.favorite;C.favorites=C.favorites.includes(id)?C.favorites.filter(x=>x!==id):[...C.favorites,id];localStorage.setItem('scoop-builder:favorite-templates',JSON.stringify(C.favorites));renderCreatorTemplates();return;}
   if(b.dataset.creatorTemplate){const id=b.dataset.creatorTemplate;closeModal();await creatorChooseTemplate(id);return;}
@@ -8051,8 +8200,11 @@ document.addEventListener('click',async e=>{
   if(b.dataset.censorShape){const L=S.doc.layers.find(l=>l.id===b.dataset.layer);if(L){L.shape=b.dataset.censorShape;commit();scheduleRender();renderCreator();}return;}
   if(b.dataset.censorDel){const i=S.doc.layers.findIndex(l=>l.id===b.dataset.censorDel);if(i>=0){S.doc.layers.splice(i,1);commit();scheduleRender();renderCreator();}return;}
   if(b.dataset.photoReset||b.dataset.photoRemove){const L=S.doc.layers.find(l=>l.id===(b.dataset.photoReset||b.dataset.photoRemove));if(L){if(b.dataset.photoRemove)L.src=null;else Object.assign(L,{fx:.5,fy:.5,zoom:1});commit();scheduleRender();renderCreator();}return;}
+  if(b.dataset.sourceRemove){removeSourceImage(b.dataset.sourceRemove);return;}
+  if(b.dataset.sourcePhoto){await useSourceAsPhoto(b.dataset.sourcePhoto);return;}
   switch(b.id){
     case 'creatorNew':await creatorNewPost();break;
+    case 'creatorAddImage':$('#creatorImagePick')?.click();break;
     case 'creatorArchive':openArchive();break;
     case 'creatorNext':if(C.step===0&&creatorReadsLink())await creatorReadLink();else if(C.step===0)await creatorCreatePost();else await creatorExport();break;
     case 'linkUse':useLinkText();break;
@@ -8064,7 +8216,7 @@ document.addEventListener('click',async e=>{
     case 'creatorDrawer':C.drawer=!C.drawer;renderCreator();break;
     case 'creatorCancel':C.ctrl?.abort();break;
     case 'creatorUseFinal':C.inputMode='final';C.step=0;C.message='';creatorPersist();renderCreator();break;
-    case 'creatorExample':C.link=null;C.linkPreview=null;if(S.doc)delete S.doc.sourceLink;if(C.inputMode==='ai')C.source='EXAMPLE STORY — for layout testing only.\n\nSalt Lake City is hosting a free neighborhood cleanup on Saturday. Volunteers can meet at the community center at 9 a.m. Gloves and trash bags will be provided, according to the city’s event announcement. Families are welcome.';else C.teamCopy='Headline: A cleaner city starts with us\nSupporting copy: A neighborhood cleanup brings the community together this Saturday.\nCategory: COMMUNITY\nLocation: Salt Lake City, UT\nSource: Sample story · layout test only';C.generated=false;creatorPersist();renderCreator();break;
+    case 'creatorExample':C.link=null;C.linkPreview=null;C.sourceText='';C.sourceImages=[];if(S.doc)delete S.doc.sourceLink;if(C.inputMode==='ai')C.source='EXAMPLE STORY — for layout testing only.\n\nSalt Lake City is hosting a free neighborhood cleanup on Saturday. Volunteers can meet at the community center at 9 a.m. Gloves and trash bags will be provided, according to the city’s event announcement. Families are welcome.';else C.teamCopy='Headline: A cleaner city starts with us\nSupporting copy: A neighborhood cleanup brings the community together this Saturday.\nCategory: COMMUNITY\nLocation: Salt Lake City, UT\nSource: Sample story · layout test only';C.generated=false;creatorPersist();renderCreator();break;
     case 'creatorUndo':if(fillT){clearTimeout(fillT);fillT=0;commit();}undo();renderCreator();break;
     case 'creatorRedo':redo();renderCreator();break;
   }
@@ -8073,15 +8225,51 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&C.censorMode){ C.c
 document.addEventListener('input',e=>{
   if(C.workspace!=='creator')return;const el=e.target;
   if(el.id==='creatorArticle'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.article=el.value;const c=$('#articleCount');if(c)c.textContent=articleWords(el.value)+' words';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
-  if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint&&C.inputMode==='ai')hint.textContent=url?'Read the link, then draft from the article.':'AI chooses the words, category, and a reference. The fitter sets the size.';{const sc=$('#sourceCount');sc.textContent=el.value.length.toLocaleString()+' / 12,000';sc.hidden=el.value.length<9000;}const next=$('#creatorNext');if(next&&!C.busy)next.innerHTML=creatorActionInner();creatorPersist();}
+  if(el.id==='creatorSource'){C[C.inputMode==='ai'?'source':'teamCopy']=el.value;C.generated=false;const url=onlyUrl(el.value);if(C.linkPreview&&url!==C.linkPreview.url){C.linkPreview=null;document.querySelector('.link-preview')?.remove();}if(C.link&&url&&url!==C.link.url){C.link=null;if(S.doc)delete S.doc.sourceLink;}const hint=$('#sourceHint');if(hint)hint.textContent=sourceHintText();{const sc=$('#sourceCount');sc.textContent=el.value.length.toLocaleString()+' / 12,000';sc.hidden=el.value.length<9000;}const next=$('#creatorNext');if(next&&!C.busy){next.innerHTML=creatorActionInner();if(C.step===0)next.disabled=!creatorInputValid();}creatorPersist();}
   if(el.id==='creatorTemplateSearch'){C.query=el.value;renderCreatorTemplates();}
   if(el.dataset.creatorText){if(!el.isConnected)return;if(tagTextLock&&el.dataset.creatorText===tagTextLock.id&&document.activeElement!==el&&performance.now()-tagTextLock.at<400)return;const L=S.doc.layers.find(l=>l.id===el.dataset.creatorText);if(L){L.text=el.value;if(layerRole(L)==='headline'||(layerRole(L)==='dek'&&L.sized))seatSubheading(S.doc.pages[S.doc.page]);scheduleRender();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);creatorRefreshInputs();}}
   if(el.id==='creatorCaption'&&S.doc){S.doc.ai=S.doc.ai||{};S.doc.ai.caption=el.value;const c=$('#captionCount');if(c)c.textContent=el.value.length+' / 2,200';clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},600);}
   if(el.dataset.censorStrength){const L=S.doc.layers.find(l=>l.id===el.dataset.layer);if(L){L[el.dataset.censorStrength]=+el.value;el.nextElementSibling.textContent=el.value+'px';scheduleRender();renderCreatorPreview();clearTimeout(fillT);fillT=setTimeout(()=>{fillT=0;commit();},350);}}
   if(el.dataset.photoProp){const L=S.doc.layers.find(l=>l.id===el.dataset.layer);if(L){L[el.dataset.photoProp]=+el.value;el.nextElementSibling.textContent=Math.round(+el.value*100)+'%';scheduleRender();}}
 });
+document.addEventListener('paste',e=>{
+  const box=e.target.closest&&e.target.closest('.source-drop');
+  if(!box||C.inputMode!=='ai'||C.busy) return;
+  const items=e.clipboardData&&e.clipboardData.items;
+  if(!items) return;
+  const files=[];
+  for(const item of items){
+    if(item.kind!=='file') continue;
+    const file=item.getAsFile();
+    if(isSourceImageFile(file)) files.push(file);
+  }
+  if(!files.length) return;
+  e.preventDefault();
+  addSourceImages(files);
+});
+document.addEventListener('dragover',e=>{
+  const box=e.target.closest&&e.target.closest('.source-drop');
+  if(!box||C.inputMode!=='ai'||C.busy) return;
+  const types=e.dataTransfer&&e.dataTransfer.types;
+  if(!types||![...types].includes('Files')) return;
+  e.preventDefault();
+  box.classList.add('is-dropping');
+});
+document.addEventListener('dragleave',e=>{
+  const box=e.target.closest&&e.target.closest('.source-drop');
+  if(box&&!box.contains(e.relatedTarget)) box.classList.remove('is-dropping');
+});
+document.addEventListener('drop',e=>{
+  const box=e.target.closest&&e.target.closest('.source-drop');
+  if(!box) return;
+  e.preventDefault();
+  box.classList.remove('is-dropping');
+  if(C.inputMode!=='ai'||C.busy) return;
+  addSourceImages(e.dataTransfer&&e.dataTransfer.files);
+});
 document.addEventListener('change',e=>{
   if(C.workspace!=='creator')return;
+  if(e.target.id==='creatorImagePick'){ const files=[...e.target.files||[]]; e.target.value=''; addSourceImages(files); return; }
   if(e.target.id==='creatorBadge'){pickBadge(e.target.value);return;}
   if(e.target.id==='creatorTagAdd'){onTagAdd(e.target);return;}
   if(e.target.id==='creatorField'){clearTimeout(fillT);commit();C.field=e.target.value;renderCreator();}

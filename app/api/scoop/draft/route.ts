@@ -5,18 +5,22 @@ import { copyReport } from '@/lib/scoop-copycheck';
 import { parseModelJson } from '@/lib/scoop-json';
 import { cleanArticleText } from '@/lib/scoop-link';
 import { incidentLocation } from '@/lib/scoop-news';
+import { draftExcerptOk, parseDraftImages } from '@/lib/scoop-draft-images';
 
 /** SLC Scoop rewrites. It does not borrow another outlet's sentences. */
 const OWN_WORDS = `Write the headline, the dek, and the article in SLC Scoop's voice, not the source's. Match the voice samples: short, specific, and local. Do not reuse any run of 7 or more words from the excerpt, and do not follow its sentence order. Rewording is not new reporting: keep every fact exactly as stated.
 Direct quotes are the exception: keep a quote word for word, inside quotation marks, and name who said it. Never change, trim, or invent a quote.`;
 
-const ARTICLE_RULE = (outlet: string) => `article: the website story, in the same voice as the graphic. Prefer 300 to 800 words, in short paragraphs separated by a blank line.
+const ARTICLE_RULE = (outlet: string, shots = false) => `article: the website story, in the same voice as the graphic. Prefer 300 to 800 words, in short paragraphs separated by a blank line.
 SLC Scoop sounds like a Salt Lake desk talking to a neighbor: direct, factual, local. Short sentences. Name the place. Say who did what. No clickbait, no opinion, no emoji, no "here's what we know," no sign-off.
 - Open on the newest fact: who, what, where, when.
 - Then the detail a reader here needs. Name a person or agency only when they said or did something ("police said").${outlet ? `
 - Name ${outlet} once, in the first or second paragraph. After that, do not name the outlet again and do not keep saying who reported the incident. The Source line already credits them.` : ''}
-- No headline, no byline, nothing that is not in the excerpt.
+- No headline, no byline, nothing that is not in the excerpt${shots ? ' or clearly legible in a screenshot' : ''}.
 - If the excerpt is too thin for 300 words, write fewer. Never pad. When the excerpt supports it, write the full story, up to 800 words.`;
+
+const SCREENSHOT_GUIDE = `Some sources are screenshots (e.g. a police or agency post, press release, news article, social post or alert). Read them carefully. Use only facts that are clearly legible in the image or stated in the text. If any part is unreadable or cut off, don't guess; mention it in notes. Identify who published the screenshot (account, agency or outlet and platform) and use it for the Source/credit slot and attribution, e.g. 'Source: Salt Lake City Police via X'. Never copy the screenshot's wording; rewrite in SLC Scoop's voice under the existing own-words rules. Don't describe the image itself as the news.
+Also return "sourceText": a plain transcription of the image text, at most 4000 characters.`;
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -95,8 +99,8 @@ function headlineRule(spec: HeadlineGuide): string {
   return `Headline rule: each line is at most ${spec.perLine} characters, counting spaces. Use ${spec.lines} lines when each line still fills the box. A full line is close to ${spec.perLine} characters. Do not put one word on a line. Put a newline between lines. Do not write a fourth line.${size}`;
 }
 
-function buildPrompt(excerpt: string, slots: Slot[], link: { title: string; siteName: string; published: string } | null) {
-  return `Fill each text slot of the graphic using ONLY facts stated in the excerpt. Never invent names, numbers, places, quotes or causes. If the excerpt doesn't support a slot, return an empty string for it.
+function buildPrompt(excerpt: string, slots: Slot[], link: { title: string; siteName: string; published: string } | null, shots = false) {
+  return `Fill each text slot of the graphic using ONLY facts stated in the excerpt${shots ? ' or clearly legible in the screenshots' : ''}. Never invent names, numbers, places, quotes or causes. If the excerpt doesn't support a slot, return an empty string for it.
 
 Slot guidance (match by slot name):
 - Headline: the single most newsworthy fact, active voice, present tense, specific. Use single quotes for any quoted phrase. ${headlineRule({ perLine: 24, lines: 3, cap: 0 })}
@@ -104,7 +108,7 @@ Slot guidance (match by slot name):
 - Category: one or two words, e.g. NEWS, BREAKING, UPDATE, COURTS, POLITICS, WEATHER, CRIME, BUSINESS, COMMUNITY.
 - Tags: at most 3 topic tags plus SLCSCOOP, four tags on the line. Example: "UTAH  |  PUBLIC SAFETY  |  COMMUNITY  |  SLCSCOOP".
 - Location: the closest city and the state, always "Logan, UT". No county, no extra words. Do not copy the sample city in the slot example.
-- Source / Credit: "Source: <name>" only if the excerpt names a photo or information source.
+- Source / Credit: "Source: <name>" ${shots ? 'when the excerpt or a screenshot shows who published it.' : 'only if the excerpt names a photo or information source.'}
 - Any other slot: follow its example text's role and length.
 
 ${OWN_WORDS}
@@ -114,13 +118,14 @@ Each slot has maxChars (a hard limit so it fits the layout) and an example showi
 Slots:
 ${JSON.stringify(slots, null, 1)}
 
+${shots ? `\n${SCREENSHOT_GUIDE}\n` : ''}
 ${attribution(link)}
 Excerpt:
 """
 ${excerpt}
 """
 
-Reply with JSON only, no prose and no code fence: {"fields": {"<slot name exactly as given>": "<text>"}, "notes": "<one short sentence flagging anything unclear, unverified or missing in the excerpt, or an empty string>"}`;
+Reply with JSON only, no prose and no code fence: {"fields": {"<slot name exactly as given>": "<text>"}, "notes": "<one short sentence flagging anything unclear, unverified or missing in the excerpt, or an empty string>"${shots ? ', "sourceText": "<plain transcription of screenshot text, or an empty string>"' : ''}}`;
 }
 
 type ZoneBudget = { role: string; x: number; y: number; w: number; h: number; perLine: number; maxLines: number; minSize: number; maxSize: number };
@@ -192,7 +197,7 @@ function measureNote(measure: unknown): string {
   return bits.length ? `Layout: ${bits.join(', ')}.` : '';
 }
 
-function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: CategoryRule[], tags: string[], refs: LayoutRef[], voice: VoiceRef[], pageCount: number, flags: { followUp: boolean; correction: boolean }, link: { title: string; siteName: string; published: string } | null) {
+function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: CategoryRule[], tags: string[], refs: LayoutRef[], voice: VoiceRef[], pageCount: number, flags: { followUp: boolean; correction: boolean }, link: { title: string; siteName: string; published: string } | null, shots = false) {
   const header = headlineGuide(refs);
   const zoneText = zones
     .map((z) => z.role === 'headline'
@@ -215,11 +220,11 @@ function layoutPrompt(excerpt: string, zones: ZoneBudget[], categories: Category
     : '';
   return `Write one SLC Scoop post from the excerpt. You choose the words, the category, up to 3 topic tags, and which reference to follow. You do not choose font sizes, coordinates, or layer positions. A separate fitter does that.
 
-Use only facts stated in the excerpt. Never invent names, numbers, places, quotes, or causes.
+Use only facts stated in the excerpt${shots ? ' or clearly legible in the screenshots' : ''}. Never invent names, numbers, places, quotes, or causes.
 
 ${OWN_WORDS}
 
-${ARTICLE_RULE(link ? link.siteName : '')}
+${ARTICLE_RULE(link ? link.siteName : '', shots)}
 
 Categories — pick exactly one id from this list:
 ${categoryBlock(categories)}
@@ -242,6 +247,7 @@ Layout references show line count, density, and spacing. Their events are not th
 ${examples ? `\n${examples}` : '\nNo layout references were sent.'}
 ${voiceText ? `\nVoice samples are SLC Scoop's cadence for the dek and the website article. Do not reuse their facts. Headlines still follow the headline rule.\n\n${voiceText}` : ''}
 
+${shots ? `\n${SCREENSHOT_GUIDE}\n` : ''}
 ${attribution(link)}
 Excerpt:
 """
@@ -249,7 +255,7 @@ ${excerpt}
 """
 
 Reply with JSON only, no prose and no code fence:
-{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Logan, UT","source":"","referenceId":"","notes":"","pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
+{"article":"Paragraph one.\n\nParagraph two.","category":"NEWS","categoryReason":"why this category","topicTags":["UTAH","PUBLIC SAFETY"],"suggestedTags":[],"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":"One or two sentences.","location":"Logan, UT","source":"","referenceId":"","notes":""${shots ? ',"sourceText":""' : ''},"pages":[{"headlines":[{"lines":["CITY DENIES THE CLAIM","AFTER 111 DAYS AT WORK"]}],"dek":""}]}`;
 }
 
 async function layoutImage(url: string) {
@@ -310,6 +316,17 @@ function cleanArticle(value: unknown): string {
     .slice(0, 7000);
 }
 
+/** Plain transcription of screenshot text. Used for the copy check, not stored. */
+function readSourceText(out: Record<string, unknown> | null): string {
+  return String(out?.sourceText ?? '').replace(/\r\n/g, '\n').trim().slice(0, 4000);
+}
+
+function draftCopySource(excerpt: string, out: Record<string, unknown> | null, shots: boolean): string {
+  if (!shots) return excerpt;
+  const transcribed = readSourceText(out);
+  return transcribed ? `${excerpt}\n${transcribed}` : excerpt;
+}
+
 /** The words a draft wrote, by field, for the copy check. */
 function draftText(out: Record<string, unknown>, layout: boolean): Record<string, string> {
   if (!layout) {
@@ -346,6 +363,7 @@ export async function POST(req: NextRequest) {
     categories?: unknown;
     tags?: unknown;
     link?: unknown;
+    images?: unknown;
   };
   try {
     body = await req.json();
@@ -363,9 +381,13 @@ export async function POST(req: NextRequest) {
       example: String(s.example ?? '').slice(0, 160),
     }));
   const zones = cleanZones(body.zones);
-  if (excerpt.length < 40 || (!slots.length && !zones.length)) {
+  const parsedShots = parseDraftImages(body.images);
+  if ('error' in parsedShots) return NextResponse.json({ error: 'bad_images' }, { status: 400 });
+  const shots = parsedShots.images;
+  if (!draftExcerptOk(excerpt, shots.length) || (!slots.length && !zones.length)) {
     return NextResponse.json({ error: 'need an excerpt and at least one text slot' }, { status: 400 });
   }
+  if (shots.length) console.info('scoop draft images', shots.length);
 
   try {
     const layout = zones.length > 0;
@@ -377,24 +399,27 @@ export async function POST(req: NextRequest) {
       : brandFrom({ categories: body.categories, tags: body.tags });
     const voice = cleanRefs(body.voice ?? body.references).slice(0, layout ? 8 : VOICE_LIMIT);
     const link = cleanLink(body.link);
-    const content: ({ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } })[] = [];
+    const prompt = layout
+      ? layoutPrompt(excerpt, zones, brand.categories, brand.tags, layoutRefs, voice, Math.min(6, Math.max(1, Math.round(Number(body.pageCount) || 1))), flags, link, shots.length > 0)
+      : buildPrompt(excerpt, slots, link, shots.length > 0);
+    const blocks: ({ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } })[] = [];
     if (layout) {
       for (const ref of layoutRefs) {
         const image = await layoutImage(ref.imageUrl);
         if (image) {
-          content.push({ type: 'text', text: `Layout reference image id=${ref.id}` });
-          content.push(image);
+          blocks.push({ type: 'text', text: `Layout reference image id=${ref.id}` });
+          blocks.push(image);
         }
       }
-      content.push({
-        type: 'text',
-        text: layoutPrompt(excerpt, zones, brand.categories, brand.tags, layoutRefs, voice, Math.min(6, Math.max(1, Math.round(Number(body.pageCount) || 1))), flags, link),
-      });
     }
+    for (const shot of shots) {
+      blocks.push({ type: 'image', source: { type: 'base64', media_type: shot.mediaType, data: shot.data } });
+    }
+    blocks.push({ type: 'text', text: prompt });
     const system = layout
       ? 'You write Instagram news graphics and the website story for SLC Scoop, an independent Salt Lake City news outlet. Tagline: "Reprogramming the news." Voice: direct, factual, local, short sentences, no clickbait, no opinion, no emoji. Rewrite in that voice. Never copy a source\'s sentences. You never choose pixel sizes or coordinates. Reply with JSON only.'
       : systemPrompt(voice);
-    const messages: { role: 'user' | 'assistant'; content: unknown }[] = [{ role: 'user', content: layout ? content : buildPrompt(excerpt, slots, link) }];
+    const messages: { role: 'user' | 'assistant'; content: unknown }[] = [{ role: 'user', content: layout || shots.length ? blocks : prompt }];
     const ask = async (ms: number) => {
       const res = await fetch(ANTHROPIC_URL, {
         method: 'POST',
@@ -426,7 +451,8 @@ export async function POST(req: NextRequest) {
       console.error('scoop draft failed', reply.status, reply.raw.slice(0, 500));
       return NextResponse.json({ error: 'draft_failed' }, { status: 502 });
     }
-    let copied = copyReport(excerpt, draftText(reply.out, layout));
+    const sourceOf = (out: Record<string, unknown> | null) => draftCopySource(excerpt, out, shots.length > 0);
+    let copied = copyReport(sourceOf(reply.out), draftText(reply.out, layout));
     if (copied.length && Date.now() - started < 22_000) {
       messages.push({ role: 'assistant', content: reply.text });
       messages.push({
@@ -435,19 +461,20 @@ export async function POST(req: NextRequest) {
       });
       const second = await ask(55_000 - (Date.now() - started)).catch(() => null);
       if (second?.out) {
-        const again = copyReport(excerpt, draftText(second.out, layout));
+        const again = copyReport(sourceOf(second.out), draftText(second.out, layout));
         if (again.length <= copied.length) { reply = second; copied = again; }
       }
     }
     const out = reply.out as { fields?: Record<string, unknown>; notes?: unknown; article?: unknown };
     const copyWarnings = copied.map((c) => `${c.field} repeats the source: "${c.phrases[0]}"`);
+    const sourceText = shots.length ? readSourceText(reply.out) : '';
     if (!layout) {
       const fields: Record<string, string> = {};
       for (const slot of slots) {
         const value = out.fields?.[slot.slot];
         if (typeof value === 'string') fields[slot.slot] = value.slice(0, slot.maxChars + 40);
       }
-      return NextResponse.json({ fields, notes: typeof out.notes === 'string' ? out.notes : '', copyWarnings });
+      return NextResponse.json({ fields, notes: typeof out.notes === 'string' ? out.notes : '', sourceText, copyWarnings });
     }
     const draft = normalizeDraft(out, brand, flags, layoutRefs.map((ref) => ref.id));
     draft.location = incidentLocation(excerpt, draft.location);
@@ -456,6 +483,7 @@ export async function POST(req: NextRequest) {
       tags: tagsLine(draft.topicTags),
       fields: fieldsFrom(draft, slots),
       article: cleanArticle(out.article),
+      sourceText,
       copyWarnings,
     });
   } catch (err) {

@@ -6248,11 +6248,20 @@ function trimPlainEdges(canvas,r,bg){
   let left=0, right=r.w; while(left<right-64&&colPlain(left)) left++; while(right>left+64&&colPlain(right-1)) right--;
   return {x:r.x+left,y:r.y+top,w:right-left,h:bot-top};
 }
+async function blobIsWebp(blob){
+  if(!blob) return false;
+  if(blob.type==='image/webp') return true;
+  try{
+    const head=new Uint8Array(await blob.slice(0,12).arrayBuffer());
+    return head[0]===0x52&&head[1]===0x49&&head[2]===0x46&&head[3]===0x46&&head[8]===0x57&&head[9]===0x45&&head[10]===0x42&&head[11]===0x50;
+  }catch(e){ return false; }
+}
 async function renderWebBlob(page,rect){
   await allImagesReady(page); await ensureFonts(page.layers);
   const c=renderWebCanvas(page, rect||webExportRect(page), WEB_SCALE);
   const blob=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/webp',0.92); }catch(e){ rej(e); } });
-  if(blob.type==='image/webp') return {blob,ext:'webp'};
+  if(await blobIsWebp(blob)) return {blob,ext:'webp'};
+  // A browser that cannot encode WebP still must not reuse the Instagram file name.
   const png=await new Promise((res,rej)=>{ try{ c.toBlob(b=>b?res(b):rej(new Error('blank')),'image/png'); }catch(e){ rej(e); } });
   return {blob:png,ext:'png'};
 }
@@ -7936,7 +7945,11 @@ async function creatorExport(){
         if(!W.auto.has(p.id)) W.auto.set(p.id, webAutoRect(p));
         const web=await renderWebBlob(p, webFrameRect(p, webShapeOf(S.doc), W.auto.get(p.id)));
         if(!m.isConnected) return;
-        files.splice(files.findIndex(f=>f.name===stem+(multi?'-'+(i+1):'')+'.png')+1,0,{name:stem+(multi?'-'+(i+1):'')+'.'+web.ext, blob:web.blob, web:true});
+        const pageBit=multi?'-'+(i+1):'';
+        const pngName=stem+pageBit+'.png';
+        const webName=web.ext==='webp'?stem+pageBit+'.webp':stem+pageBit+'-web.png';
+        const at=files.findIndex(f=>f.name===pngName);
+        files.splice(at<0?files.length:at+1,0,{name:webName, blob:web.blob, web:true});
       }
       if(!captionText){ setBar(42,'Writing the Instagram caption…'); await captionJob; if(!m.isConnected) return; }
       files.push({name:stem+'.txt', blob:new Blob([postCopyTxt(captionText)],{type:'text/plain'})});

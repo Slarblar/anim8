@@ -5062,7 +5062,7 @@ function writeSlots(page,fields){
     if(!Object.prototype.hasOwnProperty.call(fields,key)) continue;
     const role=layerRole(L);
     if(SINGLE_ROLES.includes(role)&&findRole(page.layers,role)!==L) continue;
-    L.text=key==='tags'?tagsLine(parseTagList(fields[key])):key==='source'?normalizeCreditLine(fields[key]):fields[key];
+    L.text=key==='tags'?tagsLine(parseTagList(fields[key])):key==='source'?sourceLine(fields[key]):fields[key];
   }
   if(Object.prototype.hasOwnProperty.call(fields,'tags')) applyTagLine(page, fields.tags);
 }
@@ -5184,7 +5184,7 @@ async function applyAiDraft(out){
   const lines=formatCredits({infoSource:info, photoCredit:photo});
   const shared={category:out.category||'', tags:out.tags||tagsLine(out.topicTags||[])};
   if(out.location) shared.location=out.location;
-  if(lines.graphicLine) shared.source=lines.graphicLine;
+  shared.source=lines.graphicLine;
   const pageSpecs=Array.isArray(out.pages)&&out.pages.length?out.pages:[{headlines:out.headlines||[],dek:out.dek||''}];
   const notes=[], chosen=[];
   for(let i=0;i<S.doc.pages.length;i++){
@@ -6383,7 +6383,7 @@ function roleTextOn(doc, role){
     if(!text) continue;
     if(role==='headline'&&/write the headline/i.test(text)) continue;
     if(role==='dek'&&/one or two sentences on what happened/i.test(text)) continue;
-    if(role==='source'&&/name here/i.test(text)) continue;
+    if(role==='source'&&sourceNeedsFill(text)) continue;
     if(role==='tag'&&/public safety\s*\|/i.test(text)&&/slcscoop/i.test(text)) continue;
     return text;
   }
@@ -6905,8 +6905,9 @@ function creatorReviewHTML(){
   const tab=C.reviewTab==='photo'?'photo':C.reviewTab==='article'?'article':'text';
   const texts=creatorTextSlots();
   const L=texts.find(l=>l.id===C.field)||texts[0];if(L)C.field=L.id;
+  const sourceBlank=!!(L&&layerRole(L)==='source'&&sourceNeedsFill(L.text));
   const photos=S.doc.layers.filter(l=>l.type==='image'&&l.slot&&shownIn(S.doc.layers,l));
-  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select></div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3">${esc(L.text)}</textarea><div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}" aria-label="Fit ${esc(L.slot)} to its zone" title="Fit to zone">${UI_ICON.fit}<span>Fit</span></button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
+  const textPanel=L?`${creatorChoiceHTML()}<div class="review-field"><div class="field-top"><div class="field-picks"><select id="creatorField" class="field-select" aria-label="Text field">${texts.map(l=>`<option value="${l.id}" ${l.id===L.id?'selected':''}>${esc(l.slot==='Dek'?'Supporting copy':l.slot)}</option>`).join('')}</select></div><small id="c-count-${L.id}">${String(L.text).length} characters</small></div><textarea class="c-input" id="c-text-${L.id}" data-creator-text="${L.id}" aria-label="${esc(L.slot)}" rows="3" ${sourceBlank?'placeholder="Source: KSL, or Photo: photographer name"':''}>${esc(L.text)}</textarea>${sourceBlank?'<p class="c-note warn">Provide Source</p>':''}<div class="text-tools"><button class="c-button small" data-text-size="-2" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 2 pixels">A−</button><button class="c-button small" data-text-size="-1" data-layer="${L.id}" aria-label="Shrink ${esc(L.slot)} by 1 pixel">−</button><output id="c-size-${L.id}">${Math.round(L.size)} px</output><button class="c-button small" data-text-size="1" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 1 pixel">+</button><button class="c-button small" data-text-size="2" data-layer="${L.id}" aria-label="Enlarge ${esc(L.slot)} by 2 pixels">A+</button><button class="c-button small fit" data-text-fit="${L.id}" aria-label="Fit ${esc(L.slot)} to its zone" title="Fit to zone">${UI_ICON.fit}<span>Fit</span></button></div></div>`:'<p class="c-note">Add quick-fill text slots in Template Builder to edit copy here.</p>';
   const photoPanel=creatorPhotoPanelHTML(photos);
   const panel=tab==='photo'?photoPanel:tab==='article'?articlePanel():textPanel;
   return `<div class="drawer-top"><button class="drawer-toggle" id="creatorDrawer" aria-expanded="${C.drawer}" aria-label="${C.drawer?'Collapse quick edits':'Expand quick edits'}"><span></span><b>Quick edits</b><svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button><button class="inline-button" id="creatorChangeTemplate">Change template</button></div><div class="review-body" ${C.drawer?'':'hidden'}><div class="review-tabs" role="group" aria-label="Post editing tools"><button class="c-button" data-review-tab="text" aria-pressed="${tab==='text'}">${CI.text}Text</button><button class="c-button" data-review-tab="photo" aria-pressed="${tab==='photo'}">${CI.photo}Photo</button><button class="c-button" data-review-tab="article" aria-pressed="${tab==='article'}">${CI.article}Article</button></div>
@@ -7141,13 +7142,13 @@ function syncPhotoSliders(){
 function creatorIssues(){
   const issues=[];
   S.doc.pages.forEach((p,i)=>{
-    const visible=p.layers.filter(l=>l.slot&&shownIn(p.layers,l)),photo=visible.some(l=>l.type==='image'&&l.src);
+    const visible=p.layers.filter(l=>l.slot&&shownIn(p.layers,l));
     for(const l of visible){
       const key=creatorSlotKey(l.slot),value=String(l.text||'').trim();let label='';
       if(l.type==='image'&&l.role==='photo'&&!l.src)label='Add '+l.slot.toLowerCase();
       if(l.type==='text'&&key==='headline'&&!value)label='Add '+l.slot.toLowerCase();
-      if(l.type==='text'&&key==='source'&&photo&&!value)label='Add photo credit';
-      if(l.type==='text'&&value){ const note=fitNote(l,p); if(note) label=note; }
+      if(l.type==='text'&&key==='source'&&sourceNeedsFill(value))label='Provide Source';
+      if(l.type==='text'&&value&&label!=='Provide Source'){ const note=fitNote(l,p); if(note) label=note; }
       if(!label&&l.type==='text'&&value){
         const mine=rectOf(l), hit=p.layers.find(o=>o!==l&&o.type==='text'&&!o.dupOf&&shownIn(p.layers,o)&&String(o.text||'').trim()&&rectsOverlap(mine,rectOf(o)));
         // Only headline and dek wrap into their boxes; one-line labels (location, follow line) have wide boxes but short text.
@@ -7324,8 +7325,35 @@ function dedupeReport(page){
 }
 // A post copy of a template: hide second copies of the same text role and extra logos,
 // and make sure photos can only ever scale proportionally.
+/** Dummy credit copy from a template. A blank source is filled in by the editor. */
+function sourceNeedsFill(text){
+  const name=cleanCreditName(text).toLowerCase();
+  if(!name) return true;
+  if(/\blorem\b|\bipsum\b/.test(name)) return true;
+  if(/name here|your name|sample photo|sample story|layout test|photo credit|placeholder|credit here|source here/.test(name)) return true;
+  if(/^(source|photo|credit|name|tbd|tk|xxx+|sample)$/.test(name)) return true;
+  return false;
+}
+function sourceLine(value){
+  const line=normalizeCreditLine(value);
+  return sourceNeedsFill(line)?'':line;
+}
+function clearPlaceholderSources(docOrPage){
+  const pages=docOrPage&&Array.isArray(docOrPage.pages)?docOrPage.pages:docOrPage?[docOrPage]:[];
+  let changed=false;
+  for(const page of pages){
+    for(const L of (page&&page.layers)||[]){
+      if(!L||L.type!=='text'||layerRole(L)!=='source') continue;
+      if(!String(L.text||'').trim()||!sourceNeedsFill(L.text)) continue;
+      L.text='';
+      changed=true;
+    }
+  }
+  return changed;
+}
 function cleanPostPage(page){
   for(const d of dedupeReport(page)) for(const L of d.extra){ L.visible=false; L.dupOf=d.keep.id; }
+  clearPlaceholderSources(page);
   retireStackedText(page);
   for(const L of page.layers||[]) if(L.type==='image') keepProportional(L);
   return page;
@@ -7400,7 +7428,7 @@ async function creatorChooseTemplate(id){
   clearTimeout(fillT);commit();const previous=JSON.parse(snap()),next=creatorDocFor(id);
   if(C.generated&&previous.pages.length>next.pages.length){if(!await creatorConfirm('Use a shorter template?',`This layout has ${next.pages.length} page${next.pages.length===1?'':'s'}. Extra pages will leave this post; their content is retained if you switch back.`,'Change template'))return false;}
   previous.pages.forEach((p,i)=>{const bank=C.contentCache[i]||(C.contentCache[i]={});p.layers.filter(l=>l.slot&&(C.generated||l.type==='image')).forEach(l=>{bank[l.type+':'+creatorSlotKey(l.slot)]=l.type==='text'?{text:l.text}:{src:l.src,nw:l.nw,nh:l.nh};});});
-  next.pages.forEach((p,i)=>{const bank=C.contentCache[i]||{};p.layers.forEach(l=>{if(!l.slot)return;const v=bank[l.type+':'+creatorSlotKey(l.slot)];if(l.type==='text'&&C.generated)l.text=v?v.text:'';else if(l.type==='image'&&v&&v.src)Object.assign(l,v,{zoom:1,fx:.5,fy:.5,fit:'cover'});});});
+  next.pages.forEach((p,i)=>{const bank=C.contentCache[i]||{};p.layers.forEach(l=>{if(!l.slot)return;const v=bank[l.type+':'+creatorSlotKey(l.slot)];if(l.type==='text'&&C.generated)l.text=creatorSlotKey(l.slot)==='source'?sourceLine(v&&v.text): (v?v.text:'');else if(l.type==='image'&&v&&v.src)Object.assign(l,v,{zoom:1,fx:.5,fy:.5,fit:'cover'});});});
   if(previous.ai) next.ai=previous.ai;
   loadDoc(next,{fresh:false});if(C.generated)for(const p of S.doc.pages){await ensureFonts(p.layers);fitFilledText(p.layers.filter(l=>l.type==='text'&&l.slot),p.layers,p.w,p.h);}
   localStorage.setItem('scoop-builder:preferred-template',id);C.field='';commit();saveDraft();creatorPersist();renderCreator();scheduleRender();return true;
@@ -7579,7 +7607,7 @@ async function creatorCreatePost(){
           const role=layerRole(L);
           if(SINGLE_ROLES.includes(role)&&findRole(p.layers,role)!==L) continue;
           const value=String(copy[creatorSlotKey(L.slot)]||'');
-          L.text=role==='tag'?tagsLine(parseTagList(value)):role==='source'?normalizeCreditLine(value):value;changed.push(L);
+          L.text=role==='tag'?tagsLine(parseTagList(value)):role==='source'?sourceLine(value):value;changed.push(L);
         }
         if(copy.tags) applyTagLine(p, copy.tags);
         if(copy.location) applyLocation(p, copy.location);
@@ -7887,6 +7915,7 @@ async function openArchived(it, host){
   if(!rec||!rec.doc||!Array.isArray(rec.doc.pages)){ toast('Could not open this post. It may have just been removed.',true); return; }
   clearTimeout(fillT);
   loadDoc(rec.doc);
+  clearPlaceholderSources(S.doc);
   const k=rec.creator||{};
   C.source=String(k.source||''); C.teamCopy=String(k.teamCopy||''); C.inputMode=k.inputMode==='final'?'final':'ai';
   C.sourceText=''; C.sourceImages=[];
@@ -7971,8 +8000,11 @@ async function creatorExport(){
   const revoke=()=>{ localUrls.forEach(URL.revokeObjectURL); localUrls=[]; };
   const observer=new MutationObserver(()=>{ if(!m.isConnected){ generation++; revoke(); observer.disconnect(); removeEventListener('resize',onResize); } });
   observer.observe($('#modalRoot'),{childList:true});
+  if(clearPlaceholderSources(S.doc)){ commit(); scheduleRender(); if(C.workspace==='creator') renderCreator(); }
   const missing=S.doc.pages.flatMap((p,i)=>p.layers.filter(l=>l.slot&&l.type==='image'&&!l.src&&shownIn(p.layers,l)).map(l=>`Page ${i+1}: ${l.slot}`));
-  $('#ceWarning',m).textContent=missing.length?'Empty photos export as blank. '+missing.join(' · '):hiddenRedactions()?'A hidden redaction will not appear in the export.':'';
+  const needSource=S.doc.pages.some(p=>(p.layers||[]).some(l=>l.type==='text'&&layerRole(l)==='source'&&shownIn(p.layers,l)&&sourceNeedsFill(l.text)));
+  const exportWarn=[needSource?'Provide Source':'', missing.length?'Empty photos export as blank. '+missing.join(' · '):hiddenRedactions()?'A hidden redaction will not appear in the export.':''].filter(Boolean).join(' ');
+  $('#ceWarning',m).textContent=exportWarn;
   $('#ceDimensions',m).textContent=`Instagram PNG ${S.doc.w*2} × ${S.doc.h*2} px${multi?' · '+S.doc.pages.length+' pages':''}`;
   const stem=defaultName()||'post';
   const pageTag=i=>multi?'Page '+(i+1)+': ':'';

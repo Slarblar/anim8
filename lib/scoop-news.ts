@@ -136,6 +136,8 @@ const UTAH_OUTLET_HOSTS = [
   'sltrib.com', 'deseret.com', 'ksl.com', 'fox13now.com', 'kutv.com', 'abc4.com',
   'kslnewsradio.com', 'kuer.org', 'utahnewsdispatch.com', 'parkrecord.com', 'townlift.com',
   'upr.org', 'cityweekly.net', 'utah.gov', 'slc.gov', 'utcourts.gov',
+  'stgeorgeutah.com', 'standard.net', 'hjnews.com', 'heraldextra.com', 'gephardtdaily.com',
+  'cachevalleydaily.com', 'good4utah.com',
 ];
 
 function storyText(input: { title?: string; summary?: string; text?: string }): string {
@@ -765,15 +767,21 @@ export async function collectNews(input: {
 export const NEWS_SEARCH_DOMAINS = [
   'ksl.com', 'kutv.com', 'fox13now.com', 'sltrib.com', 'deseret.com', 'abc4.com',
   'kslnewsradio.com', 'kuer.org', 'utahnewsdispatch.com', 'police.slc.gov', 'udot.utah.gov', 'weather.gov',
+  'stgeorgeutah.com', 'standard.net', 'hjnews.com', 'heraldextra.com', 'gephardtdaily.com',
+  'cachevalleydaily.com', 'good4utah.com', 'parkrecord.com', 'townlift.com', 'upr.org',
 ];
 
+function searchHost(value: unknown): string {
+  return String(value ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
+}
+
+/** Saved sites plus the Utah outlets. A custom site stays; a removed default comes back so the search stays broad. */
 export function normalizeSearchDomains(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return NEWS_SEARCH_DOMAINS.slice();
+  const incoming = Array.isArray(raw) ? raw : [];
   const out: string[] = [];
-  for (const item of raw) {
-    const host = String(item ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
-    if (!/^[a-z0-9.-]+\.[a-z]{2,24}$/.test(host) || out.includes(host)) continue;
-    out.push(host);
+  for (const item of NEWS_SEARCH_DOMAINS.concat(incoming.map(searchHost))) {
+    if (!/^[a-z0-9.-]+\.[a-z]{2,24}$/.test(item) || out.includes(item)) continue;
+    out.push(item);
     if (out.length >= 30) break;
   }
   return out.length ? out : NEWS_SEARCH_DOMAINS.slice();

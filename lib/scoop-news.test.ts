@@ -14,6 +14,8 @@ import {
   parsePage,
   passesWindow,
   NEWS_SEED,
+  NEWS_SEARCH_DOMAINS,
+  normalizeSearchDomains,
   type NewsSource,
 } from '@/lib/scoop-news';
 
@@ -220,6 +222,16 @@ describe('a source can fail without taking the list down', () => {
     const again = await collectNews({ now: NOW, window: '6h', sources, fetchText });
     expect(calls).toBe(0);
     expect(again.reports[0]).toMatchObject({ status: 'disabled', httpStatus: 403 });
+  });
+});
+
+describe('search sites', () => {
+  it('keeps the Utah outlets and any extra site an editor added', () => {
+    expect(NEWS_SEARCH_DOMAINS).toEqual(expect.arrayContaining(['ksl.com', 'stgeorgeutah.com', 'standard.net', 'hjnews.com', 'heraldextra.com']));
+    const sites = normalizeSearchDomains(['ksl.com', 'example-utah.org']);
+    expect(sites.slice(0, NEWS_SEARCH_DOMAINS.length)).toEqual(NEWS_SEARCH_DOMAINS);
+    expect(sites).toContain('example-utah.org');
+    expect(normalizeSearchDomains(['not a host'])).toEqual(NEWS_SEARCH_DOMAINS);
   });
 });
 

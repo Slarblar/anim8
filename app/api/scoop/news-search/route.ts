@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
     `Current time: ${now.toISOString()} (America/Denver).`,
     `Find Utah news articles published in the last ${hours} hours. Call the web_search tool before you answer. Do not answer from memory.`,
     `Today's date in Utah is ${new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', month: 'long', day: 'numeric', year: 'numeric' }).format(now)}. Put that date, or "today", in the search queries.`,
-    'Run several short searches, for example: "Utah news today", "Salt Lake City news today", "Utah police today", "Utah crash today", "Provo news today", "St. George news today". Return up to 25 articles.',
+    'Run several short searches across the state, for example: "Utah news today", "Salt Lake City news today", "Utah police today", "Utah crash today", "Provo Orem news today", "Ogden news today", "Logan news today", "St. George news today", "Utah legislature today", "Utah courts today". Return up to 40 articles.',
     'Skip homepages, section pages, and any result whose shown age is older than the window.',
     UTAH_STORY_RULE,
     'After the search, return JSON only, an array of objects with title, url, outlet, published, summary, location, and category.',
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
   const tool = {
     type: 'web_search_20250305',
     name: 'web_search',
-    max_uses: 5,
+    max_uses: 8,
     allowed_domains: domains,
     user_location: { type: 'approximate', city: 'Salt Lake City', region: 'Utah', country: 'US', timezone: 'America/Denver' },
   };

@@ -450,13 +450,17 @@ try{if(window.self!==window.top)document.documentElement.setAttribute('data-embe
 .story-refresh{border:1px solid var(--c-line,#dfdfd5);background:#f4f3ee;color:#151616;border-radius:999px;min-height:32px;padding:0 12px;font-size:12px;font-weight:650;cursor:pointer}
 .story-refresh[disabled]{opacity:.45;cursor:default}
 .story-options{display:flex;flex-direction:column;gap:8px;margin-top:12px}
-.story-option{display:block;width:100%;text-align:left;border:1px solid var(--c-line,#e4e4dc);background:transparent;border-radius:10px;padding:12px 14px;cursor:pointer;color:inherit}
+.story-option{display:flex;align-items:stretch;width:100%;text-align:left;border:1px solid var(--c-line,#e4e4dc);background:transparent;border-radius:10px;color:inherit;overflow:hidden}
+.story-pick{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:12px 8px 12px 14px;cursor:pointer;color:inherit}
 .story-option b{display:block;font-size:14px;line-height:1.35;font-weight:650}
 .story-option small{display:block;margin-top:4px;color:#8a8a7e;font-size:12px}
+.story-link{flex:none;width:44px;display:grid;place-items:center;border:0;border-left:1px solid var(--c-line,#e4e4dc);background:transparent;color:inherit}
+.story-link svg{width:18px;height:18px}
 .news-source{padding:8px 0;border-top:1px solid var(--line,#e4e4dc)}
 .news-source.failed{background:#fff6f4;border:1px solid #e7c7c0;border-radius:6px;padding:8px 10px;margin-top:8px}
 html[data-night] .story-refresh{background:#1d1d1f;color:#efeee9;border-color:#3a3a3c}
 html[data-night] .story-option{color:#efeee9;border-color:#3a3a3c}
+html[data-night] .story-link{border-left-color:#3a3a3c}
 html[data-night] .story-option small{color:#a09d95}
 html[data-night] .news-source.failed{background:#2a201e;border-color:#5c3a34;color:#efeee9}
 </style>
@@ -638,7 +642,7 @@ html:root body[data-workspace=creator] .template-filters button[aria-pressed=tru
 #creator :is(.inline-button,.field-top button){font-size:var(--type-xs);line-height:1.5;padding:var(--space-2) var(--space-1);color:var(--c-muted)}
 
 @media(hover:hover){
-  #creator :is(.c-button,.template-current,.source-photo,.story-refresh,.story-option):not(:disabled):hover,
+  #creator :is(.c-button,.template-current,.source-photo,.story-refresh,.story-option,.story-pick,.story-link):not(:disabled):hover,
   html:root body[data-workspace=creator] .modal :is(.btn,.c-button,.template-filters button):not(:disabled):hover{background:var(--c-hover);border-color:var(--c-border-strong)}
   #creator .c-button.primary:not(:disabled):hover,
   html:root body[data-workspace=creator] .modal .btn.primary:not(:disabled):hover{background:var(--c-action-hover);border-color:var(--c-action-hover);color:var(--c-on-action)}
@@ -648,7 +652,7 @@ html:root body[data-workspace=creator] .template-filters button[aria-pressed=tru
   #creator :is(.inline-button,.field-top button):not(:disabled):hover{color:var(--c-ink)}
   html:root .studio-nav button:not(:disabled):hover{background:var(--c-nav-hover);color:var(--c-nav-ink)}
 }
-#creator :is(.c-button,.template-current,.source-photo,.story-refresh,.story-option):not(:disabled):active,
+#creator :is(.c-button,.template-current,.source-photo,.story-refresh,.story-option,.story-pick,.story-link):not(:disabled):active,
 html:root body[data-workspace=creator] .modal :is(.btn,.c-button):not(:disabled):active{background:var(--c-pressed)}
 #creator .c-button.primary:not(:disabled):active,
 html:root body[data-workspace=creator] .modal .btn.primary:not(:disabled):active{background:var(--c-action-active);border-color:var(--c-action-active)}
@@ -744,9 +748,12 @@ html:root body[data-workspace=creator] .modal #ceWarning:not(:empty){
 #creator .story-refresh{min-height:var(--control-height);padding:var(--space-2) var(--space-3);border-radius:8px;flex:none;font-size:var(--type-xs);background:var(--c-soft);color:var(--c-ink);border-color:var(--c-line)}
 #creator .story-options{gap:var(--space-2);margin-top:var(--space-3)}
 #creator .story-options:empty{margin:0}
-#creator .story-option{padding:var(--space-4);border-radius:8px;background:var(--c-surface);border-color:var(--c-line);color:var(--c-ink);overflow-wrap:anywhere}
+#creator .story-option{border-radius:8px;background:var(--c-surface);border-color:var(--c-line);color:var(--c-ink);overflow-wrap:anywhere}
+#creator .story-pick{padding:var(--space-4) var(--space-2) var(--space-4) var(--space-4)}
 #creator .story-option b{font-size:var(--type-sm);line-height:1.5}
 #creator .story-option small{font-size:var(--type-xs);color:var(--c-muted);margin-top:var(--space-1)}
+#creator .story-link{width:48px;color:var(--c-muted);border-left-color:var(--c-line)}
+#creator .story-link svg{width:18px;height:18px}
 #creator .story-picks .news-status{margin-top:var(--space-3);background:var(--c-soft);border-style:dashed}
 #creator .story-picks.has-error{border-top-color:var(--c-error-line)}
 #creator .story-picks.has-error .news-status{background:var(--c-error-bg);border-color:var(--c-error-line);border-style:solid;border-inline-start-width:4px;color:var(--c-error)}
@@ -4843,9 +4850,29 @@ function newsAgo(iso){
   const hr=Math.round(min/60);
   return hr<48?hr+' hr ago':Math.round(hr/24)+' d ago';
 }
+function outletFromUrl(url){
+  let host='';
+  try{ host=new URL(String(url||'')).hostname.replace(/^www\./i,'').toLowerCase(); }catch(e){ return ''; }
+  const names={
+    'ksl.com':'KSL','ksltv.com':'KSL','kslnewsradio.com':'KSL NewsRadio','kutv.com':'KUTV','fox13now.com':'FOX 13',
+    'sltrib.com':'Salt Lake Tribune','deseret.com':'Deseret News','abc4.com':'ABC4','good4utah.com':'Good4Utah',
+    'kuer.org':'KUER','utahnewsdispatch.com':'Utah News Dispatch','stgeorgeutah.com':'St. George News',
+    'standard.net':'Standard-Examiner','hjnews.com':'Herald Journal','heraldextra.com':'Daily Herald',
+    'gephardtdaily.com':'Gephardt Daily','cachevalleydaily.com':'Cache Valley Daily','parkrecord.com':'Park Record',
+    'townlift.com':'TownLift','upr.org':'Utah Public Radio','police.slc.gov':'Salt Lake City Police','udot.utah.gov':'UDOT'
+  };
+  return names[host]||host.replace(/\.(com|org|gov|net)$/i,'').replace(/\./g,' ');
+}
 function newsRows(){
   const rows=[];
-  (NEWS.search||[]).forEach(item=>rows.push({title:item.title,url:item.url,outlet:item.outlet||'',at:item.published,dayOnly:item.timeConfirmed===false}));
+  const add=(title,url,outlet,at,dayOnly)=>{
+    const href=onlyUrl(url);
+    const name=String(title||'').replace(/\s+/g,' ').trim();
+    if(!href||name.length<4) return;
+    rows.push({title:name,url:href,outlet:String(outlet||'').trim()||outletFromUrl(href),at,dayOnly:!!dayOnly});
+  };
+  (NEWS.search||[]).forEach(item=>add(item.title,item.url,item.outlet,item.published,item.timeConfirmed===false));
+  (NEWS.items||[]).forEach(item=>add(item.title,item.url,item.source,item.publishedAt,item.dateOnly));
   rows.sort((a,b)=>Date.parse(b.at||0)-Date.parse(a.at||0));
   const seen=new Set();
   return rows.filter(row=>{ const key=String(row.url||'').replace(/^https?:\/\/(?:www\.)?/i,'').replace(/[?#].*$/,'').replace(/\/$/,''); if(!key||seen.has(key)) return false; seen.add(key); return true; });
@@ -4914,8 +4941,8 @@ async function loadNews(refresh){
 }
 function localNewsHTML(){
   if(typeof Backend==='undefined'||Backend.mode!=='server') return '';
-  const rows=newsRows().slice(0,8);
-  const row=story=>`<button type="button" class="story-option" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc([story.outlet, story.at?newsAgo(story.at):''].filter(Boolean).join(' · '))}</small></button>`;
+  const rows=newsRows().slice(0,20);
+  const row=story=>`<div class="story-option"><button type="button" class="story-pick" data-news-draft="${esc(story.url)}"><b>${esc(story.title)}</b><small>${esc([story.outlet, story.at?newsAgo(story.at):''].filter(Boolean).join(' · '))}</small></button><a class="story-link" href="${esc(story.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open source article" title="Open source article">${UI_ICON.web}</a></div>`;
   const wait=refreshWait();
   const label=NEWS.searching&&rows.length?'Refreshing…':wait?'Refresh in '+wait+' min':'Refresh';
   const searching=NEWS.searching&&!rows.length?'<p class="note news-status">Finding stories…</p>':'';
